@@ -66,7 +66,7 @@ The owner asked for professional figures with no overlapping labels. Follow ever
 1. Use Mermaid only for flows and architecture.
 2. At most 12 nodes per diagram. Split larger ideas into two diagrams.
 3. Node labels have at most 4 words. Edge labels have at most 2 words.
-4. Use `LR` for flows and `TB` for hierarchies. Avoid crossing edges.
+4. Prefer `TB` (top to bottom). A wide `LR` diagram shrinks on a phone until its text is unreadable. Use `LR` only when a row has at most 4 nodes. Avoid crossing edges.
 5. Mark optional parts with a dashed edge or the word "optional".
 
 **Generated figures and plots**

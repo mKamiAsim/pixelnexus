@@ -6,11 +6,16 @@ PixelNexus has tests for the studio, the science engine, the catalog, the writin
 
 | Command | What it runs |
 |---|---|
-| `pnpm test` | Unit and component tests with Vitest. |
+| `pnpm test` | Unit, component and browser tests with Vitest. |
 | `pnpm test:coverage` | The same tests with a coverage report in `web/coverage/`. |
 | `pnpm e2e` | End-to-end tests with Playwright against a production build. |
 
-Playwright needs a browser the first time:
+Vitest runs two groups of tests:
+
+- **unit** runs in Node.js. It covers maths, catalog rules and components.
+- **browser** runs in a real Chromium. It covers code that needs browser features, such as Web Workers, image decoding and WebGL. These files end in `.browser.test.ts`.
+
+The browser tests and the end-to-end tests need Chromium the first time:
 
 ```bash
 pnpm --filter @pixelnexus/web exec playwright install chromium

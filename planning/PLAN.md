@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 2: studio shell, canvas and image I/O |
-| Next action | Phase 2 style tile, then your review |
+| Next action | Your review of the style tile. Then the Phase 2 shell (dockview workspace, viewport renderer, import UI). |
 | Last updated | 2026-10-11 |
 
 ## 1. How to continue in a new session
@@ -491,19 +491,19 @@ Also added: `tools/gen_docs.py` (generated docs tables), `.claude/launch.json` (
 
 Goal: a real editor that opens, navigates, compares and exports images. No filters yet.
 
-- [ ] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.**
-- [ ] Design tokens as CSS variables and a Tailwind theme. Dark, light and high contrast.
+- [ ] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.** Built 2026-10-12 at `web/style-tile.html` (run `pnpm dev`, open `/style-tile.html`). Waiting for review. The real shell starts after approval.
+- [x] Design tokens as CSS variables and a Tailwind theme. Dark, light and high contrast. In `web/src/styles/tokens.css`. Contrast checked: text 4.5:1 or more, control borders 3:1 or more.
 - [ ] App shell: menu bar, options bar, tool strip, status bar, dockview workspace, Window menu, workspace presets, saved layouts, icon-rail collapse.
 - [ ] Command palette (Ctrl or Cmd + K).
-- [ ] Import by file picker, drag and drop, and paste. PNG, JPEG, WebP, AVIF, BMP, GIF (first frame) and TIFF (utif2, MIT). Decoding runs in a worker.
-- [ ] Validation: 30 MB default size limit, configurable pixel limit, magic-byte check, clear errors for corrupt or oversized files. EXIF orientation applied. Privacy notice: "Images are processed locally in your browser."
-- [ ] Metadata: name, format, file size, dimensions, channels, bit depth from headers, alpha, color profile name. Warnings when decoding changes bit depth or drops a profile.
+- [ ] Import by file picker, drag and drop, and paste. PNG, JPEG, WebP, AVIF, BMP, GIF (first frame) and TIFF (utif2, MIT). Decoding runs in a worker. Core done: `core/image/decode.ts`, `core/workers/decode-*` (WebGL2 exact readback), tested in Chromium for all 20 sample files. Still to do: the picker, drop and paste UI.
+- [ ] Validation: 30 MB default size limit, configurable pixel limit, magic-byte check, clear errors for corrupt or oversized files. EXIF orientation applied. Privacy notice: "Images are processed locally in your browser." Core done: `core/image/format.ts` and `core/image/limits.ts`. Still to do: show errors and the notice in the shell.
+- [ ] Metadata: name, format, file size, dimensions, channels, bit depth from headers, alpha, color profile name. Warnings when decoding changes bit depth or drops a profile. Core done: header parser and warnings. Still to do: the metadata view.
 - [ ] Several documents: tabs plus the Images panel.
-- [ ] WebGL2 viewport: zoom by wheel, keys and menu. Pan by space-drag, middle mouse and trackpad. Fit, 100%, nearest-neighbor above 100%, pixel grid at 800% and more, checkerboard for transparency, optional rulers, Navigator panel.
+- [ ] WebGL2 viewport (maths done in `web/src/canvas/viewport.ts`): zoom by wheel, keys and menu. Pan by space-drag, middle mouse and trackpad. Fit, 100%, nearest-neighbor above 100%, pixel grid at 800% and more, checkerboard for transparency, optional rulers, Navigator panel.
 - [ ] Compare modes: split with a draggable divider, side by side with synced view, opacity overlay, hold to see original, difference.
-- [ ] Probe tool, Info panel and Histogram panel.
+- [ ] Probe tool, Info panel and Histogram panel. Core done: `core/color/convert.ts` (checked against scikit-image) and `core/image/histogram.ts`.
 - [ ] Export: PNG, JPEG and WebP with quality, TIFF, resize, filename pattern `name_filter-param.ext`, metadata stripped (stated in the dialog).
-- [ ] Built-in synthetic images, generated in code.
+- [x] Built-in synthetic images, generated in code (`core/image/synthetic.ts`). The menu to open them comes with the shell.
 - [ ] Shortcuts from requirements 2 and a shortcut sheet.
 - [ ] Screen-reader announcer, focus rings, reduced motion.
 
@@ -804,3 +804,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-11 | 0 | Read requirements. Inspected repo and machine (Node 24, Python 3.13, uv, Docker, RTX 5090). Agreed D1 to D4. Wrote PLAN, CATALOG and WRITING_STYLE. | Your approval, then Phase 1. |
 | 2026-10-11 | 0 | Plan approved. Added phone app (Phase 11), AI providers, consent and secret rules (D20 to D24, section 3.11), Phase 7 split into 7a to 7f. | Phase 1. |
 | 2026-10-11 | 1 | Phase 1 done. Monorepo with web (React 19.3, Vite 8.3, TypeScript 6.0, Tailwind 4.3, Vitest 5, Playwright 1.63), engine (Python 3.12, FastAPI, NumPy 2.5, SciPy 1.18, scikit-image 0.26, OpenCV 5.0), catalog schema plus 338 entries (3 full samples), validator, prose lint, fixtures, docs generator, MkDocs site with 5 pages, CI and Pages workflows, Docker. All checks pass locally. Switched all text to American spelling. Notes: TypeScript 7 is not supported by typescript-eslint yet. OpenCV 5 moved BRISK and AKAZE to cv2.xfeatures2d. | Phase 2: style tile for review. |
+| 2026-10-12 | 2 | Phase 1 committed on `claude/phase-1-foundation` and pushed. The PR still needs opening (gh is not installed here). Phase 2 on `claude/phase-2-studio-shell`: design tokens, UI components on Radix, style tile with workspace and phone mocks, image format parser for 7 formats, limits and warnings, worker decoder with exact WebGL2 readback, color conversion, Gaussian kernel generator, synthetic images, histogram, viewport maths, Vitest browser mode, image data model docs page. 189 tests pass. Fixed: channel scope label renamed to Channels, Mermaid diagrams now top to bottom so they stay readable on phones. | Style tile review. Then build the shell on dockview. |

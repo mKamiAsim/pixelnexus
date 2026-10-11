@@ -25,7 +25,7 @@ params:
     description: How signed results, such as gradients, become 8-bit pixel values.
     effect: Changes how the result looks. The computed values stay the same.
   - key: channelScope
-    label: Apply to
+    label: Channels
     type: select
     default: rgb
     options:

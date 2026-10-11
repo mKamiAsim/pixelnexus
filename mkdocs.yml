@@ -98,3 +98,5 @@ nav:
       - Development environment: getting-started/development-environment.md
       - Configuration: getting-started/configuration.md
       - Running tests: getting-started/running-tests.md
+  - Architecture:
+      - Image data model: architecture/image-data-model.md

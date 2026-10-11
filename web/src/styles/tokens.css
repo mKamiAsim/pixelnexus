@@ -1,0 +1,149 @@
+/*
+ * PixelNexus design tokens.
+ *
+ * Three themes: dark (default), light and high contrast. Pick one with data-theme on <html>.
+ * Text colors meet WCAG 2.2 AA (4.5:1) on panel and raised surfaces.
+ * Control borders meet 3:1 against the surfaces they sit on.
+ * The neutral grays have a very slight cool tint and almost no color, so the chrome does not
+ * bias how you judge the colors of the image.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --px-app: #141518;
+  --px-panel: #1b1d21;
+  --px-panel-header: #17191c;
+  --px-raised: #24272c;
+  --px-hover: #2c3036;
+  --px-pressed: #353a41;
+  --px-canvas: #101114;
+  --px-overlay: #262a30;
+
+  /* Lines */
+  --px-border-subtle: #25282d;
+  --px-border: #30343a;
+  --px-border-control: #6b727c;
+
+  /* Text */
+  --px-text: #e3e6ea;
+  --px-text-secondary: #a4abb4;
+  --px-text-muted: #8a919b;
+  --px-text-disabled: #5a6069;
+
+  /* Accent: one color, used for focus, the active tool, primary actions and slider fill */
+  --px-accent: #2f6fe0;
+  --px-accent-hover: #3b7bec;
+  --px-accent-pressed: #2862cc;
+  --px-accent-fg: #7aa9ff;
+  --px-accent-subtle: rgb(76 141 255 / 0.16);
+  --px-on-accent: #ffffff;
+  --px-focus: #6ea0ff;
+
+  /* Meaning */
+  --px-success: #4cc38a;
+  --px-warning: #e0aa3e;
+  --px-danger: #f2716e;
+  --px-optional: #b197fc;
+
+  /* Image area */
+  --px-checker-a: #34363a;
+  --px-checker-b: #2a2c30;
+  --px-mask-tint: rgb(255 59 59 / 0.45);
+
+  /* Kernel heat tint. Blue for negative, amber for positive. Safe for color-blind readers. */
+  --px-heat-negative: 76 141 255;
+  --px-heat-positive: 224 170 62;
+
+  --px-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45), 0 0 0 1px var(--px-border);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --px-app: #e8eaed;
+  --px-panel: #f6f7f9;
+  --px-panel-header: #eef0f3;
+  --px-raised: #ffffff;
+  --px-hover: #e7eaee;
+  --px-pressed: #dce0e5;
+  --px-canvas: #cfd3d8;
+  --px-overlay: #ffffff;
+
+  --px-border-subtle: #e3e6ea;
+  --px-border: #d3d7dc;
+  --px-border-control: #79808a;
+
+  --px-text: #1a1d21;
+  --px-text-secondary: #454d57;
+  --px-text-muted: #5f6772;
+  --px-text-disabled: #a3a9b1;
+
+  --px-accent: #1f63d6;
+  --px-accent-hover: #2a6fe3;
+  --px-accent-pressed: #1a56bd;
+  --px-accent-fg: #1a5fd0;
+  --px-accent-subtle: rgb(31 99 214 / 0.12);
+  --px-on-accent: #ffffff;
+  --px-focus: #1f63d6;
+
+  --px-success: #1d7f53;
+  --px-warning: #8a5a00;
+  --px-danger: #c23934;
+  --px-optional: #6b46c1;
+
+  --px-checker-a: #ffffff;
+  --px-checker-b: #d6d9dd;
+  --px-mask-tint: rgb(255 59 59 / 0.45);
+
+  --px-heat-negative: 31 99 214;
+  --px-heat-positive: 199 128 0;
+
+  --px-shadow-popover: 0 8px 24px rgb(15 20 30 / 0.18), 0 0 0 1px var(--px-border);
+}
+
+[data-theme="contrast"] {
+  color-scheme: dark;
+
+  --px-app: #000000;
+  --px-panel: #000000;
+  --px-panel-header: #000000;
+  --px-raised: #000000;
+  --px-hover: #1f1f1f;
+  --px-pressed: #333333;
+  --px-canvas: #000000;
+  --px-overlay: #000000;
+
+  --px-border-subtle: #8c8c8c;
+  --px-border: #bfbfbf;
+  --px-border-control: #ffffff;
+
+  --px-text: #ffffff;
+  --px-text-secondary: #e6e6e6;
+  --px-text-muted: #cfcfcf;
+  --px-text-disabled: #8c8c8c;
+
+  --px-accent: #ffd400;
+  --px-accent-hover: #ffe04d;
+  --px-accent-pressed: #e6bf00;
+  --px-accent-fg: #8ab8ff;
+  --px-accent-subtle: rgb(255 212 0 / 0.22);
+  --px-on-accent: #000000;
+  --px-focus: #ffd400;
+
+  --px-success: #5fe0a0;
+  --px-warning: #ffd400;
+  --px-danger: #ff8a87;
+  --px-optional: #d0bfff;
+
+  --px-checker-a: #404040;
+  --px-checker-b: #202020;
+  --px-mask-tint: rgb(255 59 59 / 0.5);
+
+  --px-heat-negative: 138 184 255;
+  --px-heat-positive: 255 212 0;
+
+  --px-shadow-popover: 0 0 0 2px var(--px-border-control);
+}
