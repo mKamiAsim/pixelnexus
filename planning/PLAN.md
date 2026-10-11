@@ -23,7 +23,7 @@ Read this first on any machine. It is updated with every commit.
 
 | Item | Value |
 |---|---|
-| Branch to continue | `claude/phase-2-studio-shell` |
+| Branch to continue | `Development` (the only working branch from 2026-10-12) |
 | Last finished step | Viewport renderer (WebGL2) with GPU tests, document and UI stores |
 | In progress | Phase 2 shell: dockview workspace, panels, import UI, export, command palette |
 | Next steps | Finish the Phase 2 tasks in section 5, run the exit checks, open the Phase 2 PR |
@@ -61,7 +61,7 @@ D1 to D4 were agreed with you on 2026-10-11. D5 onward are my technical choices.
 | D15 | Docs | MkDocs 1.6 and Material for MkDocs 9.7, pinned. MathJax, Mermaid, and pymdownx snippets for generated tables. Figures are generated from the real code. | Required by the docs prompt. See risk R4. |
 | D16 | Text style | WRITING_STYLE.md applies to docs and to all text in the app. `tools/lint_prose.py` enforces it. | Your requirement. |
 | D17 | Licenses | The default install uses permissive licenses only (MIT, BSD, Apache 2.0). Anything else is optional and clearly labeled. Project license is MIT unless you choose another. | The project stays easy to share and teach with. |
-| D18 | Git | I commit locally at the end of a task group when you ask. I push or deploy only with your approval. | Safe default. |
+| D18 | Git | All work goes on the `Development` branch with clear commit messages, pushed often. No branch per phase. You merge `Development` into `main`. Deploys still need your approval. | Your instruction on 2026-10-12. Two PCs stay in step. |
 | D19 | Versions | Phase 1 picks the latest stable version of each dependency that is at least two weeks old. Versions are recorded in the docs dependency page. | Current and stable. |
 | D20 | Mobile app | Later, the same web build ships as a phone app with Capacitor. Android first, iOS later (Phase 11). The browser engine runs on the phone. Science engine filters on a phone need a PixelNexus engine you run elsewhere. Otherwise they show as unavailable with the reason. | Agreed with you. Capacitor bundles the web app offline and gives native file, camera, share and secure storage. |
 | D21 | AI providers | AI tools run through one of three provider kinds: models in the local engine (desktop), small on-device models (ONNX Runtime Web, in the browser or phone app), or an external AI API that you configure (base URL, API key, model and other settings). | Agreed with you. Phones never depend on large downloads. |
@@ -821,3 +821,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-11 | 1 | Phase 1 done. Monorepo with web (React 19.3, Vite 8.3, TypeScript 6.0, Tailwind 4.3, Vitest 5, Playwright 1.63), engine (Python 3.12, FastAPI, NumPy 2.5, SciPy 1.18, scikit-image 0.26, OpenCV 5.0), catalog schema plus 338 entries (3 full samples), validator, prose lint, fixtures, docs generator, MkDocs site with 5 pages, CI and Pages workflows, Docker. All checks pass locally. Switched all text to American spelling. Notes: TypeScript 7 is not supported by typescript-eslint yet. OpenCV 5 moved BRISK and AKAZE to cv2.xfeatures2d. | Phase 2: style tile for review. |
 | 2026-10-12 | 2 | Phase 1 committed on `claude/phase-1-foundation` and pushed. The PR still needs opening (gh is not installed here). Phase 2 on `claude/phase-2-studio-shell`: design tokens, UI components on Radix, style tile with workspace and phone mocks, image format parser for 7 formats, limits and warnings, worker decoder with exact WebGL2 readback, color conversion, Gaussian kernel generator, synthetic images, histogram, viewport maths, Vitest browser mode, image data model docs page. 189 tests pass. Fixed: channel scope label renamed to Channels, Mermaid diagrams now top to bottom so they stay readable on phones. | Style tile review. Then build the shell on dockview. |
 | 2026-10-12 | 2 | Style tile approved. Light is now the default (D25). Added Dim and Midnight themes and an automated contrast test for all themes (D26). The test caught light-theme green and red text below 4.5:1 on the app background, now fixed. Layout review moved to the end of Phase 3. | Build the Phase 2 shell. |
+| 2026-10-12 | 2 | Viewport renderer, stores, rotate and flip, exact PNG encoder committed. You merged PRs 1 and 2 and created `Development`. Merged the three newer commits into it. From now on only `Development` is used (D18). | Finish the Phase 2 shell on `Development`. |

@@ -17,7 +17,8 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 - Never mark a filter `implemented-tested` until its tests have run and passed.
 - Never invent a kernel, formula, citation or benchmark number.
 - Text style: short sentences, easy American English, no em dashes, en dashes or `--` in prose.
-- Commit only when asked. Push or deploy only with the user's approval.
+- All work happens on the `Development` branch. Do not create a branch per phase. Write clear commit messages that name the phase and what changed. The owner merges `Development` into `main`.
+- Commit and push to `Development` as work progresses (the owner asked for this so two PCs stay in step). Deploying to GitHub Pages still needs the owner's approval.
 - The owner works on two PCs (home and office) and switches between them. So:
   - Keep the "Handoff" block in `planning/PLAN.md` current: branch, last finished step, next steps, open questions.
   - Update it and the progress log with every commit, not only at the end of a session.
@@ -46,7 +47,7 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 
 Needs Git, Node.js 22 or newer, uv, and optionally Docker and the GitHub CLI (`gh`).
 
-1. `git clone https://github.com/mKamiAsim/pixelnexus.git`, then check out the newest `claude/phase-*` branch.
+1. `git clone https://github.com/mKamiAsim/pixelnexus.git`, then `git checkout Development`.
 2. `corepack enable pnpm`, then `pnpm install` and `uv sync`.
 3. `pnpm --filter @pixelnexus/web exec playwright install chromium` (browser tests and E2E need it).
 4. Run the full check list in `.github/workflows/ci.yml` to confirm the machine is ready.
