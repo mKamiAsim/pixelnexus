@@ -1,0 +1,8 @@
+id: radon-filter
+name: Radon and Fourier slice filtering
+family: frequency
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: Sinogram, ramp filter, filtered back projection.

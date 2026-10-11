@@ -1,0 +1,10 @@
+id: morph-gradient
+name: Morphological gradient
+aliases:
+- Beucher gradient
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: Beucher gradient. Cross-listed in edges.

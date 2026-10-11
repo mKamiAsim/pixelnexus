@@ -1,0 +1,7 @@
+id: lasso-polygon
+name: Polygonal lasso
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: planned

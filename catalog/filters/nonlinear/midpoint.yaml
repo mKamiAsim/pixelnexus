@@ -1,0 +1,7 @@
+id: midpoint
+name: Midpoint filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

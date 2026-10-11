@@ -1,0 +1,39 @@
+# Dependencies and environments
+node_modules/
+.venv/
+.pnpm-store/
+
+# Build output
+dist/
+site/
+web/src/generated/
+
+# Caches and reports
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.coverage
+htmlcov/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+
+# Downloaded AI models
+models/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+*.log
+
+# Claude Code session worktrees
+.claude/worktrees/

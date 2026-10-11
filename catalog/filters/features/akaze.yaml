@@ -1,0 +1,8 @@
+id: akaze
+name: AKAZE
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Extra. OpenCV 5 keeps it in cv2.xfeatures2d.

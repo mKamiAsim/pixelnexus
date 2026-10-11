@@ -1,0 +1,7 @@
+id: nsct
+name: Non-subsampled contourlet filtering
+family: multiscale
+tier: planned
+engine: none
+status: planned
+reason: Same reason as contourlet.

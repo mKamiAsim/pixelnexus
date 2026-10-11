@@ -1,0 +1,8 @@
+id: noise-periodic
+name: Add periodic noise
+family: utility
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Noise lab.

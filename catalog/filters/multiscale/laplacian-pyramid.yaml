@@ -1,0 +1,8 @@
+id: laplacian-pyramid
+name: Laplacian pyramid filtering
+family: multiscale
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Per-level gains.

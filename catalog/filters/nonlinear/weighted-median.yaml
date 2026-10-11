@@ -1,0 +1,7 @@
+id: weighted-median
+name: Weighted median filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

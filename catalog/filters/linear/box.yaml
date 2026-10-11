@@ -1,0 +1,12 @@
+id: box
+name: Box filter
+aliases:
+- Mean filter
+- Average filter
+- Per-channel box filter
+family: linear
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: Mean filter, Average filter, Per-channel box filter. Integral image, constant cost per pixel.

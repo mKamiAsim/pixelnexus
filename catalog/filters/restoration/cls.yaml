@@ -1,0 +1,7 @@
+id: cls
+name: Constrained least squares
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned

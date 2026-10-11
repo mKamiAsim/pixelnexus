@@ -1,0 +1,8 @@
+id: emboss
+name: Emboss
+family: artistic
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Fixed kernel.

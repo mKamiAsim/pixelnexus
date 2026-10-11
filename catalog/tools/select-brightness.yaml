@@ -1,0 +1,7 @@
+id: select-brightness
+name: Select by brightness
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: planned

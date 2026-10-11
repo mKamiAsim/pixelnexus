@@ -1,0 +1,8 @@
+id: demosaic
+name: Demosaicing
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Simulates a Bayer mosaic, then demosaics (bilinear and Malvar-He-Cutler).

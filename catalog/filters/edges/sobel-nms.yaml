@@ -1,0 +1,7 @@
+id: sobel-nms
+name: Sobel with non-maximum suppression
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned

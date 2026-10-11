@@ -1,0 +1,8 @@
+id: graph-cut
+name: Graph cuts
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Binary, with seeds. SciPy maximum flow.

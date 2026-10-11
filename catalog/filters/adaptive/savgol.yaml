@@ -1,0 +1,11 @@
+id: savgol
+name: Savitzky-Golay filter
+aliases:
+- Regression-based filters
+- Local polynomial regression
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Regression-based filters. Local polynomial fit. Has a fixed kernel.

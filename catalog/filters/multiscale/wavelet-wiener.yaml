@@ -1,0 +1,7 @@
+id: wavelet-wiener
+name: Wavelet Wiener filtering
+family: multiscale
+tier: advanced
+engine: science
+phase: 6b
+status: planned

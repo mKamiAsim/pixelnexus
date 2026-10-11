@@ -1,0 +1,8 @@
+id: ccl
+name: Connected-component labeling
+family: segmentation
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Labels and statistics.

@@ -1,0 +1,7 @@
+id: zero-crossing
+name: Zero-crossing detector
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned

@@ -1,0 +1,10 @@
+id: grabcut
+name: GrabCut
+aliases:
+- GrabCut-inspired interactive segmentation
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: GrabCut-inspired interactive segmentation. OpenCV.

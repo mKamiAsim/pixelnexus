@@ -1,0 +1,183 @@
+"""Validate the PixelNexus catalog.
+
+Usage:
+    uv run python tools/check_catalog.py            # report problems, exit 1 on errors
+    uv run python tools/check_catalog.py --summary  # also print counts by tier and status
+
+Checks:
+    * Every file matches the JSON Schema.
+    * File names match ids. Filter files sit in the folder of their family.
+    * Ids are unique across filters and tools. Related ids exist.
+    * Shared parameter references exist. Parameter keys are unique.
+    * Numeric defaults sit inside their range. Odd-only defaults are odd.
+    * Formula placeholders name real parameters.
+    * Entries with an implemented status point to existing code, tests and docs pages.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from collections import Counter
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
+
+from catalog_lib import FULL_STATUSES, ROOT, Catalog, Issue, load_catalog, schema_issues
+
+PLACEHOLDER = re.compile(r"\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*\}\}")
+
+
+def _rel(path: Path) -> str:
+    return str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+
+
+def _param_keys(entry: dict[str, Any]) -> list[str]:
+    keys: list[str] = []
+    for param in entry.get("params", []) or []:
+        keys.append(param.get("key") or param.get("ref") or "")
+    return keys
+
+
+def structure_issues(catalog: Catalog) -> Iterator[Issue]:
+    bundle = catalog.bundle
+    common = {p.get("key"): p for p in bundle["commonParams"]}
+    family_ids = [f.get("id") for f in bundle["families"]]
+
+    for family_id, count in Counter(family_ids).items():
+        if count > 1:
+            yield Issue("error", "catalog/families.yaml", f"family '{family_id}' is listed twice")
+
+    seen: dict[str, str] = {}
+    for section in ("filters", "tools"):
+        for index, entry in enumerate(bundle[section]):
+            if not isinstance(entry, dict):
+                continue
+            path = catalog.origin(section, index)
+            where = _rel(path)
+            entry_id = entry.get("id", "")
+
+            if path.stem != entry_id:
+                yield Issue("error", where, f"file name must be '{entry_id}.yaml'")
+            if entry_id in seen:
+                yield Issue("error", where, f"id '{entry_id}' is also used in {seen[entry_id]}")
+            seen[entry_id] = where
+
+            if section == "filters":
+                family = entry.get("family")
+                if family not in family_ids:
+                    yield Issue("error", where, f"family '{family}' is not in families.yaml")
+                if path.parent.name != family:
+                    yield Issue("error", where, f"filter must live in catalog/filters/{family}/")
+                if family in (entry.get("alsoIn") or []):
+                    yield Issue("error", where, "alsoIn must not repeat the main family")
+
+            yield from _param_issues(entry, common, where)
+            yield from _formula_issues(entry, where)
+            if entry.get("status") in FULL_STATUSES:
+                yield from _code_issues(entry, where)
+
+    all_ids = set(seen)
+    for section in ("filters", "tools"):
+        for index, entry in enumerate(bundle[section]):
+            if not isinstance(entry, dict):
+                continue
+            for related in entry.get("related", []) or []:
+                if related not in all_ids:
+                    where = _rel(catalog.origin(section, index))
+                    yield Issue("error", where, f"related id '{related}' does not exist")
+
+    terms = [t.get("term", "").lower() for t in bundle["glossary"]]
+    for term, count in Counter(terms).items():
+        if count > 1:
+            yield Issue("error", "catalog/glossary.yaml", f"term '{term}' is defined twice")
+
+
+def _param_issues(entry: dict[str, Any], common: dict[str, Any], where: str) -> Iterator[Issue]:
+    keys = _param_keys(entry)
+    for key, count in Counter(keys).items():
+        if count > 1:
+            yield Issue("error", where, f"parameter '{key}' is defined twice")
+    for raw in entry.get("params", []) or []:
+        param = raw
+        if "ref" in raw:
+            shared = common.get(raw["ref"])
+            if shared is None:
+                yield Issue("error", where, f"shared parameter '{raw['ref']}' does not exist")
+                continue
+            param = {**shared, **{k: v for k, v in raw.items() if k != "ref"}}
+            scopes = entry.get("channelScopes")
+            if raw["ref"] == "channelScope" and scopes and param["default"] not in scopes:
+                yield Issue("error", where, "channelScope default is not in channelScopes")
+        kind = param.get("type")
+        default = param.get("default")
+        key = param.get("key")
+        if kind in ("number", "integer", "angle") and isinstance(default, (int, float)):
+            low, high = param.get("min"), param.get("max")
+            if low is not None and high is not None and not low <= default <= high:
+                yield Issue("error", where, f"default of '{key}' is outside {low} to {high}")
+            if kind == "integer" and not float(default).is_integer():
+                yield Issue("error", where, f"default of '{key}' must be an integer")
+            if param.get("oddOnly") and int(default) % 2 == 0:
+                yield Issue("error", where, f"default of '{key}' must be odd")
+        if kind == "select":
+            values = [option["value"] for option in param.get("options", [])]
+            if default not in values:
+                yield Issue("error", where, f"default of '{key}' is not one of its options")
+
+
+def _formula_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
+    keys = set(_param_keys(entry))
+    for name in PLACEHOLDER.findall(entry.get("formula", "") or ""):
+        if name not in keys:
+            yield Issue("error", where, f"formula placeholder '{name}' is not a parameter")
+
+
+def _code_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
+    implementation = entry.get("implementation") or {}
+    source = ROOT / implementation.get("path", "")
+    if not source.is_file():
+        missing = implementation.get("path")
+        yield Issue("error", where, f"implementation file '{missing}' is missing")
+    elif implementation.get("symbol", "") not in source.read_text(encoding="utf-8"):
+        yield Issue("error", where, f"symbol '{implementation.get('symbol')}' is not in its file")
+    for test in entry.get("tests", []) or []:
+        if not (ROOT / test).is_file():
+            yield Issue("error", where, f"test file '{test}' is missing")
+    docs_page = entry.get("docsPage")
+    if docs_page and not (ROOT / "docs" / docs_page).is_file():
+        yield Issue("error", where, f"docs page 'docs/{docs_page}' is missing")
+
+
+def summary(catalog: Catalog) -> str:
+    rows = [*catalog.bundle["filters"], *catalog.bundle["tools"]]
+    tiers = Counter(r.get("tier") for r in rows if isinstance(r, dict))
+    statuses = Counter(r.get("status") for r in rows if isinstance(r, dict))
+    lines = [
+        f"Entries: {len(rows)} ({len(catalog.bundle['filters'])} filters, "
+        f"{len(catalog.bundle['tools'])} tools)"
+    ]
+    lines.append("By tier:   " + ", ".join(f"{k} {v}" for k, v in sorted(tiers.items())))
+    lines.append("By status: " + ", ".join(f"{k} {v}" for k, v in sorted(statuses.items())))
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--summary", action="store_true", help="print counts by tier and status")
+    args = parser.parse_args(argv)
+
+    catalog = load_catalog()
+    issues = [*schema_issues(catalog), *structure_issues(catalog)]
+    for issue in issues:
+        print(issue)
+    errors = sum(1 for issue in issues if issue.level == "error")
+    if args.summary or not errors:
+        print(summary(catalog))
+    print(f"Catalog check: {errors} error(s).")
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

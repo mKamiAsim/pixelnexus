@@ -1,0 +1,10 @@
+id: bilateral
+name: Bilateral filter
+aliases:
+- Vector bilateral filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Vector bilateral filter is the color-distance mode of this entry.

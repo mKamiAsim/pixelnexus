@@ -1,0 +1,8 @@
+id: laws
+name: Laws' texture energy filters
+family: features
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Fixed 5-tap vectors.

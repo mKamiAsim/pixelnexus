@@ -1,0 +1,7 @@
+id: hsv-adjust
+name: Hue, saturation and value adjustment
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned

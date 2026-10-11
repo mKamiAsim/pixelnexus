@@ -1,0 +1,7 @@
+id: region-growing
+name: Region growing
+family: segmentation
+tier: core
+engine: browser
+phase: 5f
+status: planned

@@ -1,0 +1,10 @@
+id: mean-shift
+name: Mean shift
+aliases:
+- Mean-shift segmentation
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Mean-shift segmentation.

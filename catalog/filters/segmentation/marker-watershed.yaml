@@ -1,0 +1,8 @@
+id: marker-watershed
+name: Marker-controlled watershed
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Markers from the selection or scribbles.

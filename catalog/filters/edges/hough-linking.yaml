@@ -1,0 +1,8 @@
+id: hough-linking
+name: Hough-based edge linking
+family: edges
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Canny then probabilistic Hough.

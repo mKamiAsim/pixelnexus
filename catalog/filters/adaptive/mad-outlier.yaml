@@ -1,0 +1,10 @@
+id: mad-outlier
+name: Median absolute deviation thresholding
+aliases:
+- MAD thresholding
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Marks or repairs pixels far from the local median.

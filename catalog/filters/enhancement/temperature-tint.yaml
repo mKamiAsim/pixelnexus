@@ -1,0 +1,7 @@
+id: temperature-tint
+name: Temperature and tint
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned

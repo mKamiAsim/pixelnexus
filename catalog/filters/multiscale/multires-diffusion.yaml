@@ -1,0 +1,7 @@
+id: multires-diffusion
+name: Multiresolution diffusion
+family: multiscale
+tier: planned
+engine: none
+status: planned
+reason: Definitions vary in the literature. A documented variant may be added later.

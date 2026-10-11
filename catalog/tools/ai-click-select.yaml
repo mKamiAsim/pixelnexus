@@ -1,0 +1,9 @@
+id: ai-click-select
+name: Click-to-select segmentation
+group: ai
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: SAM-family model (SAM 2.1 small sizes, MobileSAM or EfficientSAM). Also powers AI Object Selection
+  with a box prompt.

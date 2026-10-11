@@ -1,0 +1,8 @@
+id: real-esrgan
+name: Real-ESRGAN
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: Super-resolution.

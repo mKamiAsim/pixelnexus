@@ -1,0 +1,10 @@
+id: triangular
+name: Triangular filter
+aliases:
+- Tent filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Tent filter.

@@ -1,0 +1,8 @@
+id: white-balance
+name: White balance
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Pick a neutral point.

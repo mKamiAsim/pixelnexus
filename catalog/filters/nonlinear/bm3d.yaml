@@ -1,0 +1,8 @@
+id: bm3d
+name: BM3D
+family: nonlinear
+tier: optional
+engine: science
+phase: 6f
+status: planned
+planNotes: Optional `bm3d` package. License check before use.

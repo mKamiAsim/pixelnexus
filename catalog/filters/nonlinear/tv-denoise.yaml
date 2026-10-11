@@ -1,0 +1,11 @@
+id: tv-denoise
+name: Total variation denoising
+aliases:
+- Rudin-Osher-Fatemi denoising
+- ROF denoising
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers.

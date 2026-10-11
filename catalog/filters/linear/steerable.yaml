@@ -1,0 +1,8 @@
+id: steerable
+name: Steerable filters
+family: linear
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: First and second derivative of Gaussian bases (Freeman and Adelson).

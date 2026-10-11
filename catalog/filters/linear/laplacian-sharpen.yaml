@@ -1,0 +1,8 @@
+id: laplacian-sharpen
+name: Laplacian sharpening
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: I minus c times the Laplacian.

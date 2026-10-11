@@ -1,0 +1,8 @@
+id: regularized-rl
+name: Regularized Richardson-Lucy
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: TV regularization (Dey et al.).

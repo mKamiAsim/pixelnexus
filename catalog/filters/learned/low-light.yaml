@@ -1,0 +1,8 @@
+id: low-light
+name: Neural relighting and enhancement
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'Zero-DCE family. License: check.'

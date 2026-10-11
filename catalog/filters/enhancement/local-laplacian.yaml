@@ -1,0 +1,7 @@
+id: local-laplacian
+name: Local Laplacian filtering
+family: enhancement
+tier: advanced
+engine: science
+phase: 6f
+status: planned

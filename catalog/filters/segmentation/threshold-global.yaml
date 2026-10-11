@@ -1,0 +1,10 @@
+id: threshold-global
+name: Global threshold
+aliases:
+- Manual threshold
+family: segmentation
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Manual threshold.

@@ -1,0 +1,8 @@
+id: edge-assisted
+name: Edge-assisted selection
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: planned
+planNotes: Snaps to nearby edges.

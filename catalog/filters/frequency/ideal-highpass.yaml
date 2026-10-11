@@ -1,0 +1,7 @@
+id: ideal-highpass
+name: Ideal high-pass
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

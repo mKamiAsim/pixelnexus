@@ -1,0 +1,10 @@
+id: ideal-bandreject
+name: Ideal band-reject
+aliases:
+- Ideal band-stop
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Band-stop filter.

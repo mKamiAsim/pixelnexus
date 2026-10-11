@@ -1,0 +1,8 @@
+id: hough-lines
+name: Hough transform for lines
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Accumulator view.

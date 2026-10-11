@@ -1,0 +1,7 @@
+id: kalman
+name: Kalman filter
+family: adaptive
+tier: planned
+engine: none
+status: planned
+reason: Needs a state model and an image sequence. A reduced update Kalman filter may be added later.

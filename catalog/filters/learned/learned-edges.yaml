@@ -1,0 +1,8 @@
+id: learned-edges
+name: Learned edge detector
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'HED or PiDiNet. License: check.'

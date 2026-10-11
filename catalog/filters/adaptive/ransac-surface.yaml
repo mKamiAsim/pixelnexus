@@ -1,0 +1,10 @@
+id: ransac-surface
+name: RANSAC surface fit
+aliases:
+- RANSAC-based robust estimation
+family: adaptive
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: RANSAC-based robust estimation. Fits a background surface and removes it.

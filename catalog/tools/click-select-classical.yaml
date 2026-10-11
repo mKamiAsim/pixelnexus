@@ -1,0 +1,8 @@
+id: click-select-classical
+name: Click-to-select (classical)
+group: auto
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Positive and negative seeds to random walker.

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Phase 1 uses Tailwind defaults. Design tokens arrive with the style tile in Phase 2. */
+:root {
+  color-scheme: dark light;
+}
+
+body {
+  @apply bg-neutral-950 text-neutral-200 antialiased;
+}

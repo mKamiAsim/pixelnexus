@@ -1,0 +1,7 @@
+id: gaussian-highpass
+name: Gaussian high-pass
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

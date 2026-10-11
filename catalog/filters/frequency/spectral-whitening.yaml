@@ -1,0 +1,7 @@
+id: spectral-whitening
+name: Spectral whitening
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

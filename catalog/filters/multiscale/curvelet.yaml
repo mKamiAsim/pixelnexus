@@ -1,0 +1,7 @@
+id: curvelet
+name: Curvelet filtering
+family: multiscale
+tier: planned
+engine: none
+status: planned
+reason: CurveLab is not openly licensed. The curvelet-inspired filter is available.

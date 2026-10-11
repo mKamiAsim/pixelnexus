@@ -1,0 +1,10 @@
+id: orb
+name: ORB
+aliases:
+- ORB-inspired binary features
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: ORB-inspired binary features. OpenCV.

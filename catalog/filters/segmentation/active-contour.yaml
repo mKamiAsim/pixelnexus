@@ -1,0 +1,10 @@
+id: active-contour
+name: Active contours
+aliases:
+- Snakes
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Snakes. Starts from the selection boundary.

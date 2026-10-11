@@ -1,0 +1,8 @@
+id: bitonic
+name: Bitonic filter
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Treece.

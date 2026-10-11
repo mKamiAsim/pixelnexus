@@ -1,0 +1,8 @@
+id: ahe
+name: Adaptive histogram equalization
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: CLAHE without a clip limit.

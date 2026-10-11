@@ -1,0 +1,8 @@
+id: tone-mapping
+name: Tone mapping
+family: enhancement
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Reinhard, Drago and Mantiuk through OpenCV.

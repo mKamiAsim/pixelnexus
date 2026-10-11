@@ -1,0 +1,11 @@
+id: richardson-lucy
+name: Richardson-Lucy
+aliases:
+- Lucy-Richardson deconvolution
+- Non-blind deconvolution
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Lucy-Richardson deconvolution. Non-blind deconvolution overview links here.

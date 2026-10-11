@@ -1,0 +1,7 @@
+id: lms-2d
+name: LMS adaptive filter
+family: adaptive
+tier: planned
+engine: none
+status: planned
+reason: Needs a reference signal. A 2D LMS predictor may be added later with an honest label.

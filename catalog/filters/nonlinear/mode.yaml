@@ -1,0 +1,8 @@
+id: mode
+name: Mode filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Most frequent value in the window.

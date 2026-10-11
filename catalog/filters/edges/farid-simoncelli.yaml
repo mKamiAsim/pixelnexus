@@ -1,0 +1,8 @@
+id: farid-simoncelli
+name: Farid-Simoncelli derivative filter
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Coefficients checked against scikit-image.

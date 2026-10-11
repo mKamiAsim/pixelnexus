@@ -1,0 +1,8 @@
+id: medial-axis
+name: Medial axis
+family: morphology
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: scikit-image, with distance values.

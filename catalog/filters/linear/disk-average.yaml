@@ -1,0 +1,11 @@
+id: disk-average
+name: Disk averaging filter
+aliases:
+- Circular averaging filter
+- Defocus blur
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Circular averaging filter. Defocus blur (uniform disk PSF model). Anti-aliased disk.

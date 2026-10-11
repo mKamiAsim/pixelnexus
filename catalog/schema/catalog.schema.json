@@ -1,0 +1,1303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Catalog",
+  "description": "The bundled PixelNexus catalog. Loaders build this object from the YAML files in catalog/ and validate it against this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "families",
+    "filters",
+    "tools",
+    "glossary",
+    "commonParams",
+    "models",
+    "providers"
+  ],
+  "properties": {
+    "families": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/family"
+      }
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/filter"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tool"
+      }
+    },
+    "glossary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/glossaryTerm"
+      }
+    },
+    "commonParams": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/param"
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/model"
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/providerKind"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "title": "EntryId",
+      "description": "Lower-case words joined by single hyphens.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "status": {
+      "title": "Status",
+      "description": "Implementation status. The same seven values are used in the studio and in the docs.",
+      "enum": [
+        "implemented-tested",
+        "implemented-untested",
+        "partial",
+        "optional-dependency",
+        "optional-model",
+        "planned",
+        "unsupported"
+      ]
+    },
+    "tier": {
+      "title": "Tier",
+      "description": "Scope tier from planning/CATALOG.md.",
+      "enum": [
+        "core",
+        "advanced",
+        "optional",
+        "planned",
+        "unsupported"
+      ]
+    },
+    "engine": {
+      "title": "EngineKind",
+      "description": "Where the authoritative implementation runs.",
+      "enum": [
+        "browser",
+        "science",
+        "model",
+        "none"
+      ]
+    },
+    "phase": {
+      "title": "Phase",
+      "description": "Build phase from planning/PLAN.md.",
+      "type": "string",
+      "pattern": "^(1|2|3|4|5[a-f]|6[a-f]|7[a-f]?|8|9|10|11[ab]?)$"
+    },
+    "familyId": {
+      "title": "FamilyId",
+      "enum": [
+        "linear",
+        "nonlinear",
+        "adaptive",
+        "morphology",
+        "frequency",
+        "multiscale",
+        "edges",
+        "features",
+        "enhancement",
+        "restoration",
+        "segmentation",
+        "learned",
+        "artistic",
+        "utility"
+      ]
+    },
+    "tag": {
+      "title": "Tag",
+      "description": "Facet tag such as 'purpose:denoise' or 'noise:impulse'.",
+      "type": "string",
+      "pattern": "^[a-z]+(:[a-z0-9-]+)?$"
+    },
+    "representationType": {
+      "title": "RepresentationType",
+      "description": "How the Inspector shows the operator. See PLAN.md section 3.5.",
+      "enum": [
+        "fixed-kernel",
+        "dynamic-kernel",
+        "structuring-element",
+        "rank",
+        "frequency-response",
+        "transform",
+        "iterative",
+        "estimator",
+        "algorithm",
+        "neural"
+      ]
+    },
+    "representationLabel": {
+      "title": "RepresentationLabel",
+      "description": "Says how closely the shown representation matches the computation.",
+      "enum": [
+        "exact",
+        "definition",
+        "approximation",
+        "simplified"
+      ]
+    },
+    "outputKind": {
+      "title": "OutputKind",
+      "enum": [
+        "image",
+        "mask",
+        "labels",
+        "features",
+        "spectrum",
+        "table",
+        "image-set"
+      ]
+    },
+    "learnDemo": {
+      "title": "LearnDemo",
+      "description": "Reusable Learn panel widgets. See PLAN.md section 4.5.",
+      "enum": [
+        "neighborhood-stepper",
+        "impulse-response",
+        "rank-stepper",
+        "gradient-explorer",
+        "line-profile",
+        "frequency-explorer",
+        "point-op-curve",
+        "morphology-stepper",
+        "stage-viewer",
+        "weight-viewer",
+        "iteration-viewer",
+        "noise-lab"
+      ]
+    },
+    "channelScope": {
+      "title": "ChannelScope",
+      "enum": [
+        "rgb",
+        "per-channel",
+        "luminance",
+        "chroma"
+      ]
+    },
+    "classification": {
+      "title": "Classification",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linearity",
+        "domain",
+        "operation"
+      ],
+      "properties": {
+        "linearity": {
+          "enum": [
+            "linear",
+            "nonlinear"
+          ]
+        },
+        "domain": {
+          "enum": [
+            "spatial",
+            "frequency",
+            "transform",
+            "statistical",
+            "morphological",
+            "iterative",
+            "learned",
+            "point",
+            "color",
+            "geometric"
+          ]
+        },
+        "operation": {
+          "type": "string",
+          "description": "Short operation type, for example 'convolution' or 'order statistic'."
+        }
+      }
+    },
+    "paramOption": {
+      "title": "ParamOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "param": {
+      "title": "Param",
+      "description": "A filter or tool parameter. The Properties panel builds its controls from this.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "type",
+        "default",
+        "description"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "number",
+            "integer",
+            "boolean",
+            "select",
+            "color",
+            "angle",
+            "kernel",
+            "structuring-element",
+            "points"
+          ]
+        },
+        "default": {
+          "description": "Default value. Its type must match the parameter type."
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "oddOnly": {
+          "type": "boolean",
+          "description": "Only odd integers are valid, as for kernel sizes."
+        },
+        "unit": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/paramOption"
+          }
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect": {
+          "type": "string",
+          "description": "What changing the value does to the output."
+        },
+        "advanced": {
+          "type": "boolean",
+          "description": "Hidden under 'More settings' by default."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "select"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "options"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "number",
+                  "integer",
+                  "angle"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "min",
+              "max"
+            ],
+            "properties": {
+              "default": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "boolean"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "select"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "paramRef": {
+      "title": "ParamRef",
+      "description": "Reuse a shared parameter from catalog/common-params.yaml.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$"
+        },
+        "default": {
+          "description": "Overrides the shared default."
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "symbol": {
+      "title": "FormulaSymbol",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "meaning"
+      ],
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "description": "LaTeX for the symbol."
+        },
+        "meaning": {
+          "type": "string"
+        }
+      }
+    },
+    "complexity": {
+      "title": "Complexity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time",
+        "memory"
+      ],
+      "properties": {
+        "time": {
+          "type": "string",
+          "description": "LaTeX, for example 'O(N k)'."
+        },
+        "memory": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "reference": {
+      "title": "Reference",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "paper",
+            "book",
+            "library",
+            "standard",
+            "web"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "doi": {
+          "type": "string",
+          "pattern": "^10\\."
+        }
+      }
+    },
+    "codeRef": {
+      "title": "CodeRef",
+      "description": "A repository-relative source file and the exported symbol in it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "symbol"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(web|engine)/[A-Za-z0-9_./-]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      }
+    },
+    "dependency": {
+      "title": "Dependency",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "optional"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "learn": {
+      "title": "Learn",
+      "description": "Content for the Learn panel. See PLAN.md section 4.5.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oneSentence",
+        "howItWorks",
+        "demos"
+      ],
+      "properties": {
+        "oneSentence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "howItWorks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "academic": {
+          "type": "string"
+        },
+        "paramNotes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tryThis": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pitfalls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "demos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/learnDemo"
+          }
+        }
+      }
+    },
+    "family": {
+      "title": "Family",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description",
+        "order"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/familyId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "filter": {
+      "title": "Filter",
+      "description": "One filter. Stub entries need only the planning fields. Implemented entries need the full set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "family",
+        "tier",
+        "engine",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "family": {
+          "$ref": "#/$defs/familyId"
+        },
+        "alsoIn": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/familyId"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tag"
+          }
+        },
+        "tier": {
+          "$ref": "#/$defs/tier"
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "phase": {
+          "$ref": "#/$defs/phase"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the entry is planned or unsupported."
+        },
+        "planNotes": {
+          "type": "string",
+          "description": "Notes from planning. Not shown in the studio."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "classification": {
+          "$ref": "#/$defs/classification"
+        },
+        "output": {
+          "$ref": "#/$defs/outputKind"
+        },
+        "representation": {
+          "$ref": "#/$defs/representationType"
+        },
+        "representationLabel": {
+          "$ref": "#/$defs/representationLabel"
+        },
+        "representationSource": {
+          "$ref": "#/$defs/codeRef"
+        },
+        "supportRadius": {
+          "type": "string",
+          "description": "Halo in pixels as an expression of parameters, or 'global'."
+        },
+        "supportsMask": {
+          "type": "boolean"
+        },
+        "preview": {
+          "enum": [
+            "live",
+            "on-demand",
+            "none"
+          ]
+        },
+        "channelScopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/channelScope"
+          }
+        },
+        "colorHandling": {
+          "type": "string"
+        },
+        "boundary": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/param"
+              },
+              {
+                "$ref": "#/$defs/paramRef"
+              }
+            ]
+          }
+        },
+        "formula": {
+          "type": "string",
+          "description": "LaTeX. May contain {{param}} placeholders."
+        },
+        "formulaExplanation": {
+          "type": "string"
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/symbol"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pseudocode": {
+          "type": "string"
+        },
+        "complexity": {
+          "$ref": "#/$defs/complexity"
+        },
+        "useCases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "advantages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "implementation": {
+          "$ref": "#/$defs/codeRef"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(web|engine)/"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "learn": {
+          "$ref": "#/$defs/learn"
+        },
+        "related": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "docsPage": {
+          "type": "string",
+          "pattern": "^filters/.+\\.md$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "implemented-tested",
+                  "implemented-untested",
+                  "partial",
+                  "optional-dependency",
+                  "optional-model"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "summary",
+              "purpose",
+              "classification",
+              "output",
+              "representation",
+              "representationLabel",
+              "supportRadius",
+              "supportsMask",
+              "preview",
+              "params",
+              "formula",
+              "symbols",
+              "steps",
+              "complexity",
+              "limitations",
+              "references",
+              "implementation",
+              "tests",
+              "learn",
+              "docsPage"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "enum": [
+                  "planned",
+                  "unsupported"
+                ]
+              }
+            },
+            "required": [
+              "tier"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "const": "unsupported"
+              }
+            },
+            "required": [
+              "tier"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "unsupported"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "engine": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "engine"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "planned",
+                  "unsupported"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "enum": [
+                  "core",
+                  "advanced",
+                  "optional"
+                ]
+              }
+            },
+            "required": [
+              "tier"
+            ]
+          },
+          "then": {
+            "required": [
+              "phase"
+            ]
+          }
+        }
+      ]
+    },
+    "tool": {
+      "title": "Tool",
+      "description": "A selection tool.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "group",
+        "tier",
+        "engine",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group": {
+          "enum": [
+            "marquee",
+            "lasso",
+            "brush",
+            "color",
+            "auto",
+            "ai"
+          ]
+        },
+        "tier": {
+          "$ref": "#/$defs/tier"
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "phase": {
+          "$ref": "#/$defs/phase"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "planNotes": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/param"
+              },
+              {
+                "$ref": "#/$defs/paramRef"
+              }
+            ]
+          }
+        },
+        "formula": {
+          "type": "string"
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/symbol"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "implementation": {
+          "$ref": "#/$defs/codeRef"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(web|engine)/"
+          }
+        },
+        "learn": {
+          "$ref": "#/$defs/learn"
+        },
+        "docsPage": {
+          "type": "string",
+          "pattern": "^selection/.+\\.md$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "implemented-tested",
+                  "implemented-untested",
+                  "partial",
+                  "optional-dependency",
+                  "optional-model"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "summary",
+              "params",
+              "steps",
+              "implementation",
+              "tests",
+              "learn",
+              "docsPage"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "enum": [
+                  "planned",
+                  "unsupported"
+                ]
+              }
+            },
+            "required": [
+              "tier"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tier": {
+                "enum": [
+                  "core",
+                  "advanced",
+                  "optional"
+                ]
+              }
+            },
+            "required": [
+              "tier"
+            ]
+          },
+          "then": {
+            "required": [
+              "phase"
+            ]
+          }
+        }
+      ]
+    },
+    "glossaryTerm": {
+      "title": "GlossaryTerm",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "definition"
+      ],
+      "properties": {
+        "term": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "definition": {
+          "type": "string"
+        },
+        "seeAlso": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "model": {
+      "title": "Model",
+      "description": "An optional AI model. Entries are added in Phase 7b after a license review.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "task",
+        "license",
+        "sourceUrl",
+        "sha256",
+        "sizeMB",
+        "runtimes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "task": {
+          "enum": [
+            "click-select",
+            "subject-select",
+            "matting",
+            "denoise",
+            "jpeg-cleanup",
+            "super-resolution",
+            "other"
+          ]
+        },
+        "license": {
+          "type": "string"
+        },
+        "licenseUrl": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sizeMB": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "runtimes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "engine",
+              "on-device"
+            ]
+          }
+        },
+        "phoneSuitable": {
+          "type": "boolean"
+        },
+        "inputs": {
+          "type": "string"
+        },
+        "outputs": {
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "providerKind": {
+      "title": "ProviderKind",
+      "description": "An AI provider kind and its consent rule. See PLAN.md section 3.11.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "location",
+        "consent",
+        "platforms",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "engine-model",
+            "on-device",
+            "remote-engine",
+            "external-api"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "enum": [
+            "this-computer",
+            "this-device",
+            "other-machine",
+            "external-service"
+          ]
+        },
+        "consent": {
+          "enum": [
+            "never",
+            "once-per-session-per-host",
+            "every-time"
+          ]
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "desktop",
+              "pages",
+              "phone"
+            ]
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

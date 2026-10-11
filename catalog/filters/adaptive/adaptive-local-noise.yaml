@@ -1,0 +1,10 @@
+id: adaptive-local-noise
+name: Adaptive local noise reduction
+aliases:
+- Adaptive mean filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Adaptive mean filter. Gonzalez and Woods form.

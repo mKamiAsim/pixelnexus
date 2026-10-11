@@ -1,0 +1,10 @@
+id: retinex-ssr
+name: Single-scale Retinex
+aliases:
+- Retinex
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: The "Retinex" name is an overview alias that links SSR, MSR and MSRCR.

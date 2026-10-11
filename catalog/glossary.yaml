@@ -1,0 +1,33 @@
+# Plain definitions used for tooltips in the studio and for the docs glossary.
+terms:
+  - term: Kernel
+    aliases: [Mask, Filter mask]
+    definition: A small grid of weights. The filter multiplies each weight by the pixel under it and adds the results.
+    seeAlso: [Convolution, Correlation]
+  - term: Correlation
+    definition: Sliding a kernel over the image and summing weight times pixel at each position. PixelNexus applies kernels this way, like OpenCV.
+    seeAlso: [Convolution]
+  - term: Convolution
+    definition: The same as correlation, but with the kernel flipped in both directions first. For symmetric kernels the two give the same result.
+    seeAlso: [Correlation]
+  - term: Neighborhood
+    aliases: [Window]
+    definition: The group of pixels around the current pixel that a filter looks at.
+  - term: Sigma
+    aliases: [Standard deviation]
+    definition: The spread of a Gaussian curve, in pixels. A larger sigma means a wider, smoother blur.
+  - term: Border mode
+    definition: The rule for inventing pixel values outside the image edge, so that windows near the edge still have values.
+  - term: Mask
+    aliases: [Selection mask]
+    definition: An image of the same size where each value from 0 to 255 says how much of the filter result to use at that pixel.
+  - term: Feathering
+    definition: Softening the edge of a selection so that the filtered area fades into the rest of the image.
+  - term: Luma
+    definition: A brightness value made from gamma-encoded red, green and blue values with fixed weights.
+  - term: Point spread function
+    aliases: [PSF]
+    definition: The pattern that a single bright point becomes after blurring. It describes the blur completely for linear blurs.
+  - term: Spectrum
+    aliases: [Fourier spectrum]
+    definition: A picture of how much of each spatial frequency the image contains. The center holds slow changes and the edges hold fast changes.

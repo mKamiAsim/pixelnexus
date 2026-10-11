@@ -1,0 +1,8 @@
+id: joint-bilateral
+name: Joint bilateral filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Guide is the image luma or another open image of the same size.

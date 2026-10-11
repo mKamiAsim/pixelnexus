@@ -1,0 +1,8 @@
+id: object-select-classical
+name: Object selection (classical)
+group: auto
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Box to GrabCut.

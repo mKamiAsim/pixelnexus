@@ -1,0 +1,8 @@
+id: split-merge
+name: Split-and-merge segmentation
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Quadtree.

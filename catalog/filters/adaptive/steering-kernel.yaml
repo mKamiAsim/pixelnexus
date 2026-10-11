@@ -1,0 +1,8 @@
+id: steering-kernel
+name: Steering kernel regression
+family: adaptive
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Takeda, Farsiu and Milanfar.

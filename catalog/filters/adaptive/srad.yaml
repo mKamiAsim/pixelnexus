@@ -1,0 +1,10 @@
+id: srad
+name: Speckle reducing anisotropic diffusion
+aliases:
+- SRAD
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: SRAD (Yu and Acton).

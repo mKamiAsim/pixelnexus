@@ -1,0 +1,8 @@
+id: srcnn
+name: SRCNN
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'Three layers. Good for teaching. Weights license: check.'

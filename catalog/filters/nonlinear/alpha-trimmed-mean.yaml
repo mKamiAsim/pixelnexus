@@ -1,0 +1,7 @@
+id: alpha-trimmed-mean
+name: Alpha-trimmed mean filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

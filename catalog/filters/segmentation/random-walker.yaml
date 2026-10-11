@@ -1,0 +1,7 @@
+id: random-walker
+name: Random walker
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned

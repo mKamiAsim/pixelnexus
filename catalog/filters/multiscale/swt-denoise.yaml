@@ -1,0 +1,10 @@
+id: swt-denoise
+name: Stationary wavelet filtering
+aliases:
+- Undecimated wavelet filtering
+family: multiscale
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: Undecimated transform and cycle spinning.

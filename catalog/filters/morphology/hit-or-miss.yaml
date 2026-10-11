@@ -1,0 +1,8 @@
+id: hit-or-miss
+name: Hit-or-miss transform
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: Editor for the pair of elements.

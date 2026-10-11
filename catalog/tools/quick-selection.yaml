@@ -1,0 +1,8 @@
+id: quick-selection
+name: Quick Selection
+group: auto
+tier: core
+engine: browser
+phase: '4'
+status: planned
+planNotes: SLIC superpixels and similarity growth.

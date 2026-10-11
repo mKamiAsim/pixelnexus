@@ -1,0 +1,7 @@
+id: contourlet
+name: Contourlet filtering
+family: multiscale
+tier: planned
+engine: none
+status: planned
+reason: No maintained library. Large custom effort.

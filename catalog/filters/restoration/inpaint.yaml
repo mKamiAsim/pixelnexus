@@ -1,0 +1,8 @@
+id: inpaint
+name: Image inpainting
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: Telea, Navier-Stokes and biharmonic. The selection is the mask.

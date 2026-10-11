@@ -1,0 +1,8 @@
+id: hog
+name: Histogram of Oriented Gradients
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: With visualization.

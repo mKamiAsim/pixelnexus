@@ -1,0 +1,7 @@
+id: bilateral-solver
+name: Bilateral solver
+family: nonlinear
+tier: planned
+engine: none
+status: planned
+reason: Large sparse solver. High effort for its teaching value.

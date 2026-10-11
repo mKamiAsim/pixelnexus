@@ -1,0 +1,8 @@
+id: binomial
+name: Binomial filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Rows of Pascal's triangle.

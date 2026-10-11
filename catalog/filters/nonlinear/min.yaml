@@ -1,0 +1,8 @@
+id: min
+name: Min filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Same result as gray erosion with a flat square. Shares code.

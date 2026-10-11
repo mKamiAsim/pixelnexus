@@ -1,0 +1,10 @@
+id: unsharp-mask
+name: Unsharp mask
+aliases:
+- Unsharp masking
+family: linear
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: Unsharp masking. Cross-listed in enhancement.

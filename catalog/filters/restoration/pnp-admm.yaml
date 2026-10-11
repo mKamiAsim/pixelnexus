@@ -1,0 +1,8 @@
+id: pnp-admm
+name: Plug-and-play restoration
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: ADMM with a choice of denoiser.

@@ -1,0 +1,8 @@
+id: rolling-guidance
+name: Rolling guidance filter
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: OpenCV ximgproc.

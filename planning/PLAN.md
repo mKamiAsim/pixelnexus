@@ -1,0 +1,806 @@
+# PixelNexus build plan
+
+Version 2. Created 2026-10-11. Approved 2026-10-11, with the mobile and AI provider addition (D20 to D24).
+
+This is the master plan. It is written so that any later session can pick up the work without the original chat. Read it together with:
+
+- [CATALOG.md](CATALOG.md): the full filter scope. Every entry has a tier, an engine and a phase.
+- [WRITING_STYLE.md](WRITING_STYLE.md): rules for all docs and all text inside the app.
+
+The source requirements are in `prompts/`. Where they disagree, the decisions in section 2 win.
+
+## Current status
+
+| Item | Value |
+|---|---|
+| Current phase | Phase 2: studio shell, canvas and image I/O |
+| Next action | Phase 2 style tile, then your review |
+| Last updated | 2026-10-11 |
+
+## 1. How to continue in a new session
+
+1. Read `CLAUDE.md`. Then read this section and the progress log at the end of this file.
+2. Find the first unchecked task in the current phase.
+3. Build it. Meet the definition of done in section 8.
+4. Tick the task. Add one line to the progress log. Update "Current status".
+5. Start a new phase only when the exit criteria of the current phase pass.
+
+## 2. Decisions
+
+D1 to D4 were agreed with you on 2026-10-11. D5 onward are my technical choices. Any change needs a note in the progress log.
+
+| ID | Topic | Decision | Reason |
+|---|---|---|---|
+| D1 | Product name | PixelNexus | Matches the repository and README. |
+| D2 | Architecture | Hybrid and browser-first. Two engines. Each filter has exactly one engine. | Core work runs offline and on a static host. Advanced methods use proven Python libraries. |
+| D3 | AI scope | AI selection, AI restoration and AI super-resolution. Always optional. Runs through the providers in D21. | Your choice. |
+| D4 | Hosting | GitHub Pages. Docs at the site root. Studio at `/studio/`. | Your choice. |
+| D5 | Single source of truth | A language-neutral catalog in `catalog/` (YAML checked by JSON Schema). The studio, the Python engine, the docs generator and the validators all read it. | Names, parameters, formulas and statuses live in one place. TypeScript, Python and docs cannot drift apart. |
+| D6 | Catalog scope | Union of both requirement catalogs. One algorithm with two names becomes one entry with aliases. | No duplicate code or docs. |
+| D7 | Working image | RGBA, 8 bits per channel, sRGB. Each filter computes in Float32 inside. Signed results use an explicit output mapping. | A 6000x6000 image fits in memory. Behavior is predictable. |
+| D8 | Masks | Uint8 values 0 to 255. Scaled to the range 0 to 1 only when blending. | Matches requirements 2. Compact. |
+| D9 | Blending | One compositor in the browser blends every result, whichever engine made it. | One formula and one test suite. |
+| D10 | Region processing | Engines process the mask bounding box plus a halo equal to the filter's support radius. Global filters process the full image. | No seams at the selection edge. No wasted work. |
+| D11 | Canvas | Custom WebGL2 viewport. The mask is a texture. Marching ants are drawn by a shader. A 2D canvas layer draws handles. | Works with pixel masks and very large images. Scene-graph libraries suit vector shapes, not masks. |
+| D12 | Panels | dockview (MIT). Docking, tabs, floating panels and saved layouts, like Photoshop. | Mature, no dependencies, React support. |
+| D13 | Frontend stack | React 19, TypeScript strict, Vite, Tailwind CSS v4, Radix UI primitives, Zustand, KaTeX, lucide icons, self-hosted fonts, pnpm. | Requirements 2 stack at current versions. |
+| D14 | Python stack | Python 3.12 managed by uv. FastAPI, NumPy 2, SciPy, scikit-image, opencv-contrib-python-headless, PyWavelets, Pillow. ONNX Runtime for AI. | Widest wheel support. No PyTorch needed at runtime. |
+| D15 | Docs | MkDocs 1.6 and Material for MkDocs 9.7, pinned. MathJax, Mermaid, and pymdownx snippets for generated tables. Figures are generated from the real code. | Required by the docs prompt. See risk R4. |
+| D16 | Text style | WRITING_STYLE.md applies to docs and to all text in the app. `tools/lint_prose.py` enforces it. | Your requirement. |
+| D17 | Licenses | The default install uses permissive licenses only (MIT, BSD, Apache 2.0). Anything else is optional and clearly labeled. Project license is MIT unless you choose another. | The project stays easy to share and teach with. |
+| D18 | Git | I commit locally at the end of a task group when you ask. I push or deploy only with your approval. | Safe default. |
+| D19 | Versions | Phase 1 picks the latest stable version of each dependency that is at least two weeks old. Versions are recorded in the docs dependency page. | Current and stable. |
+| D20 | Mobile app | Later, the same web build ships as a phone app with Capacitor. Android first, iOS later (Phase 11). The browser engine runs on the phone. Science engine filters on a phone need a PixelNexus engine you run elsewhere. Otherwise they show as unavailable with the reason. | Agreed with you. Capacitor bundles the web app offline and gives native file, camera, share and secure storage. |
+| D21 | AI providers | AI tools run through one of three provider kinds: models in the local engine (desktop), small on-device models (ONNX Runtime Web, in the browser or phone app), or an external AI API that you configure (base URL, API key, model and other settings). | Agreed with you. Phones never depend on large downloads. |
+| D22 | No forced downloads | No model is ever downloaded without your action. The app may suggest small models and shows their size and license first. | Agreed with you. |
+| D23 | Consent | Every use of an external AI API asks for permission first, every time. Local engine models and on-device models never ask. Any other request that sends an image off the device (for example to a remote PixelNexus engine) asks once per session for that host. | Agreed with you for AI. The remote engine rule is my default. You can change it. |
+| D24 | Secrets | API keys stay in OS secure storage in the phone app. In a desktop browser they are kept for the session only, unless you choose "remember on this device". Keys are never logged, never put in URLs, never exported in projects or pipelines, and only sent to the configured base URL. | Keeps keys safe and visible to you. |
+
+## 3. Architecture
+
+### 3.1 Big picture
+
+```mermaid
+flowchart LR
+  UI[Studio UI] --> EC[Engine client]
+  EC --> BE[Browser engine]
+  EC -.->|optional| SE[Science engine]
+  EC --> AR[AI router]
+  AR -.-> OD[On-device models]
+  AR -.->|local| SE
+  AR -.->|consent| EX[External AI API]
+  BE --> CO[Compositor]
+  SE --> CO
+  AR --> CO
+  CO --> UI
+  CAT[(Catalog)] --> UI
+```
+
+Dashed lines are optional parts. The catalog also feeds the science engine and the docs site.
+
+- **Studio UI**: React app with dockable panels. The same build runs in a desktop browser, on GitHub Pages and inside the phone app.
+- **Engine client**: one interface for running, previewing and cancelling jobs on either engine.
+- **Browser engine**: pure TypeScript in Web Workers. Runs offline, on GitHub Pages and on phones.
+- **Science engine**: a Python package served by FastAPI. Usually on `127.0.0.1`. Optional.
+- **AI router**: sends each AI task to the provider you chose and asks for consent when the rules in section 3.11 require it.
+- **On-device models**: small ONNX models run by ONNX Runtime Web in the browser or phone app. Optional.
+- **External AI API**: a service you configure with your own base URL and key. Optional.
+- **Compositor**: blends each result with the original through the mask.
+- **Catalog**: YAML files that define every filter, tool, glossary term, model and provider type.
+
+### 3.2 Engine assignment rule
+
+A filter runs in the **browser engine** when all of these are true:
+
+- The algorithm is local or FFT based, and it is short to implement correctly.
+- It is fast enough on a 6000x6000 image in workers, or on a preview crop.
+- A reference library exists to create test fixtures for it.
+
+Otherwise it runs in the **science engine**. That covers iterative optimization, large transforms, library-grade algorithms, feature descriptors and model inference.
+
+The science engine may call library functions inside its own algorithms, for example SciPy's Gaussian inside a scikit-image routine. That is not duplication. Each catalog entry still has one authoritative implementation.
+
+### 3.3 Repository layout
+
+```text
+pixelnexus/
+  web/                     Studio (pnpm, Vite)
+    src/app/               Shell, providers, menus, workspaces
+    src/panels/            One folder per dockable panel
+    src/canvas/            WebGL2 viewport, overlays, compare modes
+    src/selection/         Selection tool UI and gestures
+    src/learn/             Learn panel demo widgets
+    src/state/             Zustand stores
+    src/engine-client/     One API for both engines
+    src/core/              Browser engine. Pure TypeScript. Never imports React.
+      image/ math/ mask/ selection/ filters/<family>/ workers/
+    tests/                 Unit, component and E2E tests
+  engine/                  Science engine (uv)
+    src/pixelnexus_engine/
+      core/                Image I/O, dtypes, masks, registry binding
+      filters/<family>/    Algorithms
+      models/              AI model registry and runners
+      api/                 FastAPI app, routes, jobs
+    tests/
+  catalog/                 Single source of truth
+    schema/                JSON Schemas
+    filters/<family>/<id>.yaml
+    tools/<id>.yaml        Selection tools
+    families.yaml
+    glossary.yaml
+    models.yaml
+  docs/                    MkDocs pages
+  tools/                   Validators, prose lint, generators, fixtures, figures
+  planning/                This plan, the catalog plan, the style guide
+  docker/                  Dockerfiles
+  .github/workflows/       CI and Pages
+  mkdocs.yml
+  compose.yaml
+  CLAUDE.md
+```
+
+### 3.4 Catalog entry
+
+One YAML file per entry. Example (shortened):
+
+```yaml
+id: gaussian
+name: Gaussian filter
+aliases: [Gaussian blur, Separable Gaussian, Per-channel Gaussian]
+family: linear
+tags: [smoothing, denoise]
+status: implemented-tested      # one of the seven statuses in section 7.4
+engine: browser                 # browser | science | model
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image                   # image | mask | labels | features | spectrum | table
+representation: dynamic-kernel  # one of the ten types in section 3.5
+representation_label: exact     # exact | definition | approximation | simplified
+support_radius: "ceil(truncate * sigma)"
+params:
+  - {key: sigma, label: Sigma, type: number, min: 0.1, max: 50, step: 0.1, default: 1.0, unit: px,
+     description: Standard deviation of the Gaussian., effect: Larger values blur more.}
+  - {key: truncate, label: Truncate, type: number, min: 1, max: 6, step: 0.5, default: 3.0,
+     description: Kernel radius in units of sigma.}
+  - {key: border, type: select, default: reflect101, ref: common.border}
+formula: |
+  G(x,y) = \frac{1}{2\pi\sigma^2} e^{-\frac{x^2+y^2}{2\sigma^2}}, \quad \sigma = {{sigma}}
+symbols:
+  - {symbol: '\sigma', meaning: Standard deviation in pixels}
+steps: [Build the 1D kernel and normalize it, Filter rows, Filter columns]
+complexity: {time: 'O(N k)', memory: 'O(N)', notes: Separable passes}
+limitations: [Blurs edges as much as noise]
+references: [{kind: book, text: 'Gonzalez and Woods, Digital Image Processing, 4th ed., 2018'}]
+implementation: {path: web/src/core/filters/linear/gaussian.ts, symbol: gaussianFilter}
+tests: [web/src/core/filters/linear/gaussian.test.ts]
+learn:
+  one_sentence: Each pixel becomes a weighted average of its neighbors. Close neighbors count more.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+```
+
+Rules:
+
+- Formulas may contain `{{param}}` placeholders. The Inspector fills them with current values.
+- Formulas use the LaTeX subset that both KaTeX and MathJax support. A CI test compiles every formula with KaTeX.
+- The validator checks that `implementation.path` and `tests` exist and that the id is registered in the declared engine.
+- TypeScript types are generated from the JSON Schema. Python uses Pydantic models built from the same schema.
+
+### 3.5 Operator representations
+
+The Inspector has one widget per representation type. Every algorithm uses the type that fits it. No algorithm is forced into a kernel.
+
+| Type | Shown as | Examples |
+|---|---|---|
+| fixed-kernel | Numeric grid, divisor, offset, sum | Sobel, Laplacian, emboss |
+| dynamic-kernel | Grid regenerated from parameters | Gaussian, motion blur, Gabor |
+| structuring-element | Footprint grid, origin, connectivity | Erosion, top-hat |
+| rank | Window, sorted values, chosen rank | Median, alpha-trimmed mean |
+| frequency-response | H(u,v) image and radial profile | Butterworth, notch |
+| transform | Decomposition diagram, filter taps, subbands | Wavelets, Radon |
+| iterative | Objective, update rule, stopping rule, convergence plot | Richardson-Lucy, TV |
+| estimator | Estimator equation, assumptions, local statistics | Lee, adaptive Wiener |
+| algorithm | Stage list with intermediate images | Canny, watershed, SIFT |
+| neural | Model card, pipeline diagram, tensor shapes | DnCNN, SAM |
+
+### 3.6 Execution flow
+
+1. You change a parameter.
+2. The studio validates it against the schema.
+3. The Inspector recomputes the representation. It calls the same generator that the engine uses.
+4. The engine client sends a job to the filter's engine with the image version, parameters and region.
+5. The engine returns F(I) for the region. The result can be an image, mask, label map, feature list or spectrum.
+6. The compositor blends: I_out = M · F(I) + (1 − M) · I. Pixels where M = 0 stay bit-identical.
+7. The preview updates. Apply writes a history entry.
+
+### 3.7 Preview policy
+
+- At 50% zoom or more, the preview covers the visible region at full resolution.
+- Below 50%, the preview uses a smaller proxy image. It shows an "Approximate preview" badge. Parameters in pixel units are scaled, and the badge says so.
+- Science engine filters preview on request, with a Preview button.
+- Apply always runs at full resolution.
+
+### 3.8 Science engine API
+
+All routes are under `/api/v1`. Images travel as binary, never as JSON arrays.
+
+| Route | Purpose |
+|---|---|
+| `GET /info` | Version, dependency versions, device, limits |
+| `GET /filters`, `GET /filters/{id}` | Catalog entries with availability on this machine |
+| `POST /filters/{id}/representation` | Kernel, coefficients or response for given parameters |
+| `POST /images` | Upload once. Returns a content hash used as the image id |
+| `GET /images/{id}/metadata` | Metadata |
+| `POST /jobs` | Run a filter. Returns a job id |
+| `GET /jobs/{id}` and `GET /jobs/{id}/events` | Status and live progress (SSE) |
+| `GET /jobs/{id}/result` | Binary result, or JSON for features and tables |
+| `DELETE /jobs/{id}` | Cancel |
+| `POST /selection/auto` | Subject, object and click selection |
+| `GET /models`, `POST /models/{id}/download`, `DELETE /models/{id}` | Model registry and downloads |
+
+Pipelines live in the studio. The engine runs single steps. Export is done in the browser.
+
+### 3.9 Image and color conventions
+
+- Values are sRGB encoded by default. Filters where it matters (blur, bokeh, resize) offer a "Linear light" option.
+- Grayscale uses luma Y' = 0.2126 R' + 0.7152 G' + 0.0722 B' on encoded values. A luminance option works on linear values. The docs explain the difference.
+- Alpha is kept. Neighborhood filters use premultiplied alpha to avoid dark fringes.
+- Default border mode is reflect-101 (OpenCV default, SciPy `mirror`). Replicate, reflect, constant and wrap are also available.
+- Kernels are applied by correlation, as OpenCV does. The Inspector can show the flipped kernel for true convolution.
+- 16-bit and float sources are converted to 8-bit with a visible warning.
+- Engines replace NaN and infinite values before output and report how many they replaced.
+
+### 3.10 Performance targets
+
+- A 6000x6000 image opens without a crash. Zoom and pan stay smooth.
+- Local filters aim for about 100 ms preview on the visible region. Real numbers are measured later. The docs quote only measured numbers.
+- A worker pool processes tiles with halos. Channels are processed one at a time when memory is tight.
+- A memory budget limits caches. History snapshots are compressed in IndexedDB.
+- Phones get lower default limits for pixels, workers and history. They are set in Phase 11 after measuring.
+
+### 3.11 AI providers and consent
+
+Every AI task (subject select, click select, object select, denoise, JPEG cleanup, super-resolution) goes through the AI router. The router picks the provider you set for that task.
+
+| Provider kind | Where it runs | Consent prompt | Available on |
+|---|---|---|---|
+| Engine model | Local science engine on this computer | Never | Desktop |
+| On-device model | ONNX Runtime Web in the browser or phone app | Never | Desktop, Pages, phone |
+| Remote PixelNexus engine | A PixelNexus engine on another machine that you run | Once per session per host | All |
+| External AI API | A service you configure: base URL, API key, model name, extra headers | Every time | All |
+
+**Consent dialog.** Before each external request, a dialog shows:
+
+- The provider name and host.
+- What will be sent: image size, whether it is the full image or a crop, the mask, and any prompt points.
+- What comes back: a mask or an image.
+- A note that the provider's own privacy terms apply.
+- Two buttons: **Send once** and **Cancel**.
+
+There is no "always allow" for external AI. This follows your rule.
+
+**Less data out.** When a task allows it, the router sends only the selection's bounding box plus a margin, and offers to downscale first.
+
+**Transparency.** A status bar icon shows while an external request runs. A session log lists every external request with time, host, task and data size. The log stays on the device.
+
+**Adapters.** Each provider kind has an adapter with one contract: task, input image, optional mask and prompts, output mask or image.
+
+- PixelNexus engine adapter: speaks our own API. Used for local and remote engines.
+- Generic HTTP adapter: you map the request and response fields in settings. Works with your own endpoints.
+- Presets for one or two hosted inference services, chosen in Phase 7 after checking their current APIs.
+
+**Rules.**
+
+- External hosts must use HTTPS. Plain HTTP is allowed only for private network addresses, with a warning.
+- If a provider fails, the app says so and offers the classical tool. It never switches provider silently.
+- Results from external or learned models carry the label "AI result. Detail may not exist in the original scene."
+
+## 4. User interface
+
+### 4.1 Desktop layout
+
+```text
++--------------------------------------------------------------------------------+
+| Menu: File  Edit  Image  Select  Filter  View  Window  Help | Workspace | Engine|
++--------------------------------------------------------------------------------+
+| Options bar: settings of the active tool                                       |
++----+--------------+----------------------------------+--------------------------+
+| T  | Library      | Document tabs                    | Properties | Inspector   |
+| o  | Images       | +------------------------------+ | Learn      | Developer   |
+| o  | Masks        | |                              | |                          |
+| l  |              | |           Canvas             | +--------------------------+
+| s  |              | |                              | | History | Pipeline       |
+|    |              | +------------------------------+ | Info | Histogram | Nav   |
++----+--------------+----------------------------------+--------------------------+
+| Status: size | zoom | x,y and RGB | selection | engine | job progress            |
++--------------------------------------------------------------------------------+
+```
+
+Every panel can be docked, tabbed, floated, collapsed to an icon rail or closed, as in Photoshop. The Window menu opens closed panels. The canvas always keeps the most space.
+
+### 4.2 Panels
+
+| Panel | Purpose | Phase |
+|---|---|---|
+| Tools | Tool strip with grouped tools and flyouts | 2 |
+| Options bar | Settings of the active tool | 2 |
+| Canvas | Document tabs, viewport, overlays, compare modes | 2 |
+| Images | Open documents with thumbnails and metadata | 2 |
+| Info | Pixel probe: RGB, HSV, Lab and a 5x5 value window | 2 |
+| Histogram | Live RGB and luma histogram | 2 |
+| Navigator | Mini map of the image | 2 |
+| Library | Search, facets, favorites, status badges | 3 |
+| Properties | Parameters, scope, preview, apply, presets | 3 |
+| Inspector | Mathematics, kernel or operator, complexity, limits | 3 |
+| Learn | Plain explanation and live demos on your image | 3 |
+| Developer | Schema, JSON, source path, tests, timing | 3 |
+| History | Steps with thumbnails, jump, delete | 3 and 8 |
+| Masks | Named masks, save, load, preview | 4 |
+| Spectrum | FFT magnitude, filter response, notch placement | 5e |
+| Metrics | PSNR, SSIM, MSE, MAE | 5b and 8 |
+| Pipeline | Chain, reorder, enable, disable | 8 |
+| Compare grid | Several filters or values side by side | 8 |
+
+### 4.3 Workspaces
+
+Workspace presets switch the panel layout in one click:
+
+- **Essentials**: Library, Properties, History. For everyday editing.
+- **Study**: Learn and Inspector large, Info and Histogram open. For teaching and learning.
+- **Selection**: Masks, Info and tool options up front.
+- **Developer**: Developer, Inspector and Metrics.
+- **Compact**: for small screens.
+
+Your own layout is saved and restored.
+
+### 4.4 Visual design
+
+- Dark graphite theme by default. Light theme and a high-contrast option.
+- One accent color. No gradients and no decorative cards.
+- Inter for the interface. JetBrains Mono with tabular numbers for values. Both self-hosted.
+- Compact density: 28 px controls on a 4 px spacing grid.
+- Scrubby sliders: drag a label to change a value, or type an exact value.
+- Every technical term has a tooltip from the shared glossary.
+- Clear empty, loading, error and success states.
+- Phase 2 starts with a style tile for your review.
+
+### 4.5 The Learn panel
+
+The Learn panel explains what a filter or tool does, in plain words, on your own image. The Inspector is the technical reference. The Learn panel is the teacher.
+
+It has two levels:
+
+- **Basic**: for everyday users. Short words, no formulas.
+- **Academic**: for students. Adds the key equation, links to the Inspector and the docs.
+
+Each entry has the same sections:
+
+1. **In one sentence.**
+2. **How it works**: three to six short steps with a small diagram.
+3. **See it on your image**: a live demo at the probe point. Click with the Probe tool to move it.
+4. **What the parameters do**: one line and one mini visual per parameter.
+5. **Try this**: small guided experiments.
+6. **Common mistakes.**
+7. **Where to go next**: related filters and the docs page.
+
+Demo widgets are reusable. They call the real engine code, so they always match the result.
+
+| Widget | Shows | Used by |
+|---|---|---|
+| Neighborhood stepper | Pixel window, kernel, products, sum, result. Steps across a row. | All kernel filters |
+| Impulse response | How one bright pixel spreads. This is the kernel as a picture. | Blurs, sharpening, PSFs |
+| Rank stepper | Window values, sorted list, chosen value | Median, min, max, rank filters |
+| Gradient explorer | Gx, Gy, magnitude, direction arrow, direction color wheel | Sobel, Prewitt, Scharr, Canny |
+| Line profile | Brightness along a line, before and after | Blur spread, halos, ringing |
+| Frequency explorer | Spectrum, H(u,v), product, inverse, radial plot | Frequency filters |
+| Point-op curve | Transfer curve and histograms before and after | Gamma, equalization, CLAHE |
+| Morphology stepper | Structuring element over a binary patch, fit and hit | Morphology |
+| Stage viewer | Intermediate images of multi-stage methods | Canny, unsharp mask, Harris, watershed |
+| Weight viewer | Weight map at the probe pixel | Bilateral, guided, non-local means |
+| Iteration viewer | Result per iteration and a convergence plot | Richardson-Lucy, TV, diffusion |
+| Noise lab | Add a known noise or blur, then measure the repair | Denoising and deblurring |
+
+Three examples you asked about:
+
+- **Gradient (Sobel)**. One sentence: "It measures how fast brightness changes, and in which direction." The Gradient explorer shows the 3x3 window under the probe. It shows the Gx and Gy products and sums, an arrow for the direction, and the magnitude. A color wheel then maps direction across the whole image.
+- **Motion blur**. The Impulse response demo turns one bright dot into a streak of length L at angle θ. The kernel view shows the line of weights. The Line profile shows an edge spreading along the motion direction only.
+- **Median**. The Rank stepper lists the window values and sorts them. The middle value is picked. A salt pixel (255) moves to the end of the sorted list and is never picked. A side panel shows the mean of the same window, pulled up by that one outlier.
+
+Selection tools get Learn entries too. For example, a flood-fill animation for Magic Wand.
+
+### 4.6 The Inspector panel
+
+The Inspector shows all 19 fields from requirements 1 section 5.1 in tabs: Overview, Formula, Operator, Parameters, Algorithm, Complexity and limits, References.
+
+- Formulas render with KaTeX and update when parameters change.
+- Every symbol is defined in a table.
+- Kernels show as a numeric grid with a heat tint, sum, divisor, offset, anchor and normalization.
+- A toggle switches between correlation and convolution order.
+- Each representation carries a label: exact computation, mathematical definition, approximation or simplified explanation.
+- Copy buttons give LaTeX, JSON and NumPy.
+
+### 4.7 Additional features I propose
+
+| Feature | Why it helps | Phase |
+|---|---|---|
+| Learn panel with live demos | Your request. Teaches each method on your own image. | 3 to 7 |
+| Pixel probe and Info panel | Exact values under the cursor and in a 5x5 window | 2 |
+| Line profile tool | Plot brightness along a line before and after a filter | 3 |
+| Live histogram | See contrast and equalization changes as they happen | 2 |
+| Noise lab | Add Gaussian, salt-and-pepper, speckle, Poisson or periodic noise, or a known blur. Then test a repair against the clean image. | 3 and 5b |
+| Quality metrics | PSNR, SSIM, MSE and MAE against the clean image | 5b and 8 |
+| Synthetic test images | Step edge, zone plate, Siemens star and more. Built in, with no license issues. | 2 |
+| Spectrum panel | Live FFT magnitude. Click to place notches. | 5e |
+| Compare grid and parameter sweep | For example sigma 1 to 5 side by side | 8 |
+| Command palette | Find any filter or action by typing | 2 |
+| Workspace presets | One click to a Study, Selection or Developer layout | 2 |
+| Glossary tooltips | Plain definitions, shared with the docs glossary | 3 |
+| Project files | Save images, masks, history and pipeline together | 8 |
+| Pipeline as JSON | Reproduce a result exactly | 8 |
+
+### 4.8 Small screens and the phone app
+
+- Side panels become drawers. Lower panels become a bottom sheet with tabs.
+- The tool strip becomes horizontal.
+- Upload, select, filter, undo and export stay available.
+- Controls are touch sized. Gestures: pinch to zoom, two fingers to pan.
+- The design is touch-ready from Phase 2, so the phone app in Phase 11 needs layout polish, not a redesign.
+
+### 4.9 Accessibility
+
+- Full keyboard use, including shortcuts to move between panels.
+- ARIA labels on all controls and visible focus rings.
+- WCAG 2.2 AA contrast in all themes.
+- A live region announces filter results, progress, errors and exports.
+- `prefers-reduced-motion` turns animations off.
+- Selection state is shown with marching ants, a pattern and status text. Never with color alone.
+
+## 5. Phases
+
+Every phase writes the docs for what it builds. Docs never wait until the end.
+
+### Phase 0: Plan review
+
+- [x] Read all three requirement documents.
+- [x] Inspect the repository and the machine.
+- [x] Resolve the four conflicting decisions with you.
+- [x] Save the plan, the catalog plan and the style guide.
+- [x] Your approval (2026-10-11), with the mobile and AI provider addition.
+
+### Phase 1: Foundation and tooling
+
+Goal: an empty but working monorepo with quality gates from day one.
+
+- [x] Root files: short README, LICENSE (MIT, after your OK), `.editorconfig`, `.gitignore`, `.env.example`, `CLAUDE.md`.
+- [x] `web/`: Vite, React 19, TypeScript strict, Tailwind v4, ESLint flat config with import rules (`src/core` never imports React), Prettier, Vitest, React Testing Library, Playwright. pnpm through corepack. Scripts: `dev`, `build`, `preview`, `test`, `test:coverage`, `lint`, `format`, `typecheck`, `e2e`.
+- [x] `engine/`: uv project on Python 3.12. FastAPI with `/api/v1/info`. ruff, mypy, pytest.
+- [x] `catalog/`: JSON Schemas for filters, tools, families, glossary, models and AI provider types. Validator `tools/check_catalog.py`. TypeScript types generated from the schema. Three full sample entries to prove the chain.
+- [x] Import every row of CATALOG.md as a catalog stub (id, name, aliases, family, tier, engine, phase, status, reason). Full fields are required only once an entry is implemented. The Library can then show the whole catalog with honest statuses from Phase 3.
+- [x] The web build uses relative asset paths, so the same build works at `/`, at `/studio/` and inside a native WebView.
+- [x] `tools/lint_prose.py`: checks from WRITING_STYLE.md.
+- [x] `tools/make_fixtures.py`: writes the shared synthetic images now. Reference outputs per filter start in Phase 3.
+- [x] MkDocs skeleton: `mkdocs.yml`, Material theme in PixelNexus colors, MathJax, Mermaid, snippets, admonitions, tabs. `mkdocs build --strict` is clean.
+- [x] GitHub Actions: `ci.yml` for web, engine, catalog, prose and docs. `pages.yml` builds docs and studio. Deploy stays manual until you enable Pages.
+- [x] `compose.yaml` and Dockerfiles for the engine and a static web server. The GPU profile moves to Phase 7c, where GPU models arrive.
+
+Docs: installation, development environment, configuration, running tests.
+
+Exit: every command passes locally. The catalog validator passes on the samples. **Met on 2026-10-11.**
+
+Also added: `tools/gen_docs.py` (generated docs tables), `.claude/launch.json` (studio, docs and engine preview servers).
+
+### Phase 2: Studio shell, canvas and image I/O
+
+Goal: a real editor that opens, navigates, compares and exports images. No filters yet.
+
+- [ ] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.**
+- [ ] Design tokens as CSS variables and a Tailwind theme. Dark, light and high contrast.
+- [ ] App shell: menu bar, options bar, tool strip, status bar, dockview workspace, Window menu, workspace presets, saved layouts, icon-rail collapse.
+- [ ] Command palette (Ctrl or Cmd + K).
+- [ ] Import by file picker, drag and drop, and paste. PNG, JPEG, WebP, AVIF, BMP, GIF (first frame) and TIFF (utif2, MIT). Decoding runs in a worker.
+- [ ] Validation: 30 MB default size limit, configurable pixel limit, magic-byte check, clear errors for corrupt or oversized files. EXIF orientation applied. Privacy notice: "Images are processed locally in your browser."
+- [ ] Metadata: name, format, file size, dimensions, channels, bit depth from headers, alpha, color profile name. Warnings when decoding changes bit depth or drops a profile.
+- [ ] Several documents: tabs plus the Images panel.
+- [ ] WebGL2 viewport: zoom by wheel, keys and menu. Pan by space-drag, middle mouse and trackpad. Fit, 100%, nearest-neighbor above 100%, pixel grid at 800% and more, checkerboard for transparency, optional rulers, Navigator panel.
+- [ ] Compare modes: split with a draggable divider, side by side with synced view, opacity overlay, hold to see original, difference.
+- [ ] Probe tool, Info panel and Histogram panel.
+- [ ] Export: PNG, JPEG and WebP with quality, TIFF, resize, filename pattern `name_filter-param.ext`, metadata stripped (stated in the dialog).
+- [ ] Built-in synthetic images, generated in code.
+- [ ] Shortcuts from requirements 2 and a shortcut sheet.
+- [ ] Screen-reader announcer, focus rings, reduced motion.
+
+Docs: frontend architecture, image data model, preview and rendering, user guide for the workspace and panels.
+
+Exit: E2E test opens three images, zooms, pans, compares and exports in each format. A 6000x6000 image opens and pans smoothly on this machine. No console errors. axe reports no serious issues.
+
+### Phase 3: Filter framework, Inspector, Learn and the first filters
+
+Goal: prove the full path from catalog to pixels to maths to docs with a small set.
+
+- [ ] Engine client: run, preview, cancel, progress, timing. Same interface for both engines.
+- [ ] Browser worker pool: tiles with halos, transferable buffers, cancellation, memory guard.
+- [ ] Compositor: mask blend, channel scope (RGB, per channel, luminance only, chroma only), alpha handling, output mapping for signed results.
+- [ ] Library panel: search by name, alias, method, category and purpose. Facets for family, linearity, domain, noise type, purpose, engine and status. Favorites. Status badges. Planned entries are visible but cannot run.
+- [ ] Properties panel built from the schema: scrubby slider with number input, integer and odd-size rules, select, boolean, color, angle dial, kernel editor, preview toggle, apply, cancel, reset, presets, copy JSON, last run time.
+- [ ] Preview engine as in section 3.7. Cache keyed by image version, parameters and mask version.
+- [ ] Basic history: every apply adds an entry. Undo, redo, reset to original.
+- [ ] Inspector panel as in section 4.6.
+- [ ] Learn panel framework with the first widgets: Neighborhood stepper, Impulse response, Rank stepper, Gradient explorer, Line profile.
+- [ ] Developer panel: id, schema, parameters JSON, engine, repo-relative source path with a GitHub link, dependency versions, tests, timing, warnings.
+- [ ] Glossary tooltips.
+- [ ] First filters in the browser: box, gaussian, motion-blur, sobel, laplacian, median, unsharp-mask, gamma, grayscale. Noise generators for Gaussian and salt-and-pepper noise.
+- [ ] Fixture tests against SciPy or OpenCV for each of them.
+
+Docs: filter registry, processing pipeline, execution model, maths foundations (image representation, convolution and correlation, boundary conditions, linearity, masks and alpha blending, numerical precision), Inspector pages, Learn panel page, one page per filter above with generated figures.
+
+Exit: all of the above meet the definition of done. **Checkpoint: you review the look and feel of the Inspector and the Learn panel before the bulk work starts.**
+
+### Phase 4: Selection and masking
+
+- [ ] Mask core: add, subtract, intersect, invert, select all, deselect, disable for a while, named masks, save, load, mask from alpha, mask from luminance.
+- [ ] Overlays: marching ants, quick-mask tint, grayscale mask view. The status bar describes the selection in text.
+- [ ] Manual tools: rectangle and ellipse (constrain, from center, fixed ratio, fixed size), freehand lasso, polygonal lasso, magnetic lasso (live wire on gradient cost), brush and eraser (size, hardness).
+- [ ] Modes: new, add, subtract, intersect. In the options bar and with Shift and Alt.
+- [ ] Magic Wand: tolerance 0 to 255 (default 32), contiguous, sample 1x1, 3x3 or 5x5 (default 3x3), anti-alias, RGB, HSV or Lab distance, feather.
+- [ ] Color Range: several samples, fuzziness, range, localized colors, highlights, midtones and shadows presets, grayscale preview.
+- [ ] Select by brightness and select by hue and saturation.
+- [ ] Quick Selection: brush seeds, SLIC superpixels in a worker, growth by color, texture and edge similarity. Size, hardness, tolerance, edge sensitivity and smoothness. Add and subtract.
+- [ ] Edge-assisted selection: snap the boundary to nearby edges with strength, smoothing and tolerance.
+- [ ] Subject select without AI: saliency (spectral residual and frequency tuned), center prior, edge density, color clustering and connected components. Gives a soft mask. Background select is its inverse with correction tools.
+- [ ] Refine: feather, grow, shrink (exact distance transform), smooth, border.
+- [ ] Scope in Properties: whole image, selection, inverted selection. Region processing with halo.
+- [ ] Coordinate mapping between screen and image, tested at many zoom levels.
+- [ ] Learn entries for each tool.
+
+Docs: the selection section, selection and masking architecture, masks and alpha blending maths.
+
+Exit: unit tests for every tool on synthetic images. A test proves that pixels with M = 0 stay bit-identical after any filter. Feather blending matches the formula within 1/255. An E2E test runs select then filter.
+
+### Phase 5: Browser filter library
+
+Six sub-phases. The entries for each are listed in CATALOG.md. Each sub-phase ends with its docs pages and fixture tests.
+
+- [ ] **5a** Linear filters and sharpening. Channel-scope option on all of them.
+- [ ] **5b** Nonlinear, rank and adaptive statistical filters. Dead-pixel repair. Weight viewer, Noise lab and Metrics panel.
+- [ ] **5c** Edges, lines, corners and texture kernels. Canny with every stage visible. Stage viewer.
+- [ ] **5d** Morphology with a structuring-element editor (rectangle, ellipse, cross, diamond, line with angle, custom). Morphology stepper.
+- [ ] **5e** Frequency domain, browser deconvolution, pyramids and scale space. Mixed-radix FFT (radix 2, 3 and 5 with a Bluestein fallback) checked against NumPy. Spectrum panel with notch placement. Frequency explorer and Iteration viewer.
+- [ ] **5f** Enhancement, color, thresholds, region growing, k-means, artistic and geometric effects. Point-op curve widget.
+
+Exit per sub-phase: every entry meets the definition of done. Catalog statuses are updated. The docs build is strict and the prose lint is clean.
+
+### Phase 6: Science engine and advanced filters
+
+- [ ] **6a** Engine platform: routes from section 3.8, jobs in a process pool with real cancellation, SSE progress, upload checks and limits, content-hash image cache, binary transfer, CORS allowlist, dependency versions in `/info`. In the studio: engine status light, auto-connect to `http://127.0.0.1:8765`, "Needs local engine" badges, smooth offline behavior. Representation endpoint. Contract tests.
+- [ ] **6b** Wavelets and multiscale, Radon, directional filters.
+- [ ] **6c** Restoration: iterative and regularized methods, inpainting with the selection as the mask, classical super-resolution with geometry rules, dehaze, deband, descreen, deblock, dering.
+- [ ] **6d** Features and texture: overlays for keypoints with scale, orientation and score. Score tables and CSV export. Hough accumulators. HOG view.
+- [ ] **6e** Segmentation: label-map overlays, region statistics, object counts, labels to selection, mask export. Classical Object Select (box to GrabCut) and classical click-to-select (seeds to random walker).
+- [ ] **6f** Advanced nonlinear and adaptive methods, as listed in CATALOG.md.
+
+Docs: science engine architecture, API reference generated from OpenAPI, optional dependencies, one page per filter.
+
+Exit: pytest passes with the coverage target. Every entry meets the definition of done. An E2E test proves the studio still works with the engine stopped.
+
+### Phase 7: Optional AI
+
+- [ ] **7a** AI provider framework from section 3.11: provider contract, AI router, settings per task, consent dialog, session request log, status bar indicator, secret storage per D24, failure messages with classical alternatives.
+- [ ] **7b** Model registry in `catalog/models.yaml`: task, license, source URL, SHA-256, size, memory, input and output tensors, runtime targets (engine, on-device), phone suitability, reference. License review table for every candidate. **Checkpoint: you approve the list before any download.**
+- [ ] **7c** Engine models on desktop: ONNX Runtime with CUDA if it supports the RTX 5090, CPU otherwise. The device is shown in the UI. Download manager with explicit button or CLI command, progress, checksum, resume, local path option and delete.
+- [ ] **7d** On-device small models: ONNX Runtime Web (WebAssembly, WebGPU where present). Loaded only after you accept a suggestion that shows size and license. Cached in browser storage. Works in the Pages studio and later in the phone app.
+- [ ] **7e** External providers: PixelNexus remote engine adapter, generic HTTP adapter, and presets for one or two hosted services. HTTPS rules. Contract tests against a local mock server. No real external call in CI.
+- [ ] **7f** AI features on top of the router: subject, background, object (box prompt), click-to-select (positive and negative points), edge refinement, denoising, JPEG cleanup, super-resolution at 2x and 4x with tiling. Image encoder results cached per image.
+- [ ] Clear labels on every AI result, per section 3.11.
+- [ ] Learn and Inspector for models: pipeline diagram, tensor shapes, model card. No invented kernels.
+
+Docs: AI providers and consent, model integration, model reference, licenses, hardware needs, how to connect an external API.
+
+Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models are checked by hand on this machine. A test proves the consent dialog appears before every external request and never for local providers. The studio works with no models and no providers set.
+
+### Phase 8: Professional workflow and performance
+
+- [ ] Pipeline panel: chain, drag to reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON.
+- [ ] Full History panel: thumbnails, parameters, scope, time, jump to a state, delete an entry (later steps are recomputed), memory manager for 50 or more entries.
+- [ ] Preset library per filter with import and export.
+- [ ] Compare grid and parameter sweep.
+- [ ] Metrics panel against the original or a chosen reference.
+- [ ] Project files (`.pnx`) with images, masks, history and pipeline.
+- [ ] Warnings for color space, bit depth, size and transparency changes.
+- [ ] Performance pass: profile first. Then WebGL2 for hot convolutions only, with parity tests. Large-image stress test.
+- [ ] Tablet and phone layout.
+
+Docs: user guide pages for pipelines, history, compare, metrics and projects.
+
+### Phase 9: Documentation completion and publishing
+
+- [ ] Finish every section of the docs tree in section 7.
+- [ ] Catalog page generated from the catalog, with every entry and status.
+- [ ] Parameter reference, dependencies and licenses, limitations, troubleshooting, contributing, and an "Adding a filter" walk-through based on a real filter.
+- [ ] `tools/check_docs.py`: finds implemented entries without a page, pages without an entry, wrong source paths, missing statuses, missing formulas and missing tests.
+- [ ] Figure check: every page at 1280 px and 390 px, in light and dark. No overlaps. Results recorded in a checklist.
+- [ ] Pages workflow: docs at the root, studio at `/studio/`. **Checkpoint: you enable Pages and approve the first deploy.**
+- [ ] The studio becomes an installable web app (PWA) with offline support. This is a quick phone option before the native app.
+- [ ] README with local docs commands.
+
+### Phase 10: Validation and release
+
+- [ ] Full test run: unit, fixtures, components, API, and E2E in Chromium, Firefox and WebKit. Coverage report.
+- [ ] Catalog audit: every status matches reality. No filter is shown as working without a passing test.
+- [ ] Maths audit: automated check that Inspector kernels equal the kernels used. Manual review of 20 random filter pages.
+- [ ] Accessibility audit: axe, keyboard-only walk-through, screen-reader smoke test.
+- [ ] Clean install in Docker from the documented steps.
+- [ ] Final limitations page and release notes. Tag v1.0.0 after your approval.
+
+### Phase 11: Phone app (after the web release)
+
+**11a Android first**
+
+- [ ] Capacitor project that wraps the same web build. Assets are bundled, so the app works offline.
+- [ ] Native import from files and camera. Export and share through the system share sheet.
+- [ ] Storage for projects and history. API keys in Android Keystore through a secure storage plugin.
+- [ ] Phone limits for pixels, workers and history, set from measurements on real devices.
+- [ ] Touch pass on every panel and tool. Pinch zoom, two-finger pan, long-press menus.
+- [ ] Science engine filters show "Needs a PixelNexus engine". You can connect one in settings.
+- [ ] AI on the phone: small on-device models are suggested, never forced. External providers follow the consent rules.
+- [ ] Network security config: HTTPS by default, plain HTTP only for private network hosts you add.
+- [ ] Tests on an emulator and at least one real device. Signed release bundle (AAB). **Checkpoint: you set up the Play Console account and the signing key.**
+
+**11b iOS later**
+
+- [ ] Same app with Keychain storage and iOS share and photo pickers.
+- [ ] Needs a Mac with Xcode and an Apple developer account. **Checkpoint: you provide both when ready.**
+
+Docs: phone app install, limits on phones, connecting a remote engine, AI providers on phones.
+
+## 6. Testing strategy
+
+| Layer | Tool | What it covers |
+|---|---|---|
+| Browser engine units | Vitest | Kernels, borders, every browser filter, masks, selection tools, compositor, FFT, history |
+| Fixture tests | Vitest with data from `tools/make_fixtures.py` | Browser results against SciPy, OpenCV and scikit-image with stated tolerances |
+| Components | React Testing Library | Schema-driven forms, Inspector, Learn widgets |
+| Science engine | pytest | Every science filter, API contracts, limits, malformed files, cancellation, model contracts with dummy ONNX models |
+| Consistency | Vitest and pytest | Catalog against both engines. Inspector kernel equals execution kernel. Catalog LaTeX compiles in KaTeX. Docs coverage. |
+| End to end | Playwright | Main flows in three browsers, phone viewport, engine on and off |
+| Visual | Playwright screenshots | Compare modes and overlays, with tolerance |
+| Accessibility | axe with Playwright | Every panel |
+| Performance | Scripted benchmarks | Results saved to a file. Docs quote only these numbers. |
+
+Test images are small and synthetic where possible: 5x5 gradient, 8x8 checkerboard, 16x16 image with a known object, flat regions, sharp edges, fine texture, salt-and-pepper, Gaussian and periodic noise, transparent pixels, hair-like boundaries, small isolated objects. One large generated image for stress tests.
+
+Floating-point checks use tolerances, not exact equality. Each tolerance is written in the test and in the filter docs page.
+
+## 7. Documentation plan
+
+### 7.1 Tree
+
+```text
+docs/
+  index.md
+  user-guide/            workspace, panels, learn-panel, keyboard-shortcuts, pipelines-and-history, export
+  getting-started/       installation, development-environment, configuration, running-tests, deployment
+  architecture/          overview, frontend-architecture, science-engine, filter-catalog, processing-pipeline,
+                         image-data-model, selection-and-masking, preview-and-rendering, execution-model, learn-panel
+  mathematics/           foundations, image-representation, convolution-and-correlation, linearity-and-superposition,
+                         spatial-and-frequency-domains, fourier-transform, wavelet-transforms, color-spaces,
+                         numerical-precision, boundary-conditions, masks-and-alpha-blending, computational-complexity,
+                         noise-models, image-quality-metrics
+  filters/               index plus one folder per family, one page per implemented filter
+  selection/             overview, manual-tools, magic-wand, color-range, quick-selection, edge-assisted,
+                         object-selection, subject-segmentation, masks-and-refinement
+  mathematical-inspector/ overview, kernel-generation, formula-rendering, parameter-synchronization, developer-mode
+  implementation/        adding-a-filter, filter-definition-schema, science-engine-integration, frontend-integration,
+                         testing-guidelines, optional-dependencies, model-integration
+  reference/             filter-catalog, parameter-reference, api-reference, dependencies, limitations, glossary
+  contributing.md
+```
+
+File names are lower case. The prompt's `Fourier-transform.md` becomes `fourier-transform.md`.
+
+### 7.2 Filter page template
+
+Every filter page uses the same headings:
+
+1. Overview
+2. How it works (plain words)
+3. Mathematical foundation
+4. Kernel or operator
+5. Algorithm
+6. Parameters
+7. Implementation
+8. Worked example
+9. Complexity
+10. Artifacts and limitations
+11. Tests
+12. References
+
+### 7.3 Generated and hand-written parts
+
+- `tools/gen_docs.py` writes facts from the catalog into `docs/_generated/`: parameter tables, status, engine, source path, tests and aliases. Pages include them with pymdownx snippets.
+- Kernel matrices in docs come from the real kernel generators, written as LaTeX.
+- Figures come from `tools/figures/`. Browser filters run their real TypeScript code in Node and save arrays. Python scripts plot them. Each figure has a light and a dark version.
+- Explanations, derivations, worked examples and limitations are written by hand. Nothing is generated from filter names.
+
+### 7.4 Status vocabulary
+
+The catalog, the studio and the docs use the same seven statuses:
+
+| Status key | Shown as |
+|---|---|
+| `implemented-tested` | Implemented and tested |
+| `implemented-untested` | Implemented, testing incomplete |
+| `partial` | Partially implemented |
+| `optional-dependency` | Available through an optional dependency |
+| `optional-model` | Available through an optional pretrained model |
+| `planned` | Planned but not implemented |
+| `unsupported` | Unsupported or deprecated |
+
+### 7.5 Diagrams and figures
+
+The rules are in WRITING_STYLE.md section 5. In short: short labels, small diagrams, no overlaps, and a visual check of every figure in the browser at desktop and phone width in both themes.
+
+## 8. Definition of done for a filter
+
+A filter is done only when all of these are true:
+
+1. Its catalog entry is complete, passes the schema and has an honest status.
+2. It is implemented in its declared engine and registered.
+3. Its representation (kernel, structuring element, response or stages) comes from the same code path as its execution.
+4. Unit tests cover correctness against a reference where one exists, size and channel preservation, alpha, borders, parameter validation, and masked application leaving outside pixels unchanged.
+5. The Inspector shows every field. Learn content exists at both levels and passes the prose lint.
+6. Its docs page follows the template. Figures are generated and checked. `mkdocs build --strict` passes.
+7. The status becomes `implemented-tested` only after the tests have run and passed.
+
+## 9. Security and privacy
+
+- All core processing is local. No analytics. Fonts and scripts in the studio are self-hosted.
+- Network use is limited to four cases. The docs list all four.
+  1. The studio talking to the local engine on `127.0.0.1`.
+  2. Model downloads that you start, from allowlisted hosts, with checksum checks.
+  3. A remote PixelNexus engine that you configure. Consent once per session per host.
+  4. An external AI API that you configure. Consent every time.
+- API keys follow D24.
+- The engine binds to `127.0.0.1` by default. CORS allows only local dev origins and the Pages origin.
+- Uploads are checked for size, magic bytes and decode errors. A pixel limit guards against decompression bombs. Jobs have timeouts.
+- The API never takes file paths from the user. Model files live only inside the configured models folder.
+- Temporary files go to a private temp folder and are deleted after each job.
+- Uploaded content is never executed. No secrets in source. Only `.env.example` is committed.
+- The browser shows repo-relative source paths only.
+- The static studio ships with a Content Security Policy.
+
+## 10. Risks
+
+| ID | Risk | Mitigation |
+|---|---|---|
+| R1 | The scope is 338 catalog entries. 315 of them are built. The rest are planned or unsupported, each with a reason. | Tiers, a vertical slice first, honest statuses, phase gates. |
+| R2 | Browser memory on 6000x6000 images. | Tiles, one channel at a time, a memory budget, proxy previews, warnings. |
+| R3 | FFT speed for sizes that are not powers of two. | Mixed-radix FFT with Bluestein fallback, padding to fast sizes, checks against NumPy. |
+| R4 | Material for MkDocs has been in maintenance mode since November 2025. Version 9.7 was its last feature release, with fixes promised for at least 12 months. Its team says MkDocs 1.x itself is unmaintained. Material 9.7.7 also warns that MkDocs 2.0 removes plugins and theme overrides and has no migration path. | Pin versions. Avoid plugins that would block a later move to Zensical, its successor, which reads `mkdocs.yml`. Use our own generator plus snippets instead of the macros plugin. Pin `mkdocs<2`. No theme overrides. |
+| R5 | AI model licenses, sizes and RTX 5090 support in ONNX Runtime. | Registry with license fields, your approval before downloads, CPU fallback. |
+| R6 | Some listed methods do not fit single still images (BM4D, particle filter, Kalman, LMS and RLS). | Clear "unsupported" or "planned" status with the reason, as listed in CATALOG.md. |
+| R7 | Patented or non-free code (SURF, CurveLab). | Not shipped. Alternatives carry honest names such as "SURF-inspired detector". |
+| R8 | The hosted studio reaching the local engine. Browsers may ask for local network permission. | CORS allowlist. Docs explain the prompt. Running the studio locally avoids it. |
+| R9 | Formula rendering differences between KaTeX and MathJax. | Use the shared LaTeX subset. CI compiles every catalog formula with KaTeX. |
+| R10 | Precision loss in an 8-bit pipeline. | Float32 inside filters, output mapping, warnings. A float working mode is a possible later addition. |
+| R11 | Phones have less memory and slower CPUs. WebGPU in Android WebView is not universal. Multi-threaded WebAssembly needs special headers. | Lower phone limits, proxy previews, single-thread fallback. A native ONNX Runtime plugin if on-device AI is too slow. |
+| R12 | External AI services differ a lot. A strict Content Security Policy cannot list hosts you add later. | One adapter contract, a generic HTTP adapter, mock-server tests. The CSP allows HTTPS connections, and the AI router enforces the host rules itself. |
+| R13 | iOS builds need macOS and Xcode. This machine runs Linux. | iOS is Phase 11b. It waits for a Mac or a cloud macOS build service. |
+
+## 11. Approval checkpoints
+
+1. Approval of this plan.
+2. Style tile at the start of Phase 2.
+3. Look and feel of the Inspector and the Learn panel at the end of Phase 3.
+4. AI model list and licenses before any download in Phase 7.
+5. Enabling GitHub Pages and the first deploy in Phase 9.
+6. Release tag in Phase 10.
+7. Play Console account and signing key in Phase 11a.
+8. Mac and Apple developer account in Phase 11b.
+
+## 12. Progress log
+
+Add one line per session: date, phase, what was done, what is next.
+
+| Date | Phase | Done | Next |
+|---|---|---|---|
+| 2026-10-11 | 0 | Read requirements. Inspected repo and machine (Node 24, Python 3.13, uv, Docker, RTX 5090). Agreed D1 to D4. Wrote PLAN, CATALOG and WRITING_STYLE. | Your approval, then Phase 1. |
+| 2026-10-11 | 0 | Plan approved. Added phone app (Phase 11), AI providers, consent and secret rules (D20 to D24, section 3.11), Phase 7 split into 7a to 7f. | Phase 1. |
+| 2026-10-11 | 1 | Phase 1 done. Monorepo with web (React 19.3, Vite 8.3, TypeScript 6.0, Tailwind 4.3, Vitest 5, Playwright 1.63), engine (Python 3.12, FastAPI, NumPy 2.5, SciPy 1.18, scikit-image 0.26, OpenCV 5.0), catalog schema plus 338 entries (3 full samples), validator, prose lint, fixtures, docs generator, MkDocs site with 5 pages, CI and Pages workflows, Docker. All checks pass locally. Switched all text to American spelling. Notes: TypeScript 7 is not supported by typescript-eslint yet. OpenCV 5 moved BRISK and AKAZE to cv2.xfeatures2d. | Phase 2: style tile for review. |

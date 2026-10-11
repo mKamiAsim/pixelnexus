@@ -1,0 +1,22 @@
+{
+  "name": "pixelnexus",
+  "private": true,
+  "description": "Image processing studio for teaching and everyday use.",
+  "license": "MIT",
+  "packageManager": "pnpm@12.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @pixelnexus/web dev",
+    "build": "pnpm --filter @pixelnexus/web build",
+    "preview": "pnpm --filter @pixelnexus/web preview",
+    "test": "pnpm --filter @pixelnexus/web test",
+    "test:coverage": "pnpm --filter @pixelnexus/web test:coverage",
+    "lint": "pnpm --filter @pixelnexus/web lint",
+    "typecheck": "pnpm --filter @pixelnexus/web typecheck",
+    "format": "pnpm --filter @pixelnexus/web format",
+    "format:check": "pnpm --filter @pixelnexus/web format:check",
+    "e2e": "pnpm --filter @pixelnexus/web e2e"
+  }
+}

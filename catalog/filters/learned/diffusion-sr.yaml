@@ -1,0 +1,7 @@
+id: diffusion-sr
+name: Diffusion-based super-resolution
+family: learned
+tier: planned
+engine: none
+status: planned
+reason: Very large models.

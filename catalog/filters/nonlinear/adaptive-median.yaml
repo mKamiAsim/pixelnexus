@@ -1,0 +1,8 @@
+id: adaptive-median
+name: Adaptive median filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Window grows until the median is not an impulse.

@@ -1,0 +1,7 @@
+id: geometric-mean
+name: Geometric mean filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

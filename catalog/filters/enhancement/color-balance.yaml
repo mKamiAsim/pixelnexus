@@ -1,0 +1,8 @@
+id: color-balance
+name: Color balance
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Shadows, midtones and highlights.

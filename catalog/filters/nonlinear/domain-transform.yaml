@@ -1,0 +1,8 @@
+id: domain-transform
+name: Domain transform filter
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: OpenCV ximgproc.

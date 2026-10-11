@@ -1,0 +1,8 @@
+id: switching-median
+name: Switching median filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Replaces only pixels detected as impulses.

@@ -1,0 +1,7 @@
+id: internal-gradient
+name: Internal gradient
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned

@@ -1,0 +1,8 @@
+id: m-estimator
+name: Robust M-estimator filter
+family: adaptive
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Huber and Tukey weights, iteratively reweighted.

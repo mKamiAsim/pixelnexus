@@ -1,0 +1,8 @@
+id: dead-pixel
+name: Dead-pixel correction
+family: restoration
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Outlier against the local median, then repair.

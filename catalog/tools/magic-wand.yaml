@@ -1,0 +1,7 @@
+id: magic-wand
+name: Magic Wand
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: planned

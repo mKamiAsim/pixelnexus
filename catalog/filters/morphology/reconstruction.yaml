@@ -1,0 +1,8 @@
+id: reconstruction
+name: Morphological reconstruction
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: By dilation and by erosion. Cross-listed in segmentation.

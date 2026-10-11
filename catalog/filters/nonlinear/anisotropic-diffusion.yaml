@@ -1,0 +1,10 @@
+id: anisotropic-diffusion
+name: Anisotropic diffusion
+aliases:
+- Perona-Malik diffusion
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Perona-Malik.
