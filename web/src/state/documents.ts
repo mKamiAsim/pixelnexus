@@ -1,6 +1,7 @@
 /**
  * Open images. Each document keeps the original pixels untouched and a current version that
- * edits replace. Full history arrives in Phase 3. Until then "Revert to original" undoes everything.
+ * edits replace. Phase 2 keeps a simple in-memory undo stack of whole images, limited to
+ * MAX_UNDO steps. Phase 3 replaces it with the full history (compressed snapshots, timeline).
  */
 import { create } from "zustand";
 
@@ -11,6 +12,13 @@ import type { LoadIssue } from "@/core/image/limits";
 import type { RgbaImage } from "@/core/image/types";
 
 export type DocumentSource = "file" | "paste" | "sample";
+
+export const MAX_UNDO = 20;
+
+export interface EditStep {
+  readonly image: RgbaImage;
+  readonly label: string;
+}
 
 export interface ImageDocument {
   readonly id: string;
@@ -26,11 +34,18 @@ export interface ImageDocument {
   readonly current: RgbaImage;
   /** Short labels of the edits applied since opening, oldest first. */
   readonly edits: readonly string[];
+  /** Earlier versions, newest last. */
+  readonly undoStack: readonly EditStep[];
+  /** Versions removed by undo, newest last. */
+  readonly redoStack: readonly EditStep[];
   /** Null until the viewport has measured itself and fitted the image. */
   readonly view: ViewState | null;
 }
 
-export type NewDocument = Omit<ImageDocument, "id" | "current" | "edits" | "view">;
+export type NewDocument = Omit<
+  ImageDocument,
+  "id" | "current" | "edits" | "view" | "undoStack" | "redoStack"
+>;
 
 interface DocumentsState {
   documents: readonly ImageDocument[];
@@ -42,6 +57,8 @@ interface DocumentsState {
   /** Replace the current pixels. A size change resets the view so the image fits again. */
   edit: (id: string, image: RgbaImage, label: string) => void;
   revert: (id: string) => void;
+  undo: (id: string) => void;
+  redo: (id: string) => void;
 }
 
 let counter = 0;
@@ -49,6 +66,8 @@ const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `doc-${Date.now()}-${++counter}`;
+
+const sameSize = (a: RgbaImage, b: RgbaImage) => a.width === b.width && a.height === b.height;
 
 const update = (
   documents: readonly ImageDocument[],
@@ -64,7 +83,15 @@ export const useDocuments = create<DocumentsState>()((set) => ({
     set((state) => ({
       documents: [
         ...state.documents,
-        { ...document, id, current: document.original, edits: [], view: null },
+        {
+          ...document,
+          id,
+          current: document.original,
+          edits: [],
+          view: null,
+          undoStack: [],
+          redoStack: [],
+        },
       ],
       activeId: id,
     }));
@@ -85,17 +112,60 @@ export const useDocuments = create<DocumentsState>()((set) => ({
     set((state) => ({ documents: update(state.documents, id, (d) => ({ ...d, view })) })),
   edit: (id, image, label) =>
     set((state) => ({
-      documents: update(state.documents, id, (d) => {
-        const resized = image.width !== d.current.width || image.height !== d.current.height;
-        return { ...d, current: image, edits: [...d.edits, label], view: resized ? null : d.view };
-      }),
+      documents: update(state.documents, id, (d) => ({
+        ...d,
+        current: image,
+        edits: [...d.edits, label],
+        view: sameSize(image, d.current) ? d.view : null,
+        undoStack: [...d.undoStack, { image: d.current, label }].slice(-MAX_UNDO),
+        redoStack: [],
+      })),
     })),
   revert: (id) =>
     set((state) => ({
+      documents: update(state.documents, id, (d) =>
+        d.current === d.original
+          ? d
+          : {
+              ...d,
+              current: d.original,
+              edits: [...d.edits, "Revert to original"],
+              view: sameSize(d.original, d.current) ? d.view : null,
+              undoStack: [...d.undoStack, { image: d.current, label: "Revert to original" }].slice(
+                -MAX_UNDO,
+              ),
+              redoStack: [],
+            },
+      ),
+    })),
+  undo: (id) =>
+    set((state) => ({
       documents: update(state.documents, id, (d) => {
-        const resized =
-          d.original.width !== d.current.width || d.original.height !== d.current.height;
-        return { ...d, current: d.original, edits: [], view: resized ? null : d.view };
+        const step = d.undoStack.at(-1);
+        if (!step) return d;
+        return {
+          ...d,
+          current: step.image,
+          edits: d.edits.slice(0, -1),
+          view: sameSize(step.image, d.current) ? d.view : null,
+          undoStack: d.undoStack.slice(0, -1),
+          redoStack: [...d.redoStack, { image: d.current, label: step.label }],
+        };
+      }),
+    })),
+  redo: (id) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => {
+        const step = d.redoStack.at(-1);
+        if (!step) return d;
+        return {
+          ...d,
+          current: step.image,
+          edits: [...d.edits, step.label],
+          view: sameSize(step.image, d.current) ? d.view : null,
+          undoStack: [...d.undoStack, { image: d.current, label: step.label }],
+          redoStack: d.redoStack.slice(0, -1),
+        };
       }),
     })),
 }));

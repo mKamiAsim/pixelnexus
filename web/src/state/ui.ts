@@ -1,10 +1,12 @@
 /** Interface state that is not part of a document. */
 import { create } from "zustand";
 
+import type { Size } from "@/canvas/viewport";
 import { DEFAULT_THEME, storedTheme, type ThemeId } from "@/styles/themes";
 
 export type ToolId = "hand" | "zoom" | "probe";
 export type CompareMode = "off" | "split" | "side-by-side" | "overlay" | "difference";
+export type DialogId = "export" | "palette" | "shortcuts" | null;
 
 export interface PixelPoint {
   readonly documentId: string;
@@ -27,6 +29,9 @@ interface UiState {
   /** A pixel pinned with the Probe tool. The Info panel prefers it over the hover pixel. */
   probe: PixelPoint | null;
   theme: ThemeId;
+  /** Size of the active viewport in CSS pixels. Fit and 100% need it. */
+  viewportSize: Size | null;
+  dialog: DialogId;
   setTool: (tool: ToolId) => void;
   setCompare: (mode: CompareMode) => void;
   setSplit: (split: number) => void;
@@ -36,6 +41,8 @@ interface UiState {
   setHover: (point: PixelPoint | null) => void;
   setProbe: (point: PixelPoint | null) => void;
   setTheme: (theme: ThemeId) => void;
+  setViewportSize: (size: Size | null) => void;
+  setDialog: (dialog: DialogId) => void;
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -59,4 +66,8 @@ export const useUi = create<UiState>()((set) => ({
   setHover: (hover) => set({ hover }),
   setProbe: (probe) => set({ probe }),
   setTheme: (theme) => set({ theme }),
+  viewportSize: null,
+  dialog: null,
+  setViewportSize: (viewportSize) => set({ viewportSize }),
+  setDialog: (dialog) => set({ dialog }),
 }));

@@ -131,6 +131,12 @@ export function Viewport({ document: doc }: { document: ImageDocument }) {
     return () => observer.disconnect();
   }, []);
 
+  // Tell the rest of the app how large the active viewport is, for Fit and 100%.
+  const setViewportSize = useUi((s) => s.setViewportSize);
+  useEffect(() => {
+    setViewportSize(size);
+  }, [size, setViewportSize]);
+
   // Fit the image the first time, and after an edit that changes its size.
   useEffect(() => {
     if (size && !view && size.width > 0 && size.height > 0) {

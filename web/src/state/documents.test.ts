@@ -47,6 +47,31 @@ describe("documents store", () => {
     useDocuments.getState().revert(id);
     doc = activeDocument();
     expect(doc?.current).toBe(doc?.original);
-    expect(doc?.edits).toEqual([]);
+    expect(doc?.edits).toEqual(["Rotate 90 degrees clockwise", "Revert to original"]);
+  });
+
+  it("undoes and redoes edits, and a new edit clears redo", () => {
+    const id = useDocuments.getState().open(sample());
+    const first = activeDocument()?.current ?? stepEdge(1, 1);
+    const turned = rotate(first, "cw");
+    useDocuments.getState().edit(id, turned, "Rotate");
+    useDocuments.getState().undo(id);
+    expect(activeDocument()?.current).toBe(first);
+    expect(activeDocument()?.edits).toEqual([]);
+    useDocuments.getState().redo(id);
+    expect(activeDocument()?.current).toBe(turned);
+    useDocuments.getState().undo(id);
+    useDocuments.getState().edit(id, rotate(first, "half"), "Rotate 180");
+    expect(activeDocument()?.redoStack).toEqual([]);
+  });
+
+  it("limits the undo stack", () => {
+    const id = useDocuments.getState().open(sample());
+    for (let i = 0; i < 30; i++) {
+      useDocuments
+        .getState()
+        .edit(id, rotate(activeDocument()?.current ?? stepEdge(1, 1), "half"), `Step ${i}`);
+    }
+    expect(activeDocument()?.undoStack).toHaveLength(20);
   });
 });
