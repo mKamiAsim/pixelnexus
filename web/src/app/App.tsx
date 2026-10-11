@@ -53,9 +53,7 @@ export function App() {
         </ul>
       </section>
 
-      <footer className="text-sm text-text0">
-        Images are processed locally in your browser.
-      </footer>
+      <footer className="text-sm text-text0">Images are processed locally in your browser.</footer>
     </main>
   );
 }
