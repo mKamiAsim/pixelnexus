@@ -1,14 +1,18 @@
 /*
  * PixelNexus design tokens.
  *
- * Three themes: dark (default), light and high contrast. Pick one with data-theme on <html>.
- * Text colors meet WCAG 2.2 AA (4.5:1) on panel and raised surfaces.
- * Control borders meet 3:1 against the surfaces they sit on.
- * The neutral grays have a very slight cool tint and almost no color, so the chrome does not
- * bias how you judge the colors of the image.
+ * Five themes: light (default), dim, dark, midnight and high contrast. Pick one with data-theme
+ * on <html>. The list of themes for menus is in themes.ts.
+ *
+ * Rules, checked by tests/unit/theme-contrast.test.ts for every theme:
+ * - Text colors meet WCAG 2.2 AA (4.5:1) on app, panel, header and raised surfaces.
+ * - Control borders meet 3:1 against the surfaces they sit on.
+ * - White text on the accent meets 4.5:1.
+ *
+ * The canvas behind the image stays a neutral gray in every theme, so no theme changes how you
+ * judge the colors of the image.
  */
 
-:root,
 [data-theme="dark"] {
   color-scheme: dark;
 
@@ -60,6 +64,7 @@
   --px-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45), 0 0 0 1px var(--px-border);
 }
 
+:root,
 [data-theme="light"] {
   color-scheme: light;
 
@@ -69,7 +74,7 @@
   --px-raised: #ffffff;
   --px-hover: #e7eaee;
   --px-pressed: #dce0e5;
-  --px-canvas: #cfd3d8;
+  --px-canvas: #d2d3d5;
   --px-overlay: #ffffff;
 
   --px-border-subtle: #e3e6ea;
@@ -89,9 +94,9 @@
   --px-on-accent: #ffffff;
   --px-focus: #1f63d6;
 
-  --px-success: #1d7f53;
+  --px-success: #1a7049;
   --px-warning: #8a5a00;
-  --px-danger: #c23934;
+  --px-danger: #b8352f;
   --px-optional: #6b46c1;
 
   --px-checker-a: #ffffff;
@@ -146,4 +151,94 @@
   --px-heat-positive: 255 212 0;
 
   --px-shadow-popover: 0 0 0 2px var(--px-border-control);
+}
+
+/* A mid gray, close to the medium setting in Photoshop. */
+[data-theme="dim"] {
+  color-scheme: dark;
+
+  --px-app: #2c2e32;
+  --px-panel: #34363b;
+  --px-panel-header: #303236;
+  --px-raised: #3e4146;
+  --px-hover: #464a50;
+  --px-pressed: #50545b;
+  --px-canvas: #26272a;
+  --px-overlay: #3e4146;
+
+  --px-border-subtle: #3a3d42;
+  --px-border: #4a4e55;
+  --px-border-control: #8a9098;
+
+  --px-text: #eceef1;
+  --px-text-secondary: #c3c8cf;
+  --px-text-muted: #aab0b8;
+  --px-text-disabled: #70767e;
+
+  --px-accent: #2f6fe0;
+  --px-accent-hover: #3b7bec;
+  --px-accent-pressed: #2862cc;
+  --px-accent-fg: #9cc0ff;
+  --px-accent-subtle: rgb(76 141 255 / 0.22);
+  --px-on-accent: #ffffff;
+  --px-focus: #9cc0ff;
+
+  --px-success: #6fd9a6;
+  --px-warning: #eab85a;
+  --px-danger: #ff9592;
+  --px-optional: #c7b3ff;
+
+  --px-checker-a: #4a4c50;
+  --px-checker-b: #3c3e42;
+  --px-mask-tint: rgb(255 59 59 / 0.45);
+
+  --px-heat-negative: 76 141 255;
+  --px-heat-positive: 234 184 90;
+
+  --px-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4), 0 0 0 1px var(--px-border);
+}
+
+/* A dark theme with a blue tint in the interface. The canvas stays neutral. */
+[data-theme="midnight"] {
+  color-scheme: dark;
+
+  --px-app: #0b1020;
+  --px-panel: #111830;
+  --px-panel-header: #0e1428;
+  --px-raised: #18213d;
+  --px-hover: #1f2a4a;
+  --px-pressed: #273457;
+  --px-canvas: #101114;
+  --px-overlay: #1a2342;
+
+  --px-border-subtle: #1b2440;
+  --px-border: #26304f;
+  --px-border-control: #64739c;
+
+  --px-text: #e4e9f5;
+  --px-text-secondary: #a9b3cc;
+  --px-text-muted: #8f9ab7;
+  --px-text-disabled: #56607d;
+
+  --px-accent: #2f6fe0;
+  --px-accent-hover: #3b7bec;
+  --px-accent-pressed: #2862cc;
+  --px-accent-fg: #84adff;
+  --px-accent-subtle: rgb(76 141 255 / 0.2);
+  --px-on-accent: #ffffff;
+  --px-focus: #84adff;
+
+  --px-success: #4cc38a;
+  --px-warning: #e0aa3e;
+  --px-danger: #f2716e;
+  --px-optional: #b197fc;
+
+  --px-checker-a: #34363a;
+  --px-checker-b: #2a2c30;
+  --px-mask-tint: rgb(255 59 59 / 0.45);
+
+  --px-heat-negative: 76 141 255;
+  --px-heat-positive: 224 170 62;
+
+  --px-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.5), 0 0 0 1px var(--px-border);
 }

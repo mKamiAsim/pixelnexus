@@ -6,6 +6,9 @@ import "@fontsource-variable/jetbrains-mono";
 
 import { App } from "@/app/App";
 import "@/styles/index.css";
+import { storedTheme } from "@/styles/themes";
+
+document.documentElement.dataset.theme = storedTheme();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root element");

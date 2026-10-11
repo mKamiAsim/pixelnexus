@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 2: studio shell, canvas and image I/O |
-| Next action | Your review of the style tile. Then the Phase 2 shell (dockview workspace, viewport renderer, import UI). |
+| Next action | Phase 2 shell: dockview workspace, WebGL2 viewport, import UI, panels, export. |
 | Last updated | 2026-10-11 |
 
 ## 1. How to continue in a new session
@@ -55,6 +55,8 @@ D1 to D4 were agreed with you on 2026-10-11. D5 onward are my technical choices.
 | D22 | No forced downloads | No model is ever downloaded without your action. The app may suggest small models and shows their size and license first. | Agreed with you. |
 | D23 | Consent | Every use of an external AI API asks for permission first, every time. Local engine models and on-device models never ask. Any other request that sends an image off the device (for example to a remote PixelNexus engine) asks once per session for that host. | Agreed with you for AI. The remote engine rule is my default. You can change it. |
 | D24 | Secrets | API keys stay in OS secure storage in the phone app. In a desktop browser they are kept for the session only, unless you choose "remember on this device". Keys are never logged, never put in URLs, never exported in projects or pipelines, and only sent to the configured base URL. | Keeps keys safe and visible to you. |
+| D25 | Default theme | Light is the default theme. Your choice is remembered per browser. | Agreed with you on 2026-10-12. |
+| D26 | Themes | Five themes: Light, Dim, Dark, Midnight and High contrast, all with the blue accent. The canvas stays neutral gray in every theme. `web/tests/unit/theme-contrast.test.ts` checks every theme, so a new theme costs one token block. | You asked for more themes if they cost little. The test keeps that true. |
 
 ## 3. Architecture
 
@@ -353,7 +355,7 @@ Your own layout is saved and restored.
 
 ### 4.4 Visual design
 
-- Dark graphite theme by default. Light theme and a high-contrast option.
+- Light theme by default (D25). Dim, Dark, Midnight and High contrast are also available (D26).
 - One accent color. No gradients and no decorative cards.
 - Inter for the interface. JetBrains Mono with tabular numbers for values. Both self-hosted.
 - Compact density: 28 px controls on a 4 px spacing grid.
@@ -491,7 +493,7 @@ Also added: `tools/gen_docs.py` (generated docs tables), `.claude/launch.json` (
 
 Goal: a real editor that opens, navigates, compares and exports images. No filters yet.
 
-- [ ] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.** Built 2026-10-12 at `web/style-tile.html` (run `pnpm dev`, open `/style-tile.html`). Waiting for review. The real shell starts after approval.
+- [x] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.** Approved 2026-10-12: blue accent and density kept, light made the default, two themes added. The layout review moves to the Phase 3 checkpoint.
 - [x] Design tokens as CSS variables and a Tailwind theme. Dark, light and high contrast. In `web/src/styles/tokens.css`. Contrast checked: text 4.5:1 or more, control borders 3:1 or more.
 - [ ] App shell: menu bar, options bar, tool strip, status bar, dockview workspace, Window menu, workspace presets, saved layouts, icon-rail collapse.
 - [ ] Command palette (Ctrl or Cmd + K).
@@ -788,7 +790,7 @@ A filter is done only when all of these are true:
 
 1. Approval of this plan.
 2. Style tile at the start of Phase 2.
-3. Look and feel of the Inspector and the Learn panel at the end of Phase 3.
+3. Look and feel of the Inspector and the Learn panel at the end of Phase 3. The overall panel layout is reviewed here too, moved from checkpoint 2 at your request.
 4. AI model list and licenses before any download in Phase 7.
 5. Enabling GitHub Pages and the first deploy in Phase 9.
 6. Release tag in Phase 10.
@@ -805,3 +807,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-11 | 0 | Plan approved. Added phone app (Phase 11), AI providers, consent and secret rules (D20 to D24, section 3.11), Phase 7 split into 7a to 7f. | Phase 1. |
 | 2026-10-11 | 1 | Phase 1 done. Monorepo with web (React 19.3, Vite 8.3, TypeScript 6.0, Tailwind 4.3, Vitest 5, Playwright 1.63), engine (Python 3.12, FastAPI, NumPy 2.5, SciPy 1.18, scikit-image 0.26, OpenCV 5.0), catalog schema plus 338 entries (3 full samples), validator, prose lint, fixtures, docs generator, MkDocs site with 5 pages, CI and Pages workflows, Docker. All checks pass locally. Switched all text to American spelling. Notes: TypeScript 7 is not supported by typescript-eslint yet. OpenCV 5 moved BRISK and AKAZE to cv2.xfeatures2d. | Phase 2: style tile for review. |
 | 2026-10-12 | 2 | Phase 1 committed on `claude/phase-1-foundation` and pushed. The PR still needs opening (gh is not installed here). Phase 2 on `claude/phase-2-studio-shell`: design tokens, UI components on Radix, style tile with workspace and phone mocks, image format parser for 7 formats, limits and warnings, worker decoder with exact WebGL2 readback, color conversion, Gaussian kernel generator, synthetic images, histogram, viewport maths, Vitest browser mode, image data model docs page. 189 tests pass. Fixed: channel scope label renamed to Channels, Mermaid diagrams now top to bottom so they stay readable on phones. | Style tile review. Then build the shell on dockview. |
+| 2026-10-12 | 2 | Style tile approved. Light is now the default (D25). Added Dim and Midnight themes and an automated contrast test for all themes (D26). The test caught light-theme green and red text below 4.5:1 on the app background, now fixed. Layout review moved to the end of Phase 3. | Build the Phase 2 shell. |
