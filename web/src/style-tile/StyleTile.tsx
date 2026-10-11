@@ -16,11 +16,10 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { gaussianKernel1d, gaussianKernel2d } from "@/core/filters/linear/gaussian";
+import { THEMES, applyTheme, isThemeId, storedTheme, type ThemeId } from "@/styles/themes";
 
 import { PhoneMock } from "./PhoneMock";
 import { WorkspaceMock } from "./WorkspaceMock";
-
-type Theme = "dark" | "light" | "contrast";
 
 const TOKEN_GROUPS: Record<string, string[]> = {
   Surfaces: ["app", "panel", "panel-header", "raised", "hover", "pressed", "canvas", "overlay"],
@@ -61,7 +60,7 @@ const STATUSES: Status[] = [
 ];
 
 /** Current token values. The theme argument is part of the memo key, so values refresh on switch. */
-function readTokens(_theme: Theme): Record<string, string> {
+function readTokens(_theme: ThemeId): Record<string, string> {
   const styles = getComputedStyle(document.documentElement);
   const names = Object.values(TOKEN_GROUPS).flat();
   return Object.fromEntries(names.map((n) => [n, styles.getPropertyValue(`--px-${n}`).trim()]));
@@ -88,12 +87,11 @@ function Section({
 }
 
 export function StyleTile() {
-  const [theme, setTheme] = useState<Theme>(
-    () => (document.documentElement.dataset.theme as Theme | undefined) ?? "dark",
-  );
+  const [theme, setTheme] = useState<ThemeId>(storedTheme);
   const tokens = useMemo(() => readTokens(theme), [theme]);
-  const changeTheme = (next: Theme) => {
-    document.documentElement.dataset.theme = next;
+  const changeTheme = (next: string) => {
+    if (!isThemeId(next)) return;
+    applyTheme(next);
     setTheme(next);
   };
   const [sigma, setSigma] = useState(1);
@@ -112,18 +110,15 @@ export function StyleTile() {
           <h1 className="text-2xl font-semibold">PixelNexus style tile</h1>
           <p className="text-sm text-text-secondary">
             This page shows the look of the studio before the full workspace is built: colors, type,
-            controls, panels and a phone layout. Controls respond to input. No filter runs yet.
+            controls, panels and a phone layout. Light is the default theme. Controls respond to
+            input. No filter runs yet.
           </p>
         </div>
         <SegmentedControl
           label="Theme"
           value={theme}
-          onChange={(value) => changeTheme(value as Theme)}
-          segments={[
-            { value: "dark", label: "Dark" },
-            { value: "light", label: "Light" },
-            { value: "contrast", label: "High contrast" },
-          ]}
+          onChange={changeTheme}
+          segments={THEMES.map((t) => ({ value: t.id, label: t.name }))}
         />
       </header>
 

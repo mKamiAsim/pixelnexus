@@ -18,7 +18,11 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 - Never invent a kernel, formula, citation or benchmark number.
 - Text style: short sentences, easy American English, no em dashes, en dashes or `--` in prose.
 - Commit only when asked. Push or deploy only with the user's approval.
-- After each session, update "Current status" and the progress log in `planning/PLAN.md`.
+- The owner works on two PCs (home and office) and switches between them. So:
+  - Keep the "Handoff" block in `planning/PLAN.md` current: branch, last finished step, next steps, open questions.
+  - Update it and the progress log with every commit, not only at the end of a session.
+  - Commit and push before a session ends. Never leave work only on one machine.
+  - At the start of a session, run `git fetch` and `git status`, and pull the branch named in the Handoff block.
 
 ## Commands (run from the repository root)
 

@@ -13,23 +13,23 @@ export function App() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-4 py-12">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-neutral-50">PixelNexus</h1>
-        <p className="text-neutral-400">
+        <h1 className="text-3xl font-semibold tracking-tight text-text">PixelNexus</h1>
+        <p className="text-text-secondary">
           Image processing studio for learning and everyday work. This is the foundation build. The
           studio workspace arrives in Phase 2.
         </p>
       </header>
 
       <section aria-labelledby="catalog-heading" className="flex flex-col gap-3">
-        <h2 id="catalog-heading" className="text-lg font-medium text-neutral-100">
+        <h2 id="catalog-heading" className="text-lg font-medium text-text">
           Catalog: {entries.length} entries
         </h2>
         <table className="w-full text-sm">
           <caption className="sr-only">Catalog entries by status</caption>
           <tbody>
             {[...byStatus].map(([status, count]) => (
-              <tr key={status} className="border-b border-neutral-800">
-                <th scope="row" className="py-1.5 text-left font-normal text-neutral-300">
+              <tr key={status} className="border-b border-border">
+                <th scope="row" className="py-1.5 text-left font-normal text-text-secondary">
                   {STATUS_LABELS[status]}
                 </th>
                 <td className="py-1.5 text-right tabular-nums">{count}</td>
@@ -40,22 +40,20 @@ export function App() {
       </section>
 
       <section aria-labelledby="families-heading" className="flex flex-col gap-3">
-        <h2 id="families-heading" className="text-lg font-medium text-neutral-100">
+        <h2 id="families-heading" className="text-lg font-medium text-text">
           Filter families
         </h2>
         <ul className="grid gap-1 text-sm sm:grid-cols-2">
           {families.map((family) => (
-            <li key={family.id} className="flex justify-between gap-4 text-neutral-300">
+            <li key={family.id} className="flex justify-between gap-4 text-text-secondary">
               <span>{family.name}</span>
-              <span className="tabular-nums text-neutral-500">{byFamily.get(family.id) ?? 0}</span>
+              <span className="tabular-nums text-text0">{byFamily.get(family.id) ?? 0}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <footer className="text-sm text-neutral-500">
-        Images are processed locally in your browser.
-      </footer>
+      <footer className="text-sm text-text0">Images are processed locally in your browser.</footer>
     </main>
   );
 }
