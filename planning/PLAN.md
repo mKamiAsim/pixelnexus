@@ -17,9 +17,22 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Next action | Phase 2 shell: dockview workspace, WebGL2 viewport, import UI, panels, export. |
 | Last updated | 2026-10-11 |
 
+## Handoff
+
+Read this first on any machine. It is updated with every commit.
+
+| Item | Value |
+|---|---|
+| Branch to continue | `claude/phase-2-studio-shell` |
+| Last finished step | Viewport renderer (WebGL2) with GPU tests, document and UI stores |
+| In progress | Phase 2 shell: dockview workspace, panels, import UI, export, command palette |
+| Next steps | Finish the Phase 2 tasks in section 5, run the exit checks, open the Phase 2 PR |
+| Open questions | None |
+| Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling |
+
 ## 1. How to continue in a new session
 
-1. Read `CLAUDE.md`. Then read this section and the progress log at the end of this file.
+1. Run `git fetch`, check out the branch in the Handoff block, and pull. Then read `CLAUDE.md`, this section and the progress log at the end of this file.
 2. Find the first unchecked task in the current phase.
 3. Build it. Meet the definition of done in section 8.
 4. Tick the task. Add one line to the progress log. Update "Current status".

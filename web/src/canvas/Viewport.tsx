@@ -1,0 +1,465 @@
+import { clsx } from "clsx";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
+
+import { cssColor, ImageRenderer, type RenderMode } from "@/canvas/renderer";
+import {
+  clampPan,
+  fitView,
+  formatZoom,
+  imageToScreen,
+  nextZoomStep,
+  panBy,
+  pixelAt,
+  zoomAt,
+  type Size,
+  type ViewState,
+} from "@/canvas/viewport";
+import { useDocuments, type ImageDocument } from "@/state/documents";
+import { useUi } from "@/state/ui";
+
+/** Wheel distance that doubles or halves the zoom. */
+const WHEEL_ZOOM_SPEED = 0.0025;
+
+function isTyping(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  return Boolean(element?.closest("input, textarea, select, [contenteditable=true]"));
+}
+
+/**
+ * The image viewport for one document.
+ *
+ * - Drag with the Hand tool, the middle button, or while holding Space to pan.
+ * - Scroll to pan. Hold Ctrl, Cmd or Alt while scrolling, or pinch, to zoom at the pointer.
+ * - Click with the Zoom tool to zoom in, Alt-click to zoom out.
+ * - Click with the Probe tool to pin a pixel for the Info panel.
+ * - With the canvas focused, arrow keys pan.
+ */
+export function Viewport({ document: doc }: { document: ImageDocument }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<ImageRenderer | null>(null);
+  const [size, setSize] = useState<Size | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [contextVersion, setContextVersion] = useState(0);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [panning, setPanning] = useState(false);
+
+  const setView = useDocuments((s) => s.setView);
+  const tool = useUi((s) => s.tool);
+  const compare = useUi((s) => s.compare);
+  const split = useUi((s) => s.split);
+  const setSplit = useUi((s) => s.setSplit);
+  const overlayOpacity = useUi((s) => s.overlayOpacity);
+  const showOriginal = useUi((s) => s.showOriginal);
+  const pixelGrid = useUi((s) => s.pixelGrid);
+  const theme = useUi((s) => s.theme);
+  const probe = useUi((s) => s.probe);
+  const setHover = useUi((s) => s.setHover);
+  const setProbe = useUi((s) => s.setProbe);
+
+  // Plain names for the document fields. Effects depend on these, not on the document object.
+  const { id: docId, current: image, original, view } = doc;
+
+  // Latest values for event handlers that are attached once.
+  const latest = useRef({ doc, size });
+  useLayoutEffect(() => {
+    latest.current = { doc, size };
+  });
+
+  const updateView = useCallback(
+    (change: (view: ViewState) => ViewState) => {
+      const { doc: current, size: viewSize } = latest.current;
+      if (!current.view || !viewSize) return;
+      setView(current.id, clampPan(change(current.view), current.current, viewSize));
+    },
+    [setView],
+  );
+
+  // Create the renderer, and recreate it if the browser drops the WebGL context.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const create = () => {
+      try {
+        rendererRef.current = new ImageRenderer(canvas);
+        setError(null);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "The viewport could not start.");
+      }
+    };
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      rendererRef.current = null;
+    };
+    const onRestored = () => {
+      create();
+      setContextVersion((v) => v + 1);
+    };
+    create();
+    canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
+    return () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+      rendererRef.current?.dispose();
+      rendererRef.current = null;
+    };
+  }, []);
+
+  // Track the viewport size in CSS pixels.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setSize((previous) =>
+        previous && previous.width === width && previous.height === height
+          ? previous
+          : { width, height },
+      );
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Fit the image the first time, and after an edit that changes its size.
+  useEffect(() => {
+    if (size && !view && size.width > 0 && size.height > 0) {
+      setView(docId, fitView(image, size));
+    }
+  }, [size, view, docId, image, setView]);
+
+  // Draw when anything visible changes.
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer || !size || !view) return;
+    const frame = requestAnimationFrame(() => {
+      try {
+        renderer.setImages(image, original);
+        const mode: RenderMode = showOriginal
+          ? "original"
+          : compare === "split" || compare === "overlay" || compare === "difference"
+            ? compare
+            : "current";
+        renderer.render({
+          view,
+          width: size.width,
+          height: size.height,
+          dpr: window.devicePixelRatio || 1,
+          mode,
+          sideBySide: compare === "side-by-side" && !showOriginal,
+          splitX: split * size.width,
+          overlayOpacity,
+          pixelGrid,
+          colors: {
+            pasteboard: cssColor("--px-canvas"),
+            checkerA: cssColor("--px-checker-a"),
+            checkerB: cssColor("--px-checker-b"),
+          },
+        });
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "The image could not be drawn.");
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    image,
+    original,
+    view,
+    size,
+    compare,
+    split,
+    overlayOpacity,
+    showOriginal,
+    pixelGrid,
+    theme,
+    contextVersion,
+  ]);
+
+  // Wheel: pan, or zoom with a modifier key or a pinch gesture (which arrives with ctrlKey set).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const sx = event.clientX - rect.left;
+      const sy = event.clientY - rect.top;
+      const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
+      const dx = event.deltaX * scale;
+      const dy = event.deltaY * scale;
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        updateView((view) => zoomAt(view, view.zoom * Math.exp(-dy * WHEEL_ZOOM_SPEED), sx, sy));
+      } else if (event.shiftKey && dx === 0) {
+        updateView((view) => panBy(view, -dy, 0));
+      } else {
+        updateView((view) => panBy(view, -dx, -dy));
+      }
+    };
+    container.addEventListener("wheel", onWheel, { passive: false });
+    return () => container.removeEventListener("wheel", onWheel);
+  }, [updateView]);
+
+  // Space switches to the Hand tool while held.
+  useEffect(() => {
+    const down = (event: globalThis.KeyboardEvent) => {
+      if (event.code === "Space" && !isTyping(event.target)) {
+        event.preventDefault();
+        setSpaceHeld(true);
+      }
+    };
+    const up = (event: globalThis.KeyboardEvent) => {
+      if (event.code === "Space") setSpaceHeld(false);
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  // Pointer input. Two touch points pinch and pan together.
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const pinch = useRef<{ distance: number; x: number; y: number } | null>(null);
+  const lastHover = useRef<string>("");
+
+  const local = (event: PointerEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+    const point = local(event);
+    pointers.current.set(event.pointerId, point);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      if (a && b) {
+        pinch.current = {
+          distance: Math.hypot(a.x - b.x, a.y - b.y),
+          x: (a.x + b.x) / 2,
+          y: (a.y + b.y) / 2,
+        };
+        drag.current = null;
+      }
+      return;
+    }
+    const wantsPan = event.button === 1 || spaceHeld || tool === "hand";
+    if (wantsPan) {
+      event.preventDefault();
+      drag.current = point;
+      setPanning(true);
+      return;
+    }
+    if (event.button !== 0 || !doc.view) return;
+    if (tool === "zoom") {
+      updateView((view) =>
+        zoomAt(view, nextZoomStep(view.zoom, event.altKey ? -1 : 1), point.x, point.y),
+      );
+    } else if (tool === "probe") {
+      const pixel = pixelAt(doc.view, doc.current, point.x, point.y);
+      setProbe(pixel ? { documentId: doc.id, ...pixel } : null);
+    }
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    const point = local(event);
+    if (pointers.current.has(event.pointerId)) pointers.current.set(event.pointerId, point);
+    if (pinch.current && pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      if (!a || !b) return;
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const previous = pinch.current;
+      updateView((view) =>
+        panBy(
+          zoomAt(view, view.zoom * (distance / Math.max(1, previous.distance)), mid.x, mid.y),
+          mid.x - previous.x,
+          mid.y - previous.y,
+        ),
+      );
+      pinch.current = { distance, ...mid };
+      return;
+    }
+    if (drag.current) {
+      const start = drag.current;
+      updateView((view) => panBy(view, point.x - start.x, point.y - start.y));
+      drag.current = point;
+    }
+    if (doc.view) {
+      const pixel = pixelAt(doc.view, doc.current, point.x, point.y);
+      const key = pixel ? `${pixel.x},${pixel.y}` : "";
+      if (key !== lastHover.current) {
+        lastHover.current = key;
+        setHover(pixel ? { documentId: doc.id, ...pixel } : null);
+      }
+    }
+  };
+
+  const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 0) {
+      drag.current = null;
+      setPanning(false);
+    }
+  };
+
+  const onPointerLeave = () => {
+    lastHover.current = "";
+    setHover(null);
+  };
+
+  const onDoubleClick = () => {
+    if (!size) return;
+    if (tool === "hand") setView(doc.id, fitView(doc.current, size));
+    if (tool === "zoom") updateView((view) => zoomAt(view, 1, size.width / 2, size.height / 2));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    const step = event.shiftKey ? 160 : 40;
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [step, 0],
+      ArrowRight: [-step, 0],
+      ArrowUp: [0, step],
+      ArrowDown: [0, -step],
+    };
+    const move = moves[event.key];
+    if (move) {
+      event.preventDefault();
+      updateView((view) => panBy(view, move[0], move[1]));
+    }
+  };
+
+  const cursor = panning
+    ? "cursor-grabbing"
+    : spaceHeld || tool === "hand"
+      ? "cursor-grab"
+      : tool === "zoom"
+        ? "cursor-zoom-in"
+        : "cursor-crosshair";
+
+  const probeMark =
+    probe && probe.documentId === doc.id && doc.view
+      ? imageToScreen(doc.view, probe.x + 0.5, probe.y + 0.5)
+      : null;
+  const comparing = compare !== "off" && !showOriginal;
+  const zoomLabel = doc.view ? formatZoom(doc.view.zoom) : "";
+
+  return (
+    <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden bg-canvas">
+      <canvas
+        ref={canvasRef}
+        tabIndex={0}
+        role="img"
+        aria-label={`${doc.name}, ${doc.current.width} by ${doc.current.height} pixels, zoom ${zoomLabel}`}
+        className={clsx(
+          "absolute inset-0 size-full touch-none outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+          cursor,
+        )}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onDoubleClick={onDoubleClick}
+        onKeyDown={onKeyDown}
+        onContextMenu={(event) => event.preventDefault()}
+      />
+      {probeMark ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.6)]"
+          style={{ left: probeMark.sx, top: probeMark.sy }}
+        />
+      ) : null}
+      {comparing && (compare === "split" || compare === "side-by-side") ? (
+        <>
+          <CompareLabel side="left" text="Original" />
+          <CompareLabel
+            side="right"
+            text={doc.edits.length ? "Current" : "Current (no edits yet)"}
+          />
+        </>
+      ) : null}
+      {comparing && compare === "split" && size ? (
+        <SplitHandle x={split * size.width} width={size.width} onChange={setSplit} />
+      ) : null}
+      {error ? (
+        <div
+          role="alert"
+          className="absolute inset-x-4 top-4 rounded-control border border-danger/50 bg-overlay p-3 text-sm text-text shadow-popover"
+        >
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CompareLabel({ side, text }: { side: "left" | "right"; text: string }) {
+  return (
+    <span
+      className={clsx(
+        "pointer-events-none absolute top-2 rounded-control bg-overlay/90 px-2 py-0.5 text-xs text-text shadow-popover",
+        side === "left" ? "left-2" : "right-2",
+      )}
+    >
+      {text}
+    </span>
+  );
+}
+
+function SplitHandle({
+  x,
+  width,
+  onChange,
+}: {
+  x: number;
+  width: number;
+  onChange: (split: number) => void;
+}) {
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.stopPropagation();
+  };
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const rect = event.currentTarget.parentElement?.getBoundingClientRect();
+    if (rect) onChange((event.clientX - rect.left) / width);
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 0.1 : 0.02;
+    if (event.key === "ArrowLeft") onChange(x / width - step);
+    if (event.key === "ArrowRight") onChange(x / width + step);
+  };
+  return (
+    <div
+      role="slider"
+      tabIndex={0}
+      aria-label="Compare split position"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round((x / width) * 100)}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onKeyDown={onKeyDown}
+      className="absolute inset-y-0 w-4 -translate-x-1/2 cursor-ew-resize touch-none focus-visible:outline-2 focus-visible:outline-focus"
+      style={{ left: x }}
+    >
+      <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.5)]" />
+      <span className="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-black/60" />
+    </div>
+  );
+}
