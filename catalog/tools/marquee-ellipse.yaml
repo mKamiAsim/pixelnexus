@@ -1,0 +1,7 @@
+id: marquee-ellipse
+name: Elliptical marquee
+group: marquee
+tier: core
+engine: browser
+phase: '4'
+status: planned

@@ -1,0 +1,7 @@
+id: select-hsv
+name: Select by hue and saturation
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: planned

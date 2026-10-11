@@ -1,0 +1,8 @@
+id: ai-matting
+name: Edge and hair refinement
+group: ai
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'Matting model. License: check. A classical guided-filter refinement is always available.'

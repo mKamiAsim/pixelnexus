@@ -1,0 +1,7 @@
+id: kuwahara
+name: Kuwahara filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

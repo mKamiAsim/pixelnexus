@@ -1,0 +1,8 @@
+id: high-boost
+name: High-boost filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: A times the image minus a low-pass result. Cross-listed in enhancement.

@@ -1,0 +1,8 @@
+id: sr-classical
+name: Super-resolution reconstruction
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: Bicubic plus iterative back-projection. Changes image size.

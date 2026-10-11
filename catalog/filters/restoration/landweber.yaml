@@ -1,0 +1,7 @@
+id: landweber
+name: Landweber iteration
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned

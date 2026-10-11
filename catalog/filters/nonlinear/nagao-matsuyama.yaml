@@ -1,0 +1,7 @@
+id: nagao-matsuyama
+name: Nagao-Matsuyama filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned

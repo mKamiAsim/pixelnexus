@@ -1,0 +1,8 @@
+id: fast-style
+name: Neural style and texture filters
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'Fast neural style models. License: check.'

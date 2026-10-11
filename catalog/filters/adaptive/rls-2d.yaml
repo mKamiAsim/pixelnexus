@@ -1,0 +1,7 @@
+id: rls-2d
+name: RLS adaptive filter
+family: adaptive
+tier: planned
+engine: none
+status: planned
+reason: Same reason as LMS.

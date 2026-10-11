@@ -1,0 +1,15 @@
+id: wiener-deconv
+name: Wiener deconvolution
+aliases:
+- Wiener restoration
+- Wiener frequency filter
+- Motion deblurring
+- Linear motion deblurring
+- Defocus deblurring
+- Defocus deconvolution
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: 'Wiener restoration, Wiener frequency filter. Presets: motion deblurring, defocus deblurring.'

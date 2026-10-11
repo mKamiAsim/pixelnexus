@@ -1,0 +1,10 @@
+id: surf-inspired
+name: SURF-inspired detector
+aliases:
+- SURF-inspired speeded features
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped.

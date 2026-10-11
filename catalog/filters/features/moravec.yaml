@@ -1,0 +1,7 @@
+id: moravec
+name: Moravec corner detector
+family: features
+tier: core
+engine: browser
+phase: 5c
+status: planned

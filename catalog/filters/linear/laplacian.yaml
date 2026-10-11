@@ -1,0 +1,8 @@
+id: laplacian
+name: Laplacian
+family: linear
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: 4 and 8 neighbor variants. Sign convention shown. Cross-listed in edges.

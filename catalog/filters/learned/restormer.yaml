@@ -1,0 +1,10 @@
+id: restormer
+name: Restormer
+aliases:
+- Attention-based restoration
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: 'License: check. Attention-based restoration alias.'

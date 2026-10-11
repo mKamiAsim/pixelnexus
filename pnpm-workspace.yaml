@@ -1,0 +1,5 @@
+packages:
+  - web
+
+# Dependency age rule from planning/PLAN.md D19: ignore releases younger than 14 days.
+minimumReleaseAge: 20160

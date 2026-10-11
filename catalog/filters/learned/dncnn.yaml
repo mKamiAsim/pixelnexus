@@ -1,0 +1,11 @@
+id: dncnn
+name: DnCNN
+aliases:
+- CNN denoiser
+- DnCNN-based deblocking
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: CNN denoiser. DnCNN-based deblocking is a model variant.

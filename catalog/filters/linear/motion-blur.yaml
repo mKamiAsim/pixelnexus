@@ -1,0 +1,8 @@
+id: motion-blur
+name: Motion blur
+family: linear
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: Line PSF with length and angle. Anti-aliased line.

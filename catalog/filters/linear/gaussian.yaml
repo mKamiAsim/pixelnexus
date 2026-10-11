@@ -1,0 +1,133 @@
+# Full sample entry from Phase 1. The code arrives in Phase 3.
+# Change the status only after the tests listed below exist and pass.
+id: gaussian
+name: Gaussian filter
+aliases: [Gaussian blur, Separable Gaussian, Per-channel Gaussian]
+family: linear
+tags: [purpose:smoothing, purpose:denoise, noise:gaussian]
+tier: core
+engine: browser
+phase: "3"
+status: planned
+planNotes: Always separable.
+
+summary: Blurs the image with a weighted average whose weights follow a Gaussian curve.
+purpose: Reduce noise and fine detail, or prepare an image for edge and feature detection.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/gaussian.ts, symbol: gaussianKernel1d}
+supportRadius: floor(truncate * sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same kernel. Alpha is kept.
+  Values are sRGB encoded unless Linear light is on.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.1
+    max: 50
+    step: 0.1
+    default: 1.0
+    unit: px
+    description: Standard deviation of the Gaussian curve.
+    effect: Larger values blur more and use a larger window.
+  - key: truncate
+    label: Truncate
+    type: number
+    min: 1
+    max: 6
+    step: 0.5
+    default: 3.0
+    description: Window radius in units of sigma.
+    effect: Larger values keep more of the curve tails. The result changes very little above 3.
+    advanced: true
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Blur linear light values instead of sRGB encoded values.
+    effect: Bright details spread more like real optical blur.
+    advanced: true
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=-r}^{r} \sum_{i=-r}^{r} g_i \, g_j \, I(x+i,\, y+j),
+  \qquad
+  g_i = \frac{e^{-i^2 / (2\sigma^2)}}{\sum_{k=-r}^{r} e^{-k^2 / (2\sigma^2)}},
+  \qquad
+  r = \lfloor {{truncate}} \, \sigma + 0.5 \rfloor,
+  \quad
+  \sigma = {{sigma}}
+formulaExplanation: >-
+  Each output pixel is a weighted sum over a square window. The weights come from a Gaussian
+  curve and add up to 1. The 2D weight is the product of two 1D weights, so the filter runs as
+  one pass along rows and one pass along columns.
+symbols:
+  - {symbol: 'I', meaning: Input channel value}
+  - {symbol: 'I_{\text{out}}', meaning: Output channel value}
+  - {symbol: '(x, y)', meaning: Pixel position. x grows to the right and y grows downward.}
+  - {symbol: '\sigma', meaning: Standard deviation of the Gaussian in pixels}
+  - {symbol: 'r', meaning: Window radius in pixels}
+  - {symbol: 'g_i', meaning: Normalized 1D weight at offset i}
+steps:
+  - Compute the radius r from sigma and truncate.
+  - Build the 1D weights g_i for i from -r to r and divide them by their sum.
+  - Pad each row with the border mode and filter it with the weights.
+  - Pad each column of that result and filter it with the same weights.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,(2r+1))
+  memory: O(N)
+  notes: N is the number of pixels per channel. A direct 2D kernel would cost O(N\,(2r+1)^2).
+useCases:
+  - Reduce Gaussian noise.
+  - Smooth an image before edge detection.
+  - Build scale spaces and image pyramids.
+advantages:
+  - All weights are positive, so the result never overshoots near edges.
+  - The cost grows with r, not with r squared, because the kernel is separable.
+  - The blur looks the same in every direction.
+limitations:
+  - Edges blur as much as noise does.
+  - Salt-and-pepper noise spreads instead of going away. Use the median filter for it.
+  - Very large sigma values are slow without a recursive approximation.
+artifacts:
+  - Soft edges.
+  - A faint dark band at the image border with the constant border mode.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.gaussian_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
+implementation: {path: web/src/core/filters/linear/gaussian.ts, symbol: gaussianFilter}
+tests: [web/src/core/filters/linear/gaussian.test.ts]
+learn:
+  oneSentence: Each pixel becomes a weighted average of its neighbors, and close neighbors count more than far ones.
+  howItWorks:
+    - Take a window around the pixel.
+    - Give each neighbor a weight from a bell-shaped curve.
+    - Multiply each neighbor by its weight and add the results.
+    - Do the same for every pixel.
+  academic: >-
+    The weights are samples of a Gaussian, normalized to sum to 1. The 2D kernel is the
+    product of two 1D kernels, so the filter runs as two 1D passes.
+  paramNotes:
+    sigma: How wide the bell curve is. A bigger value gives a stronger blur.
+    truncate: How far the window reaches, measured in sigmas.
+  tryThis:
+    - Add Gaussian noise. Then compare sigma 1 and sigma 3. Watch both the noise and the edges.
+    - Open the Impulse response demo and change sigma. The bright dot becomes a soft round spot.
+  pitfalls:
+    - Using a large sigma on salt-and-pepper noise. The dots spread out instead of going away.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [box, binomial, median, bilateral, dog, log]
+docsPage: filters/linear/gaussian.md

@@ -1,0 +1,7 @@
+id: ideal-lowpass
+name: Ideal low-pass
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

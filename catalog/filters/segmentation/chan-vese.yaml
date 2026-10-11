@@ -1,0 +1,7 @@
+id: chan-vese
+name: Chan-Vese segmentation
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned

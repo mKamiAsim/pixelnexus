@@ -1,0 +1,8 @@
+id: chromatic-adaptation
+name: Chromatic adaptation
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Von Kries and Bradford.

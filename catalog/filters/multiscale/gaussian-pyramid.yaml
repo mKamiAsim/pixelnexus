@@ -1,0 +1,7 @@
+id: gaussian-pyramid
+name: Gaussian pyramid filtering
+family: multiscale
+tier: core
+engine: browser
+phase: 5e
+status: planned

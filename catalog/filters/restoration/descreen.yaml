@@ -1,0 +1,8 @@
+id: descreen
+name: Descreening
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: Halftone peak removal in frequency.

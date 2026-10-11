@@ -1,0 +1,8 @@
+id: hough-circles
+name: Hough transform for circles
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Accumulator view.

@@ -1,0 +1,11 @@
+id: prewitt
+name: Prewitt
+aliases:
+- Prewitt X
+- Prewitt Y
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Prewitt X and Y.

@@ -1,0 +1,26 @@
+# AI provider kinds and their consent rules. See planning/PLAN.md section 3.11.
+providers:
+  - id: engine-model
+    name: Local engine model
+    location: this-computer
+    consent: never
+    platforms: [desktop]
+    description: A model run by the PixelNexus engine on this computer. Images do not leave the computer.
+  - id: on-device
+    name: On-device model
+    location: this-device
+    consent: never
+    platforms: [desktop, pages, phone]
+    description: A small model run inside the browser or the phone app. Images do not leave the device.
+  - id: remote-engine
+    name: Remote PixelNexus engine
+    location: other-machine
+    consent: once-per-session-per-host
+    platforms: [desktop, pages, phone]
+    description: A PixelNexus engine that you run on another machine. Images are sent to that machine.
+  - id: external-api
+    name: External AI service
+    location: external-service
+    consent: every-time
+    platforms: [desktop, pages, phone]
+    description: A service that you configure with a base URL and an API key. Images are sent to that service, and its own privacy terms apply.

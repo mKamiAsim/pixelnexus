@@ -1,0 +1,7 @@
+id: swirl
+name: Swirl distortion
+family: artistic
+tier: core
+engine: browser
+phase: 5f
+status: planned

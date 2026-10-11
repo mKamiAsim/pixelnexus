@@ -1,0 +1,10 @@
+id: matched-filter
+name: Matched filter
+aliases:
+- Matched frequency filter
+family: linear
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Matched frequency filter. Template taken from a selection. Normalized cross-correlation map.

@@ -1,0 +1,8 @@
+id: frost
+name: Frost filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Speckle.

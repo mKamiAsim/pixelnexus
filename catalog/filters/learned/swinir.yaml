@@ -1,0 +1,10 @@
+id: swinir
+name: SwinIR
+aliases:
+- Transformer-based denoising
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: Denoising, JPEG and super-resolution variants. Transformer-based denoising alias.

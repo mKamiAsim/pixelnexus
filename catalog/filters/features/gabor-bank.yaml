@@ -1,0 +1,10 @@
+id: gabor-bank
+name: Gabor filter bank
+aliases:
+- Gabor wavelet bank
+family: features
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Gabor wavelet bank. Several scales and orientations.

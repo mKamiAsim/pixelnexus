@@ -1,0 +1,7 @@
+id: sauvola
+name: Sauvola threshold
+family: segmentation
+tier: core
+engine: browser
+phase: 5f
+status: planned

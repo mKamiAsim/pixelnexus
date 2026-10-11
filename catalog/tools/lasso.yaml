@@ -1,0 +1,7 @@
+id: lasso
+name: Freehand lasso
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: planned

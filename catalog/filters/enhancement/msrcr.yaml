@@ -1,0 +1,10 @@
+id: msrcr
+name: Multi-scale Retinex with color restoration
+aliases:
+- Retinex-based color enhancement
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Retinex-based color enhancement.

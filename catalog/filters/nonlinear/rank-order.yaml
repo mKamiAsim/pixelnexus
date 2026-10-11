@@ -1,0 +1,10 @@
+id: rank-order
+name: Rank-order filter
+aliases:
+- Percentile filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Percentile filter. Rank given as an index or a percentile.

@@ -1,0 +1,8 @@
+id: directional-shearlet
+name: Shearlet-inspired directional filter
+family: frequency
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: Sheared frequency masks. Not a true shearlet transform.

@@ -1,0 +1,10 @@
+id: sift
+name: SIFT
+aliases:
+- SIFT-inspired scale-space keypoints
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: SIFT-inspired scale-space keypoints. OpenCV.

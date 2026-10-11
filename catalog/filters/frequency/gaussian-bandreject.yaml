@@ -1,0 +1,10 @@
+id: gaussian-bandreject
+name: Gaussian band-reject
+aliases:
+- Gaussian band-stop
+- Band-stop filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

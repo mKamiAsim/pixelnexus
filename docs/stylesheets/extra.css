@@ -1,0 +1,24 @@
+/* PixelNexus docs colors. The final palette follows the Phase 2 style tile. */
+:root {
+  --md-text-font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --md-code-font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #1f6feb;
+  --md-primary-fg-color--light: #4c8ef0;
+  --md-primary-fg-color--dark: #1858bc;
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: #2f81f7;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0f1115;
+}
+
+/* Keep wide formulas and tables readable on phones. */
+.md-typeset .arithmatex {
+  overflow-x: auto;
+}

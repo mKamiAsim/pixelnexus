@@ -1,0 +1,8 @@
+id: ccl-filter
+name: Connected-component filtering
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: Keep components by area range.

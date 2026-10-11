@@ -1,0 +1,12 @@
+id: scharr
+name: Scharr
+aliases:
+- Scharr X
+- Scharr Y
+- Scharr-based sharpening
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Scharr X and Y. Scharr-based sharpening is a mode of this entry.

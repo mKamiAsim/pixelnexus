@@ -1,0 +1,8 @@
+id: gabor
+name: Gabor filter
+family: linear
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Real, imaginary and magnitude outputs. Cross-listed in edges and texture.

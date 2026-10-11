@@ -1,0 +1,8 @@
+id: ffdnet
+name: FFDNet
+family: learned
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: Noise level as an input.

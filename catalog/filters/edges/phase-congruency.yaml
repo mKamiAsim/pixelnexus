@@ -1,0 +1,8 @@
+id: phase-congruency
+name: Phase congruency
+family: edges
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Kovesi method with log-Gabor filters. Cross-listed in texture.

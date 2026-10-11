@@ -1,0 +1,8 @@
+id: bm3d-lite
+name: BM3D-inspired denoising
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Simplified two-stage version. Clearly labeled as simplified.

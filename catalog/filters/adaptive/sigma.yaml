@@ -1,0 +1,10 @@
+id: sigma
+name: Sigma filter
+aliases:
+- Lee sigma filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Lee sigma filter.

@@ -1,0 +1,8 @@
+id: subject-heuristic
+name: Subject selection (classical)
+group: auto
+tier: core
+engine: browser
+phase: '4'
+status: planned
+planNotes: Saliency, center prior, edges, color clusters.

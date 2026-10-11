@@ -1,0 +1,8 @@
+id: directional-curvelet
+name: Curvelet-inspired directional filter
+family: frequency
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: Wedge masks in polar frequency tiles. Not a true curvelet transform.

@@ -1,0 +1,8 @@
+id: jpeg-cleanup
+name: JPEG artifact removal (classical)
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: Deblock plus dering. The learned version is in section 12.

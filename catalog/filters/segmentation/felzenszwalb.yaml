@@ -1,0 +1,10 @@
+id: felzenszwalb
+name: Felzenszwalb-Huttenlocher segmentation
+aliases:
+- Felzenszwalb graph-based segmentation
+family: segmentation
+tier: advanced
+engine: science
+phase: 6e
+status: planned
+planNotes: Felzenszwalb graph-based segmentation.

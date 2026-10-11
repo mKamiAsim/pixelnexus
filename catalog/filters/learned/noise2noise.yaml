@@ -1,0 +1,7 @@
+id: noise2noise
+name: Noise2Noise
+family: learned
+tier: planned
+engine: none
+status: planned
+reason: A training method. Needs a training loop on your own data.

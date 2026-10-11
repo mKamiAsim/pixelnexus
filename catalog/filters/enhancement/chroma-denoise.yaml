@@ -1,0 +1,8 @@
+id: chroma-denoise
+name: Chroma denoising
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Denoises chroma only.

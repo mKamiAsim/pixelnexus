@@ -1,0 +1,10 @@
+id: blackhat
+name: Black-hat
+aliases:
+- Bottom-hat
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: Bottom-hat.

@@ -1,0 +1,8 @@
+id: lbp
+name: Local Binary Pattern
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: scikit-image.

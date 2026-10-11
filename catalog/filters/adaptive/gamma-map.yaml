@@ -1,0 +1,8 @@
+id: gamma-map
+name: Gamma-MAP filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Speckle.

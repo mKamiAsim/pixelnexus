@@ -1,0 +1,8 @@
+id: cartoon
+name: Cartoon effect
+family: artistic
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Bilateral smoothing with an edge mask.

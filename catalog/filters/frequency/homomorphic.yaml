@@ -1,0 +1,8 @@
+id: homomorphic
+name: Homomorphic filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Cross-listed in enhancement.

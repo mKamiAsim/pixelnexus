@@ -1,0 +1,10 @@
+id: wiener-denoise
+name: Wiener filter (global)
+aliases:
+- Wiener linear filter
+family: linear
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Wiener linear filter. Frequency domain with a power spectrum estimate. No blur model.

@@ -1,0 +1,8 @@
+id: phase-only
+name: Phase-only filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Keeps phase, sets magnitude to one.

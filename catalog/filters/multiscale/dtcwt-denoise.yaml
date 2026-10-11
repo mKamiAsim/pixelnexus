@@ -1,0 +1,8 @@
+id: dtcwt-denoise
+name: Dual-tree complex wavelet filtering
+family: multiscale
+tier: optional
+engine: science
+phase: 6b
+status: planned
+planNotes: Optional `dtcwt` package. Check NumPy 2 support first. If it fails, status becomes Planned.

@@ -1,0 +1,8 @@
+id: degrade-blur
+name: Apply a known blur
+family: utility
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Motion, defocus or Gaussian PSF, kept for restoration demos.

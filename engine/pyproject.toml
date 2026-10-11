@@ -1,0 +1,26 @@
+[project]
+name = "pixelnexus-engine"
+version = "0.1.0"
+description = "PixelNexus science engine: advanced image processing served over a local HTTP API."
+license = "MIT"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "fastapi>=0.118",
+  "uvicorn[standard]>=0.37",
+  "pydantic>=2.11",
+  "numpy>=2.2",
+  "scipy>=1.16",
+  "scikit-image>=0.25",
+  "opencv-contrib-python-headless>=4.12",
+  "pywavelets>=1.9",
+  "pillow>=11.3",
+  "pyyaml>=6.0.2",
+  "jsonschema>=4.25",
+]
+
+[project.scripts]
+pixelnexus-engine = "pixelnexus_engine.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.8,<0.13"]
+build-backend = "uv_build"

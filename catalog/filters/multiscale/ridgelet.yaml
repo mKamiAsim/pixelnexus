@@ -1,0 +1,8 @@
+id: ridgelet
+name: Ridgelet filtering
+family: multiscale
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: Radon plus 1D wavelet. Labeled as an approximation.

@@ -1,0 +1,8 @@
+id: steerable-pyramid
+name: Steerable pyramid filters
+family: multiscale
+tier: optional
+engine: science
+phase: 6b
+status: planned
+planNotes: Optional `pyrtools` (MIT). Cross-listed in texture.

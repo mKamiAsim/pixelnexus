@@ -1,0 +1,7 @@
+id: blob-log
+name: LoG blob detection
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned

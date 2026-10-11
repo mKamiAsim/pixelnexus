@@ -1,0 +1,17 @@
+id: line-detector
+name: Line detectors
+aliases:
+- Horizontal line detector
+- Vertical line detector
+- Diagonal line detectors
+- Prewitt line masks
+- Sobel line masks
+- Laplacian-based line detector
+- Oriented line filters
+family: features
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Horizontal, vertical and diagonal masks. Prewitt and Sobel line masks. Laplacian-based line
+  detector. Oriented line filters.

@@ -1,0 +1,8 @@
+id: resize
+name: Resize
+family: utility
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Nearest, bilinear, bicubic and Lanczos.

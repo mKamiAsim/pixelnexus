@@ -1,0 +1,7 @@
+id: bm4d
+name: BM4D
+family: nonlinear
+tier: unsupported
+engine: none
+status: unsupported
+reason: Needs volumetric data. PixelNexus works on 2D images.

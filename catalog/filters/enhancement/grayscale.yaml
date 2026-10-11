@@ -1,0 +1,8 @@
+id: grayscale
+name: Grayscale conversion
+family: enhancement
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: Luma BT.709 by default, luminance option.

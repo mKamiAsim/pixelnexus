@@ -1,0 +1,21 @@
+id: wavelet-threshold
+name: Wavelet thresholding
+aliases:
+- Wavelet shrinkage denoising
+- Haar wavelet thresholding
+- Daubechies wavelet filtering
+- Symlet wavelet filtering
+- Coiflet wavelet filtering
+- Wavelet hard thresholding
+- Wavelet soft thresholding
+- VisuShrink
+- BayesShrink
+- SureShrink
+family: multiscale
+tier: advanced
+engine: science
+phase: 6b
+status: planned
+planNotes: 'One entry with presets. Aliases: Wavelet shrinkage denoising, Haar wavelet thresholding, Daubechies,
+  Symlet and Coiflet wavelet filtering, Wavelet hard thresholding, Wavelet soft thresholding, VisuShrink,
+  BayesShrink, SureShrink. SureShrink is our own SURE threshold code. Filter taps come from PyWavelets.'

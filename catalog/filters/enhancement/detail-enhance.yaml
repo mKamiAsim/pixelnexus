@@ -1,0 +1,11 @@
+id: detail-enhance
+name: Detail enhancement
+aliases:
+- Bilateral detail enhancement
+- Guided detail enhancement
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Bilateral or guided detail enhancement. Splits base and detail layers, then boosts detail.

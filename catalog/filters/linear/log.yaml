@@ -1,0 +1,8 @@
+id: log
+name: Laplacian of Gaussian
+family: linear
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Cross-listed in edges.

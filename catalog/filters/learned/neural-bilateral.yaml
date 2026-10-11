@@ -1,0 +1,7 @@
+id: neural-bilateral
+name: Neural bilateral filters
+family: learned
+tier: unsupported
+engine: none
+status: unsupported
+reason: A design idea, not a runnable filter. Explained in the docs.

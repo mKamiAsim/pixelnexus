@@ -1,0 +1,8 @@
+id: gamma
+name: Gamma correction
+family: enhancement
+tier: core
+engine: browser
+phase: '3'
+status: planned
+planNotes: Point operation.

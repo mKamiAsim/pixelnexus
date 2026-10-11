@@ -1,0 +1,8 @@
+id: dithering
+name: Dithering
+family: artistic
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Floyd-Steinberg, Atkinson and Bayer ordered.

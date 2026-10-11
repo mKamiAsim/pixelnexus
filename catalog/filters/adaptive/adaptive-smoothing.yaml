@@ -1,0 +1,8 @@
+id: adaptive-smoothing
+name: Adaptive smoothing
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Saint-Marc, Chen and Medioni.

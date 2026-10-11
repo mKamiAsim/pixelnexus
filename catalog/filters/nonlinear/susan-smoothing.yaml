@@ -1,0 +1,8 @@
+id: susan-smoothing
+name: SUSAN noise filter
+family: nonlinear
+tier: advanced
+engine: science
+phase: 6f
+status: planned
+planNotes: Smith and Brady.

@@ -1,0 +1,8 @@
+id: fir-lowpass
+name: Low-pass FIR filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Windowed sinc design. Hamming, Hann, Blackman and Kaiser windows. Separable.

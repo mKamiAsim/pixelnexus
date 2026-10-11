@@ -1,0 +1,8 @@
+id: local-variance
+name: Local variance filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Feature map output.

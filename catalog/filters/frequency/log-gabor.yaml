@@ -1,0 +1,8 @@
+id: log-gabor
+name: Log-Gabor filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Cross-listed in texture.

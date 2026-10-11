@@ -1,0 +1,7 @@
+id: gaussian-bandpass
+name: Gaussian band-pass
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

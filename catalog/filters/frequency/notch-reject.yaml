@@ -1,0 +1,10 @@
+id: notch-reject
+name: Notch-reject
+aliases:
+- Notch filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Notch filter. Click to place notches on the spectrum.

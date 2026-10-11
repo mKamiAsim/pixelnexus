@@ -1,0 +1,7 @@
+id: thickening
+name: Thickening
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned

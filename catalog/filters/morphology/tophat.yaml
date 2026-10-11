@@ -1,0 +1,10 @@
+id: tophat
+name: Top-hat
+aliases:
+- White top-hat
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: White top-hat.

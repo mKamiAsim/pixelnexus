@@ -1,0 +1,8 @@
+id: kirsch
+name: Kirsch compass
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Eight directions.

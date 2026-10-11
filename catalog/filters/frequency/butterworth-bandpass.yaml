@@ -1,0 +1,7 @@
+id: butterworth-bandpass
+name: Butterworth band-pass
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

@@ -1,0 +1,8 @@
+id: guided
+name: Guided filter
+family: nonlinear
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Box filters, linear cost.

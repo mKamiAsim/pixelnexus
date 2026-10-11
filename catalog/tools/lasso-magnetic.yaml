@@ -1,0 +1,8 @@
+id: lasso-magnetic
+name: Magnetic lasso
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: planned
+planNotes: Live wire on gradient cost.

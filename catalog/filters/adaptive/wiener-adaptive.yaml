@@ -1,0 +1,10 @@
+id: wiener-adaptive
+name: Adaptive Wiener filter
+aliases:
+- Wiener filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Wiener filter in the requirements 2 smoothing list. Local mean and variance (Lee 1980).

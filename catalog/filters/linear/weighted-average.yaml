@@ -1,0 +1,8 @@
+id: weighted-average
+name: Weighted average filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Editable kernel with normalization.

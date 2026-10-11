@@ -1,0 +1,7 @@
+id: eraser-select
+name: Selection eraser
+group: brush
+tier: core
+engine: browser
+phase: '4'
+status: planned

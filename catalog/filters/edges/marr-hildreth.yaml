@@ -1,0 +1,8 @@
+id: marr-hildreth
+name: Marr-Hildreth
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: LoG with zero crossings.

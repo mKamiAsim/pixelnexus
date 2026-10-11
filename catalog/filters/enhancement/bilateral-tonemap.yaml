@@ -1,0 +1,8 @@
+id: bilateral-tonemap
+name: Bilateral tone mapping
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Durand and Dorsey.

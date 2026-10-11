@@ -1,0 +1,9 @@
+id: butterworth-bandreject
+name: Butterworth band-reject
+aliases:
+- Butterworth band-stop
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned

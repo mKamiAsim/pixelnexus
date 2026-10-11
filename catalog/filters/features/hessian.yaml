@@ -1,0 +1,7 @@
+id: hessian
+name: Hessian-based filter
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned

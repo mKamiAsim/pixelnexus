@@ -1,0 +1,10 @@
+id: blob-dog
+name: DoG blob detection
+aliases:
+- DoG keypoint detection
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: DoG keypoint detection.

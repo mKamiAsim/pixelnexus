@@ -1,0 +1,8 @@
+id: glcm
+name: GLCM features
+family: features
+tier: advanced
+engine: science
+phase: 6d
+status: planned
+planNotes: Global table and an optional sliding-window map.

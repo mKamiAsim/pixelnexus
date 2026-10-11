@@ -1,0 +1,8 @@
+id: nnls-deconv
+name: Non-negative least-squares deconvolution
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Projected Landweber. Labeled with its method.

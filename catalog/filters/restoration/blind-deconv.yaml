@@ -1,0 +1,8 @@
+id: blind-deconv
+name: Blind deconvolution
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: Alternating Richardson-Lucy. Labeled experimental.

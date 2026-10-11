@@ -1,0 +1,8 @@
+id: structured-edge
+name: Structured Edge Detector
+family: edges
+tier: optional
+engine: science
+phase: 6d
+status: planned
+planNotes: Needs a downloaded model file. License check first.

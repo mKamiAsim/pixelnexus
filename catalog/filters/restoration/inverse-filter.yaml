@@ -1,0 +1,8 @@
+id: inverse-filter
+name: Inverse filtering
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: With a cutoff radius.

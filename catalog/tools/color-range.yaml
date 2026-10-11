@@ -1,0 +1,7 @@
+id: color-range
+name: Color Range
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: planned

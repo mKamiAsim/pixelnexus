@@ -1,0 +1,8 @@
+id: local-std
+name: Standard deviation filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Feature map output.

@@ -1,0 +1,8 @@
+id: bw-mix
+name: Black-and-white conversion
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Custom channel weights.

@@ -1,0 +1,7 @@
+id: external-gradient
+name: External gradient
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned

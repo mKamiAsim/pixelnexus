@@ -1,0 +1,8 @@
+id: comb
+name: Comb filter
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Notches at harmonics.

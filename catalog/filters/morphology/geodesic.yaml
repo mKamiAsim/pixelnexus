@@ -1,0 +1,8 @@
+id: geodesic
+name: Geodesic filtering
+family: morphology
+tier: core
+engine: browser
+phase: 5d
+status: planned
+planNotes: Geodesic dilation and erosion with a marker.

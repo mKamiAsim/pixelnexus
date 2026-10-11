@@ -1,0 +1,8 @@
+id: sparse-fista
+name: Sparse regularization
+family: restoration
+tier: advanced
+engine: science
+phase: 6c
+status: planned
+planNotes: FISTA with a wavelet L1 prior.

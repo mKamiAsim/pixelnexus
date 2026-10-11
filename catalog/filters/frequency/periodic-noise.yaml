@@ -1,0 +1,8 @@
+id: periodic-noise
+name: Periodic-noise suppression
+family: frequency
+tier: core
+engine: browser
+phase: 5e
+status: planned
+planNotes: Finds spectral peaks, then applies notches.

@@ -1,0 +1,8 @@
+id: high-pass
+name: High-pass filter
+family: linear
+tier: core
+engine: browser
+phase: 5a
+status: planned
+planNotes: Image minus a low-pass result, with a display offset.

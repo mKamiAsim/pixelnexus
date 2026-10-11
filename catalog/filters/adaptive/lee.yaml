@@ -1,0 +1,8 @@
+id: lee
+name: Lee filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Speckle.

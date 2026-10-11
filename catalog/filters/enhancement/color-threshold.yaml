@@ -1,0 +1,8 @@
+id: color-threshold
+name: Color threshold
+family: enhancement
+tier: core
+engine: browser
+phase: 5f
+status: planned
+planNotes: Binary output from HSV ranges.

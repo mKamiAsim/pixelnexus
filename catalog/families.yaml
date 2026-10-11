@@ -1,0 +1,58 @@
+# Filter families. The order sets the order in the Library panel and the docs.
+families:
+  - id: linear
+    name: Linear spatial filters
+    description: Each output pixel is a fixed weighted sum of nearby input pixels.
+    order: 1
+  - id: nonlinear
+    name: Nonlinear spatial filters
+    description: Each output pixel comes from a rule such as sorting, voting or data-dependent weights.
+    order: 2
+  - id: adaptive
+    name: Adaptive and statistical filters
+    description: The filter changes its behavior from local statistics such as mean and variance.
+    order: 3
+  - id: morphology
+    name: Morphological filters
+    description: Shape-based operations that probe the image with a structuring element.
+    order: 4
+  - id: frequency
+    name: Frequency-domain filters
+    description: Filters that change the Fourier spectrum of the image.
+    order: 5
+  - id: multiscale
+    name: Wavelet and multiscale filters
+    description: Filters that split the image into scales or subbands, change them and rebuild the image.
+    order: 6
+  - id: edges
+    name: Edge detection and boundary analysis
+    description: Operators that find places where brightness changes fast.
+    order: 7
+  - id: features
+    name: Texture, corners, blobs and features
+    description: Detectors and descriptors that find points, regions or texture patterns.
+    order: 8
+  - id: enhancement
+    name: Enhancement, illumination and color
+    description: Point operations, color transforms and illumination corrections.
+    order: 9
+  - id: restoration
+    name: Restoration and reconstruction
+    description: Methods that undo a known or estimated degradation such as blur or noise.
+    order: 10
+  - id: segmentation
+    name: Segmentation and regions
+    description: Methods that split the image into regions or objects.
+    order: 11
+  - id: learned
+    name: Deep learning and learned processing
+    description: Trained neural network models. Always optional.
+    order: 12
+  - id: artistic
+    name: Artistic and geometric effects
+    description: Stylized effects and image warps.
+    order: 13
+  - id: utility
+    name: Utilities
+    description: Noise generators, test degradations, metrics and basic geometry.
+    order: 14

@@ -1,0 +1,8 @@
+id: crop
+name: Crop
+family: utility
+tier: core
+engine: browser
+phase: '2'
+status: planned
+planNotes: Crop to selection or a set size.

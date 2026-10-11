@@ -1,0 +1,8 @@
+id: hysteresis
+name: Hysteresis thresholding
+family: edges
+tier: core
+engine: browser
+phase: 5c
+status: planned
+planNotes: Works on any response map.

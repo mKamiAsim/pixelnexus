@@ -1,0 +1,7 @@
+id: unet
+name: U-Net
+family: learned
+tier: unsupported
+engine: none
+status: unsupported
+reason: An architecture used inside other models. Docs explain it and link the models that use it.

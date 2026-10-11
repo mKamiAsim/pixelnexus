@@ -1,0 +1,8 @@
+id: ai-subject
+name: Subject selection
+group: ai
+tier: optional
+engine: model
+phase: '7'
+status: planned
+planNotes: Salient object model (BiRefNet or IS-Net). Background selection is its inverse.

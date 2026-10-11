@@ -1,0 +1,8 @@
+id: local-range
+name: Range filter
+family: adaptive
+tier: core
+engine: browser
+phase: 5b
+status: planned
+planNotes: Feature map output.

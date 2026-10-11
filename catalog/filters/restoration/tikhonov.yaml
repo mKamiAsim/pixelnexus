@@ -1,0 +1,7 @@
+id: tikhonov
+name: Tikhonov regularization
+family: restoration
+tier: core
+engine: browser
+phase: 5e
+status: planned

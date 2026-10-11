@@ -1,0 +1,7 @@
+id: diffusion-restoration
+name: Diffusion-based restoration
+family: learned
+tier: planned
+engine: none
+status: planned
+reason: Very large models.
