@@ -1,17 +1,23 @@
 """Write reference test data for the browser engine.
 
 Usage:
-    uv run python tools/make_fixtures.py          # write web/tests/fixtures/*.json
-    uv run python tools/make_fixtures.py --check  # fail if the files are out of date
+    uv run python tools/make_fixtures.py          # write everything in web/tests/fixtures/
+    uv run python tools/make_fixtures.py --check  # fail if the JSON files are out of date
 
-The browser engine is checked against SciPy, OpenCV and scikit-image. This script writes the
-small synthetic input images now. From Phase 3 it also writes one reference case per browser
-filter: input name, parameters, expected output and the tolerance, plus the library call used.
+What it writes:
+    synthetic.json   Small synthetic images shared by browser and engine tests.
+    color.json       Color conversions computed with scikit-image.
+    gaussian.json    Gaussian kernels computed with SciPy.
+    formats/         Small image files in every supported format, encoded by Pillow, and
+                     manifest.json with the header facts and one decoded pixel for each file.
+
+From Phase 3 it also writes one reference case per browser filter.
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 from collections.abc import Callable
@@ -19,13 +25,22 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import PIL
 from numpy.typing import NDArray
+from PIL import Image as PILImage
+from PIL import ImageCms, ImageOps
+from scipy import ndimage
+from skimage import color as skcolor
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "web" / "tests" / "fixtures"
+FORMATS_DIR = OUT_DIR / "formats"
 SEED = 20261011
 
 Image = NDArray[np.uint8]
+
+
+# Synthetic inputs ------------------------------------------------------------------------------
 
 
 def gradient_5x5() -> Image:
@@ -77,14 +92,248 @@ def encode(image: Image) -> dict[str, Any]:
     }
 
 
+# Color conversions -----------------------------------------------------------------------------
+
+
+def color_cases() -> dict[str, Any]:
+    rng = np.random.default_rng(SEED)
+    fixed = [
+        [0, 0, 0],
+        [255, 255, 255],
+        [255, 0, 0],
+        [0, 255, 0],
+        [0, 0, 255],
+        [128, 128, 128],
+        [10, 10, 10],
+        [255, 255, 0],
+        [0, 255, 255],
+        [255, 0, 255],
+        [200, 120, 40],
+    ]
+    rgb = np.array(fixed + rng.integers(0, 256, size=(53, 3)).tolist(), dtype=np.uint8)
+    as_image = rgb.reshape(1, -1, 3)
+    hsv = skcolor.rgb2hsv(as_image).reshape(-1, 3)
+    lab = skcolor.rgb2lab(as_image, illuminant="D65", observer="2").reshape(-1, 3)
+    return {
+        "generator": "tools/make_fixtures.py",
+        "source": "skimage.color.rgb2hsv and skimage.color.rgb2lab (D65, 2 degree observer)",
+        "tolerance": {"hue": 1e-6, "other": 1e-6, "lab": 1e-4},
+        "cases": [
+            {
+                "rgb": [int(v) for v in rgb[i]],
+                "hsv": [float(hsv[i, 0] * 360), float(hsv[i, 1]), float(hsv[i, 2])],
+                "lab": [float(v) for v in lab[i]],
+            }
+            for i in range(len(rgb))
+        ],
+    }
+
+
+# Gaussian kernels ------------------------------------------------------------------------------
+
+
+def gaussian_cases() -> dict[str, Any]:
+    cases = []
+    for sigma, truncate in [(0.5, 3.0), (1.0, 3.0), (1.6, 2.0), (2.5, 4.0), (0.8, 4.0)]:
+        radius = int(truncate * sigma + 0.5)
+        size = 4 * radius + 3
+        delta = np.zeros(size)
+        delta[size // 2] = 1.0
+        response = ndimage.gaussian_filter1d(delta, sigma, truncate=truncate, mode="constant")
+        kernel = response[size // 2 - radius : size // 2 + radius + 1]
+        cases.append(
+            {"sigma": sigma, "truncate": truncate, "radius": radius, "kernel": kernel.tolist()}
+        )
+    return {
+        "generator": "tools/make_fixtures.py",
+        "source": "scipy.ndimage.gaussian_filter1d applied to a unit impulse",
+        "tolerance": 1e-12,
+        "cases": cases,
+    }
+
+
+# Image files in every supported format ---------------------------------------------------------
+
+# Odd, non-square size, so swapped width and height show up in tests.
+FILE_WIDTH = 37
+FILE_HEIGHT = 23
+PROBE = (5, 3)
+
+
+def _rgb_pattern() -> PILImage.Image:
+    yy, xx = np.mgrid[0:FILE_HEIGHT, 0:FILE_WIDTH]
+    rgb = np.stack(
+        [xx * 255 // (FILE_WIDTH - 1), yy * 255 // (FILE_HEIGHT - 1), (xx + yy) * 4 % 256],
+        axis=-1,
+    ).astype(np.uint8)
+    return PILImage.fromarray(rgb)
+
+
+def _rgba_pattern() -> PILImage.Image:
+    image = _rgb_pattern().convert("RGBA")
+    alpha = np.tile(np.linspace(0, 255, FILE_WIDTH).astype(np.uint8), (FILE_HEIGHT, 1))
+    image.putalpha(PILImage.fromarray(alpha))
+    return image
+
+
+def _save(image: PILImage.Image, fmt: str, **options: Any) -> bytes:
+    buffer = io.BytesIO()
+    image.save(buffer, fmt, **options)
+    return buffer.getvalue()
+
+
+def _probe(data: bytes) -> list[int]:
+    """RGBA at PROBE after decoding with Pillow and applying EXIF orientation."""
+    with PILImage.open(io.BytesIO(data)) as opened:
+        oriented = ImageOps.exif_transpose(opened)
+        if oriented.mode.startswith("I;16"):
+            # Pillow clips 16-bit values when converting. Browsers scale them down instead.
+            value = round(int(oriented.getpixel(PROBE)) / 257)  # type: ignore[arg-type]
+            return [value, value, value, 255]
+        rgba = oriented.convert("RGBA")
+        return [int(v) for v in rgba.getpixel(PROBE)]  # type: ignore[union-attr]
+
+
+def format_files() -> list[tuple[str, bytes, dict[str, Any]]]:
+    """Return (file name, bytes, expected header facts) for each test file."""
+    rgb = _rgb_pattern()
+    rgba = _rgba_pattern()
+    gray = rgb.convert("L")
+    gray16 = PILImage.fromarray((np.asarray(gray, dtype=np.uint16) * 257).astype(np.uint16))
+    palette = rgb.quantize(colors=16)
+    palette.info["transparency"] = 0
+    srgb_profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    exif = PILImage.Exif()
+    exif[0x0112] = 6
+    frames = [rgb, ImageOps.invert(rgb)]
+    size = {"width": FILE_WIDTH, "height": FILE_HEIGHT}
+
+    files: list[tuple[str, bytes, dict[str, Any]]] = [
+        ("png-rgb8.png", _save(rgb, "PNG"), {"format": "png", "bitDepth": 8, "channels": 3}),
+        (
+            "png-rgba8.png",
+            _save(rgba, "PNG"),
+            {"format": "png", "bitDepth": 8, "channels": 4, "hasAlpha": True},
+        ),
+        ("png-gray16.png", _save(gray16, "PNG"), {"format": "png", "bitDepth": 16, "channels": 1}),
+        (
+            "png-palette-trns.png",
+            _save(palette, "PNG", transparency=0),
+            {"format": "png", "bitDepth": 4, "colorModel": "palette", "hasAlpha": True},
+        ),
+        (
+            "png-icc.png",
+            _save(rgb, "PNG", icc_profile=srgb_profile),
+            {"format": "png", "hasColorProfile": True},
+        ),
+        (
+            "jpeg-rgb.jpg",
+            _save(rgb, "JPEG", quality=92),
+            {"format": "jpeg", "bitDepth": 8, "channels": 3, "lossy": True},
+        ),
+        (
+            "jpeg-gray.jpg",
+            _save(gray, "JPEG", quality=92),
+            {"format": "jpeg", "channels": 1, "colorModel": "gray", "lossy": True},
+        ),
+        (
+            "jpeg-exif-orient6.jpg",
+            _save(rgb, "JPEG", quality=92, exif=exif.tobytes()),
+            {"format": "jpeg", "orientation": 6, "lossy": True},
+        ),
+        (
+            "jpeg-cmyk.jpg",
+            _save(rgb.convert("CMYK"), "JPEG", quality=92),
+            {"format": "jpeg", "channels": 4, "colorModel": "cmyk", "lossy": True},
+        ),
+        (
+            "webp-lossy.webp",
+            _save(rgb, "WEBP", quality=90),
+            {"format": "webp", "hasAlpha": False, "lossy": True},
+        ),
+        (
+            "webp-lossless-alpha.webp",
+            _save(rgba, "WEBP", lossless=True),
+            {"format": "webp", "hasAlpha": True},
+        ),
+        (
+            "webp-anim.webp",
+            _save(frames[0], "WEBP", save_all=True, append_images=frames[1:], lossless=True),
+            {"format": "webp", "frames": 2},
+        ),
+        (
+            "gif-anim.gif",
+            _save(
+                frames[0].quantize(colors=32),
+                "GIF",
+                save_all=True,
+                append_images=[f.quantize(colors=32) for f in frames[1:]],
+                transparency=0,
+            ),
+            {"format": "gif", "frames": 2, "hasAlpha": True, "colorModel": "palette"},
+        ),
+        ("bmp-24.bmp", _save(rgb, "BMP"), {"format": "bmp", "bitDepth": 8, "channels": 3}),
+        (
+            "bmp-8-palette.bmp",
+            _save(rgb.quantize(colors=200), "BMP"),
+            {"format": "bmp", "colorModel": "palette"},
+        ),
+        ("tiff-rgb8.tif", _save(rgb, "TIFF"), {"format": "tiff", "bitDepth": 8, "channels": 3}),
+        (
+            "tiff-gray16.tif",
+            _save(gray16, "TIFF"),
+            {"format": "tiff", "bitDepth": 16, "channels": 1},
+        ),
+        (
+            "tiff-two-pages.tif",
+            _save(frames[0], "TIFF", save_all=True, append_images=frames[1:]),
+            {"format": "tiff", "frames": 2},
+        ),
+        (
+            "avif-rgb.avif",
+            _save(rgb, "AVIF", quality=90),
+            {"format": "avif", "hasAlpha": False, "lossy": True},
+        ),
+        (
+            "avif-alpha.avif",
+            _save(rgba, "AVIF", quality=90),
+            {"format": "avif", "hasAlpha": True, "lossy": True},
+        ),
+    ]
+    result = []
+    for name, data, expected in files:
+        oriented = expected.get("orientation") in (5, 6, 7, 8)
+        dims = (
+            {"width": FILE_HEIGHT, "height": FILE_WIDTH, "fileWidth": FILE_WIDTH}
+            if oriented
+            else size
+        )
+        result.append(
+            (name, data, {**size, **expected, "decoded": {**dims, "probe": _probe(data)}})
+        )
+    return result
+
+
 def build() -> dict[str, str]:
-    """Return file name to JSON text for every fixture file."""
+    """Return file name to JSON text for every JSON fixture file."""
     synthetic = {
         "generator": "tools/make_fixtures.py",
         "description": "Small synthetic inputs shared by browser and engine tests.",
         "images": {name: encode(make()) for name, make in SYNTHETIC.items()},
     }
-    return {"synthetic.json": json.dumps(synthetic, indent=1) + "\n"}
+    manifest = {
+        "generator": "tools/make_fixtures.py",
+        "description": "Expected header facts for files encoded by Pillow.",
+        "pillow": PIL.__version__,
+        "probe": list(PROBE),
+        "files": {name: facts for name, _data, facts in format_files()},
+    }
+    return {
+        "synthetic.json": json.dumps(synthetic, indent=1) + "\n",
+        "color.json": json.dumps(color_cases(), indent=1) + "\n",
+        "gaussian.json": json.dumps(gaussian_cases(), indent=1) + "\n",
+        "formats/manifest.json": json.dumps(manifest, indent=1) + "\n",
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -101,6 +350,12 @@ def main(argv: list[str] | None = None) -> int:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
+    if args.check:
+        missing = [n for n, _d, _f in format_files() if not (FORMATS_DIR / n).exists()]
+        stale.extend(f"formats/{n}" for n in missing)
+    else:
+        for name, data, _facts in format_files():
+            (FORMATS_DIR / name).write_bytes(data)
     if stale:
         print("Out of date: " + ", ".join(stale) + ". Run tools/make_fixtures.py.")
         return 1

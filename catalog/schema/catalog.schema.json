@@ -282,6 +282,7 @@
           ]
         },
         "default": {
+          "$ref": "#/$defs/paramValue",
           "description": "Default value. Its type must match the parameter type."
         },
         "min": {
@@ -420,6 +421,7 @@
           "pattern": "^[a-z][a-zA-Z0-9]*$"
         },
         "default": {
+          "$ref": "#/$defs/paramValue",
           "description": "Overrides the shared default."
         },
         "label": {
@@ -1298,6 +1300,15 @@
           "type": "string"
         }
       }
+    },
+    "paramValue": {
+      "title": "ParamValue",
+      "description": "A parameter value.",
+      "type": [
+        "number",
+        "string",
+        "boolean"
+      ]
     }
   }
 }

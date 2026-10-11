@@ -1,0 +1,353 @@
+{
+ "generator": "tools/make_fixtures.py",
+ "description": "Expected header facts for files encoded by Pillow.",
+ "pillow": "12.3.0",
+ "probe": [
+  5,
+  3
+ ],
+ "files": {
+  "png-rgb8.png": {
+   "width": 37,
+   "height": 23,
+   "format": "png",
+   "bitDepth": 8,
+   "channels": 3,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "png-rgba8.png": {
+   "width": 37,
+   "height": 23,
+   "format": "png",
+   "bitDepth": 8,
+   "channels": 4,
+   "hasAlpha": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     35
+    ]
+   }
+  },
+  "png-gray16.png": {
+   "width": 37,
+   "height": 23,
+   "format": "png",
+   "bitDepth": 16,
+   "channels": 1,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     34,
+     34,
+     34,
+     255
+    ]
+   }
+  },
+  "png-palette-trns.png": {
+   "width": 37,
+   "height": 23,
+   "format": "png",
+   "bitDepth": 4,
+   "colorModel": "palette",
+   "hasAlpha": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     25,
+     23,
+     22,
+     255
+    ]
+   }
+  },
+  "png-icc.png": {
+   "width": 37,
+   "height": 23,
+   "format": "png",
+   "hasColorProfile": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "jpeg-rgb.jpg": {
+   "width": 37,
+   "height": 23,
+   "format": "jpeg",
+   "bitDepth": 8,
+   "channels": 3,
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     38,
+     33,
+     30,
+     255
+    ]
+   }
+  },
+  "jpeg-gray.jpg": {
+   "width": 37,
+   "height": 23,
+   "format": "jpeg",
+   "channels": 1,
+   "colorModel": "gray",
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     34,
+     34,
+     34,
+     255
+    ]
+   }
+  },
+  "jpeg-exif-orient6.jpg": {
+   "width": 37,
+   "height": 23,
+   "format": "jpeg",
+   "orientation": 6,
+   "lossy": true,
+   "decoded": {
+    "width": 23,
+    "height": 37,
+    "fileWidth": 37,
+    "probe": [
+     22,
+     197,
+     80,
+     255
+    ]
+   }
+  },
+  "jpeg-cmyk.jpg": {
+   "width": 37,
+   "height": 23,
+   "format": "jpeg",
+   "channels": 4,
+   "colorModel": "cmyk",
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     31,
+     255
+    ]
+   }
+  },
+  "webp-lossy.webp": {
+   "width": 37,
+   "height": 23,
+   "format": "webp",
+   "hasAlpha": false,
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     39,
+     31,
+     34,
+     255
+    ]
+   }
+  },
+  "webp-lossless-alpha.webp": {
+   "width": 37,
+   "height": 23,
+   "format": "webp",
+   "hasAlpha": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     35
+    ]
+   }
+  },
+  "webp-anim.webp": {
+   "width": 37,
+   "height": 23,
+   "format": "webp",
+   "frames": 2,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "gif-anim.gif": {
+   "width": 37,
+   "height": 23,
+   "format": "gif",
+   "frames": 2,
+   "hasAlpha": true,
+   "colorModel": "palette",
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     25,
+     23,
+     22,
+     255
+    ]
+   }
+  },
+  "bmp-24.bmp": {
+   "width": 37,
+   "height": 23,
+   "format": "bmp",
+   "bitDepth": 8,
+   "channels": 3,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "bmp-8-palette.bmp": {
+   "width": 37,
+   "height": 23,
+   "format": "bmp",
+   "colorModel": "palette",
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     42,
+     40,
+     38,
+     255
+    ]
+   }
+  },
+  "tiff-rgb8.tif": {
+   "width": 37,
+   "height": 23,
+   "format": "tiff",
+   "bitDepth": 8,
+   "channels": 3,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "tiff-gray16.tif": {
+   "width": 37,
+   "height": 23,
+   "format": "tiff",
+   "bitDepth": 16,
+   "channels": 1,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     34,
+     34,
+     34,
+     255
+    ]
+   }
+  },
+  "tiff-two-pages.tif": {
+   "width": 37,
+   "height": 23,
+   "format": "tiff",
+   "frames": 2,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     35,
+     34,
+     32,
+     255
+    ]
+   }
+  },
+  "avif-rgb.avif": {
+   "width": 37,
+   "height": 23,
+   "format": "avif",
+   "hasAlpha": false,
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     36,
+     35,
+     33,
+     255
+    ]
+   }
+  },
+  "avif-alpha.avif": {
+   "width": 37,
+   "height": 23,
+   "format": "avif",
+   "hasAlpha": true,
+   "lossy": true,
+   "decoded": {
+    "width": 37,
+    "height": 23,
+    "probe": [
+     36,
+     35,
+     33,
+     35
+    ]
+   }
+  }
+ }
+}

@@ -37,3 +37,15 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 - MkDocs must stay below 2.0, and the docs must not use extra plugins or theme overrides (PLAN.md risk R4).
 - OpenCV 5 moved BRISK and AKAZE to `cv2.xfeatures2d`.
 - Tool parameters pass through JSON. Write special characters in Python source as `\N{EM DASH}` style escapes, not `\u` escapes.
+
+## Setting up a new machine
+
+Needs Git, Node.js 22 or newer, uv, and optionally Docker and the GitHub CLI (`gh`).
+
+1. `git clone https://github.com/mKamiAsim/pixelnexus.git`, then check out the newest `claude/phase-*` branch.
+2. `corepack enable pnpm`, then `pnpm install` and `uv sync`.
+3. `pnpm --filter @pixelnexus/web exec playwright install chromium` (browser tests and E2E need it).
+4. Run the full check list in `.github/workflows/ci.yml` to confirm the machine is ready.
+5. Read "Current status" in `planning/PLAN.md` and continue from "Next action".
+
+Memory notes from earlier sessions live on the first machine only. Everything they hold is also in `planning/` and this file.
