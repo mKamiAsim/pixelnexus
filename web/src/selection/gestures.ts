@@ -20,6 +20,15 @@ import {
 import { ellipseMask, paintStroke, polygonMask, rectMask, type Point } from "@/core/mask/raster";
 import { featherMask } from "@/core/mask/refine";
 import type { ColorSpace } from "@/core/selection/color";
+import {
+  boxAround,
+  edgeMap,
+  livePath,
+  maxGradient,
+  pathLength,
+  strongestEdge,
+  type Pixel,
+} from "@/core/selection/livewire";
 import { magicWand } from "@/core/selection/wand";
 
 import type { SelectionToolId } from "./ids";
@@ -266,6 +275,144 @@ function polygonLasso(ctx: GestureContext): Gesture {
   };
 }
 
+/**
+ * The magnetic lasso. Click to start, then move the pointer: the path from the last anchor
+ * follows the strongest edge within the width setting, by the live wire in
+ * core/selection/livewire.ts. After the anchor spacing, an anchor is fixed by itself. Click to
+ * fix one. Close on the first anchor, with a double-click or with Enter. Backspace removes the
+ * last anchor and Escape cancels.
+ */
+/** Step cost of pixels that the closing path of the magnetic lasso may not use. */
+const BLOCKED = 1e6;
+
+function magneticLasso(ctx: GestureContext): Gesture {
+  const { image } = ctx;
+  const width = num(ctx.values, "width", 10);
+  const contrast = num(ctx.values, "contrast", 10) / 100;
+  const spacing = num(ctx.values, "spacing", 40);
+  const margin = Math.max(24, 2 * width);
+  /** The farthest the pointer gets from the last anchor before an anchor is set on the way. */
+  const reach = Math.max(64, 2 * spacing);
+  let gmax: number | null = null;
+  let mode: CombineMode = ctx.mode;
+  /** The fixed path, pixel by pixel, from the first anchor to the last one. */
+  const fixed: Pixel[] = [];
+  /** For each anchor, the length of `fixed` when it was set, to undo it with Backspace. */
+  const anchors: number[] = [];
+  let live: Pixel[] = [];
+
+  const pixel = (p: Point): Pixel => ({
+    x: Math.min(image.width - 1, Math.max(0, Math.floor(p.x))),
+    y: Math.min(image.height - 1, Math.max(0, Math.floor(p.y))),
+  });
+  const center = (q: Pixel): Point => ({ x: q.x + 0.5, y: q.y + 0.5 });
+  const last = () => fixed[fixed.length - 1] as Pixel;
+
+  const mapAround = (a: Pixel, b: Pixel) => {
+    gmax ??= maxGradient(image);
+    return edgeMap(image, boxAround(image, a, b, margin + width), gmax, contrast);
+  };
+  /** The strongest edge within the width setting, or the pixel itself. */
+  const snap = (q: Pixel) => strongestEdge(mapAround(q, q), q, width) ?? q;
+  /** The live path from the last anchor to `to`, or to the strongest edge near it. */
+  const wire = (to: Pixel, snapTo: boolean): Pixel[] => {
+    const map = mapAround(last(), to);
+    const target = (snapTo ? strongestEdge(map, to, width) : null) ?? to;
+    return livePath(map, last(), target);
+  };
+  const fix = (path: Pixel[]) => {
+    anchors.push(fixed.length);
+    fixed.push(...path.slice(1));
+    live = [];
+  };
+  const outline = (): GestureUpdate => {
+    const points = [...fixed, ...live.slice(1)].map(center);
+    const end = points[points.length - 1];
+    return {
+      outline: { kind: "path", points, closed: false, ...(end ? { rubber: end } : {}) },
+    };
+  };
+  const follow = (p: Point): GestureUpdate => {
+    if (fixed.length === 0) return {};
+    const to = pixel(p);
+    // A far move is walked in steps with an anchor after each, so every search stays small.
+    for (;;) {
+      const from = last();
+      const d = Math.hypot(to.x - from.x, to.y - from.y);
+      if (d <= reach) break;
+      const step = wire(
+        {
+          x: Math.round(from.x + ((to.x - from.x) * reach) / d),
+          y: Math.round(from.y + ((to.y - from.y) * reach) / d),
+        },
+        true,
+      );
+      if (step.length < 2) break;
+      fix(step);
+    }
+    const path = wire(to, true);
+    if (pathLength(path) > spacing && path.length > 1) fix(path);
+    else live = path;
+    return outline();
+  };
+  const close = (): GestureUpdate => {
+    const first = fixed[0];
+    if (!first) return { outline: null, end: true };
+    // The way back may not use the pixels of the path so far. Without this rule it could run
+    // back along the same edge, and the outline would have no inside.
+    const map = mapAround(last(), first);
+    const { box } = map;
+    for (const q of fixed.slice(1, -1)) {
+      const bx = q.x - box.x;
+      const by = q.y - box.y;
+      if (bx >= 0 && by >= 0 && bx < box.width && by < box.height) {
+        map.cost[by * box.width + bx] = BLOCKED;
+      }
+    }
+    const back = livePath(map, last(), first);
+    const points = [...fixed, ...back.slice(1)].map(center);
+    const antiAlias = ctx.values.antiAlias !== false;
+    return finish(
+      ctx,
+      points.length >= 3 ? polygonMask(image.width, image.height, points, antiAlias) : null,
+      mode,
+    );
+  };
+
+  return {
+    down(p, mods) {
+      const first = fixed[0];
+      if (!first) {
+        mode = modeFor(mods, ctx.mode);
+        fixed.push(snap(pixel(p)));
+        anchors.push(0);
+        return outline();
+      }
+      const start = center(first);
+      const near = Math.hypot(p.x - start.x, p.y - start.y) * ctx.zoom <= CLOSE_DISTANCE;
+      if (near && fixed.length >= 3) return close();
+      fix(wire(pixel(p), true));
+      return outline();
+    },
+    drag: (p) => follow(p),
+    up: () => ({}),
+    hover: (p) => follow(p),
+    doubleClick: () => close(),
+    key(key) {
+      if (key === "Enter") return close();
+      if (key === "Escape") return { outline: null, end: true };
+      if (key === "Backspace") {
+        const at = anchors.pop();
+        if (at === undefined || at === 0) return { outline: null, end: true };
+        fixed.length = at;
+        live = [];
+        return outline();
+      }
+      return null;
+    },
+  };
+}
+
 function brush(ctx: GestureContext, eraser: boolean): Gesture {
   const { width, height } = ctx.image;
   const stroke = createMask(width, height);
@@ -339,6 +486,8 @@ export function createGesture(tool: SelectionToolId, ctx: GestureContext): Gestu
       return lasso(ctx);
     case "lasso-polygon":
       return polygonLasso(ctx);
+    case "lasso-magnetic":
+      return magneticLasso(ctx);
     case "brush-select":
       return brush(ctx, false);
     case "eraser-select":

@@ -175,4 +175,44 @@ describe("selection gestures", () => {
     const mask = done.commit?.mask;
     expect(mask && maskBounds(mask)).toEqual({ x: 0, y: 0, width: 5, height: 10 });
   });
+
+  it("follows the edges of a square with the magnetic lasso", () => {
+    // A dark square from (10, 8) to (30, 22) on a light background.
+    const picture = createImage(40, 30);
+    for (let y = 0; y < 30; y++) {
+      for (let x = 0; x < 40; x++) {
+        const v = x >= 10 && x < 30 && y >= 8 && y < 22 ? 30 : 220;
+        picture.data.set([v, v, v, 255], (y * 40 + x) * 4);
+      }
+    }
+    const g = gesture(
+      "lasso-magnetic",
+      ctx({ image: picture, values: { width: 4, contrast: 10, spacing: 200 } }),
+    );
+    // Click near three corners, a little off the edge. The path snaps to the edge.
+    g.down({ x: 11.5, y: 6.5 }, none);
+    g.hover?.({ x: 29, y: 6.5 });
+    g.down({ x: 29, y: 6.5 }, none);
+    g.hover?.({ x: 31.5, y: 21 });
+    g.down({ x: 31.5, y: 21 }, none);
+    const done = g.key?.("Enter");
+    const mask = done?.commit?.mask;
+    if (!mask) throw new Error("expected a selection");
+    const bounds = maskBounds(mask);
+    // The outline runs along the edge pixels, so the selection is the square give or take one
+    // pixel on each side.
+    expect(bounds?.x).toBeGreaterThanOrEqual(8);
+    expect(bounds?.x).toBeLessThanOrEqual(10);
+    expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeGreaterThanOrEqual(30);
+    expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(32);
+    expect(maskStats(mask).area).toBeGreaterThan(20 * 14 * 0.8);
+    expect(maskStats(mask).area).toBeLessThan(22 * 16);
+    // Backspace takes back the last anchor, and Escape ends the gesture.
+    const again = gesture("lasso-magnetic", ctx({ image: picture }));
+    again.down({ x: 11, y: 7 }, none);
+    again.down({ x: 29, y: 7 }, none);
+    const back = again.key?.("Backspace");
+    expect(back?.outline?.kind === "path" ? back.outline.points.length : 0).toBe(1);
+    expect(again.key?.("Escape")).toEqual({ outline: null, end: true });
+  });
 });

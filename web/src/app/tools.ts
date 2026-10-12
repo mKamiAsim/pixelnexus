@@ -67,6 +67,12 @@ export const TOOLS: readonly ToolInfo[] = [
     hint: "Click to add corners. Close on the first corner, with a double-click or with Enter. Backspace removes a corner.",
   },
   {
+    id: "lasso-magnetic",
+    label: toolName("lasso-magnetic"),
+    group: "lasso",
+    hint: "Click on an edge, then move along it. Click to fix a point. Close on the first point, with a double-click or with Enter.",
+  },
+  {
     id: "brush-select",
     label: toolName("brush-select"),
     shortcut: "B",
