@@ -20,10 +20,12 @@ import {
 import { borderMask, featherMask, growMask, shrinkMask, smoothMask } from "@/core/mask/refine";
 import { snapToEdges } from "@/core/selection/snap";
 import { decodeInWorker } from "@/core/workers/decode-client";
+import { subjectInWorker } from "@/core/workers/subject-client";
 import { activeDocument, useDocuments, type ImageDocument } from "@/state/documents";
 import { announce, notify } from "@/state/notifications";
 import { useSelection, type RefineKind } from "@/state/selection";
 import { useSettings } from "@/state/settings";
+import { useUi } from "@/state/ui";
 
 import { download } from "./download";
 
@@ -213,6 +215,34 @@ export function snapSelection(values: {
     smoothing: values.smoothing,
   });
   commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, "Snap to edges");
+}
+
+/**
+ * Select > Subject and Select > Background: the classical subject heuristic in a worker. The
+ * result replaces the selection.
+ */
+export async function selectSubject(background: boolean): Promise<void> {
+  const doc = activeDocument();
+  if (!doc) return;
+  const label = background ? "Select background" : "Select subject";
+  const { beginWork, endWork } = useUi.getState();
+  beginWork(background ? "Finding the background" : "Finding the subject");
+  announce(background ? "Finding the background." : "Finding the subject.");
+  try {
+    const subject = await subjectInWorker(doc.current);
+    const now = activeDocument();
+    if (now?.id !== doc.id || now.current !== doc.current) return;
+    const mask = background ? invertMask(subject) : subject;
+    commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, label);
+  } catch (error) {
+    notify(
+      "error",
+      `${label} failed`,
+      error instanceof Error ? error.message : "The selection could not be made.",
+    );
+  } finally {
+    endWork();
+  }
 }
 
 export function saveSelection(name: string): void {

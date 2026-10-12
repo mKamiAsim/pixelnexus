@@ -37,6 +37,7 @@ import {
   selectAll,
   selectFromAlpha,
   selectFromLuminance,
+  selectSubject,
   toggleSelectionEnabled,
   type RefineKind,
 } from "./selectionActions";
@@ -394,6 +395,24 @@ export function buildCommands(): Command[] {
         useUi.getState().setDialog("select-modify");
       },
     })),
+    {
+      id: "select.subject",
+      label: "Subject",
+      menu: "select",
+      section: "auto",
+      keywords: "subject object main thing saliency automatic",
+      enabled: hasDocument,
+      run: () => void selectSubject(false),
+    },
+    {
+      id: "select.background",
+      label: "Background",
+      menu: "select",
+      section: "auto",
+      keywords: "background sky backdrop automatic",
+      enabled: hasDocument,
+      run: () => void selectSubject(true),
+    },
     {
       id: "select.modify.snap",
       label: "Snap to edges...",

@@ -35,7 +35,10 @@ async function chooseFilter(page: Page, query: string, name: string) {
 
 async function menu(page: Page, top: string, ...items: (string | RegExp)[]) {
   await page.getByRole("menuitem", { name: top, exact: true }).click();
-  for (const item of items) await page.getByRole("menuitem", { name: item }).first().click();
+  for (const item of items) {
+    const name = typeof item === "string" ? { name: item, exact: true } : { name: item };
+    await page.getByRole("menuitem", name).first().click();
+  }
 }
 
 const announcer = (page: Page) => page.getByTestId("announcer");
@@ -323,4 +326,17 @@ test("Snap to edges moves a rough circle onto a disk", async ({ page }) => {
   await expect(announcer(page)).toContainText(
     "Snap to edges. Selection: 74 x 74 px at x 315, y 283",
   );
+});
+
+test("Select > Subject finds the main object, and Background the rest", async ({ page }) => {
+  await openTestImage(page, "Disks and dots");
+  await menu(page, "Select", "Subject");
+  await expect(announcer(page)).toContainText(
+    "Select subject. Selection: 146 x 146 px at x 55, y 247",
+    { timeout: 15_000 },
+  );
+  await menu(page, "Select", "Background");
+  await expect(announcer(page)).toContainText("Select background. Selection: 512 x 512 px", {
+    timeout: 15_000,
+  });
 });
