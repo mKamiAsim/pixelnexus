@@ -8,15 +8,8 @@ import type { MaskView } from "@/canvas/renderer";
 import type { ParamValue } from "@/core/filters/types";
 import type { CombineMode, Mask } from "@/core/mask/mask";
 
-/** A selection being drawn, shown in place of the document's selection until it is committed. */
-export interface Draft {
-  readonly documentId: string;
-  readonly mask: Mask;
-  /** Bumped on every change, because a draft mask is changed in place while you paint. */
-  readonly version: number;
-  /** The part that changed last, so only it needs uploading again. */
-  readonly dirty: { x: number; y: number; width: number; height: number } | null;
-}
+/** Refine operations in Select > Modify. */
+export type RefineKind = "grow" | "shrink" | "feather" | "smooth" | "border";
 
 interface SelectionState {
   /** How a new selection combines with the current one. Shift, Alt or both override it. */
@@ -26,13 +19,14 @@ interface SelectionState {
   maskView: MaskView;
   /** The selection that Deselect removed, per document, for Reselect. */
   previous: Readonly<Record<string, Mask>>;
-  draft: Draft | null;
+  /** The operation the Modify dialog shows. */
+  refineKind: RefineKind;
   setMode: (mode: CombineMode) => void;
   setValue: (tool: string, key: string, value: ParamValue) => void;
   resetValues: (tool: string) => void;
   setMaskView: (view: MaskView) => void;
   remember: (documentId: string, mask: Mask) => void;
-  setDraft: (draft: Draft | null) => void;
+  setRefineKind: (kind: RefineKind) => void;
 }
 
 export const useSelection = create<SelectionState>()((set) => ({
@@ -40,7 +34,7 @@ export const useSelection = create<SelectionState>()((set) => ({
   values: {},
   maskView: "ants",
   previous: {},
-  draft: null,
+  refineKind: "grow",
   setMode: (mode) => set({ mode }),
   setValue: (tool, key, value) =>
     set((state) => ({
@@ -54,5 +48,5 @@ export const useSelection = create<SelectionState>()((set) => ({
   setMaskView: (maskView) => set({ maskView }),
   remember: (documentId, mask) =>
     set((state) => ({ previous: { ...state.previous, [documentId]: mask } })),
-  setDraft: (draft) => set({ draft }),
+  setRefineKind: (refineKind) => set({ refineKind }),
 }));

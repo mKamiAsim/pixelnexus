@@ -337,6 +337,37 @@ export class ImageRenderer {
     this.mask = { texture, mask };
   }
 
+  /**
+   * Upload a changed part of the shown mask again. Use it when the mask object stays the same and
+   * its bytes change in place, as while you paint a selection.
+   */
+  updateMask(rect: { x: number; y: number; width: number; height: number }): void {
+    const { gl } = this;
+    if (!this.mask || rect.width < 1 || rect.height < 1) return;
+    const { mask, texture } = this.mask;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, mask.width);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, rect.x);
+    gl.pixelStorei(gl.UNPACK_SKIP_ROWS, rect.y);
+    gl.texSubImage2D(
+      gl.TEXTURE_2D,
+      0,
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+      gl.RED,
+      gl.UNSIGNED_BYTE,
+      mask.data,
+    );
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  }
+
   render(request: RenderRequest): void {
     const { gl, canvas, current, original } = this;
     if (!current || !original) return;

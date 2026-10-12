@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { cssColor, ImageRenderer, type RenderMode } from "@/canvas/renderer";
+import { SelectionOverlay } from "@/canvas/SelectionOverlay";
 import {
   clampPan,
   fitView,
@@ -19,16 +20,52 @@ import {
   nextZoomStep,
   panBy,
   pixelAt,
+  screenToImage,
   zoomAt,
   type Size,
   type ViewState,
 } from "@/canvas/viewport";
+import { commitSelection } from "@/app/selectionActions";
+import { TOOLS } from "@/app/tools";
+import type { Rect } from "@/core/filters/run";
+import type { Mask } from "@/core/mask/mask";
+import {
+  createGesture,
+  type Gesture,
+  type GestureUpdate,
+  type Modifiers,
+  type Outline,
+} from "@/selection/gestures";
+import { BRUSH_TOOLS, isSelectionTool } from "@/selection/ids";
+import { toolValues } from "@/selection/values";
 import { useDocuments, type ImageDocument } from "@/state/documents";
 import { useFilters } from "@/state/filters";
+import { useSelection } from "@/state/selection";
 import { useUi } from "@/state/ui";
 
 /** Wheel distance that doubles or halves the zoom. */
 const WHEEL_ZOOM_SPEED = 0.0025;
+
+/** Milliseconds between steps of the marching ants. */
+const ANTS_STEP_MS = 120;
+
+const union = (a: Rect | null, b: Rect | null): Rect | null => {
+  if (!a) return b;
+  if (!b) return a;
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+};
+
+const modifiers = (event: { shiftKey: boolean; altKey: boolean }): Modifiers => ({
+  shift: event.shiftKey,
+  alt: event.altKey,
+});
 
 function isTyping(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null;
@@ -42,6 +79,7 @@ function isTyping(target: EventTarget | null): boolean {
  * - Scroll to pan. Hold Ctrl, Cmd or Alt while scrolling, or pinch, to zoom at the pointer.
  * - Click with the Zoom tool to zoom in, Alt-click to zoom out.
  * - Click with the Probe tool to pin a pixel for the Info panel.
+ * - Selection tools turn pointer input into selections through their gestures.
  * - With the canvas focused, arrow keys pan.
  */
 export function ImageViewport({ document: doc }: { document: ImageDocument }) {
@@ -79,9 +117,24 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const preview = useFilters((s) => s.preview);
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
+  const maskView = useSelection((s) => s.maskView);
+
+  // Selection gestures. A draft is a selection being painted, shown until it is committed.
+  // Each belongs to one tool, document and history step. When any of them changes, the old
+  // gesture, outline and draft no longer match the key and are ignored.
+  const gesture = useRef<{ key: string; gesture: Gesture } | null>(null);
+  const [outline, setOutline] = useState<{ key: string; outline: Outline } | null>(null);
+  const [draft, setDraft] = useState<{ key: string; mask: Mask; version: number } | null>(null);
+  const pendingDirty = useRef<Rect | null>(null);
+  const [antsPhase, setAntsPhase] = useState(0);
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
   // Plain names for the document fields. Effects depend on these, not on the document object.
   const { id: docId, current: image, original, view } = doc;
+  const gestureKey = `${tool}|${docId}|${doc.steps[doc.index]?.id ?? 0}`;
+  const shownOutline = outline?.key === gestureKey ? outline.outline : null;
+  const shownDraft = draft?.key === gestureKey ? draft : null;
+  const shownMask = shownDraft?.mask ?? (doc.selectionEnabled ? doc.selection : null);
   // A filter preview of this exact image, if there is one. It stays visible while a newer one runs.
   const previewShown = useMemo(
     () =>
@@ -176,6 +229,11 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         // While a preview shows, the compare modes compare the image before and after the filter.
         renderer.setImages(image, previewShown ? image : original);
         renderer.setPreview(previewShown?.result ?? null, previewShown?.region ?? null);
+        renderer.setMask(shownMask);
+        if (pendingDirty.current) {
+          renderer.updateMask(pendingDirty.current);
+          pendingDirty.current = null;
+        }
         const mode: RenderMode = showOriginal
           ? "original"
           : compare === "split" || compare === "overlay" || compare === "difference"
@@ -192,8 +250,8 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
           overlayOpacity,
           pixelGrid,
           colors,
-          maskView: "ants",
-          antsPhase: 0,
+          maskView,
+          antsPhase,
         });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "The image could not be drawn.");
@@ -213,7 +271,57 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     colors,
     contextVersion,
     previewShown,
+    shownMask,
+    shownDraft?.version,
+    maskView,
+    antsPhase,
   ]);
+
+  // March the ants, unless the system asks for less motion.
+  const marching = Boolean(shownMask) && maskView === "ants";
+  useEffect(() => {
+    if (!marching || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setAntsPhase((p) => (p + 1) % 8), ANTS_STEP_MS);
+    return () => window.clearInterval(timer);
+  }, [marching]);
+
+  const applyGesture = (update: GestureUpdate) => {
+    if (update.outline !== undefined) {
+      setOutline(update.outline ? { key: gestureKey, outline: update.outline } : null);
+    }
+    if (update.draft !== undefined) {
+      const next = update.draft;
+      if (next) {
+        // A new draft mask is uploaded whole. Later changes upload only their rectangle.
+        pendingDirty.current =
+          shownDraft?.mask === next.mask ? union(pendingDirty.current, next.dirty) : null;
+        setDraft((d) => ({ key: gestureKey, mask: next.mask, version: (d?.version ?? 0) + 1 }));
+      } else {
+        pendingDirty.current = null;
+        setDraft(null);
+      }
+    }
+    if (update.commit) commitSelection(docId, update.commit.mask, update.commit.label);
+    if (update.end) gesture.current = null;
+  };
+
+  /** The running gesture of this tool, document and step, or a new one. */
+  const currentGesture = (): Gesture | null => {
+    if (gesture.current?.key === gestureKey) return gesture.current.gesture;
+    if (!isSelectionTool(tool) || !view) return null;
+    const created = createGesture(tool, {
+      image,
+      selection: doc.selectionEnabled ? doc.selection : null,
+      mode: useSelection.getState().mode,
+      values: toolValues(tool),
+      zoom: view.zoom,
+      label: TOOLS.find((t) => t.id === tool)?.label ?? tool,
+    });
+    gesture.current = created ? { key: gestureKey, gesture: created } : null;
+    return created;
+  };
+  const runningGesture = () =>
+    gesture.current?.key === gestureKey ? gesture.current.gesture : null;
 
   // Wheel: pan, or zoom with a modifier key or a pinch gesture (which arrives with ctrlKey set).
   useEffect(() => {
@@ -293,6 +401,12 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       return;
     }
     if (event.button !== 0 || !doc.view) return;
+    if (isSelectionTool(tool)) {
+      const g = currentGesture();
+      const p = screenToImage(doc.view, point.x, point.y);
+      if (g) applyGesture(g.down({ x: p.x, y: p.y }, modifiers(event)));
+      return;
+    }
     if (tool === "zoom") {
       updateView((view) =>
         zoomAt(view, nextZoomStep(view.zoom, event.altKey !== zoomOut ? -1 : 1), point.x, point.y),
@@ -326,7 +440,16 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       const start = drag.current;
       updateView((view) => panBy(view, point.x - start.x, point.y - start.y));
       drag.current = point;
+    } else if (runningGesture() && doc.view) {
+      const g = runningGesture();
+      const p = screenToImage(doc.view, point.x, point.y);
+      const pressed = (event.buttons & 1) === 1;
+      const update = pressed
+        ? g?.drag({ x: p.x, y: p.y }, modifiers(event))
+        : g?.hover?.({ x: p.x, y: p.y });
+      if (update) applyGesture(update);
     }
+    if (BRUSH_TOOLS.includes(tool as never)) setPointer(point);
     if (doc.view) {
       const pixel = pixelAt(doc.view, doc.current, point.x, point.y);
       const key = pixel ? `${pixel.x},${pixel.y}` : "";
@@ -338,6 +461,12 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   };
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+    const g = runningGesture();
+    if (g && doc.view && event.button === 0 && !drag.current) {
+      const point = local(event);
+      const p = screenToImage(doc.view, point.x, point.y);
+      applyGesture(g.up({ x: p.x, y: p.y }, modifiers(event)));
+    }
     pointers.current.delete(event.pointerId);
     if (pointers.current.size < 2) pinch.current = null;
     if (pointers.current.size === 0) {
@@ -349,15 +478,28 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const onPointerLeave = () => {
     lastHover.current = "";
     setHover(null);
+    setPointer(null);
   };
 
   const onDoubleClick = () => {
+    const g = runningGesture();
+    if (g?.doubleClick) {
+      applyGesture(g.doubleClick());
+      return;
+    }
     if (!size) return;
     if (tool === "hand") setView(doc.id, fitView(doc.current, size));
     if (tool === "zoom") updateView((view) => zoomAt(view, 1, size.width / 2, size.height / 2));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+    const handled = runningGesture()?.key?.(event.key);
+    if (handled) {
+      event.preventDefault();
+      event.stopPropagation();
+      applyGesture(handled);
+      return;
+    }
     const step = event.shiftKey ? 160 : 40;
     const moves: Record<string, [number, number]> = {
       ArrowLeft: [step, 0],
@@ -407,6 +549,20 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         onKeyDown={onKeyDown}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {doc.view ? (
+        <SelectionOverlay
+          outline={shownOutline}
+          view={doc.view}
+          brush={
+            pointer && BRUSH_TOOLS.includes(tool as never) && isSelectionTool(tool)
+              ? {
+                  ...pointer,
+                  radius: (Number(toolValues(tool).size ?? 30) / 2) * doc.view.zoom,
+                }
+              : null
+          }
+        />
+      ) : null}
       {probeMark ? (
         <span
           aria-hidden

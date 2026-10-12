@@ -2,11 +2,22 @@
 import { create } from "zustand";
 
 import type { Size } from "@/canvas/viewport";
+import type { SelectionToolId } from "@/selection/ids";
 import { DEFAULT_THEME, storedTheme, type ThemeId } from "@/styles/themes";
 
-export type ToolId = "hand" | "zoom" | "probe";
+export type ToolId = "hand" | "zoom" | "probe" | SelectionToolId;
 export type CompareMode = "off" | "split" | "side-by-side" | "overlay" | "difference";
-export type DialogId = "export" | "palette" | "shortcuts" | "preferences" | null;
+export type DialogId =
+  | "export"
+  | "palette"
+  | "shortcuts"
+  | "preferences"
+  | "select-modify"
+  | "select-color-range"
+  | "select-brightness"
+  | "select-hsv"
+  | "select-save"
+  | null;
 
 export interface PixelPoint {
   readonly documentId: string;

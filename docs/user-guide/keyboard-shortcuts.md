@@ -15,7 +15,12 @@ A unit test compares this table with the command list in the studio, so the two 
 | Export... | File | `Ctrl+S` | `Cmd+S` |
 | Undo | Edit | `Ctrl+Z` | `Cmd+Z` |
 | Redo | Edit | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
+| Select all | Select | `Ctrl+A` | `Cmd+A` |
 | Deselect | Select | `Ctrl+D` | `Cmd+D` |
+| Reselect | Select | `Ctrl+Shift+D` | `Cmd+Shift+D` |
+| Inverse | Select | `Shift+F7` | `Shift+F7` |
+| Feather... | Select > Modify | `Shift+F6` | `Shift+F6` |
+| Quick Mask | Select | `Q` | `Q` |
 | Apply selected filter | Filter | `Ctrl+Enter` | `Cmd+Enter` |
 | Zoom in | View | `Ctrl++` | `Cmd++` |
 | Zoom out | View | `Ctrl+-` | `Cmd+-` |
@@ -25,10 +30,17 @@ A unit test compares this table with the command list in the studio, so the two 
 | Hand | View > Tools | `H` | `H` |
 | Zoom | View > Tools | `Z` | `Z` |
 | Pixel probe | View > Tools | `I` | `I` |
+| Rectangular marquee | View > Tools | `M` | `M` |
+| Elliptical marquee | View > Tools | `Shift+M` | `Shift+M` |
+| Freehand lasso | View > Tools | `L` | `L` |
+| Polygonal lasso | View > Tools | `Shift+L` | `Shift+L` |
+| Selection brush | View > Tools | `B` | `B` |
+| Selection eraser | View > Tools | `E` | `E` |
+| Magic Wand | View > Tools | `W` | `W` |
 | Command palette | Help | `Ctrl+K` | `Cmd+K` |
 | Keyboard shortcuts | Help | `Ctrl+/` | `Cmd+/` |
 
-Deselect works from Phase 4, when the selection tools arrive.
+Inverse uses Shift+F7, as in Photoshop on Windows, because browsers keep Ctrl+Shift+I for their developer tools.
 
 For zoom, the + key works with or without Shift, and the = key works too.
 

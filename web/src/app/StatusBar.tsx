@@ -1,4 +1,5 @@
 import { LoaderCircle, ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
 
 import { formatZoom } from "@/canvas/viewport";
 import { getChannel } from "@/core/image/types";
@@ -7,6 +8,7 @@ import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 import { formatSize } from "./format";
+import { describeSelection } from "./selectionActions";
 
 /** Facts about the active image and the pixel under the pointer. */
 export function StatusBar() {
@@ -14,6 +16,9 @@ export function StatusBar() {
   const hover = useUi((s) => s.hover);
   const work = useUi((s) => s.work);
   const progress = useFilters((s) => s.applying?.progress);
+  const selection = doc?.selection ?? null;
+  // Counting the selected pixels reads the whole mask, so do it once per selection.
+  const selectionText = useMemo(() => describeSelection(selection), [selection]);
   const point = doc && hover?.documentId === doc.id ? hover : null;
   const image = doc?.current;
   const inside = image && point && point.x < image.width && point.y < image.height;
@@ -34,7 +39,10 @@ export function StatusBar() {
               ? `x ${point.x}, y ${point.y}  RGBA ${rgba}`
               : "Pointer outside the image"}
           </span>
-          <span className="hidden lg:inline">No selection</span>
+          <span className="hidden lg:inline">
+            {selectionText}
+            {selection && !doc.selectionEnabled ? " (off)" : ""}
+          </span>
         </>
       ) : (
         <span>No image open</span>

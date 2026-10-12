@@ -23,23 +23,11 @@ import { useUi } from "@/state/ui";
 
 import { exportSuffix } from "./filterActions";
 import { formatBytes } from "./format";
+import { download } from "./download";
 
 /** Export choices are kept for the session, so a second export starts where the first ended. */
 let lastFormat: ExportFormat = "png";
 let lastQuality = Math.round(DEFAULT_QUALITY * 100);
-
-/** Save a file through the browser's download. */
-function download(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.rel = "noopener";
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 export function ExportDialog() {
   const open = useUi((s) => s.dialog === "export");

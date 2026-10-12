@@ -4,7 +4,10 @@ import { centeredView, fillZoom, fitView, type Size } from "@/canvas/viewport";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { isSelectionTool } from "@/selection/ids";
 import { useUi } from "@/state/ui";
+
+import { SelectionOptions } from "./SelectionOptions";
 
 import { TOOL_ICONS } from "./toolIcons";
 import { TOOLS } from "./tools";
@@ -27,6 +30,7 @@ export function OptionsBar() {
       {tool === "zoom" ? <ZoomOptions /> : null}
       {tool === "probe" ? <ProbeOptions /> : null}
       {tool === "hand" || tool === "zoom" ? <ViewButtons /> : null}
+      {isSelectionTool(tool) ? <SelectionOptions tool={tool} /> : null}
       <span className="ml-auto hidden truncate text-xs text-text-muted lg:block">{info?.hint}</span>
     </div>
   );

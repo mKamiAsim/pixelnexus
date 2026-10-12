@@ -13,9 +13,11 @@ import {
 import { SYNTHETIC_IMAGES } from "@/core/image/synthetic";
 import { flip, rotate } from "@/core/image/transform";
 import type { RgbaImage } from "@/core/image/types";
+import { maskFromLuminance, maskToImage } from "@/core/mask/mask";
 import { activeDocument, canRedo, canUndo, useDocuments } from "@/state/documents";
 import { announce } from "@/state/notifications";
 import { useFilters } from "@/state/filters";
+import { useSelection } from "@/state/selection";
 import { useSettings } from "@/state/settings";
 import { useUi, type CompareMode } from "@/state/ui";
 import { applyTheme, THEMES } from "@/styles/themes";
@@ -24,6 +26,20 @@ import { chooseFiles, openSample, pasteFromClipboard } from "./importer";
 import { catalog, isRunnable } from "@/catalog";
 
 import { applySelected, filterById, selectFilter } from "./filterActions";
+import {
+  canReselect,
+  deselect,
+  exportMask,
+  hasSelection,
+  inverse,
+  REFINE,
+  reselect,
+  selectAll,
+  selectFromAlpha,
+  selectFromLuminance,
+  toggleSelectionEnabled,
+  type RefineKind,
+} from "./selectionActions";
 import { TOOLS, type ToolInfo } from "./tools";
 import {
   PANELS,
@@ -71,11 +87,15 @@ export const MENUS: readonly { id: MenuId; label: string }[] = [
 const hasDocument = () => activeDocument() !== null;
 
 /** Apply an edit to the active image and tell screen readers what happened. */
+/** Change the whole image. The selection turns, flips or scales with it. */
 function editActive(label: string, change: (image: RgbaImage) => RgbaImage) {
   const doc = activeDocument();
   if (!doc) return;
   const image = change(doc.current);
-  useDocuments.getState().edit(doc.id, image, label);
+  const selection = doc.selection
+    ? maskFromLuminance(change(maskToImage(doc.selection)))
+    : undefined;
+  useDocuments.getState().edit(doc.id, image, label, undefined, selection);
   announce(`${label} applied. The image is ${image.width} by ${image.height} pixels.`);
 }
 
@@ -284,23 +304,156 @@ export function buildCommands(): Command[] {
       enabled: hasDocument,
       run: () => editActive("Flip vertical", (i) => flip(i, "vertical")),
     },
-    // Select and Filter arrive in Phases 4 and 3. Their menus say so instead of showing fake items.
+    // Select
+    {
+      id: "select.all",
+      label: "Select all",
+      menu: "select",
+      section: "all",
+      shortcut: "Mod+A",
+      enabled: hasDocument,
+      run: selectAll,
+    },
     {
       id: "select.deselect",
       label: "Deselect",
       menu: "select",
+      section: "all",
       shortcut: "Mod+D",
-      phase: 4,
-      enabled: () => false,
-      run: () => undefined,
+      keywords: "clear selection none",
+      enabled: hasSelection,
+      run: deselect,
     },
     {
-      id: "select.later",
-      label: "Selection tools arrive in Phase 4",
+      id: "select.reselect",
+      label: "Reselect",
       menu: "select",
-      section: "note",
-      enabled: () => false,
-      run: () => undefined,
+      section: "all",
+      shortcut: "Mod+Shift+D",
+      enabled: canReselect,
+      run: reselect,
+    },
+    {
+      id: "select.inverse",
+      label: "Inverse",
+      menu: "select",
+      section: "all",
+      shortcut: "Shift+F7",
+      keywords: "invert selection",
+      enabled: hasSelection,
+      run: inverse,
+    },
+    {
+      id: "select.enabled",
+      label: "Use the selection",
+      menu: "select",
+      section: "use",
+      keywords: "disable turn off selection for a while",
+      enabled: hasSelection,
+      checked: () => Boolean(activeDocument()?.selection && activeDocument()?.selectionEnabled),
+      run: toggleSelectionEnabled,
+    },
+    {
+      id: "select.color-range",
+      label: "Color Range...",
+      menu: "select",
+      section: "global",
+      keywords: "select color sample fuzziness highlights shadows midtones",
+      enabled: hasDocument,
+      run: () => useUi.getState().setDialog("select-color-range"),
+    },
+    {
+      id: "select.brightness",
+      label: "Select by brightness...",
+      menu: "select",
+      section: "global",
+      keywords: "luminance luma tone range",
+      enabled: hasDocument,
+      run: () => useUi.getState().setDialog("select-brightness"),
+    },
+    {
+      id: "select.hsv",
+      label: "Select by hue and saturation...",
+      menu: "select",
+      section: "global",
+      keywords: "hsv color hue saturation value",
+      enabled: hasDocument,
+      run: () => useUi.getState().setDialog("select-hsv"),
+    },
+    ...(Object.keys(REFINE) as RefineKind[]).map<Command>((kind) => ({
+      id: `select.modify.${kind}`,
+      label: `${REFINE[kind].title.replace(" selection", "")}...`,
+      menu: "select",
+      submenu: "Modify",
+      section: "modify",
+      keywords: `${kind} selection modify expand contract`,
+      ...(kind === "feather" ? { shortcut: "Shift+F6" } : {}),
+      enabled: hasSelection,
+      run: () => {
+        useSelection.getState().setRefineKind(kind);
+        useUi.getState().setDialog("select-modify");
+      },
+    })),
+    {
+      id: "select.from-alpha",
+      label: "Selection from alpha",
+      menu: "select",
+      section: "from",
+      keywords: "transparency opacity mask",
+      enabled: hasDocument,
+      run: selectFromAlpha,
+    },
+    {
+      id: "select.from-luminance",
+      label: "Selection from luminance",
+      menu: "select",
+      section: "from",
+      keywords: "brightness luma mask",
+      enabled: hasDocument,
+      run: selectFromLuminance,
+    },
+    {
+      id: "select.save",
+      label: "Save selection...",
+      menu: "select",
+      section: "masks",
+      keywords: "named mask store channel",
+      enabled: hasSelection,
+      run: () => useUi.getState().setDialog("select-save"),
+    },
+    {
+      id: "select.export-mask",
+      label: "Export mask as PNG",
+      menu: "select",
+      section: "masks",
+      keywords: "save mask file download",
+      enabled: hasSelection,
+      run: () => void exportMask(),
+    },
+    {
+      id: "select.quick-mask",
+      label: "Quick Mask",
+      menu: "select",
+      section: "view",
+      shortcut: "Q",
+      keywords: "tint overlay red mask view",
+      checked: () => useSelection.getState().maskView === "quick-mask",
+      run: () => {
+        const { maskView, setMaskView } = useSelection.getState();
+        setMaskView(maskView === "quick-mask" ? "ants" : "quick-mask");
+      },
+    },
+    {
+      id: "select.show-mask",
+      label: "Show mask in gray",
+      menu: "select",
+      section: "view",
+      keywords: "mask view grayscale",
+      checked: () => useSelection.getState().maskView === "mask",
+      run: () => {
+        const { maskView, setMaskView } = useSelection.getState();
+        setMaskView(maskView === "mask" ? "ants" : "mask");
+      },
     },
     {
       id: "filter.apply",

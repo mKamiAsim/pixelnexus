@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import { ToolButton } from "@/components/ui/ToolButton";
 import { useUi } from "@/state/ui";
 
@@ -13,15 +15,19 @@ export function ToolStrip() {
       aria-label="Tools"
       className="flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-border-subtle bg-panel py-1.5"
     >
-      {TOOLS.map((tool) => (
-        <ToolButton
-          key={tool.id}
-          label={tool.label}
-          icon={TOOL_ICONS[tool.id]}
-          shortcut={tool.shortcut}
-          active={active === tool.id}
-          onSelect={() => setTool(tool.id)}
-        />
+      {TOOLS.map((tool, index) => (
+        <Fragment key={tool.id}>
+          {index > 0 && TOOLS[index - 1]?.group !== tool.group ? (
+            <span aria-hidden className="my-1 h-px w-6 shrink-0 bg-border" />
+          ) : null}
+          <ToolButton
+            label={tool.label}
+            icon={TOOL_ICONS[tool.id]}
+            shortcut={tool.shortcut}
+            active={active === tool.id}
+            onSelect={() => setTool(tool.id)}
+          />
+        </Fragment>
       ))}
     </nav>
   );
