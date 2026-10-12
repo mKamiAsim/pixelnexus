@@ -5,6 +5,9 @@
  * dropped. Each edit adds a step after the current position and removes any steps that were
  * undone. Undo and redo move the position, and the History panel can jump to any step.
  *
+ * Each step also holds the selection, so undo and redo cover selection changes as they do in
+ * Photoshop. A selection step keeps the image of the step before it, so it costs only its mask.
+ *
  * Steps hold whole images, so the history has a memory budget. When it is full, the oldest
  * steps after the original are dropped. Compressed snapshots arrive with the full history in
  * Phase 8.
@@ -17,12 +20,13 @@ import type { ImageHeader } from "@/core/image/format";
 import type { LoadIssue } from "@/core/image/limits";
 import type { RgbaImage } from "@/core/image/types";
 import type { ParamValue } from "@/core/filters/types";
+import { masksEqual, type Mask } from "@/core/mask/mask";
 
 export type DocumentSource = "file" | "paste" | "sample";
 
 /** The most steps a document keeps, the original included. */
 export const MAX_STEPS = 51;
-/** The most bytes of image data a document's history keeps. */
+/** The most bytes of image and mask data a document's history keeps. */
 export const HISTORY_BYTES = 768 * 1024 * 1024;
 
 /** The limits in use. Tests lower them to stay small. */
@@ -32,6 +36,8 @@ export interface HistoryStep {
   readonly id: number;
   readonly label: string;
   readonly image: RgbaImage;
+  /** The selection at this step, or null for none. */
+  readonly selection: Mask | null;
   /** For filter steps: the filter and the validated parameters it ran with. */
   readonly filter?: {
     readonly id: string;
@@ -54,6 +60,12 @@ export interface ImageDocument {
   readonly original: RgbaImage;
   /** The image at the current step. */
   readonly current: RgbaImage;
+  /** The selection at the current step. */
+  readonly selection: Mask | null;
+  /** False while the selection is turned off for a while. It is kept, but filters ignore it. */
+  readonly selectionEnabled: boolean;
+  /** Saved selections, by name. They are not part of the history. */
+  readonly masks: readonly NamedMask[];
   readonly steps: readonly HistoryStep[];
   /** Position of the current step in `steps`. */
   readonly index: number;
@@ -63,9 +75,23 @@ export interface ImageDocument {
   readonly view: ViewState | null;
 }
 
+export interface NamedMask {
+  readonly id: number;
+  readonly name: string;
+  readonly mask: Mask;
+}
+
 export type NewDocument = Omit<
   ImageDocument,
-  "id" | "current" | "steps" | "index" | "dropped" | "view"
+  | "id"
+  | "current"
+  | "steps"
+  | "index"
+  | "dropped"
+  | "view"
+  | "selection"
+  | "selectionEnabled"
+  | "masks"
 >;
 
 export interface FilterRecord {
@@ -80,8 +106,23 @@ interface DocumentsState {
   close: (id: string) => void;
   activate: (id: string) => void;
   setView: (id: string, view: ViewState) => void;
-  /** Add a step with new pixels. A size change resets the view so the image fits again. */
-  edit: (id: string, image: RgbaImage, label: string, filter?: FilterRecord) => void;
+  /**
+   * Add a step with new pixels. A size change resets the view so the image fits again. The
+   * selection stays, unless `selection` gives a new one. A size change without a new selection
+   * drops it.
+   */
+  edit: (
+    id: string,
+    image: RgbaImage,
+    label: string,
+    filter?: FilterRecord,
+    selection?: Mask | null,
+  ) => void;
+  /** Add a step that changes only the selection. Null deselects. Nothing happens if it is the same. */
+  select: (id: string, selection: Mask | null, label: string) => void;
+  setSelectionEnabled: (id: string, enabled: boolean) => void;
+  saveMask: (id: string, name: string, mask: Mask) => void;
+  deleteMask: (id: string, maskId: number) => void;
   revert: (id: string) => void;
   undo: (id: string) => void;
   redo: (id: string) => void;
@@ -95,15 +136,21 @@ const newId = () =>
     ? crypto.randomUUID()
     : `doc-${Date.now()}-${++counter}`;
 let stepCounter = 0;
+let maskCounter = 0;
 
 const sameSize = (a: RgbaImage, b: RgbaImage) => a.width === b.width && a.height === b.height;
 
-/** Bytes held by the steps. An image used by several steps counts once. */
+/** Bytes held by the steps. An image or mask used by several steps counts once. */
 export function historyBytes(steps: readonly HistoryStep[]): number {
   let bytes = 0;
   for (const image of new Set(steps.map((s) => s.image))) bytes += image.data.byteLength;
+  for (const mask of new Set(steps.map((s) => s.selection))) bytes += mask?.data.byteLength ?? 0;
   return bytes;
 }
+
+/** The selection that filters use: null when there is none or it is turned off. */
+export const activeSelection = (doc: ImageDocument | null): Mask | null =>
+  doc?.selectionEnabled ? doc.selection : null;
 
 export const canUndo = (doc: ImageDocument | null) => doc !== null && doc.index > 0;
 export const canRedo = (doc: ImageDocument | null) =>
@@ -119,6 +166,7 @@ function moveTo(doc: ImageDocument, index: number): ImageDocument {
     ...doc,
     index,
     current: step.image,
+    selection: step.selection,
     view: sameSize(step.image, doc.current) ? doc.view : null,
   };
 }
@@ -144,11 +192,20 @@ const update = (
   change: (d: ImageDocument) => ImageDocument,
 ) => documents.map((d) => (d.id === id ? change(d) : d));
 
-function addStep(doc: ImageDocument, image: RgbaImage, label: string, filter?: FilterRecord) {
+function addStep(
+  doc: ImageDocument,
+  image: RgbaImage,
+  label: string,
+  filter?: FilterRecord,
+  selection?: Mask | null,
+) {
+  const kept = sameSize(image, doc.current) ? doc.selection : null;
+  const next = selection === undefined ? kept : selection;
   const step: HistoryStep = {
     id: ++stepCounter,
     label,
     image,
+    selection: next,
     at: Date.now(),
     ...(filter ? { filter } : {}),
   };
@@ -158,6 +215,8 @@ function addStep(doc: ImageDocument, image: RgbaImage, label: string, filter?: F
     steps,
     index: steps.length - 1,
     current: image,
+    selection: next,
+    selectionEnabled: next !== doc.selection ? true : doc.selectionEnabled,
     view: sameSize(image, doc.current) ? doc.view : null,
   });
 }
@@ -171,6 +230,7 @@ export const useDocuments = create<DocumentsState>()((set) => ({
       id: ++stepCounter,
       label: "Open",
       image: document.original,
+      selection: null,
       at: Date.now(),
     };
     set((state) => ({
@@ -180,6 +240,9 @@ export const useDocuments = create<DocumentsState>()((set) => ({
           ...document,
           id,
           current: document.original,
+          selection: null,
+          selectionEnabled: true,
+          masks: [],
           steps: [first],
           index: 0,
           dropped: 0,
@@ -203,9 +266,35 @@ export const useDocuments = create<DocumentsState>()((set) => ({
   activate: (id) => set({ activeId: id }),
   setView: (id, view) =>
     set((state) => ({ documents: update(state.documents, id, (d) => ({ ...d, view })) })),
-  edit: (id, image, label, filter) =>
+  edit: (id, image, label, filter, selection) =>
     set((state) => ({
-      documents: update(state.documents, id, (d) => addStep(d, image, label, filter)),
+      documents: update(state.documents, id, (d) => addStep(d, image, label, filter, selection)),
+    })),
+  select: (id, selection, label) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) =>
+        masksEqual(selection, d.selection)
+          ? { ...d, selectionEnabled: true }
+          : addStep(d, d.current, label, undefined, selection),
+      ),
+    })),
+  setSelectionEnabled: (id, enabled) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => ({ ...d, selectionEnabled: enabled })),
+    })),
+  saveMask: (id, name, mask) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => ({
+        ...d,
+        masks: [...d.masks, { id: ++maskCounter, name, mask }],
+      })),
+    })),
+  deleteMask: (id, maskId) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => ({
+        ...d,
+        masks: d.masks.filter((m) => m.id !== maskId),
+      })),
     })),
   revert: (id) =>
     set((state) => ({

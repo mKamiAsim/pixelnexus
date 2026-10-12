@@ -5,3 +5,55 @@ tier: core
 engine: browser
 phase: '4'
 status: planned
+params:
+  - key: tolerance
+    label: Tolerance
+    type: number
+    default: 32
+    min: 0
+    max: 255
+    step: 1
+    description: Largest color distance from the sampled color that is still selected.
+    effect: Higher values select a wider range of colors.
+  - key: contiguous
+    label: Contiguous
+    type: boolean
+    default: true
+    description: Select only matching pixels connected to the clicked pixel.
+    effect: When off, every matching pixel in the image is selected.
+  - key: sampleSize
+    label: Sample size
+    type: select
+    default: '3'
+    options:
+      - {value: '1', label: Point sample}
+      - {value: '3', label: 3 by 3 average}
+      - {value: '5', label: 5 by 5 average}
+    description: How many pixels around the click make the sampled color.
+    effect: A larger sample ignores single noisy pixels.
+  - key: colorSpace
+    label: Color space
+    type: select
+    default: rgb
+    options:
+      - {value: rgb, label: RGB}
+      - {value: hsv, label: HSV}
+      - {value: lab, label: Lab}
+    description: Where the color distance is measured.
+    effect: Lab follows how people see differences. HSV puts more weight on hue in bright, colorful areas.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Softens the edge by averaging each pixel with its 3 by 3 neighbors.
+    effect: The selection edge looks smooth instead of stepped.
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.

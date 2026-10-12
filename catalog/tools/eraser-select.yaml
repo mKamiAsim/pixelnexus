@@ -5,3 +5,23 @@ tier: core
 engine: browser
 phase: '4'
 status: planned
+params:
+  - key: size
+    label: Size
+    type: number
+    default: 30
+    min: 1
+    max: 1000
+    step: 1
+    unit: px
+    description: Diameter of the brush.
+  - key: hardness
+    label: Hardness
+    type: number
+    default: 100
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: How sharp the edge of the brush is.
+    effect: At 100% the edge is hard with one pixel of anti-aliasing. Lower values fade the edge over more of the radius.

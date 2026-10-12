@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ImageRenderer, type RenderRequest } from "@/canvas/renderer";
 import { createImage, type RgbaImage } from "@/core/image/types";
+import { createMask } from "@/core/mask/mask";
 
 const COLORS = {
   // Whole steps of 1/255, like the hex tokens the app uses.
@@ -29,6 +30,8 @@ function request(overrides: Partial<RenderRequest> = {}): RenderRequest {
     overlayOpacity: 0.5,
     pixelGrid: false,
     colors: COLORS,
+    maskView: "ants",
+    antsPhase: 0,
     ...overrides,
   };
 }
@@ -123,6 +126,35 @@ describe("ImageRenderer", () => {
     renderer.setImages(white, white);
     renderer.render(request({ pixelGrid: true }));
     expect(read(10, 5)[0]).toBeLessThan(255);
+    expect(read(15, 5)).toEqual([255, 255, 255, 255]);
+  });
+
+  it("draws the selection as ants, a Quick Mask tint or a gray mask", () => {
+    const renderer = setup();
+    const white = createImage(2, 2);
+    white.data.fill(255);
+    renderer.setImages(white, white);
+    // The left column is selected.
+    const mask = createMask(2, 2);
+    mask.data.set([255, 0, 255, 0]);
+    renderer.setMask(mask);
+    renderer.render(request({ maskView: "quick-mask" }));
+    expect(read(5, 5)).toEqual([255, 255, 255, 255]);
+    expect(read(15, 5)).toEqual([255, 128, 128, 255]);
+    renderer.render(request({ maskView: "mask" }));
+    expect(read(5, 5)).toEqual([255, 255, 255, 255]);
+    expect(read(15, 5)).toEqual([0, 0, 0, 255]);
+    renderer.render(request({ maskView: "ants" }));
+    // The ants run along the inside edge: the last screen column of the selected pixels.
+    const edge = read(9, 3);
+    expect([
+      [0, 0, 0, 255],
+      [255, 255, 255, 255],
+    ]).toContainEqual(edge);
+    expect(read(9, 0)).not.toEqual(read(9, 4));
+    expect(read(5, 5)).toEqual([255, 255, 255, 255]);
+    renderer.setMask(null);
+    renderer.render(request({ maskView: "mask" }));
     expect(read(15, 5)).toEqual([255, 255, 255, 255]);
   });
 });

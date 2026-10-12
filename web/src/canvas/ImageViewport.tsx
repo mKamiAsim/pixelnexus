@@ -192,6 +192,8 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
           overlayOpacity,
           pixelGrid,
           colors,
+          maskView: "ants",
+          antsPhase: 0,
         });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "The image could not be drawn.");

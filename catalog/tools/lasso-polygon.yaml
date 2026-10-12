@@ -5,3 +5,20 @@ tier: core
 engine: browser
 phase: '4'
 status: planned
+params:
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Gives edge pixels a value for the part of them that the shape covers.
+    effect: Curved and slanted edges look smooth instead of stepped.

@@ -8,13 +8,9 @@
  */
 import type { Rect } from "@/core/filters/run";
 import type { RgbaImage } from "@/core/image/types";
+import type { Mask } from "@/core/mask/mask";
 
-/** A selection mask: one byte per pixel, 0 means unselected and 255 means fully selected. */
-export interface Mask {
-  readonly width: number;
-  readonly height: number;
-  readonly data: Uint8Array;
-}
+export type { Mask } from "@/core/mask/mask";
 
 /**
  * Put a filter result for `region` into a copy of `original`, through an optional mask that

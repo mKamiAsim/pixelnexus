@@ -4,8 +4,11 @@ import { stepEdge } from "@/core/image/synthetic";
 import { rotate } from "@/core/image/transform";
 import { createImage } from "@/core/image/types";
 
+import { createMask } from "@/core/mask/mask";
+
 import {
   activeDocument,
+  activeSelection,
   appliedSteps,
   canRedo,
   canUndo,
@@ -136,5 +139,65 @@ describe("documents store", () => {
     } finally {
       historyLimits.bytes = HISTORY_BYTES;
     }
+  });
+
+  it("records selection changes as steps that undo and redo", () => {
+    const id = useDocuments.getState().open(sample());
+    const mask = createMask(8, 4, 255);
+    useDocuments.getState().select(id, mask, "Select all");
+    const doc = () => activeDocument() ?? fail();
+    expect(doc().selection).toBe(mask);
+    expect(doc().current).toBe(doc().original);
+    expect(labels()).toEqual(["Select all"]);
+    // The same selection again adds no step.
+    useDocuments.getState().select(id, createMask(8, 4, 255), "Select all");
+    expect(doc().steps).toHaveLength(2);
+    useDocuments.getState().undo(id);
+    expect(doc().selection).toBeNull();
+    useDocuments.getState().redo(id);
+    expect(doc().selection).toBe(mask);
+    useDocuments.getState().select(id, null, "Deselect");
+    expect(doc().selection).toBeNull();
+    expect(labels()).toEqual(["Select all", "Deselect"]);
+  });
+
+  it("keeps the selection through edits of the same size and drops it on a size change", () => {
+    const id = useDocuments.getState().open(sample());
+    const mask = createMask(8, 4, 255);
+    useDocuments.getState().select(id, mask, "Select all");
+    useDocuments.getState().edit(id, stepEdge(8, 4), "Blur");
+    const doc = () => activeDocument() ?? fail();
+    expect(doc().selection).toBe(mask);
+    useDocuments.getState().edit(id, rotate(doc().current, "cw"), "Rotate");
+    expect(doc().selection).toBeNull();
+    const turned = createMask(8, 4, 1);
+    useDocuments.getState().edit(id, rotate(doc().current, "cw"), "Rotate", undefined, turned);
+    expect(doc().selection).toBe(turned);
+  });
+
+  it("turns the selection off for a while without losing it", () => {
+    const id = useDocuments.getState().open(sample());
+    const mask = createMask(8, 4, 255);
+    useDocuments.getState().select(id, mask, "Select all");
+    useDocuments.getState().setSelectionEnabled(id, false);
+    const doc = () => activeDocument() ?? fail();
+    expect(activeSelection(doc())).toBeNull();
+    expect(doc().selection).toBe(mask);
+    // A new selection turns it back on.
+    useDocuments.getState().select(id, createMask(8, 4, 9), "Brush");
+    expect(activeSelection(doc())?.data[0]).toBe(9);
+  });
+
+  it("saves and deletes named masks, and counts masks in the history bytes", () => {
+    const id = useDocuments.getState().open(sample());
+    const mask = createMask(8, 4, 255);
+    useDocuments.getState().saveMask(id, "Sky", mask);
+    const doc = () => activeDocument() ?? fail();
+    expect(doc().masks.map((m) => m.name)).toEqual(["Sky"]);
+    useDocuments.getState().deleteMask(id, doc().masks[0]?.id ?? -1);
+    expect(doc().masks).toEqual([]);
+    const before = historyBytes(doc().steps);
+    useDocuments.getState().select(id, mask, "Select all");
+    expect(historyBytes(doc().steps)).toBe(before + 32);
   });
 });

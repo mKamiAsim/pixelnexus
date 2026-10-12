@@ -6,3 +6,47 @@ engine: browser
 phase: '4'
 status: planned
 planNotes: Live wire on gradient cost.
+params:
+  - key: width
+    label: Width
+    type: integer
+    default: 10
+    min: 1
+    max: 40
+    unit: px
+    description: How far from the pointer the tool looks for an edge.
+  - key: contrast
+    label: Contrast
+    type: number
+    default: 10
+    min: 1
+    max: 100
+    step: 1
+    unit: '%'
+    description: The weakest edge the tool follows, in percent of the strongest edge in the image.
+    effect: Higher values follow only clear edges.
+  - key: spacing
+    label: Anchor spacing
+    type: integer
+    default: 40
+    min: 5
+    max: 200
+    unit: px
+    description: The path length after which the tool fixes an anchor point by itself.
+    effect: Shorter spacing keeps the path close to where you moved the pointer.
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Gives edge pixels a value for the part of them that the shape covers.
+    effect: Curved and slanted edges look smooth instead of stepped.

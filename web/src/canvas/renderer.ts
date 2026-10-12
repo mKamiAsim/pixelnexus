@@ -8,9 +8,14 @@
  * - At 100% zoom and above, pixels are read with texelFetch, so each image pixel is an exact,
  *   sharp square.
  * - Below 100%, the texture is sampled with mipmaps, so a large image shrinks smoothly.
+ *
+ * The selection mask is a one-channel texture. Marching ants mark the inside edge of the
+ * selection (values of 50% and more), with black and white dashes that move when the phase
+ * changes. Quick Mask tints the unselected part, and the mask view shows the mask in gray.
  */
 import type { ViewState } from "@/canvas/viewport";
 import type { RgbaImage } from "@/core/image/types";
+import type { Mask } from "@/core/mask/mask";
 
 export type RenderMode = "current" | "original" | "split" | "overlay" | "difference";
 
@@ -23,6 +28,11 @@ export interface PreviewRect {
 }
 
 export type Rgb = readonly [number, number, number];
+
+/** How the selection shows: marching ants, a tint on the unselected part, or the mask in gray. */
+export type MaskView = "ants" | "quick-mask" | "mask";
+
+const MASK_VIEWS: Record<MaskView, number> = { ants: 0, "quick-mask": 1, mask: 2 };
 
 export interface RenderColors {
   readonly pasteboard: Rgb;
@@ -45,6 +55,10 @@ export interface RenderRequest {
   readonly overlayOpacity: number;
   readonly pixelGrid: boolean;
   readonly colors: RenderColors;
+  /** How the selection shows. The selection is drawn only when a mask is set. */
+  readonly maskView: MaskView;
+  /** Moves the marching ants along. Any number. Keep it fixed for a still pattern. */
+  readonly antsPhase: number;
 }
 
 const MODES: Record<RenderMode, number> = {
@@ -83,6 +97,11 @@ uniform bool uGrid;
 uniform vec3 uPasteboard;
 uniform vec3 uCheckerA;
 uniform vec3 uCheckerB;
+uniform sampler2D uMask;
+uniform bool uHasMask;
+uniform vec2 uMaskSize;
+uniform int uMaskView;
+uniform float uAntsPhase;
 out vec4 outColor;
 
 bool inside(vec2 p, vec2 size) {
@@ -107,6 +126,20 @@ vec4 currentAt(vec2 p) {
     }
   }
   return fetch(uCurrent, uCurrentSize, p);
+}
+
+float maskAt(vec2 p) {
+  if (!inside(p, uMaskSize)) return 0.0;
+  if (uZoom >= 1.0) return texelFetch(uMask, ivec2(floor(p)), 0).r;
+  return texture(uMask, p / uMaskSize).r;
+}
+
+// True on the last screen pixel inside the selection, next to an unselected one.
+bool selectionEdge(vec2 p) {
+  if (maskAt(p) < 0.5) return false;
+  float d = 1.0 / uZoom;
+  return maskAt(p + vec2(d, 0.0)) < 0.5 || maskAt(p - vec2(d, 0.0)) < 0.5 ||
+         maskAt(p + vec2(0.0, d)) < 0.5 || maskAt(p - vec2(0.0, d)) < 0.5;
 }
 
 void main() {
@@ -135,6 +168,14 @@ void main() {
   vec2 cell = floor(css / 8.0);
   vec3 checker = mod(cell.x + cell.y, 2.0) < 1.0 ? uCheckerA : uCheckerB;
   vec3 rgb = mix(checker, color.rgb, color.a);
+  if (uHasMask) {
+    if (uMaskView == 2) rgb = vec3(maskAt(p));
+    else if (uMaskView == 1) rgb = mix(rgb, vec3(1.0, 0.0, 0.0), 0.5 * (1.0 - maskAt(p)));
+    else if (selectionEdge(p)) {
+      float dash = mod(floor((css.x + css.y + uAntsPhase) / 4.0), 2.0);
+      rgb = dash < 1.0 ? vec3(0.0) : vec3(1.0);
+    }
+  }
   if (uGrid && uZoom >= 8.0) {
     vec2 f = fract(p) * uZoom * uDpr;
     if (f.x < 1.0 || f.y < 1.0) rgb = mix(rgb, vec3(0.5), 0.4);
@@ -167,6 +208,7 @@ export class ImageRenderer {
   private current: UploadedTexture | null = null;
   private original: UploadedTexture | null = null;
   private preview: { texture: UploadedTexture; rect: PreviewRect } | null = null;
+  private mask: { texture: WebGLTexture; mask: Mask } | null = null;
   readonly maxTextureSize: number;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -265,6 +307,36 @@ export class ImageRenderer {
     this.preview = { texture: this.createTexture(image), rect };
   }
 
+  /** Show a selection. Null hides it. The texture is uploaded again only when the mask changes. */
+  setMask(mask: Mask | null): void {
+    const { gl } = this;
+    if (this.mask?.mask === mask) return;
+    if (this.mask) gl.deleteTexture(this.mask.texture);
+    this.mask = null;
+    if (!mask) return;
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.R8,
+      mask.width,
+      mask.height,
+      0,
+      gl.RED,
+      gl.UNSIGNED_BYTE,
+      mask.data,
+    );
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.mask = { texture, mask };
+  }
+
   render(request: RenderRequest): void {
     const { gl, canvas, current, original } = this;
     if (!current || !original) return;
@@ -298,6 +370,18 @@ export class ImageRenderer {
       // Every sampler needs a valid texture unit, even when it is not read.
       gl.uniform1i(this.uniform("uPreview"), 1);
     }
+    const mask = this.mask;
+    gl.uniform1i(this.uniform("uHasMask"), mask ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, mask ? mask.texture : current.texture);
+    gl.uniform1i(this.uniform("uMask"), 3);
+    gl.uniform2f(
+      this.uniform("uMaskSize"),
+      mask?.mask.width ?? current.image.width,
+      mask?.mask.height ?? current.image.height,
+    );
+    gl.uniform1i(this.uniform("uMaskView"), MASK_VIEWS[request.maskView]);
+    gl.uniform1f(this.uniform("uAntsPhase"), request.antsPhase);
     gl.uniform2f(this.uniform("uCurrentSize"), current.image.width, current.image.height);
     gl.uniform2f(this.uniform("uOriginalSize"), original.image.width, original.image.height);
     gl.uniform1f(this.uniform("uZoom"), request.view.zoom);
@@ -334,6 +418,7 @@ export class ImageRenderer {
   dispose(): void {
     const { gl } = this;
     this.setPreview(null, null);
+    this.setMask(null);
     for (const texture of new Set([this.current, this.original])) {
       if (texture) gl.deleteTexture(texture.texture);
     }
