@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { kernelFromRows, correlate2d } from "./convolve";
 import { gammaTransfer } from "./enhancement/gamma";
 import { grayValue, type GrayscaleMethod } from "./enhancement/grayscale";
+import { diskKernel } from "./linear/disk-average";
+import { firTaps, type FirWindow } from "./linear/fir-lowpass";
 import { motionKernel } from "./linear/motion-blur";
 import { borderIndex, createPlane, isBorderMode, type BorderMode, type Plane } from "./planes";
 import { browserFilter, BROWSER_FILTERS } from "./registry";
@@ -29,6 +31,8 @@ const fixtures = JSON.parse(
   grayscale: Record<GrayscaleMethod, number[]> & { rgb: number[] };
   borders: { pad: number; constant: number; tables: Record<string, number[]> };
   motionKernels: { length: number; angle: number; rows: number[][] }[];
+  firTaps: { taps: number; cutoff: number; window: FirWindow; beta: number; output: number[] }[];
+  diskKernels: { radius: number; rows: number[][] }[];
 };
 
 const input: Plane = {
@@ -92,6 +96,25 @@ describe("motion blur kernel against the Python twin", () => {
   });
 });
 
+describe("Phase 5a kernels against SciPy", () => {
+  it.each(fixtures.firTaps)(
+    "FIR taps $taps, cutoff $cutoff, $window match scipy.signal.firwin",
+    ({ taps, cutoff, window, beta, output }) => {
+      const h = firTaps(taps, cutoff, window, beta);
+      output.forEach((expected, n) => expect(h[n]).toBeCloseTo(expected, 6));
+    },
+  );
+
+  it.each(fixtures.diskKernels)(
+    "disk radius $radius matches the integrated areas",
+    ({ radius, rows }) => {
+      const kernel = diskKernel(radius);
+      expect(kernel.length).toBe(rows.length);
+      rows.flat().forEach((w, i) => expect(kernel.flat()[i]).toBeCloseTo(w, 10));
+    },
+  );
+});
+
 describe("point and pixel operations", () => {
   it.each(fixtures.gamma)(
     "gamma $gamma matches skimage.exposure.adjust_gamma",
@@ -117,6 +140,14 @@ describe("the Inspector kernel is the kernel that runs", () => {
     "motion-blur": { length: 7, angle: 30 },
     laplacian: { neighbors: "8", sign: "positive-center" },
     "unsharp-mask": { sigma: 1.2, amount: 0.8, threshold: 0 },
+    binomial: { size: 7 },
+    triangular: { size: 5 },
+    "disk-average": { radius: 2.3 },
+    "fir-lowpass": { taps: 9, cutoff: 0.2, window: "blackman" },
+    "laplacian-sharpen": { neighbors: "8", amount: 0.6 },
+    "high-pass": { sigma: 1.5 },
+    "high-boost": { sigma: 1.5, boost: 1.7 },
+    "weighted-average": { kernel: "0 1 2 1 0; 1 2 4 2 1; 0 1 2 1 0", normalize: true },
   };
   it.each(Object.entries(params))("%s", (id, p) => {
     const filter = browserFilter(id) as PlaneFilter;

@@ -1,8 +1,117 @@
 id: high-boost
 name: High-boost filter
+aliases:
+- High-boost filtering
 family: linear
+alsoIn: [enhancement]
+tags: [purpose:sharpening]
 tier: core
 engine: browser
 phase: 5a
-status: planned
+status: implemented-tested
 planNotes: A times the image minus a low-pass result. Cross-listed in enhancement.
+
+summary: Sharpens by taking A times the image minus a Gaussian blur of it.
+purpose: Sharpen while also setting how much of the original brightness stays.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/high-pass.ts, symbol: boostKernel}
+supportRadius: floor(3 * sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  With RGB scope, each channel is boosted. With the brightness scope only luma changes, which
+  avoids color fringes. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: boost
+    label: Boost
+    type: number
+    min: 1
+    max: 5
+    step: 0.05
+    default: 2
+    description: The factor A that multiplies the image before the blur is subtracted.
+    effect: A = 1 leaves only the detail. A = 2 is the unsharp mask with amount 1. Higher values also brighten.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 50
+    step: 0.1
+    default: 2
+    unit: px
+    description: Standard deviation of the Gaussian low-pass that is subtracted.
+    effect: Larger values boost wider detail.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = A\, I(x,y) - (G_{\sigma} \star I)(x,y)
+  = (A - 1)\, I(x,y) + \big(I - G_{\sigma} \star I\big)(x,y),
+  \\[4pt]
+  A = {{boost}}, \quad \sigma = {{sigma}}
+formulaExplanation: >-
+  The second form shows what happens: the image is kept with weight A - 1, and the detail
+  that the blur removes is added on top. With A = 1 only the detail is left. With A = 2 the
+  result is the unsharp mask with amount 1. A flat area of value v becomes (A - 1) v, so A
+  above 2 also brightens the image.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'A', meaning: 'Boost factor, at least 1'}
+  - {symbol: 'G_{\sigma}', meaning: 'Normalized Gaussian kernel with radius floor(3 sigma + 0.5)'}
+  - {symbol: '\star', meaning: 'Correlation'}
+  - {symbol: '\sigma', meaning: 'Standard deviation of the Gaussian in pixels'}
+steps:
+  - Blur the image with a Gaussian of the given sigma.
+  - Multiply the image by A and subtract the blur.
+  - Clip to 0 to 255 and round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,(2r+1))
+  memory: O(N)
+  notes: N is the number of pixels per channel and r the Gaussian radius. The blur is separable.
+useCases:
+  - Sharpen and brighten dark, soft images at the same time.
+  - Teaching the link between high-pass filtering, the unsharp mask and sharpening.
+advantages:
+  - One factor moves smoothly from the bare detail (A = 1) through sharpening (A = 2) to sharpening with brightening.
+limitations:
+  - A between 1 and 2 darkens the image, because flat areas become (A - 1) times their value.
+  - It sharpens noise as strongly as edges.
+artifacts:
+  - Halos along edges.
+  - Clipped highlights for large A.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.gaussian_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
+implementation: {path: web/src/core/filters/linear/high-pass.ts, symbol: highBoostFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It keeps part of the image and adds the fine detail on top, so edges get sharper.
+  howItWorks:
+    - Make a blurred copy of the image.
+    - Multiply the image by the boost A and subtract the blurred copy.
+    - The result is the image times A - 1, plus the detail.
+  academic: >-
+    The kernel is A delta - G. Its weights add up to A - 1, which is the gain for flat areas.
+    The high-pass filter is the case A = 1, and the unsharp mask with amount a is the case
+    A = 1 + a, scaled.
+  paramNotes:
+    boost: The factor A. 2 sharpens without changing brightness.
+    sigma: The blur that is subtracted. It sets the size of the detail that is boosted.
+  tryThis:
+    - Set A to 1, then 1.5, then 2. Watch the brightness and the edges.
+    - Compare A = 2 with the unsharp mask at amount 1 and the same sigma. They are the same.
+  pitfalls:
+    - Using A between 1 and 2 and wondering why the image is darker. Flat areas keep only A - 1 of their value.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [high-pass, unsharp-mask, laplacian-sharpen]
+docsPage: filters/linear/high-boost.md

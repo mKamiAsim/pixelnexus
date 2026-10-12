@@ -5,9 +5,28 @@ import { glossarySegments } from "@/app/glossary";
 
 /**
  * Text with glossary terms marked by a dotted underline. Hover or focus a term to read its
- * plain definition from catalog/glossary.yaml.
+ * plain definition from catalog/glossary.yaml. Text between backticks shows as code, such as a
+ * kernel to type.
  */
 export function GlossaryText({ text }: { text: string }) {
+  const parts = text.split("`");
+  if (parts.length < 3) return <TermText text={text} />;
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? (
+          <code key={index} className="rounded-[3px] bg-raised px-1 font-mono text-[0.95em]">
+            {part}
+          </code>
+        ) : (
+          <TermText key={index} text={part} />
+        ),
+      )}
+    </>
+  );
+}
+
+function TermText({ text }: { text: string }) {
   const segments = useMemo(() => glossarySegments(text), [text]);
   return (
     <>

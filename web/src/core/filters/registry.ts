@@ -5,11 +5,18 @@
 import { sobelFilter } from "./edges/sobel";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
+import { binomialFilter } from "./linear/binomial";
 import { boxFilter } from "./linear/box";
+import { diskAverageFilter } from "./linear/disk-average";
+import { firLowpassFilter } from "./linear/fir-lowpass";
 import { gaussianFilter } from "./linear/gaussian";
+import { highBoostFilter, highPassFilter } from "./linear/high-pass";
 import { laplacianFilter } from "./linear/laplacian";
+import { laplacianSharpenFilter } from "./linear/laplacian-sharpen";
 import { motionBlurFilter } from "./linear/motion-blur";
+import { triangularFilter } from "./linear/triangular";
 import { unsharpMaskFilter } from "./linear/unsharp-mask";
+import { weightedAverageFilter } from "./linear/weighted-average";
 import { medianFilter } from "./nonlinear/median";
 import type { BrowserFilter } from "./types";
 import { gaussianNoiseFilter, saltPepperNoiseFilter } from "./utility/noise";
@@ -17,11 +24,19 @@ import { gaussianNoiseFilter, saltPepperNoiseFilter } from "./utility/noise";
 export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   boxFilter,
   gaussianFilter,
+  weightedAverageFilter,
+  binomialFilter,
+  triangularFilter,
+  diskAverageFilter,
+  firLowpassFilter,
   motionBlurFilter,
   sobelFilter,
   laplacianFilter,
   medianFilter,
   unsharpMaskFilter,
+  laplacianSharpenFilter,
+  highPassFilter,
+  highBoostFilter,
   gammaFilter,
   grayscaleFilter,
   gaussianNoiseFilter,

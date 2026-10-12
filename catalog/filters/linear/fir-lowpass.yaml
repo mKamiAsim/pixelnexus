@@ -1,8 +1,153 @@
 id: fir-lowpass
 name: Low-pass FIR filter
+aliases:
+- Windowed sinc filter
 family: linear
+tags: [purpose:smoothing]
 tier: core
 engine: browser
 phase: 5a
-status: planned
+status: implemented-tested
 planNotes: Windowed sinc design. Hamming, Hann, Blackman and Kaiser windows. Separable.
+
+summary: Removes detail above a chosen frequency, with taps designed by the window method.
+purpose: Keep coarse structure and remove fine detail above a cutoff, with control over the transition.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/fir-lowpass.ts, symbol: firTaps}
+supportRadius: (taps - 1) / 2
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same taps. Alpha is kept. Some taps are negative,
+  so values can go a little past 0 or 255 and are clipped.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: taps
+    label: Taps
+    type: integer
+    min: 3
+    max: 63
+    oddOnly: true
+    default: 15
+    description: Number of 1D weights N. The window is N by N pixels.
+    effect: More taps give a sharper change from kept to removed frequencies, and more ringing near edges.
+  - key: cutoff
+    label: Cutoff
+    type: number
+    min: 0.01
+    max: 0.5
+    step: 0.01
+    default: 0.15
+    unit: cycles/px
+    description: Frequency where the filter changes from keeping to removing. 0.5 is the finest pattern, one cycle per two pixels.
+    effect: Lower values remove more detail.
+  - key: window
+    label: Window
+    type: select
+    default: hamming
+    options:
+      - {value: hamming, label: Hamming}
+      - {value: hann, label: Hann}
+      - {value: blackman, label: Blackman}
+      - {value: kaiser, label: Kaiser}
+    description: The taper applied to the ideal sinc taps.
+    effect: Blackman and Kaiser with a high beta leak less, but change from kept to removed more slowly.
+  - key: beta
+    label: Kaiser beta
+    type: number
+    min: 0
+    max: 14
+    step: 0.5
+    default: 5
+    description: Shape of the Kaiser window. Used only with the Kaiser window.
+    effect: Higher values leak less and give a slower transition.
+    advanced: true
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Filter linear light values instead of sRGB encoded values.
+    effect: Bright details spread more like real optical blur.
+    advanced: true
+
+formula: |
+  h[n] = \frac{2 f_c \operatorname{sinc}\!\big(2 f_c (n - M)\big)\, w[n]}{\sum_{k=0}^{N-1} 2 f_c \operatorname{sinc}\!\big(2 f_c (k - M)\big)\, w[k]},
+  \qquad
+  M = \frac{N-1}{2},
+  \\[4pt]
+  I_{\text{out}}(x,y) = \sum_{j=0}^{N-1} \sum_{i=0}^{N-1} h[i]\, h[j]\, I(x+i-M,\, y+j-M),
+  \qquad
+  N = {{taps}}, \quad f_c = {{cutoff}}
+formulaExplanation: >-
+  The ideal low-pass filter has the sinc function as its taps, but they never end. The window
+  w tapers them to N taps. Dividing by the sum makes the gain at frequency 0 exactly 1, so flat
+  areas keep their value. The 2D filter applies the same taps along rows and columns.
+symbols:
+  - {symbol: 'h[n]', meaning: 'Tap n of the 1D filter'}
+  - {symbol: 'N', meaning: 'Number of taps, odd'}
+  - {symbol: 'M', meaning: 'Index of the center tap'}
+  - {symbol: 'f_c', meaning: 'Cutoff frequency in cycles per pixel'}
+  - {symbol: '\operatorname{sinc}(t)', meaning: 'sin(pi t) / (pi t), and 1 at t = 0'}
+  - {symbol: 'w[n]', meaning: 'The window value at tap n'}
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+steps:
+  - Compute the ideal sinc taps for the cutoff, centered on tap M.
+  - Multiply them by the chosen window.
+  - Divide the taps by their sum.
+  - Pad each row with the border mode and filter it with the taps, then do the same for each column.
+  - Clip to 0 to 255 and round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N_p\,N)
+  memory: O(N_p)
+  notes: N_p is the number of pixels per channel and N the number of taps. The filter is separable.
+useCases:
+  - Remove fine detail before shrinking an image, to avoid aliasing.
+  - Teach how window choice trades a sharp cutoff against ringing.
+advantages:
+  - The cutoff is set in frequency, not in pixels.
+  - The window choice controls leakage and the transition width.
+  - The taps match scipy.signal.firwin.
+limitations:
+  - The taps have negative lobes, so sharp edges ring.
+  - A separable 2D filter cuts off along the axes, so diagonal frequencies are treated a little differently.
+artifacts:
+  - Ringing, light and dark bands parallel to sharp edges.
+  - Clipping where the ringing pushes values past 0 or 255.
+references:
+  - kind: book
+    text: Oppenheim, A. V. and Schafer, R. W. Discrete-Time Signal Processing, 3rd edition. Pearson, 2010. Chapter 7.
+  - kind: library
+    text: SciPy documentation, scipy.signal.firwin.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.firwin.html
+implementation: {path: web/src/core/filters/linear/fir-lowpass.ts, symbol: firLowpassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It keeps patterns coarser than the cutoff and removes finer ones, using taps shaped like a tapered sinc wave.
+  howItWorks:
+    - The perfect low-pass filter has taps shaped like a sinc wave that never ends.
+    - A window cuts the wave to a few taps and tapers its ends.
+    - The image is filtered with these taps along rows, then along columns.
+  academic: >-
+    This is FIR design by the window method. The windowed sinc is normalized for unit DC gain,
+    as scipy.signal.firwin with scale=True. The window sets the side-lobe level and the width
+    of the transition band.
+  paramNotes:
+    taps: More taps give a sharper cutoff and more ringing.
+    cutoff: Patterns finer than this are removed. It is in cycles per pixel, up to 0.5.
+    window: The taper. Hamming is a good default. Blackman rings less.
+  tryThis:
+    - Filter a zone plate with cutoff 0.1. The fine rings vanish and the coarse ones stay.
+    - Compare Hamming and Blackman at 31 taps near a sharp edge. Look at the ringing.
+  pitfalls:
+    - Expecting no ringing. Every sharp cutoff rings near edges. Use a Gaussian for a ring-free blur.
+  demos: [impulse-response, line-profile]
+related: [gaussian, box, ideal-lowpass]
+docsPage: filters/linear/fir-lowpass.md

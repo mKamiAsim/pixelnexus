@@ -28,6 +28,7 @@ SKIP_DIRS = {"_generated", "schema"}
 # Catalog keys that hold code, maths or identifiers rather than prose.
 NON_PROSE_KEYS = {
     "id",
+    "default",
     "ref",
     "key",
     "path",

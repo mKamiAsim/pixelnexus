@@ -4,6 +4,8 @@ import { ScrubSlider } from "@/components/ui/ScrubSlider";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import type { Param } from "@/generated/catalog-types";
+import { parseKernel } from "@/core/filters/linear/weighted-average";
+import { useId, useState } from "react";
 
 /**
  * One parameter control, chosen from the catalog parameter type. The Properties panel renders
@@ -75,6 +77,8 @@ export function ParamControl({
       );
     case "boolean":
       return <Switch label={param.label} checked={Boolean(value)} onChange={onChange} />;
+    case "kernel":
+      return <KernelField param={param} value={String(value)} onChange={onChange} />;
     default:
       return (
         <p className="text-xs text-text-muted">
@@ -82,4 +86,54 @@ export function ParamControl({
         </p>
       );
   }
+}
+
+/**
+ * Kernel text: rows separated by semicolons or new lines. The value changes only when the text
+ * can be read, and a message says what is wrong until then.
+ */
+function KernelField({
+  param,
+  value,
+  onChange,
+}: {
+  param: Param;
+  value: string;
+  onChange: (value: ParamValue) => void;
+}) {
+  const id = useId();
+  const [draft, setDraft] = useState<{ text: string; for: string } | null>(null);
+  // A draft belongs to the value it was typed over. A new value from elsewhere replaces it.
+  const text = draft && draft.for === value ? draft.text : value.replace(/;\s*/g, "\n");
+  const parsed = parseKernel(text);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-text-secondary">
+        {param.label}
+      </label>
+      <textarea
+        id={id}
+        value={text}
+        rows={Math.min(8, Math.max(3, text.split("\n").length))}
+        spellCheck={false}
+        aria-invalid={!parsed.ok}
+        aria-describedby={`${id}-help`}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft({ text: next, for: value });
+          const check = parseKernel(next);
+          if (check.ok) onChange(check.rows.map((row) => row.join(" ")).join("; "));
+        }}
+        className="tabular rounded-control border border-border-control bg-raised px-2 py-1 font-mono text-xs text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus aria-invalid:border-danger"
+      />
+      <p
+        id={`${id}-help`}
+        className={parsed.ok ? "text-2xs text-text-muted" : "text-2xs text-danger"}
+      >
+        {parsed.ok
+          ? `${parsed.rows.length} by ${parsed.rows[0]?.length ?? 0}. One row per line, numbers separated by spaces.`
+          : parsed.message}
+      </p>
+    </div>
+  );
 }

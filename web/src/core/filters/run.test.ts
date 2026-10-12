@@ -56,6 +56,18 @@ const CASES: [string, Params][] = [
   ["grayscale", { method: "luminance" }],
   ["noise-gaussian", { sigma: 20, seed: 3 }],
   ["noise-salt-pepper", { amount: 0.2, seed: 9 }],
+  ["weighted-average", { kernel: "0 1 2 1 0; 1 2 4 2 1; 0 1 2 1 0", border: "reflect" }],
+  [
+    "weighted-average",
+    { kernel: "-1 0 1; -2 0 2; -1 0 1", normalize: false, outputMapping: "abs" },
+  ],
+  ["binomial", { size: 7, border: "wrap" }],
+  ["triangular", { size: 5, channelScope: "luminance" }],
+  ["disk-average", { radius: 2.3, border: "replicate", linearLight: true }],
+  ["fir-lowpass", { taps: 11, cutoff: 0.15, window: "kaiser", beta: 6 }],
+  ["laplacian-sharpen", { neighbors: "8", amount: 0.7, border: "constant" }],
+  ["high-pass", { sigma: 1.5, outputMapping: "offset", channelScope: "luminance" }],
+  ["high-boost", { sigma: 1.5, boost: 1.7, channelScope: "chroma" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

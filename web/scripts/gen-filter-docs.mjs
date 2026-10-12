@@ -562,6 +562,349 @@ try {
     );
   }
 
+  // Phase 5a linear filters --------------------------------------------------------------------
+
+  {
+    const { pascalRow, binomialWeights } = await load("/src/core/filters/linear/binomial.ts");
+    const { tentRow } = await load("/src/core/filters/linear/triangular.ts");
+    const { diskKernel } = await load("/src/core/filters/linear/disk-average.ts");
+    const { firTaps } = await load("/src/core/filters/linear/fir-lowpass.ts");
+    const { laplacianSharpenKernel } = await load("/src/core/filters/linear/laplacian-sharpen.ts");
+    const { boostKernel } = await load("/src/core/filters/linear/high-pass.ts");
+    const { weightedKernel, DEFAULT_KERNEL } = await load(
+      "/src/core/filters/linear/weighted-average.ts",
+    );
+    const outer = (a, b = a) => a.map((x) => b.map((y) => x * y));
+
+    // Kernels.
+    const p5 = pascalRow(5);
+    write(
+      "docs/_generated/kernels/binomial.md",
+      header("binomial") +
+        block(`b = \\frac{1}{16} ${matrix([p5])}^{\\mathsf{T}} \\qquad (n = 5)`) +
+        "\n" +
+        block(`B_5 = b\\, b^{\\mathsf{T}} = \\frac{1}{256} ${matrix(outer(p5))}`),
+    );
+    const t5 = tentRow(5).row;
+    write(
+      "docs/_generated/kernels/triangular.md",
+      header("triangular") +
+        block(`w = \\frac{1}{9} ${matrix([t5])}^{\\mathsf{T}} \\qquad (n = 5,\\ r = 2)`) +
+        "\n" +
+        block(`T_5 = w\\, w^{\\mathsf{T}} = \\frac{1}{81} ${matrix(outer(t5))}`),
+    );
+    write(
+      "docs/_generated/kernels/disk-average.md",
+      header("disk-average") +
+        block(`D_{R=1} = ${matrix(diskKernel(1), 4)}`) +
+        "\n" +
+        block(`D_{R=2} = ${matrix(diskKernel(2), 4)}`),
+    );
+    const h9 = Array.from(firTaps(9, 0.2, "hamming"));
+    write(
+      "docs/_generated/kernels/fir-lowpass.md",
+      header("fir-lowpass") +
+        block(
+          `h = ${matrix([h9], 4)}^{\\mathsf{T}} \\qquad (N = 9,\\ f_c = 0.2,\\ \\text{Hamming})`,
+        ) +
+        "\nThe 2D kernel is the outer product \\(h\\, h^{\\mathsf{T}}\\). The two outer taps on each side are negative.\n",
+    );
+    write(
+      "docs/_generated/kernels/laplacian-sharpen.md",
+      header("laplacian-sharpen") +
+        block(
+          `S_4 = ${matrix(laplacianSharpenKernel("4", 1))}, \\qquad S_8 = ${matrix(laplacianSharpenKernel("8", 1))} \\qquad (c = 1)`,
+        ),
+    );
+    write(
+      "docs/_generated/kernels/high-pass.md",
+      header("high-pass") + block(`H_{\\sigma=0.5} = ${matrix(boostKernel(0.5, 1), 4)}`),
+    );
+    write(
+      "docs/_generated/kernels/high-boost.md",
+      header("high-boost") + block(`K_{\\sigma=0.5,\\ A=2} = ${matrix(boostKernel(0.5, 2), 4)}`),
+    );
+    write(
+      "docs/_generated/kernels/weighted-average.md",
+      header("weighted-average") +
+        block(
+          `K = \\frac{1}{16} ${matrix(weightedKernel(DEFAULT_KERNEL, false))} \\qquad \\text{(the default kernel, normalized)}`,
+        ),
+    );
+
+    // Figures.
+    const x = Array.from({ length: 41 }, (_, i) => i + 12);
+    figure("binomial", {
+      message:
+        "A binomial filter of size 9 and a Gaussian with sigma sqrt(2) give almost the same edge.",
+      profile: {
+        x,
+        xlabel: "x (pixels)",
+        ylabel: "Value",
+        lines: [
+          { label: "Original", values: row(edge, 4).slice(12, 53) },
+          { label: "Binomial 9", values: row(run(edge, "binomial", { size: 9 }), 4).slice(12, 53) },
+          {
+            label: "Gaussian 1.41",
+            values: row(run(edge, "gaussian", { sigma: Math.SQRT2 }), 4).slice(12, 53),
+          },
+        ],
+      },
+    });
+    figure("triangular", {
+      message: "The tent filter fades the fine rings of a zone plate without reversing them.",
+      panels: [
+        { title: "Zone plate", image: pic(zone) },
+        { title: "Box 9x9", image: pic(run(zone, "box", { size: 9 })) },
+        { title: "Tent 9x9", image: pic(run(zone, "triangular", { size: 9 })) },
+      ],
+    });
+    const spots = createImage(81, 81);
+    for (let i = 0; i < 81 * 81; i++) spots.data.set([0, 0, 0, 255], i * 4);
+    for (const [px, py] of [
+      [20, 20],
+      [60, 25],
+      [40, 60],
+    ]) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          spots.data.set([255, 255, 255, 255], ((py + dy) * 81 + px + dx) * 4);
+        }
+      }
+    }
+    figure("disk-average", {
+      message: "A disk blur turns points of light into round spots. A Gaussian makes soft blobs.",
+      panels: [
+        { title: "Points", image: pic(spots) },
+        {
+          title: "Disk, R 5",
+          image: pic(run(spots, "disk-average", { radius: 5, linearLight: true })),
+        },
+        {
+          title: "Gaussian, sigma 2.5",
+          image: pic(run(spots, "gaussian", { sigma: 2.5, linearLight: true })),
+        },
+      ],
+    });
+    const wideEdge = synthetic.stepEdge(96, 8);
+    figure("fir-lowpass", {
+      message: "Near a sharp edge, Hamming taps ring more than Blackman taps.",
+      profile: {
+        x: Array.from({ length: 41 }, (_, i) => i + 28),
+        xlabel: "x (pixels)",
+        ylabel: "Value",
+        lines: [
+          { label: "Original", values: row(wideEdge, 4).slice(28, 69) },
+          ...["hamming", "blackman"].map((window) => ({
+            label: window === "hamming" ? "Hamming" : "Blackman",
+            values: floats(wideEdge, "fir-lowpass", { taps: 31, cutoff: 0.08, window }, 4).slice(
+              28,
+              69,
+            ),
+          })),
+        ],
+      },
+    });
+    const soft = run(synthetic.stepEdge(64, 8), "gaussian", { sigma: 1.5 });
+    figure("laplacian-sharpen", {
+      message:
+        "Laplacian sharpening makes a soft edge steeper, with a small dip and peak beside it.",
+      profile: {
+        x,
+        xlabel: "x (pixels)",
+        ylabel: "Value",
+        lines: [
+          { label: "Soft edge", values: row(soft, 4).slice(12, 53) },
+          ...[0.5, 1].map((amount) => ({
+            label: `c ${amount}`,
+            values: row(run(soft, "laplacian-sharpen", { amount }), 4).slice(12, 53),
+          })),
+        ],
+      },
+    });
+    const star = synthetic.siemensStar(160, 160);
+    figure("high-pass", {
+      message: "The high-pass keeps the fine spokes and turns flat areas middle gray.",
+      panels: [
+        { title: "Siemens star", image: pic(star) },
+        {
+          title: "High-pass, sigma 1",
+          image: pic(run(star, "high-pass", { sigma: 1, outputMapping: "offset" })),
+        },
+        {
+          title: "High-pass, sigma 4",
+          image: pic(run(star, "high-pass", { sigma: 4, outputMapping: "offset" })),
+        },
+      ],
+    });
+    figure("high-boost", {
+      message: "The boost A sets the brightness. A = 2 sharpens and keeps it.",
+      profile: {
+        x,
+        xlabel: "x (pixels)",
+        ylabel: "Value",
+        lines: [
+          { label: "Soft edge", values: row(soft, 4).slice(12, 53) },
+          ...[1.5, 2, 2.5].map((boost) => ({
+            label: `A ${boost}`,
+            values: row(run(soft, "high-boost", { boost, sigma: 2 }), 4).slice(12, 53),
+          })),
+        ],
+      },
+    });
+    figure("weighted-average", {
+      message: "The same image through a blur kernel and through a vertical edge kernel.",
+      panels: [
+        { title: "Siemens star", image: pic(star) },
+        {
+          title: "1 2 1; 2 4 2; 1 2 1",
+          image: pic(run(star, "weighted-average", { kernel: DEFAULT_KERNEL })),
+        },
+        {
+          title: "-1 0 1; -2 0 2; -1 0 1",
+          image: pic(
+            run(star, "weighted-average", {
+              kernel: "-1 0 1; -2 0 2; -1 0 1",
+              normalize: false,
+              outputMapping: "abs",
+            }),
+          ),
+        },
+      ],
+    });
+
+    // Worked examples.
+    const edgeRow = [40, 40, 40, 40, 215, 215, 215];
+    const edgeRows = Array.from({ length: 7 }, () => edgeRow);
+    const weightedRow = (weights) => {
+      const r = (weights.length - 1) / 2;
+      return weights.reduce((sum, w, i) => sum + w * edgeRow[3 + i - r], 0);
+    };
+    {
+      const b = Array.from(binomialWeights(5));
+      const out = planeAt("binomial", edgeRows, { size: 5 }, 3, 3);
+      example(
+        "binomial",
+        mdTable(
+          ["Offset", "-2", "-1", "0", "1", "2"],
+          [
+            ["Value", ...edgeRow.slice(1, 6).map(String)],
+            ["Weight", ...p5.map((v) => `${v}/16`)],
+            ["Value x weight", ...b.map((w, i) => fix(w * edgeRow[1 + i], 2))],
+          ],
+        ) +
+          `\nThe row crosses an edge from 40 to 215, and every row of the test image is the same. The products add up to ${fix(weightedRow(b))}. The filter code gives ${fix(out)} for the pixel at offset 0, which rounds to ${Math.round(out)}.\n`,
+      );
+    }
+    {
+      const { row: t, total } = tentRow(5);
+      const w = t.map((v) => v / total);
+      const out = planeAt("triangular", edgeRows, { size: 5 }, 3, 3);
+      example(
+        "triangular",
+        mdTable(
+          ["Offset", "-2", "-1", "0", "1", "2"],
+          [
+            ["Value", ...edgeRow.slice(1, 6).map(String)],
+            ["Weight", ...t.map((v) => `${v}/${total}`)],
+            ["Value x weight", ...w.map((v, i) => fix(v * edgeRow[1 + i], 2))],
+          ],
+        ) +
+          `\nThe same edge row as for the binomial filter. The tent weights add up to ${fix(weightedRow(w))} here. The filter code gives ${fix(out)}, which rounds to ${Math.round(out)}.\n`,
+      );
+    }
+    {
+      const k = diskKernel(1);
+      const corner = k[0][0];
+      example(
+        "disk-average",
+        block(`D_{R=1} = ${matrix(k, 4)}`) +
+          `\nFor radius 1, the center cell lies fully inside the disk, so its area is 1. Each side cell holds the part of the disk beyond 0.5 pixels from the center, and each corner cell a small sliver. Divided by the disk area pi, the center weight is ${fix(k[1][1], 4)}, a side weight ${fix(k[0][1], 4)} and a corner weight ${fix(corner, 4)}. The weights add up to 1.\n`,
+      );
+    }
+    {
+      const sum = h9.reduce((a, b) => a + b, 0);
+      example(
+        "fir-lowpass",
+        mdTable(["n", ...h9.map((_, n) => String(n))], [["h[n]", ...h9.map((v) => fix(v, 4))]]) +
+          `\nNine Hamming taps for the cutoff 0.2 cycles per pixel. They are symmetric around n = 4 and add up to ${fix(sum, 4)}, so flat areas keep their value. The outer taps are negative, which is where ringing comes from.\n`,
+      );
+    }
+    {
+      const rows = [
+        [100, 100, 100],
+        [100, 140, 100],
+        [100, 100, 100],
+      ];
+      const out = planeAt("laplacian-sharpen", rows, { neighbors: "4", amount: 1 }, 1, 1);
+      example(
+        "laplacian-sharpen",
+        block(
+          `W = ${matrix(rows)}, \\qquad S_4 \\star W = 5 \\cdot 140 - 4 \\cdot 100 = ${fix(out, 0)}`,
+        ) +
+          `\nThe center is 40 brighter than its neighbors. The Laplacian is 4 x 100 - 4 x 140 = -160, and subtracting it once raises the center to ${fix(out, 0)}. The difference to the neighbors grows from 40 to 200, so the spot looks sharper.\n`,
+      );
+    }
+    {
+      const rowValues = [40, 40, 40, 70, 150, 200, 215, 215, 215];
+      const rows = Array.from({ length: 9 }, () => rowValues);
+      const highs = rowValues.map((_, px) => planeAt("high-pass", rows, { sigma: 1 }, px, 4));
+      const boosts = rowValues.map((_, px) =>
+        planeAt("high-boost", rows, { sigma: 1, boost: 2 }, px, 4),
+      );
+      example(
+        "high-pass",
+        mdTable(
+          ["x", ...rowValues.map((_, px) => String(px))],
+          [
+            ["Value I", ...rowValues.map(String)],
+            ["I - G * I", ...highs.map((v) => fix(v, 1))],
+            [
+              "Offset by 128",
+              ...highs.map((v) => String(Math.min(255, Math.max(0, Math.round(v + 128))))),
+            ],
+          ],
+        ) +
+          `\nSigma 1 on a soft edge whose rows are all the same. Far from the edge the detail is 0, so the pixel is 128. The dark side of the edge is negative and the bright side positive.\n`,
+      );
+      example(
+        "high-boost",
+        mdTable(
+          ["x", ...rowValues.map((_, px) => String(px))],
+          [
+            ["Value I", ...rowValues.map(String)],
+            ["2 I - G * I", ...boosts.map((v) => fix(v, 1))],
+            ["Pixel", ...boosts.map((v) => String(Math.min(255, Math.max(0, Math.round(v)))))],
+          ],
+        ) +
+          `\nA = 2 and sigma 1 on the same edge. Far from the edge the value stays the same, because the weights add up to A - 1 = 1. Next to the edge the values dip and rise, as with the unsharp mask.\n`,
+      );
+    }
+    {
+      const rows = [
+        [10, 20, 30],
+        [40, 50, 60],
+        [70, 80, 90],
+      ];
+      const k = weightedKernel(DEFAULT_KERNEL, false);
+      const sum = rows.flat().reduce((acc, v, i) => acc + v * k.flat()[i], 0);
+      const out = planeAt(
+        "weighted-average",
+        rows,
+        { kernel: DEFAULT_KERNEL, normalize: true },
+        1,
+        1,
+      );
+      example(
+        "weighted-average",
+        block(
+          `W = ${matrix(rows)}, \\qquad \\frac{1}{16} \\sum K \\odot W = \\frac{${sum}}{16} = ${fix(out)}`,
+        ) +
+          `\nEach value is multiplied by the weight on top of it: the center counts 4 times, the side neighbors twice and the corners once. The products add up to ${sum}. Divided by the sum of the weights, 16, that gives ${fix(out)}.\n`,
+      );
+    }
+  }
+
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
   for (const [file, text] of outputs) {

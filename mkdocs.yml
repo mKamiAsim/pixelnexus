@@ -143,8 +143,16 @@ nav:
       - Linear:
           - Box filter: filters/linear/box.md
           - Gaussian filter: filters/linear/gaussian.md
+          - Weighted average filter: filters/linear/weighted-average.md
+          - Binomial filter: filters/linear/binomial.md
+          - Triangular filter: filters/linear/triangular.md
+          - Disk averaging filter: filters/linear/disk-average.md
+          - Low-pass FIR filter: filters/linear/fir-lowpass.md
           - Motion blur: filters/linear/motion-blur.md
           - Laplacian: filters/linear/laplacian.md
+          - Laplacian sharpening: filters/linear/laplacian-sharpen.md
+          - High-pass filter: filters/linear/high-pass.md
+          - High-boost filter: filters/linear/high-boost.md
           - Unsharp mask: filters/linear/unsharp-mask.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md

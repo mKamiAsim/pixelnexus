@@ -15,7 +15,7 @@ from typing import Any, cast
 import cv2
 import numpy as np
 from numpy.typing import NDArray
-from scipy import ndimage
+from scipy import integrate, ndimage, signal, special
 from skimage import exposure, filters
 
 FloatArray = NDArray[np.float64]
@@ -130,6 +130,111 @@ def _check_sobel_against_opencv(plane: FloatArray) -> None:
         raise SystemExit("SciPy Sobel disagrees with OpenCV Sobel")
 
 
+def binomial_weights(size: int) -> FloatArray:
+    row = special.comb(size - 1, np.arange(size))
+    return np.asarray(row / row.sum(), dtype=np.float64)
+
+
+def tent_weights(size: int) -> FloatArray:
+    r = (size - 1) // 2
+    w = r + 1 - np.abs(np.arange(-r, r + 1))
+    return np.asarray(w / w.sum(), dtype=np.float64)
+
+
+def disk_kernel(radius: float) -> FloatArray:
+    """The area of the disk inside each cell, by numerical integration, then normalized."""
+    r = max(0, math.ceil(radius - 0.5))
+    size = 2 * r + 1
+    kernel = np.zeros((size, size))
+
+    def height(x: float) -> float:
+        return math.sqrt(max(0.0, radius * radius - x * x))
+
+    for j in range(size):
+        for i in range(size):
+            x0, x1 = max(i - r - 0.5, -radius), min(i - r + 0.5, radius)
+            y0, y1 = j - r - 0.5, j - r + 0.5
+            if x1 <= x0:
+                continue
+            cuts = [
+                c
+                for y in (y0, y1)
+                if abs(y) < radius
+                for c in (-math.sqrt(radius * radius - y * y), math.sqrt(radius * radius - y * y))
+                if x0 < c < x1
+            ]
+            area, _ = integrate.quad(
+                lambda x, y0=y0, y1=y1: max(0.0, min(y1, height(x)) - max(y0, -height(x))),
+                x0,
+                x1,
+                points=cuts or None,
+                epsabs=1e-13,
+                epsrel=1e-12,
+            )
+            kernel[j, i] = area
+    if abs(kernel.sum() - math.pi * radius * radius) > 1e-8:
+        raise SystemExit("disk kernel areas do not add up to pi R^2")
+    return np.asarray(kernel / kernel.sum(), dtype=np.float64)
+
+
+def _check_disk_against_sampling(radius: float) -> None:
+    """Count fine sample points inside the disk, as a second way to get each cell's area."""
+    r = max(0, math.ceil(radius - 0.5))
+    n = 400
+    offsets = (np.arange(n) + 0.5) / n - 0.5
+    kernel = np.zeros((2 * r + 1, 2 * r + 1))
+    for j in range(2 * r + 1):
+        for i in range(2 * r + 1):
+            xs = (i - r) + offsets
+            ys = (j - r) + offsets
+            inside = (xs[None, :] ** 2 + ys[:, None] ** 2) <= radius * radius
+            kernel[j, i] = inside.mean()
+    if not np.allclose(kernel / kernel.sum(), disk_kernel(radius), atol=2e-4):
+        raise SystemExit("disk kernel disagrees with point sampling")
+
+
+def _check_tent_and_binomial() -> None:
+    for size in (3, 5, 9):
+        r = (size - 1) // 2
+        box = np.ones(r + 1)
+        if not np.allclose(np.convolve(box, box) / (r + 1) ** 2, tent_weights(size)):
+            raise SystemExit("tent weights disagree with two boxes")
+        row = np.array([1.0])
+        for _ in range(size - 1):
+            row = np.convolve(row, [0.5, 0.5])
+        if not np.allclose(row, binomial_weights(size)):
+            raise SystemExit("binomial weights disagree with repeated averaging")
+
+
+def _separable(plane: FloatArray, weights: FloatArray, mode: str) -> Any:
+    rows = ndimage.correlate1d(plane, weights, axis=1, mode=mode)
+    return ndimage.correlate1d(rows, weights, axis=0, mode=mode)
+
+
+LAPLACE_4 = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float64)
+LAPLACE_8 = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]], dtype=np.float64)
+DELTA_3 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]], dtype=np.float64)
+
+
+def _check_sharpen_against_laplace(plane: FloatArray) -> None:
+    ours = ndimage.correlate(plane, DELTA_3 - 0.7 * LAPLACE_4, mode="mirror")
+    theirs = plane - 0.7 * ndimage.laplace(plane, mode="mirror")
+    if not np.allclose(ours, theirs):
+        raise SystemExit("Laplacian sharpening kernel disagrees with scipy.ndimage.laplace")
+
+
+def _check_kernel_text_against_sobel(plane: FloatArray) -> None:
+    kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.float64)
+    ours = ndimage.correlate(plane, kernel, mode="mirror")
+    if not np.allclose(ours, ndimage.sobel(plane, axis=1, mode="mirror")):
+        raise SystemExit("weighted average with a Sobel kernel disagrees with scipy.ndimage.sobel")
+
+
+def parse_kernel(text: str) -> FloatArray:
+    rows = [line.replace(",", " ").split() for line in text.replace("\n", ";").split(";")]
+    return np.array([[float(v) for v in row] for row in rows if row], dtype=np.float64)
+
+
 def _srgb_to_linear(v: FloatArray) -> FloatArray:
     c = v / 255
     return np.asarray(np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4))
@@ -146,6 +251,11 @@ def filter_cases() -> dict[str, Any]:
     _check_luma601_against_opencv()
     _check_laplace_against_scipy(plane)
     _check_sobel_against_opencv(plane)
+    _check_tent_and_binomial()
+    for radius in (1.5, 2.3):
+        _check_disk_against_sampling(radius)
+    _check_sharpen_against_laplace(plane)
+    _check_kernel_text_against_sobel(plane)
 
     cases: list[dict[str, Any]] = []
 
@@ -222,6 +332,108 @@ def filter_cases() -> dict[str, Any]:
                 "scipy.ndimage.gaussian_filter",
             )
 
+    for border in BORDERS:
+        mode = SCIPY_MODES[border]
+        for size in (3, 5, 7):
+            add(
+                "binomial",
+                {"size": size, "border": border},
+                _separable(plane, binomial_weights(size), mode),
+                "scipy.ndimage.correlate1d with binomial weights from scipy.special.comb",
+            )
+            add(
+                "triangular",
+                {"size": size, "border": border},
+                _separable(plane, tent_weights(size), mode),
+                "scipy.ndimage.correlate1d with tent weights",
+            )
+        for radius in (1.5, 2.3, 3.0):
+            add(
+                "disk-average",
+                {"radius": radius, "border": border},
+                ndimage.correlate(plane, disk_kernel(radius), mode=mode),
+                "scipy.ndimage.correlate with the disk kernel from scipy.integrate.quad",
+            )
+        for taps, cutoff, window in ((7, 0.2, "hamming"), (9, 0.1, "blackman"), (5, 0.3, "hann")):
+            add(
+                "fir-lowpass",
+                {"taps": taps, "cutoff": cutoff, "window": window, "border": border},
+                _separable(plane, signal.firwin(taps, 2 * cutoff, window=window), mode),
+                "scipy.ndimage.correlate1d with scipy.signal.firwin taps",
+            )
+        add(
+            "fir-lowpass",
+            {"taps": 11, "cutoff": 0.15, "window": "kaiser", "beta": 6.0, "border": border},
+            _separable(plane, signal.firwin(11, 0.3, window=("kaiser", 6.0)), mode),
+            "scipy.ndimage.correlate1d with scipy.signal.firwin taps",
+        )
+
+    for border in ("reflect101", "replicate", "wrap"):
+        mode = SCIPY_MODES[border]
+        for neighbors, kernel in (("4", LAPLACE_4), ("8", LAPLACE_8)):
+            for amount in (0.5, 1.0):
+                add(
+                    "laplacian-sharpen",
+                    {"neighbors": neighbors, "amount": amount, "border": border},
+                    ndimage.correlate(plane, DELTA_3 - amount * kernel, mode=mode),
+                    "scipy.ndimage.correlate",
+                )
+        for sigma in (1.0, 2.5):
+            blurred = ndimage.gaussian_filter(plane, sigma, truncate=3.0, mode=mode)
+            add(
+                "high-pass",
+                {"sigma": sigma, "border": border},
+                plane - blurred,
+                "scipy.ndimage.gaussian_filter",
+            )
+            for boost in (1.0, 1.7, 2.0):
+                add(
+                    "high-boost",
+                    {"sigma": sigma, "boost": boost, "border": border},
+                    boost * plane - blurred,
+                    "scipy.ndimage.gaussian_filter",
+                )
+        for text, normalize in (
+            ("1 2 1; 2 4 2; 1 2 1", True),
+            ("0 1 2 1 0; 1 2 4 2 1; 0 1 2 1 0", True),
+            ("-1 0 1; -2 0 2; -1 0 1", False),
+            ("1, 1, 1\n1, 1, 1\n1, 1, 1", False),
+        ):
+            kernel = parse_kernel(text)
+            if normalize and kernel.sum() != 0:
+                kernel = kernel / kernel.sum()
+            add(
+                "weighted-average",
+                {"kernel": text, "normalize": normalize, "border": border},
+                ndimage.correlate(plane, kernel, mode=mode),
+                "scipy.ndimage.correlate",
+            )
+
+    fir_taps = [
+        {
+            "taps": taps,
+            "cutoff": cutoff,
+            "window": window,
+            "beta": beta,
+            "output": _values(
+                signal.firwin(
+                    taps, 2 * cutoff, window=(window, beta) if window == "kaiser" else window
+                )
+            ),
+        }
+        for taps, cutoff, window, beta in (
+            (7, 0.2, "hamming", 0.0),
+            (15, 0.15, "hann", 0.0),
+            (21, 0.05, "blackman", 0.0),
+            (11, 0.15, "kaiser", 6.0),
+            (31, 0.45, "kaiser", 2.0),
+        )
+    ]
+    disk_kernels = [
+        {"radius": radius, "rows": disk_kernel(radius).round(12).tolist()}
+        for radius in (0.5, 1.0, 1.5, 2.3, 3.0, 4.7)
+    ]
+
     levels = np.arange(256, dtype=np.float64)
     gamma_cases = [
         {"gamma": g, "output": _values(exposure.adjust_gamma(levels / 255, g) * 255)}  # type: ignore[no-untyped-call]
@@ -264,4 +476,6 @@ def filter_cases() -> dict[str, Any]:
         "grayscale": grayscale,
         "borders": {"pad": 7, "constant": -1, "tables": borders},
         "motionKernels": motion_kernels,
+        "firTaps": fir_taps,
+        "diskKernels": disk_kernels,
     }

@@ -120,6 +120,8 @@ def value_rule(param: dict[str, Any]) -> str:
         return rule
     if param["type"] == "select":
         return ", ".join(str(option["label"]) for option in param["options"])
+    if param["type"] == "kernel":
+        return "Rows of numbers, odd sides up to 15"
     return "On or off" if param["type"] == "boolean" else str(param["type"])
 
 

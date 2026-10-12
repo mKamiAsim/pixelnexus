@@ -2,11 +2,19 @@
 
 | Filter | Family | What it does | Status |
 |---|---|---|---|
+| [Binomial filter](linear/binomial.md) | Linear spatial filters | Blurs with weights from Pascal's triangle, a whole-number stand-in for a Gaussian. | Implemented and tested |
 | [Box filter](linear/box.md) | Linear spatial filters | Replaces each pixel with the plain average of a square window. | Implemented and tested |
+| [Disk averaging filter](linear/disk-average.md) | Linear spatial filters | Averages a round window, the blur of an out-of-focus lens. | Implemented and tested |
 | [Gaussian filter](linear/gaussian.md) | Linear spatial filters | Blurs the image with a weighted average whose weights follow a Gaussian curve. | Implemented and tested |
+| [High-boost filter](linear/high-boost.md) | Linear spatial filters | Sharpens by taking A times the image minus a Gaussian blur of it. | Implemented and tested |
+| [High-pass filter](linear/high-pass.md) | Linear spatial filters | Keeps only the fine detail, by subtracting a Gaussian blur from the image. | Implemented and tested |
 | [Laplacian](linear/laplacian.md) | Linear spatial filters | Measures how much each pixel differs from the average of its neighbors. | Implemented and tested |
+| [Laplacian sharpening](linear/laplacian-sharpen.md) | Linear spatial filters | Sharpens by subtracting a multiple of the Laplacian, which steepens every edge. | Implemented and tested |
+| [Low-pass FIR filter](linear/fir-lowpass.md) | Linear spatial filters | Removes detail above a chosen frequency, with taps designed by the window method. | Implemented and tested |
 | [Motion blur](linear/motion-blur.md) | Linear spatial filters | Blurs the image along a straight line, like a camera that moved during the exposure. | Implemented and tested |
+| [Triangular filter](linear/triangular.md) | Linear spatial filters | Blurs with weights that rise in equal steps to the center and fall again. | Implemented and tested |
 | [Unsharp mask](linear/unsharp-mask.md) | Linear spatial filters | Sharpens by adding back the detail that a Gaussian blur removes. | Implemented and tested |
+| [Weighted average filter](linear/weighted-average.md) | Linear spatial filters | Filters with a kernel that you type, divided by its sum when you ask. | Implemented and tested |
 | [Median filter](nonlinear/median.md) | Nonlinear spatial filters | Replaces each pixel with the middle value of its window. | Implemented and tested |
 | [Sobel](edges/sobel.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |

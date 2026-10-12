@@ -1,3 +1,4 @@
+import { parseKernel } from "@/core/filters/linear/weighted-average";
 import { normalizeNumber } from "@/components/ui/number";
 import type { Param, ParamRef, ParamValue } from "@/generated/catalog-types";
 
@@ -80,6 +81,16 @@ export function validateParams(
       case "boolean":
         out[param.key] = typeof raw === "boolean" ? raw : param.default;
         break;
+      case "kernel": {
+        const parsed = typeof raw === "string" ? parseKernel(raw) : null;
+        if (!parsed?.ok) {
+          warnings.push(
+            `${param.label}: ${parsed?.message ?? "The kernel must be text."} The default is used.`,
+          );
+        }
+        out[param.key] = parsed?.ok ? (raw as string) : param.default;
+        break;
+      }
       default:
         out[param.key] = raw as ParamValue;
     }
