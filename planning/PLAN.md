@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 2: studio shell, canvas and image I/O |
-| Next action | Phase 2 exit checks: E2E flow, 6000x6000 test, axe. Then the Phase 2 docs pages. |
+| Current phase | Phase 3: filter framework, Inspector, Learn and the first filters |
+| Next action | Phase 3, first task: the engine client (run, preview, cancel, progress, timing). |
 | Last updated | 2026-10-12 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 2 shell: dockview workspace, menus, palette, panels, import, export, rulers, rails |
-| In progress | Phase 2 exit checks and docs |
-| Next steps | E2E for the exit flow, 6000x6000 check, axe, docs pages (frontend architecture, preview and rendering, workspace guide) |
+| Last finished step | Phase 2 complete: exit checks passed, docs written |
+| In progress | Nothing. Phase 3 not started. |
+| Next steps | Phase 3 tasks in order: engine client, worker pool, compositor, Library, Properties, then the first filters |
 | Open questions | None |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). |
 
@@ -520,11 +520,11 @@ Goal: a real editor that opens, navigates, compares and exports images. No filte
 - [x] Export: PNG (exact), JPEG and WebP with quality, TIFF, resize, filename pattern `name_filter-param.ext`, metadata stripped (stated in the dialog). PNG and TIFF round trips are bit-exact in a browser test.
 - [x] Built-in synthetic images, generated in code (`core/image/synthetic.ts`). The menu to open them comes with the shell.
 - [x] Shortcuts from requirements 2 and a shortcut sheet (Help > Keyboard shortcuts, Ctrl or Cmd + /). Ctrl+D is listed and arrives with selections in Phase 4.
-- [ ] Screen-reader announcer, focus rings, reduced motion. Announcer done (`app/Notices.tsx`, polite and assertive live regions). Still to do: the axe check.
+- [x] Screen-reader announcer (`app/Notices.tsx`, polite and assertive live regions, edits and undo announced), focus rings, reduced motion. axe finds no serious or critical issue in 6 states.
 
-Docs: frontend architecture, image data model, preview and rendering, user guide for the workspace and panels.
+Docs: frontend architecture, image data model, preview and rendering, user guide for the workspace and panels. Written, plus export and keyboard shortcut pages. A unit test keeps the shortcut page equal to the command list.
 
-Exit: E2E test opens three images, zooms, pans, compares and exports in each format. A 6000x6000 image opens and pans smoothly on this machine. No console errors. axe reports no serious issues.
+Exit: E2E test opens three images, zooms, pans, compares and exports in each format. A 6000x6000 image opens and pans smoothly on this machine. No console errors. axe reports no serious issues. **Met on 2026-10-12.** `web/tests/e2e/studio.spec.ts` covers the flow and axe. On the office PC (RTX 3060 Laptop GPU) a 6000x6000 PNG opens in about 1.1 s and pans at a median of 16.7 ms per frame (`pnpm --filter @pixelnexus/web bench:viewport`). Numbers are in `docs/architecture/preview-and-rendering.md`.
 
 ### Phase 3: Filter framework, Inspector, Learn and the first filters
 
@@ -823,3 +823,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 2 | Style tile approved. Light is now the default (D25). Added Dim and Midnight themes and an automated contrast test for all themes (D26). The test caught light-theme green and red text below 4.5:1 on the app background, now fixed. Layout review moved to the end of Phase 3. | Build the Phase 2 shell. |
 | 2026-10-12 | 2 | Viewport renderer, stores, rotate and flip, exact PNG encoder committed. You merged PRs 1 and 2 and created `Development`. Merged the three newer commits into it. From now on only `Development` is used (D18). | Finish the Phase 2 shell on `Development`. |
 | 2026-10-12 | 2 | Second PC set up. Built the shell: dockview workspace with presets, saved layouts and icon rails, menu bar and command palette from one command list, options bar, tool strip, status bar, toasts with live regions, Images, Navigator, Info and Histogram panels, rulers, export dialog (PNG, JPEG, WebP, TIFF, resize), preferences with image limits. Fixed: `Viewport.tsx` and `viewport.ts` clashed on Windows (renamed to `ImageViewport.tsx`), the Dark theme never applied on `<html>` (selector order, now tested), active compare segment not highlighted. Added `.gitattributes` for LF line endings on both PCs. 314 tests pass. | Phase 2 exit checks and docs. |
+| 2026-10-12 | 2 | Phase 2 done. E2E tests for the exit flow, a 6000x6000 image and axe (dev dependency `@axe-core/playwright`, MPL 2.0, test only, never shipped, so D17 holds). Viewport benchmark script, numbers in the docs. Docs: frontend architecture, preview and rendering, workspace, panels, export, keyboard shortcuts, figure checklist. Fixed: Enter in a number field submitted forms with the old value, theme colors were read from CSS on every frame, the document tab strip broke an ARIA rule, `make_fixtures.py --check` failed on Windows over last-bit float differences (now compares numerically). All CI checks pass on this PC. | Phase 3: engine client. |

@@ -23,7 +23,7 @@ These pages are the technical reference. They explain how each filter works, the
 ## Project status
 
 !!! note "Early development"
-    PixelNexus is in Phase 1 of 11. The filter catalog, the build tools, the tests and these docs are in place. The studio workspace arrives in Phase 2. No filter runs yet.
+    PixelNexus is in Phase 2 of 11. The studio opens, views, compares and exports images. Filters arrive in Phase 3, so no filter runs yet.
 
 Every filter and tool has an entry in the catalog. Each entry has an honest status. The table below is generated from the catalog.
 
@@ -36,4 +36,6 @@ The catalog groups the entries into families:
 ## How these docs are organized
 
 - **Getting started** explains how to install, run and test PixelNexus.
-- Pages about the architecture, the mathematics and each filter are added as each phase is built. A page appears only when its content is real.
+- **User guide** shows you how to use the studio.
+- **Architecture** explains how the studio is built.
+- Pages about the mathematics and each filter are added as each phase is built. A page appears only when its content is real.

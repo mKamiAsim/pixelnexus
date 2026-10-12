@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import math
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -336,6 +337,23 @@ def build() -> dict[str, str]:
     }
 
 
+def same_data(a: Any, b: Any) -> bool:
+    """True when two parsed JSON values match. Floats may differ in their last bits.
+
+    NumPy and SciPy give slightly different last digits on different platforms, for example
+    Windows and Linux. The tolerance here is far below every tolerance the tests use.
+    """
+    if isinstance(a, float) or isinstance(b, float):
+        if not isinstance(a, int | float) or not isinstance(b, int | float):
+            return False
+        return math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12)
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(same_data(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(same_data(x, y) for x, y in zip(a, b, strict=True))
+    return bool(a == b)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if files are out of date")
@@ -345,7 +363,9 @@ def main(argv: list[str] | None = None) -> int:
     for name, text in build().items():
         path = OUT_DIR / name
         if args.check:
-            if not path.exists() or path.read_text(encoding="utf-8") != text:
+            if not path.exists() or not same_data(
+                json.loads(path.read_text(encoding="utf-8")), json.loads(text)
+            ):
                 stale.append(name)
             continue
         path.parent.mkdir(parents=True, exist_ok=True)

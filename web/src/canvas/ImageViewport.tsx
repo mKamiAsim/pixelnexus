@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -62,6 +63,17 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const showOriginal = useUi((s) => s.showOriginal);
   const pixelGrid = useUi((s) => s.pixelGrid);
   const theme = useUi((s) => s.theme);
+  // Read the theme colors once per theme. Reading CSS on every frame forces a style recalculation.
+  const colors = useMemo(
+    () => ({
+      pasteboard: cssColor("--px-canvas"),
+      checkerA: cssColor("--px-checker-a"),
+      checkerB: cssColor("--px-checker-b"),
+    }),
+    // The theme is not used inside, but a new theme means new CSS values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme],
+  );
   const probe = useUi((s) => s.probe);
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
@@ -167,11 +179,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
           splitX: split * size.width,
           overlayOpacity,
           pixelGrid,
-          colors: {
-            pasteboard: cssColor("--px-canvas"),
-            checkerA: cssColor("--px-checker-a"),
-            checkerB: cssColor("--px-checker-b"),
-          },
+          colors,
         });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "The image could not be drawn.");
@@ -188,7 +196,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     overlayOpacity,
     showOriginal,
     pixelGrid,
-    theme,
+    colors,
     contextVersion,
   ]);
 

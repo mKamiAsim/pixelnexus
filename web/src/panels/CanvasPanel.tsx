@@ -83,15 +83,16 @@ function DocumentTabs({ activeId }: { activeId: string | null }) {
   const activate = useDocuments((s) => s.activate);
   const close = useDocuments((s) => s.close);
   return (
-    <div
-      role="tablist"
-      aria-label="Open images"
+    // A list of buttons, not an ARIA tablist: a tablist may only hold tabs, and each
+    // document also has a close button.
+    <ul
+      aria-label="Document tabs"
       className="flex h-7 shrink-0 items-stretch overflow-x-auto border-b border-border-subtle bg-panel-header"
     >
       {documents.map((d) => {
         const active = d.id === activeId;
         return (
-          <div
+          <li
             key={d.id}
             className={clsx(
               "group flex shrink-0 items-center gap-1.5 border-r border-border-subtle pr-1 pl-3 text-xs",
@@ -100,8 +101,7 @@ function DocumentTabs({ activeId }: { activeId: string | null }) {
           >
             <button
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-current={active ? "true" : undefined}
               onClick={() => activate(d.id)}
               className="flex h-full items-center gap-2"
             >
@@ -110,11 +110,10 @@ function DocumentTabs({ activeId }: { activeId: string | null }) {
                 <span className="tabular text-text-muted">{formatZoom(d.view.zoom)}</span>
               ) : null}
               {d.edits.length > 0 ? (
-                <span
-                  className="size-1.5 rounded-full bg-accent-fg"
-                  title="Edited"
-                  aria-label="Edited"
-                />
+                <>
+                  <span aria-hidden className="size-1.5 rounded-full bg-accent-fg" title="Edited" />
+                  <span className="sr-only">, edited</span>
+                </>
               ) : null}
             </button>
             <button
@@ -130,10 +129,10 @@ function DocumentTabs({ activeId }: { activeId: string | null }) {
             >
               <X size={12} />
             </button>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 

@@ -58,4 +58,9 @@ export default tseslint.config(
     extends: [js.configs.recommended],
     languageOptions: { ecmaVersion: 2023, globals: globals.node },
   },
+  {
+    // Benchmarks pass functions to page.evaluate, which run in the browser.
+    files: ["scripts/bench-*.mjs"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
 );

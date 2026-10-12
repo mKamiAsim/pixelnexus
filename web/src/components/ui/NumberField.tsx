@@ -43,8 +43,12 @@ export function NumberField({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") commit();
-    else if (event.key === "Escape") setDraft(null);
+    if (event.key === "Enter") {
+      // An edit in progress is applied first. Without this, Enter would also submit the form
+      // around the field with the value from before the edit.
+      if (draft !== null) event.preventDefault();
+      commit();
+    } else if (event.key === "Escape") setDraft(null);
     else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       setDraft(null);

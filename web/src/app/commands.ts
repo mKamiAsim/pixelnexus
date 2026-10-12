@@ -14,6 +14,7 @@ import { SYNTHETIC_IMAGES } from "@/core/image/synthetic";
 import { flip, rotate } from "@/core/image/transform";
 import type { RgbaImage } from "@/core/image/types";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { announce } from "@/state/notifications";
 import { useSettings } from "@/state/settings";
 import { useUi, type CompareMode } from "@/state/ui";
 import { applyTheme, THEMES } from "@/styles/themes";
@@ -57,9 +58,13 @@ export const MENUS: readonly { id: MenuId; label: string }[] = [
 
 const hasDocument = () => activeDocument() !== null;
 
+/** Apply an edit to the active image and tell screen readers what happened. */
 function editActive(label: string, change: (image: RgbaImage) => RgbaImage) {
   const doc = activeDocument();
-  if (doc) useDocuments.getState().edit(doc.id, change(doc.current), label);
+  if (!doc) return;
+  const image = change(doc.current);
+  useDocuments.getState().edit(doc.id, image, label);
+  announce(`${label} applied. The image is ${image.width} by ${image.height} pixels.`);
 }
 
 function changeView(change: (view: ViewState, size: Size) => ViewState) {
@@ -158,7 +163,10 @@ export function buildCommands(): Command[] {
       enabled: () => (activeDocument()?.undoStack.length ?? 0) > 0,
       run: () => {
         const doc = activeDocument();
-        if (doc) useDocuments.getState().undo(doc.id);
+        const step = doc?.undoStack.at(-1);
+        if (!doc || !step) return;
+        useDocuments.getState().undo(doc.id);
+        announce(`Undid ${step.label}.`);
       },
     },
     {
@@ -169,7 +177,10 @@ export function buildCommands(): Command[] {
       enabled: () => (activeDocument()?.redoStack.length ?? 0) > 0,
       run: () => {
         const doc = activeDocument();
-        if (doc) useDocuments.getState().redo(doc.id);
+        const step = doc?.redoStack.at(-1);
+        if (!doc || !step) return;
+        useDocuments.getState().redo(doc.id);
+        announce(`Redid ${step.label}.`);
       },
     },
     {
@@ -184,7 +195,9 @@ export function buildCommands(): Command[] {
       },
       run: () => {
         const doc = activeDocument();
-        if (doc) useDocuments.getState().revert(doc.id);
+        if (!doc) return;
+        useDocuments.getState().revert(doc.id);
+        announce("Reverted to the original image.");
       },
     },
     {
@@ -397,6 +410,12 @@ export function buildCommands(): Command[] {
       run: () => useUi.getState().setDialog("shortcuts"),
     },
   ];
+}
+
+/** Run a command by id, if it exists and is enabled. Buttons use this to share the menu's behavior. */
+export function runCommand(id: string): void {
+  const command = buildCommands().find((c) => c.id === id);
+  if (command && isEnabled(command)) command.run();
 }
 
 export function isEnabled(command: Command): boolean {

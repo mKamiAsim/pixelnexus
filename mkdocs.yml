@@ -98,5 +98,12 @@ nav:
       - Development environment: getting-started/development-environment.md
       - Configuration: getting-started/configuration.md
       - Running tests: getting-started/running-tests.md
+  - User guide:
+      - The workspace: user-guide/workspace.md
+      - Panels: user-guide/panels.md
+      - Export: user-guide/export.md
+      - Keyboard shortcuts: user-guide/keyboard-shortcuts.md
   - Architecture:
+      - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
+      - Preview and rendering: architecture/preview-and-rendering.md

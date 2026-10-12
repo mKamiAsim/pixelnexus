@@ -40,8 +40,8 @@ export function Thumbnail({
   return (
     <canvas
       ref={ref}
-      role="img"
-      aria-label={label}
+      // An empty label means the thumbnail repeats text next to it, so screen readers skip it.
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
       className="checkerboard shrink-0 rounded-[3px] border border-border"
       style={{ width, height }}
     />

@@ -9,6 +9,7 @@ import { notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
 
 import { CommandPalette } from "./CommandPalette";
+import { runCommand } from "./commands";
 import { ExportDialog } from "./ExportDialog";
 import { ACCEPTED_FILES, openFiles, pastedImageFiles, registerFilePicker } from "./importer";
 import { applyPreset, currentPreset, onPanelsChange, PRESETS, type PresetId } from "./layout";
@@ -39,8 +40,6 @@ function Logo() {
 
 function HeaderActions() {
   const doc = useDocuments((s) => activeDocument(s));
-  const undo = useDocuments((s) => s.undo);
-  const redo = useDocuments((s) => s.redo);
   const setDialog = useUi((s) => s.setDialog);
   const preset = useSyncExternalStore(
     onPanelsChange,
@@ -55,7 +54,7 @@ function HeaderActions() {
         icon={<Undo2 size={15} />}
         size="sm"
         disabled={!doc || doc.undoStack.length === 0}
-        onClick={() => doc && undo(doc.id)}
+        onClick={() => runCommand("edit.undo")}
       />
       <IconButton
         label="Redo"
@@ -63,7 +62,7 @@ function HeaderActions() {
         icon={<Redo2 size={15} />}
         size="sm"
         disabled={!doc || doc.redoStack.length === 0}
-        onClick={() => doc && redo(doc.id)}
+        onClick={() => runCommand("edit.redo")}
       />
       <IconButton
         label="Export"

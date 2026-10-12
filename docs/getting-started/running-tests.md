@@ -23,6 +23,29 @@ pnpm --filter @pixelnexus/web exec playwright install chromium
 
 Unit tests sit next to the code they test, as `*.test.ts` or `*.test.tsx`. Tests that check build tools and shared data sit in `web/tests/unit/`. End-to-end tests sit in `web/tests/e2e/`.
 
+### End-to-end tests
+
+`pnpm e2e` builds the studio, serves the build and drives it in Chromium. The tests in `web/tests/e2e/` cover:
+
+- Opening three images, zooming, panning, every compare mode, and exporting in PNG, JPEG, WebP and TIFF, with a check of each file's first bytes.
+- A resized export, checked in the PNG header.
+- A file that is not an image, which must show a clear error.
+- Running a command from the palette, then undo.
+- Opening and panning a 6000x6000 image.
+- Accessibility checks with axe in several states and themes. A serious or critical issue fails the test.
+
+The accessibility checks use `@axe-core/playwright`. It is a test tool only and is never part of the studio. Its license is MPL 2.0.
+
+### Viewport benchmark
+
+Start the studio with `pnpm dev`, then run:
+
+```bash
+pnpm --filter @pixelnexus/web bench:viewport
+```
+
+The script opens a 6000x6000 image and pans it. It prints the open time and the time per frame as JSON. The docs quote only numbers from this script, with the date and the computer. See [Preview and rendering](../architecture/preview-and-rendering.md).
+
 ## Python tests
 
 ```bash

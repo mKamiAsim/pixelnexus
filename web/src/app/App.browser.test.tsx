@@ -42,8 +42,9 @@ describe("App shell", () => {
     render(<App />);
     // Dockview renders panel contents after it has measured the workspace.
     fireEvent.click(await screen.findByRole("button", { name: /Checkerboard/ }));
-    expect(await screen.findByRole("tab", { name: /Checkerboard\.png/ })).toHaveAttribute(
-      "aria-selected",
+    const strip = await screen.findByRole("list", { name: "Document tabs" });
+    expect(within(strip).getByRole("button", { name: /^Checkerboard\.png/ })).toHaveAttribute(
+      "aria-current",
       "true",
     );
   });

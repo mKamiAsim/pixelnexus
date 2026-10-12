@@ -70,10 +70,15 @@ export function Notices() {
           <Toast key={notice.id} notice={notice} />
         ))}
       </ol>
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
+      <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="announcer">
         {announcement && !announcement.urgent ? announcement.text : ""}
       </div>
-      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+      <div
+        className="sr-only"
+        aria-live="assertive"
+        aria-atomic="true"
+        data-testid="announcer-urgent"
+      >
         {announcement?.urgent ? announcement.text : ""}
       </div>
     </>
