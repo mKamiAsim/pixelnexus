@@ -1,5 +1,5 @@
 /** Helpers for end-to-end tests. They run in Node, not in the page. */
-import { crc32, deflateSync } from "node:zlib";
+import { crc32, deflateSync, inflateSync } from "node:zlib";
 
 function chunk(type: string, data: Buffer): Buffer {
   const length = Buffer.alloc(4);
@@ -62,3 +62,51 @@ export const MAGIC: Record<string, number[]> = {
   webp: [0x52, 0x49, 0x46, 0x46],
   tif: [0x49, 0x49, 0x2a, 0x00],
 };
+
+/**
+ * Decode an 8-bit RGB or RGBA PNG, as the studio exports them, to raw bytes. Enough to compare
+ * exported pixels exactly. It undoes the five PNG row filters.
+ */
+export function readPng(png: Buffer): {
+  width: number;
+  height: number;
+  channels: number;
+  pixels: Uint8Array;
+} {
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let channels = 0;
+  const parts: Buffer[] = [];
+  while (offset < png.length) {
+    const length = png.readUInt32BE(offset);
+    const type = png.toString("ascii", offset + 4, offset + 8);
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      if (data[8] !== 8) throw new Error("Only 8-bit PNG files are supported.");
+      channels = data[9] === 6 ? 4 : data[9] === 2 ? 3 : 0;
+      if (!channels) throw new Error("Only RGB and RGBA PNG files are supported.");
+    } else if (type === "IDAT") parts.push(data);
+    offset += 12 + length;
+  }
+  const raw = inflateSync(Buffer.concat(parts));
+  const stride = width * channels;
+  const out = new Uint8Array(stride * height);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)] ?? 0;
+    for (let i = 0; i < stride; i++) {
+      const x = raw[y * (stride + 1) + 1 + i] ?? 0;
+      const a = i >= channels ? (out[y * stride + i - channels] ?? 0) : 0;
+      const b = y > 0 ? (out[(y - 1) * stride + i] ?? 0) : 0;
+      const c = i >= channels && y > 0 ? (out[(y - 1) * stride + i - channels] ?? 0) : 0;
+      const p = a + b - c;
+      const [pa, pb, pc] = [Math.abs(p - a), Math.abs(p - b), Math.abs(p - c)];
+      const paeth = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      const predicted = [0, a, b, (a + b) >> 1, paeth][filter] ?? 0;
+      out[y * stride + i] = (x + predicted) & 0xff;
+    }
+  }
+  return { width, height, channels, pixels: out };
+}

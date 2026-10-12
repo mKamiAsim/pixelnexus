@@ -118,6 +118,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
   const maskView = useSelection((s) => s.maskView);
+  const previewScope = useFilters((s) => s.scope);
 
   // Selection gestures. A draft is a selection being painted, shown until it is committed.
   // Each belongs to one tool, document and history step. When any of them changes, the old
@@ -252,6 +253,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
           colors,
           maskView,
           antsPhase,
+          previewScope,
         });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "The image could not be drawn.");
@@ -275,6 +277,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     shownDraft?.version,
     maskView,
     antsPhase,
+    previewScope,
   ]);
 
   // March the ants, unless the system asks for less motion.

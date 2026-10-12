@@ -93,4 +93,17 @@ Each value is rounded once, to the nearest whole number, when it is mapped to 8 
 O = M \cdot F + (1 - M) \cdot I
 \]
 
-where \(O\) is the output, \(F\) the filtered value and \(I\) the input value. This is an exact computation. Where \(M = 0\), the compositor copies the input bytes, so those pixels stay bit-identical. Selections and masks arrive in Phase 4. The maths is on [Masks and alpha blending](../mathematics/masks-and-alpha-blending.md).
+where \(O\) is the output, \(F\) the filtered value and \(I\) the input value. This is an exact computation. Where \(M = 0\), the compositor copies the input bytes, so those pixels stay bit-identical. The maths is on [Masks and alpha blending](../mathematics/masks-and-alpha-blending.md).
+
+## Selections and region processing
+
+When the image has a selection, the Properties panel has an "Apply to" choice: the selection, everything outside it, or the whole image. Outside uses the inverted mask \(255 - m\). `web/src/core/composite/scope.ts` turns the choice into a mask and a region:
+
+1. Without a mask, the region is the whole image.
+2. With a mask, the region is the bounding box of the pixels where \(m > 0\). The framework fills the halo around the box with the real neighboring pixels, as for any tile. So the box gives the same pixels as a whole-image run.
+3. A global filter processes the whole image, because its result at one pixel depends on all pixels. Today that is any filter with the `normalize` output mapping.
+4. When the mask touches no pixel, nothing runs, and the studio says why.
+
+The compositor then blends the region result into the image through the mask. A unit test runs every browser filter this way, inside and outside a soft mask. It checks that pixels with \(M = 0\) keep their bytes, and that pixels with \(M = 1\) match a whole-image run. An end-to-end test exports the image before and after a filter and compares every pixel outside the selection.
+
+The live preview is computed without the mask. The renderer blends it through the mask on the GPU, with the same formula. So drawing or changing a selection does not compute the preview again, and the preview cache does not need the mask.

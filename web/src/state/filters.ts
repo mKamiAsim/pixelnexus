@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 
+import type { FilterScope } from "@/core/composite/scope";
 import type { Rect } from "@/core/filters/run";
 import type { ParamValue } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
@@ -94,6 +95,8 @@ interface FiltersState {
   values: Readonly<Record<string, Readonly<Record<string, ParamValue>>>>;
   previewOn: boolean;
   preview: PreviewState;
+  /** Where filters work when the image has a selection. Without one they work on the whole image. */
+  scope: FilterScope;
   applying: ApplyState | null;
   lastRun: Readonly<Record<string, RunInfo>>;
   favorites: readonly string[];
@@ -103,6 +106,7 @@ interface FiltersState {
   setValues: (filterId: string, values: Readonly<Record<string, ParamValue>>) => void;
   resetValues: (filterId: string) => void;
   setPreviewOn: (on: boolean) => void;
+  setScope: (scope: FilterScope) => void;
   setPreview: (preview: PreviewState) => void;
   setApplying: (applying: ApplyState | null) => void;
   setProgress: (progress: number) => void;
@@ -124,6 +128,7 @@ export const useFilters = create<FiltersState>()((set, get) => {
     values: {},
     previewOn: true,
     preview: NO_PREVIEW,
+    scope: "selection",
     applying: null,
     lastRun: {},
     favorites: initial.favorites,
@@ -141,6 +146,7 @@ export const useFilters = create<FiltersState>()((set, get) => {
         return { values };
       }),
     setPreviewOn: (previewOn) => set({ previewOn }),
+    setScope: (scope) => set({ scope }),
     setPreview: (preview) => set({ preview }),
     setApplying: (applying) => set({ applying }),
     setProgress: (progress) =>

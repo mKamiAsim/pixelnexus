@@ -34,6 +34,11 @@ export type MaskView = "ants" | "quick-mask" | "mask";
 
 const MASK_VIEWS: Record<MaskView, number> = { ants: 0, "quick-mask": 1, mask: 2 };
 
+/** Where the filter preview shows: everywhere, inside the mask, or outside it. */
+export type PreviewScope = "whole" | "selection" | "inverse";
+
+const PREVIEW_SCOPES: Record<PreviewScope, number> = { whole: 0, selection: 1, inverse: 2 };
+
 export interface RenderColors {
   readonly pasteboard: Rgb;
   readonly checkerA: Rgb;
@@ -59,6 +64,11 @@ export interface RenderRequest {
   readonly maskView: MaskView;
   /** Moves the marching ants along. Any number. Keep it fixed for a still pattern. */
   readonly antsPhase: number;
+  /**
+   * Where the filter preview shows. With "selection" or "inverse", the preview is blended with
+   * the current image through the mask, as Apply will do. Without a mask it shows everywhere.
+   */
+  readonly previewScope: PreviewScope;
 }
 
 const MODES: Record<RenderMode, number> = {
@@ -102,6 +112,7 @@ uniform bool uHasMask;
 uniform vec2 uMaskSize;
 uniform int uMaskView;
 uniform float uAntsPhase;
+uniform int uPreviewScope;
 out vec4 outColor;
 
 bool inside(vec2 p, vec2 size) {
@@ -114,24 +125,30 @@ vec4 fetch(sampler2D tex, vec2 size, vec2 p) {
   return texture(tex, p / size);
 }
 
-// The current image, with the filter preview on top where it has one.
+float maskAt(vec2 p) {
+  if (!inside(p, uMaskSize)) return 0.0;
+  if (uZoom >= 1.0) return texelFetch(uMask, ivec2(floor(p)), 0).r;
+  return texture(uMask, p / uMaskSize).r;
+}
+
+// The current image, with the filter preview on top where it has one. With a preview scope,
+// the preview is blended in through the mask: I_out = M * F + (1 - M) * I.
 vec4 currentAt(vec2 p) {
+  vec4 current = fetch(uCurrent, uCurrentSize, p);
   if (uHasPreview) {
     vec2 q = p - uPreviewRect.xy;
     if (q.x >= 0.0 && q.y >= 0.0 && q.x < uPreviewRect.z && q.y < uPreviewRect.w) {
       vec2 scale = uPreviewSize / uPreviewRect.zw;
       vec2 t = q * scale;
-      if (uZoom * scale.x >= 1.0) return texelFetch(uPreview, ivec2(floor(t)), 0);
-      return texture(uPreview, t / uPreviewSize);
+      vec4 filtered = uZoom * scale.x >= 1.0
+        ? texelFetch(uPreview, ivec2(floor(t)), 0)
+        : texture(uPreview, t / uPreviewSize);
+      if (uPreviewScope == 0) return filtered;
+      float m = maskAt(p);
+      return mix(current, filtered, uPreviewScope == 1 ? m : 1.0 - m);
     }
   }
-  return fetch(uCurrent, uCurrentSize, p);
-}
-
-float maskAt(vec2 p) {
-  if (!inside(p, uMaskSize)) return 0.0;
-  if (uZoom >= 1.0) return texelFetch(uMask, ivec2(floor(p)), 0).r;
-  return texture(uMask, p / uMaskSize).r;
+  return current;
 }
 
 // True on the last screen pixel inside the selection, next to an unselected one.
@@ -412,6 +429,8 @@ export class ImageRenderer {
       mask?.mask.height ?? current.image.height,
     );
     gl.uniform1i(this.uniform("uMaskView"), MASK_VIEWS[request.maskView]);
+    // Without a mask the preview shows everywhere. The mask sampler then holds another texture.
+    gl.uniform1i(this.uniform("uPreviewScope"), mask ? PREVIEW_SCOPES[request.previewScope] : 0);
     gl.uniform1f(this.uniform("uAntsPhase"), request.antsPhase);
     gl.uniform2f(this.uniform("uCurrentSize"), current.image.width, current.image.height);
     gl.uniform2f(this.uniform("uOriginalSize"), original.image.width, original.image.height);

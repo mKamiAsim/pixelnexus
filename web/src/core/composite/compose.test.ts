@@ -6,6 +6,7 @@ import { createImage, type RgbaImage } from "@/core/image/types";
 import { mulberry32 } from "@/core/math/random";
 
 import { composite, type Mask } from "./compose";
+import { processingRegion, scopeMask } from "./scope";
 
 function randomImage(width: number, height: number, seed: number): RgbaImage {
   const random = mulberry32(seed);
@@ -77,5 +78,57 @@ describe("compositor", () => {
     const before = original.data.slice();
     composite(original, filtered, full(original), mask);
     expect(original.data).toEqual(before);
+  });
+});
+
+describe("filter scope and region processing", () => {
+  const image = randomImage(24, 20, 7);
+  // A soft blob away from the edges: hard inside, a ramp around it, 0 elsewhere.
+  const blob: Mask = { width: 24, height: 20, data: new Uint8Array(24 * 20) };
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 24; x++) {
+      const d = Math.hypot(x - 11, y - 9);
+      blob.data[y * 24 + x] = d <= 4 ? 255 : d <= 7 ? Math.round(((7 - d) / 3) * 255) : 0;
+    }
+  }
+
+  it("gives the mask for each scope", () => {
+    expect(scopeMask(blob, "whole")).toBeNull();
+    expect(scopeMask(null, "selection")).toBeNull();
+    expect(scopeMask(blob, "selection")).toBe(blob);
+    const outside = scopeMask(blob, "inverse");
+    expect(outside?.data[0]).toBe(255);
+    expect(outside?.data[9 * 24 + 11]).toBe(0);
+    // The inverted mask is made once per selection.
+    expect(scopeMask(blob, "inverse")).toBe(outside);
+  });
+
+  it("processes the mask bounds, the whole image for global filters, and nothing for an empty mask", () => {
+    expect(processingRegion(image, null, false)).toEqual(full(image));
+    expect(processingRegion(image, blob, false)).toEqual({ x: 5, y: 3, width: 13, height: 13 });
+    expect(processingRegion(image, blob, true)).toEqual(full(image));
+    const empty: Mask = { width: 24, height: 20, data: new Uint8Array(24 * 20) };
+    expect(processingRegion(image, empty, false)).toBeNull();
+  });
+
+  it("matches a whole-image run inside the selection and keeps M = 0 pixels, for every filter", () => {
+    for (const filter of BROWSER_FILTERS) {
+      for (const scope of ["selection", "inverse"] as const) {
+        const mask = scopeMask(blob, scope);
+        const region = processingRegion(image, mask, false);
+        if (!mask || !region) throw new Error("expected a mask and a region");
+        const whole = runFilter(image, filter, {}).image;
+        const out = composite(image, runFilter(image, filter, {}, region).image, region, mask);
+        for (let i = 0; i < 24 * 20; i++) {
+          const m = mask.data[i];
+          if (m !== 0 && m !== 255) continue;
+          const expected = m === 0 ? image : whole;
+          expect(
+            Array.from(out.data.subarray(i * 4, i * 4 + 4)),
+            `${filter.id}, ${scope}, pixel ${i}`,
+          ).toEqual(Array.from(expected.data.subarray(i * 4, i * 4 + 4)));
+        }
+      }
+    }
   });
 });

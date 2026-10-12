@@ -22,7 +22,7 @@ This is an exact computation, done for every channel including alpha, and rounde
 - Where \(m = 0\), the pixel keeps its exact bytes. A test checks this for every filter.
 - Where \(m = 255\), the pixel takes the filter result exactly.
 
-The selection tools that make masks arrive in Phase 4. The compositor is in `web/src/core/composite/compose.ts`.
+The compositor is in `web/src/core/composite/compose.ts`. How the studio picks the mask and the part of the image to process is on [Processing pipeline](../architecture/processing-pipeline.md#selections-and-region-processing).
 
 ## Alpha
 

@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
-import { activeDocument, useDocuments } from "@/state/documents";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import type { FilterScope } from "@/core/composite/scope";
+import { activeDocument, activeSelection, useDocuments } from "@/state/documents";
 import { useFilterValues } from "@/app/useFilterValues";
 import { useFilters, type Preset, type RunInfo } from "@/state/filters";
 import { notify } from "@/state/notifications";
@@ -137,11 +139,9 @@ function FilterProperties({ entry }: { entry: Filter }) {
             </Collapsible.Content>
           </Collapsible.Root>
         ) : null}
-        <p className="text-2xs text-text-muted">
-          Applies to the whole image. Selections arrive in Phase 4.
-        </p>
       </section>
 
+      {runnable ? <ScopeRow /> : null}
       {runnable ? <PreviewRow /> : null}
 
       {warnings.length > 0 ? (
@@ -157,6 +157,51 @@ function FilterProperties({ entry }: { entry: Filter }) {
 
       <ApplyRow entry={entry} disabled={!runnable || !doc} onReset={() => resetValues(entry.id)} />
       {params.length > 0 ? <PresetRow entry={entry} values={values} /> : null}
+    </div>
+  );
+}
+
+const SCOPES: readonly { value: FilterScope; label: string }[] = [
+  { value: "selection", label: "Selection" },
+  { value: "inverse", label: "Outside" },
+  { value: "whole", label: "Whole image" },
+];
+
+/** Where the filter works: the selection, everything outside it, or the whole image. */
+function ScopeRow() {
+  const scope = useFilters((s) => s.scope);
+  const setScope = useFilters((s) => s.setScope);
+  const hasSelection = useDocuments((s) => Boolean(activeSelection(activeDocument(s))));
+  const disabledSelection = useDocuments((s) => {
+    const doc = activeDocument(s);
+    return Boolean(doc?.selection && !doc.selectionEnabled);
+  });
+  if (!hasSelection) {
+    return (
+      <p className="border-b border-border-subtle px-3 py-2.5 text-2xs text-text-muted">
+        {disabledSelection
+          ? "Applies to the whole image, because the selection is off (Select > Use the selection)."
+          : "Applies to the whole image. Make a selection to limit the filter to a part of it."}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5 border-b border-border-subtle px-3 py-2.5">
+      <span id="props-scope" className="text-xs text-text-secondary">
+        Apply to
+      </span>
+      <SegmentedControl
+        label="Apply to"
+        value={scope}
+        onChange={(value) => setScope(value as FilterScope)}
+        segments={SCOPES}
+        fullWidth
+      />
+      <p className="text-2xs text-text-muted">
+        {scope === "whole"
+          ? "The selection is ignored."
+          : "Soft selection edges blend the result with the image."}
+      </p>
     </div>
   );
 }

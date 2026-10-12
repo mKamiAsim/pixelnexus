@@ -39,10 +39,7 @@ export interface HistoryStep {
   /** The selection at this step, or null for none. */
   readonly selection: Mask | null;
   /** For filter steps: the filter and the validated parameters it ran with. */
-  readonly filter?: {
-    readonly id: string;
-    readonly params: Readonly<Record<string, ParamValue>>;
-  };
+  readonly filter?: FilterRecord;
   /** Milliseconds since 1970, when the step was made. */
   readonly at: number;
 }
@@ -97,6 +94,8 @@ export type NewDocument = Omit<
 export interface FilterRecord {
   readonly id: string;
   readonly params: Readonly<Record<string, ParamValue>>;
+  /** Set when the filter worked only inside the selection, or only outside it. */
+  readonly scope?: "selection" | "inverse";
 }
 
 interface DocumentsState {

@@ -2,7 +2,7 @@
 
 This page describes each panel of the studio. Open a closed panel from the **Window** menu. See [The workspace](workspace.md) to move and stack panels.
 
-More panels arrive with later phases, such as Masks, Pipeline and Metrics.
+More panels arrive with later phases, such as Pipeline and Metrics.
 
 ## Library
 
@@ -21,8 +21,9 @@ The Properties panel shows the settings of the selected filter and runs it.
 
 - **Header.** The name, the status, a one-line summary, and badges for linearity, domain and engine.
 - **Parameters.** One control per parameter, built from the catalog. Drag a slider or type a number. Size parameters accept only allowed values, for example odd sizes. Angles have a dial. **More settings** holds the advanced ones, such as the border mode and the channel scope.
-- **Preview.** Shows the result on the canvas while you change values. A line below it says whether the preview is exact or approximate. See [Execution model](../architecture/execution-model.md).
-- **Apply** runs the filter on the whole image at full resolution (Ctrl+Enter or Cmd+Enter). While it runs, a progress bar and **Cancel** appear.
+- **Apply to.** When the image has a selection, choose **Selection**, **Outside** (everything except the selection) or **Whole image**. Soft selection edges blend the result with the image. Without a selection, filters work on the whole image.
+- **Preview.** Shows the result on the canvas while you change values. With a selection, the preview shows only where the filter will work. A line below it says whether the preview is exact or approximate. See [Execution model](../architecture/execution-model.md).
+- **Apply** runs the filter at full resolution (Ctrl+Enter or Cmd+Enter), on the part that **Apply to** names. While it runs, a progress bar and **Cancel** appear.
 - **Reset** returns the parameters to their defaults.
 - **Presets.** Save the current values under a name, load them later or delete them. Presets are saved in this browser.
 - **Copy JSON** copies the filter id and the values.
@@ -100,3 +101,12 @@ The Histogram panel counts how many pixels have each value from 0 to 255.
 - **Logarithmic scale** makes rare values visible next to very common ones.
 
 Below the chart are the mean, the standard deviation, the median, the lowest and highest value, and the number of pixels. In RGB view these values are for luma. While you hold the original in view, the histogram shows the original.
+
+## Masks
+
+The Masks panel shows the selection of the active image and its saved masks. White is selected and black is not.
+
+- **Selection.** A small picture of the selection and one line about its size and position.
+- **Save selection** keeps the selection as a named mask (Select > Save selection). Saved masks stay with the image until you close it.
+- **Export PNG** saves the selection as a gray PNG file. **Import** reads an image file of the same size as a selection: bright pixels are selected.
+- **Saved masks.** The buttons next to a saved mask load it as the selection, add it, subtract it or intersect with it. The last button deletes it.

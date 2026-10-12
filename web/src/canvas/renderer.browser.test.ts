@@ -32,6 +32,7 @@ function request(overrides: Partial<RenderRequest> = {}): RenderRequest {
     colors: COLORS,
     maskView: "ants",
     antsPhase: 0,
+    previewScope: "selection",
     ...overrides,
   };
 }
@@ -156,5 +157,33 @@ describe("ImageRenderer", () => {
     renderer.setMask(null);
     renderer.render(request({ maskView: "mask" }));
     expect(read(15, 5)).toEqual([255, 255, 255, 255]);
+  });
+
+  it("blends the filter preview through the mask", () => {
+    const renderer = setup();
+    const black = createImage(2, 2);
+    black.data.set([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255]);
+    const white = createImage(2, 2);
+    white.data.fill(255);
+    renderer.setImages(black, black);
+    renderer.setPreview(white, { x: 0, y: 0, width: 2, height: 2 });
+    // Selected, unselected / half selected, unselected.
+    const mask = createMask(2, 2);
+    mask.data.set([255, 0, 128, 0]);
+    renderer.setMask(mask);
+    // The reads stay away from the marching ants on the selection edge.
+    renderer.render(request({ previewScope: "selection" }));
+    expect(read(4, 5)[0]).toBe(255);
+    expect(read(15, 5)[0]).toBe(0);
+    expect(read(4, 15)[0]).toBe(128);
+    renderer.render(request({ previewScope: "inverse" }));
+    expect(read(15, 5)[0]).toBe(255);
+    expect(read(4, 15)[0]).toBe(127);
+    renderer.render(request({ previewScope: "whole" }));
+    expect(read(15, 5)[0]).toBe(255);
+    // Without a mask the preview shows everywhere, whatever the scope.
+    renderer.setMask(null);
+    renderer.render(request({ previewScope: "selection" }));
+    expect(read(15, 5)[0]).toBe(255);
   });
 });

@@ -5,9 +5,16 @@
 import { catalog, isRunnable, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
 import { composite } from "@/core/composite/compose";
+import { processingRegion, scopeMask, type FilterScope } from "@/core/composite/scope";
 import type { ParamValue } from "@/core/filters/types";
 import { EngineError, runJob } from "@/engine-client";
-import { activeDocument, appliedSteps, useDocuments, type ImageDocument } from "@/state/documents";
+import {
+  activeDocument,
+  activeSelection,
+  appliedSteps,
+  useDocuments,
+  type ImageDocument,
+} from "@/state/documents";
 import { useFilters } from "@/state/filters";
 import { announce, notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
@@ -81,7 +88,28 @@ export function exportSuffix(doc: ImageDocument): string {
     : step.filter.id;
 }
 
-/** Apply the selected filter to the whole active image, through workers. */
+/** Where a filter works on this document: the chosen scope, or the whole image without a selection. */
+export function effectiveScope(doc: ImageDocument | null): FilterScope {
+  return activeSelection(doc) ? useFilters.getState().scope : "whole";
+}
+
+const SCOPE_SUFFIX: Record<FilterScope, string> = {
+  whole: "",
+  selection: " inside the selection",
+  inverse: " outside the selection",
+};
+
+/**
+ * True when the result at one pixel depends on the whole image, so a part of the image cannot
+ * be processed alone. Today that is the "stretch to range" output mapping.
+ */
+export const isGlobal = (values: Readonly<Record<string, ParamValue>>) =>
+  values.outputMapping === "normalize";
+
+/**
+ * Apply the selected filter to the active image, through workers. With a selection, only the
+ * selected part is processed and the result is blended in through the mask.
+ */
 export async function applySelected(): Promise<void> {
   const filters = useFilters.getState();
   const entry = filterById(filters.selectedId);
@@ -93,7 +121,20 @@ export async function applySelected(): Promise<void> {
   }
   const source = doc.current;
   const { values } = filterValues(entry);
-  const label = stepLabel(entry, values);
+  const scope = effectiveScope(doc);
+  const mask = scopeMask(activeSelection(doc), scope);
+  const region = processingRegion(source, mask, isGlobal(values));
+  if (!region) {
+    notify(
+      "info",
+      "Nothing to change",
+      scope === "inverse"
+        ? "The selection covers the whole image, so nothing is outside it."
+        : "The selection is empty.",
+    );
+    return;
+  }
+  const label = `${stepLabel(entry, values)}${SCOPE_SUFFIX[scope]}`;
   const controller = new AbortController();
   filters.setApplying({ filterId: entry.id, progress: 0, controller });
   const { beginWork, endWork } = useUi.getState();
@@ -101,7 +142,7 @@ export async function applySelected(): Promise<void> {
   announce(`Applying ${entry.name}.`);
   try {
     const result = await runJob(
-      { filterId: entry.id, values, image: source },
+      { filterId: entry.id, values, image: source, region },
       {
         signal: controller.signal,
         onProgress: (fraction) => useFilters.getState().setProgress(fraction),
@@ -116,8 +157,12 @@ export async function applySelected(): Promise<void> {
       );
       return;
     }
-    const image = composite(source, result.image, result.region);
-    useDocuments.getState().edit(doc.id, image, label, { id: entry.id, params: values });
+    const image = composite(source, result.image, result.region, mask);
+    useDocuments.getState().edit(doc.id, image, label, {
+      id: entry.id,
+      params: values,
+      ...(scope === "whole" ? {} : { scope }),
+    });
     useFilters.getState().setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
     // A preview of the new image would show the filter twice, so the preview turns off.
     useFilters.getState().setPreviewOn(false);

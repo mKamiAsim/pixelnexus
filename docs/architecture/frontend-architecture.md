@@ -51,7 +51,7 @@ flowchart TB
 3. The command palette (Ctrl+K, or Cmd+K on a Mac) searches it.
 4. The shortcut sheet (Help > Keyboard shortcuts) prints it.
 
-So a menu, a shortcut and the palette can never disagree. Each command can say when it is enabled and whether it shows a check mark. Commands that arrive in a later phase say so. For example, Select > Deselect is listed with Ctrl+D and is disabled until Phase 4.
+So a menu, a shortcut and the palette can never disagree. Each command can say when it is enabled and whether it shows a check mark. A command that cannot run now is disabled. For example, Select > Deselect with Ctrl+D is disabled while the image has no selection.
 
 A unit test checks that every command id is unique, that no two commands share a shortcut, and that the shortcuts from the requirements exist.
 
