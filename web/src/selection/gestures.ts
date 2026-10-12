@@ -14,11 +14,12 @@ import {
   combineMasks,
   createMask,
   isMaskEmpty,
+  resizeMask,
   type CombineMode,
   type Mask,
 } from "@/core/mask/mask";
 import { ellipseMask, paintStroke, polygonMask, rectMask, type Point } from "@/core/mask/raster";
-import { featherMask } from "@/core/mask/refine";
+import { featherMask, smoothMask } from "@/core/mask/refine";
 import type { ColorSpace } from "@/core/selection/color";
 import {
   boxAround,
@@ -29,9 +30,11 @@ import {
   strongestEdge,
   type Pixel,
 } from "@/core/selection/livewire";
+import { growSuperpixels, superpixelMask, touchedSuperpixels } from "@/core/selection/quick";
 import { magicWand } from "@/core/selection/wand";
 
 import type { SelectionToolId } from "./ids";
+import type { PreparedSuperpixels } from "./superpixelCache";
 
 export interface Modifiers {
   readonly shift: boolean;
@@ -67,6 +70,8 @@ export interface GestureContext {
   readonly zoom: number;
   /** The tool's name, used as the history label. */
   readonly label: string;
+  /** Superpixels of the image, for Quick Selection. Null while they are being made. */
+  readonly superpixels?: PreparedSuperpixels | null;
 }
 
 export interface GestureUpdate {
@@ -457,6 +462,70 @@ function brush(ctx: GestureContext, eraser: boolean): Gesture {
   };
 }
 
+/**
+ * Quick Selection. Paint over a part of the image: the superpixels under the brush are seeds,
+ * and the selection grows from them over similar superpixels (core/selection/quick.ts). It
+ * adds to the selection, or subtracts with Alt, and updates while you paint.
+ */
+function quickSelection(ctx: GestureContext): Gesture {
+  const prepared = ctx.superpixels;
+  if (!prepared) {
+    // The superpixels are not ready yet. The options bar says so.
+    return { down: () => ({}), drag: () => ({}), up: () => ({ end: true }) };
+  }
+  const { sp, sx, sy } = prepared;
+  const { width, height } = ctx.image;
+  const radius = num(ctx.values, "size", 30) / 2;
+  const hardness = num(ctx.values, "hardness", 100) / 100;
+  const options = {
+    tolerance: num(ctx.values, "tolerance", 32),
+    edgeSensitivity: num(ctx.values, "edgeSensitivity", 50) / 100,
+  };
+  const smoothness = num(ctx.values, "smoothness", 2);
+  const base = ctx.selection;
+  const stroke = createMask(sp.width, sp.height);
+  const seeds = new Set<number>();
+  let subtract = false;
+  let last: Point | null = null;
+  let result: Mask | null = null;
+
+  const paint = (points: Point[]): GestureUpdate => {
+    const scaled = points.map((p) => ({ x: p.x * sx, y: p.y * sy }));
+    const dirty = paintStroke(stroke, scaled, Math.max(0.5, radius * sx), hardness);
+    const before = seeds.size;
+    if (dirty) for (const s of touchedSuperpixels(sp, stroke, dirty)) seeds.add(s);
+    if (seeds.size === before) return {};
+    let small = superpixelMask(sp, growSuperpixels(sp, seeds, options));
+    const r = Math.round(smoothness * sx);
+    if (r > 0) small = smoothMask(small, r);
+    const grown = resizeMask(small, width, height);
+    result = subtract
+      ? base
+        ? combineMasks(base, grown, "subtract")
+        : null
+      : combineMasks(base, grown, "add");
+    return { draft: { mask: result ?? createMask(width, height), dirty: null } };
+  };
+  return {
+    down(p, mods) {
+      subtract = mods.alt;
+      last = p;
+      return paint([p]);
+    },
+    drag(p) {
+      const from = last ?? p;
+      last = p;
+      return paint([from, p]);
+    },
+    up() {
+      if (seeds.size === 0) return { draft: null, end: true };
+      const mask = result && !isMaskEmpty(result) ? result : null;
+      if (!mask && !base) return { draft: null, end: true };
+      return { draft: null, commit: { mask, label: ctx.label }, end: true };
+    },
+  };
+}
+
 function wand(ctx: GestureContext): Gesture {
   return {
     down(p, mods) {
@@ -494,6 +563,8 @@ export function createGesture(tool: SelectionToolId, ctx: GestureContext): Gestu
       return brush(ctx, true);
     case "magic-wand":
       return wand(ctx);
+    case "quick-selection":
+      return quickSelection(ctx);
     default:
       return null;
   }

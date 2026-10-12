@@ -37,6 +37,7 @@ import {
   type Outline,
 } from "@/selection/gestures";
 import { BRUSH_TOOLS, isSelectionTool } from "@/selection/ids";
+import { readySuperpixels } from "@/selection/superpixelCache";
 import { toolValues } from "@/selection/values";
 import { useDocuments, type ImageDocument } from "@/state/documents";
 import { useFilters } from "@/state/filters";
@@ -319,6 +320,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       values: toolValues(tool),
       zoom: view.zoom,
       label: TOOLS.find((t) => t.id === tool)?.label ?? tool,
+      superpixels: tool === "quick-selection" ? readySuperpixels(image) : null,
     });
     gesture.current = created ? { key: gestureKey, gesture: created } : null;
     return created;

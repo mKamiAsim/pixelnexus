@@ -6,3 +6,53 @@ engine: browser
 phase: '4'
 status: planned
 planNotes: SLIC superpixels and similarity growth.
+params:
+  - key: size
+    label: Size
+    type: number
+    default: 30
+    min: 1
+    max: 1000
+    step: 1
+    unit: px
+    description: Diameter of the brush.
+    effect: A bigger brush touches more superpixels at once.
+  - key: hardness
+    label: Hardness
+    type: number
+    default: 100
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: How sharp the edge of the brush is. Superpixels count as touched where the brush is at least half strength.
+    effect: Lower values make the brush touch a smaller area than its size.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    default: 32
+    min: 0
+    max: 255
+    step: 1
+    description: How different in color, texture and edges a neighboring superpixel may be and still join.
+    effect: Higher values grow the selection further. 0 selects only the superpixels you paint over.
+  - key: edgeSensitivity
+    label: Edge sensitivity
+    type: number
+    default: 50
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: How strongly edges between superpixels stop the growth.
+    effect: Higher values keep the selection inside clear outlines.
+  - key: smoothness
+    label: Smoothness
+    type: number
+    default: 2
+    min: 0
+    max: 50
+    step: 1
+    unit: px
+    description: Radius of the majority smoothing of the selection edge.
+    effect: Higher values remove small bumps and round corners.

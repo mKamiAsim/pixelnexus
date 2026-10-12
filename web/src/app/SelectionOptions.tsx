@@ -10,7 +10,9 @@ import type { ParamValue } from "@/core/filters/types";
 import type { Param } from "@/generated/catalog-types";
 import type { CombineMode } from "@/core/mask/mask";
 import type { SelectionToolId } from "@/selection/ids";
+import { useSuperpixels } from "@/selection/superpixelCache";
 import { toolEntry, useToolValues } from "@/selection/values";
+import { activeDocument, useDocuments } from "@/state/documents";
 import { useSelection } from "@/state/selection";
 
 import { MODES } from "./selectionModes";
@@ -126,6 +128,7 @@ export function SelectionOptions({ tool }: { tool: SelectionToolId }) {
           onChange={(value) => setValue(tool, param.key, value)}
         />
       ))}
+      {tool === "quick-selection" ? <SuperpixelStatus /> : null}
       {params.length > 0 ? (
         <IconButton
           label="Reset tool settings"
@@ -135,5 +138,19 @@ export function SelectionOptions({ tool }: { tool: SelectionToolId }) {
         />
       ) : null}
     </div>
+  );
+}
+
+/** Quick Selection needs superpixels first. This starts them and says when they are ready. */
+function SuperpixelStatus() {
+  const image = useDocuments((s) => activeDocument(s)?.current ?? null);
+  const state = useSuperpixels(image);
+  if (!image || !state || state.status === "ready") return null;
+  return (
+    <span role="status" className="shrink-0 text-xs text-text-muted">
+      {state.status === "preparing"
+        ? "Preparing the image for Quick Selection..."
+        : `Quick Selection is not available: ${state.message}`}
+    </span>
   );
 }

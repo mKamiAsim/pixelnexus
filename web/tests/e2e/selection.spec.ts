@@ -227,3 +227,79 @@ test("the selection dialogs and the Masks panel have no serious accessibility is
   await page.keyboard.press("m");
   await check("Options bar");
 });
+
+/** Zoom from the status bar, as a factor. */
+async function zoomOf(page: Page): Promise<number> {
+  const text = (await page.getByRole("contentinfo").textContent()) ?? "";
+  const match = /Zoom ([\d.]+)%/.exec(text);
+  if (!match) throw new Error(`No zoom in the status bar: ${text}`);
+  return Number(match[1]) / 100;
+}
+
+/**
+ * The screen point of an image point, for a 512 x 512 image that is centered in the canvas, as
+ * it is after any zoom command.
+ */
+async function screenOf(page: Page, x: number, y: number) {
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  const zoom = await zoomOf(page);
+  return {
+    x: box.x + box.width / 2 + (x - 256) * zoom,
+    y: box.y + box.height / 2 + (y - 256) * zoom,
+  };
+}
+
+test("screen and image coordinates agree at many zoom levels", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  const status = page.getByRole("contentinfo");
+  const zooms: number[] = [];
+  for (const keys of [
+    ["Control+0"],
+    ["Control+1"],
+    ["Control+1", "Control+="],
+    ["Control+1", "Control+=", "Control+="],
+    ["Control+1", "Control+=", "Control+=", "Control+="],
+    ["Control+1", "Control+-"],
+    ["Control+1", "Control+-", "Control+-"],
+  ]) {
+    await canvas(page).focus();
+    for (const key of keys) await page.keyboard.press(key);
+    zooms.push(await zoomOf(page));
+    // The pointer readout names the pixel under a computed point.
+    const center = await screenOf(page, 240.5, 250.5);
+    await page.mouse.move(center.x, center.y);
+    await expect(status).toContainText("x 240, y 250");
+    // A marquee between two computed corners selects exactly that rectangle.
+    await page.keyboard.press("m");
+    const a = await screenOf(page, 236, 246);
+    const b = await screenOf(page, 276, 270);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 4 });
+    await page.mouse.up();
+    await expect(status).toContainText("Selection: 40 x 24 px at x 236, y 246");
+    await page.keyboard.press("Control+d");
+  }
+  // The zoom really changed: at least five different levels.
+  expect(new Set(zooms).size).toBeGreaterThanOrEqual(5);
+});
+
+test("Quick Selection grows over a disk from one short stroke", async ({ page }) => {
+  await openTestImage(page, "Disks and dots");
+  await canvas(page).focus();
+  await page.keyboard.press("Shift+W");
+  await expect(page.getByText("Preparing the image for Quick Selection...")).toBeHidden({
+    timeout: 15_000,
+  });
+  // The big disk at the lower left has its center at (128, 320) and a radius of 72.
+  const from = await screenOf(page, 118, 315);
+  const to = await screenOf(page, 138, 325);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await page.mouse.up();
+  await expect(announcer(page)).toContainText(
+    "Quick Selection. Selection: 144 x 144 px at x 56, y 248",
+  );
+});

@@ -37,6 +37,7 @@ A unit test compares this table with the command list in the studio, so the two 
 | Selection brush | View > Tools | `B` | `B` |
 | Selection eraser | View > Tools | `E` | `E` |
 | Magic Wand | View > Tools | `W` | `W` |
+| Quick Selection | View > Tools | `Shift+W` | `Shift+W` |
 | Command palette | Help | `Ctrl+K` | `Cmd+K` |
 | Keyboard shortcuts | Help | `Ctrl+/` | `Cmd+/` |
 

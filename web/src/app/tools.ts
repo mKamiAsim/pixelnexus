@@ -93,4 +93,11 @@ export const TOOLS: readonly ToolInfo[] = [
     group: "color",
     hint: "Click a color to select it. Shift adds, Alt subtracts, both intersect.",
   },
+  {
+    id: "quick-selection",
+    label: toolName("quick-selection"),
+    shortcut: "Shift+W",
+    group: "color",
+    hint: "Paint over a part of the image. The selection grows to similar areas. Alt subtracts.",
+  },
 ];

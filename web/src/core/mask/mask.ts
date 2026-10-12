@@ -180,3 +180,39 @@ export function masksEqual(a: Mask | null, b: Mask | null): boolean {
   for (let i = 0; i < a.data.length; i++) if (a.data[i] !== b.data[i]) return false;
   return true;
 }
+
+/**
+ * Scale a mask to a new size by bilinear interpolation between pixel centers, with the edge
+ * pixels repeated. A hard mask scaled up gets a soft edge about one source pixel wide, which
+ * works like anti-aliasing.
+ */
+export function resizeMask(mask: Mask, width: number, height: number): Mask {
+  if (width === mask.width && height === mask.height) return mask;
+  const out = createMask(width, height);
+  const sx = mask.width / width;
+  const sy = mask.height / height;
+  const xs = new Int32Array(width);
+  const fx = new Float32Array(width);
+  for (let x = 0; x < width; x++) {
+    const u = Math.min(mask.width - 1, Math.max(0, (x + 0.5) * sx - 0.5));
+    xs[x] = Math.min(mask.width - 2, Math.floor(u));
+    fx[x] = u - (xs[x] ?? 0);
+  }
+  for (let y = 0; y < height; y++) {
+    const v = Math.min(mask.height - 1, Math.max(0, (y + 0.5) * sy - 0.5));
+    const y0 = Math.max(0, Math.min(mask.height - 2, Math.floor(v)));
+    const y1 = Math.min(mask.height - 1, y0 + 1);
+    const t = v - y0;
+    const top = y0 * mask.width;
+    const bottom = y1 * mask.width;
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, xs[x] ?? 0);
+      const x1 = Math.min(mask.width - 1, x0 + 1);
+      const s = fx[x] ?? 0;
+      const a = (mask.data[top + x0] ?? 0) * (1 - s) + (mask.data[top + x1] ?? 0) * s;
+      const b = (mask.data[bottom + x0] ?? 0) * (1 - s) + (mask.data[bottom + x1] ?? 0) * s;
+      out.data[y * width + x] = Math.round(a * (1 - t) + b * t);
+    }
+  }
+  return out;
+}
