@@ -4,6 +4,39 @@ group: auto
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 planNotes: Saliency, center prior, edges, color clusters.
 params: []
+summary: "Selects the main subject of the image, without AI."
+steps:
+  - "Make a copy of at most 512 pixels on the longer side."
+  - "Compute frequency-tuned and spectral residual saliency, edge density and a center prior."
+  - "Cluster the colors with k-means and score each cluster by saliency and how little of the border it covers."
+  - "Split the scores with Otsu's threshold and keep the strongest connected parts."
+  - "Fill holes, scale up to the image size and snap the edge to the image."
+implementation:
+  path: "web/src/core/selection/subject.ts"
+  symbol: "subjectMask"
+tests:
+  - "web/src/core/selection/subject.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+references:
+  - kind: "paper"
+    text: "Achanta, R., Hemami, S., Estrada, F. and Süsstrunk, S. Frequency-tuned Salient Region Detection. IEEE Conference on Computer Vision and Pattern Recognition, 1597 to 1604, 2009."
+    doi: "10.1109/CVPR.2009.5206596"
+  - kind: "paper"
+    text: "Hou, X. and Zhang, L. Saliency Detection: A Spectral Residual Approach. IEEE Conference on Computer Vision and Pattern Recognition, 2007."
+    doi: "10.1109/CVPR.2007.383267"
+learn:
+  oneSentence: "Select > Subject guesses the main object from color, detail and position."
+  howItWorks:
+    - "Parts of the image that stand out in color or detail score high."
+    - "Parts near the middle score a little higher. Colors that cover the border score lower."
+    - "The best scoring connected area becomes the selection."
+  academic: "Two saliency maps from the literature feed it: frequency-tuned saliency (Achanta et al., 2009) and the spectral residual (Hou and Zhang, 2007). The rest of the method is PixelNexus's own heuristic, documented step by step on its docs page."
+  tryThis:
+    - "Run it on a photo with one clear object, then refine the result with Quick Selection."
+  pitfalls:
+    - "A busy background or a dull subject fools it. It is a starting point, not a final answer."
+  demos: []
+docsPage: "selection/subject.md"

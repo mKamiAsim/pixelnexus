@@ -4,7 +4,7 @@ group: lasso
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 planNotes: Live wire on gradient cost.
 params:
   - key: width
@@ -50,3 +50,40 @@ params:
     default: true
     description: Gives edge pixels a value for the part of them that the shape covers.
     effect: Curved and slanted edges look smooth instead of stepped.
+summary: "Draws a selection path that clings to edges as you move along them."
+steps:
+  - "Find the largest Sobel gradient of luma in the image, Gmax, once."
+  - "Snap the first click to the strongest edge within the width setting."
+  - "As the pointer moves, snap it to the strongest edge within the width."
+  - "Find the cheapest 8-connected path from the last anchor, where steps on strong edges are cheap."
+  - "Fix an anchor when the path gets longer than the anchor spacing, or when you click."
+  - "On closing, find a path back to the start that does not reuse the path so far."
+  - "Fill the closed path as a polygon and combine it with the selection by the mode."
+implementation:
+  path: "web/src/core/selection/livewire.ts"
+  symbol: "livePath"
+tests:
+  - "web/src/core/selection/livewire.test.ts"
+  - "web/src/selection/gestures.test.ts"
+references:
+  - kind: "paper"
+    text: "Mortensen, E. N. and Barrett, W. A. Intelligent Scissors for Image Composition. Proceedings of SIGGRAPH 95, 191 to 198, 1995."
+    url: "https://history.siggraph.org/?p=118735"
+learn:
+  oneSentence: "The magnetic lasso follows the edge of an object while you move the pointer near it."
+  howItWorks:
+    - "Each pixel gets a cost: low on strong edges, high in flat areas."
+    - "The path from the last anchor to the pointer is the one with the lowest total cost."
+    - "So the path runs along edges, like a wire pulled onto them."
+  academic: "This is a live wire, after the intelligent scissors of Mortensen and Barrett. The cost of a step is (0.1 + c(q)) times its length, where c(q) = 1 - G(q) / Gmax on edges and 1 elsewhere. Dijkstra's algorithm finds the cheapest path in a box around the anchor and the pointer."
+  paramNotes:
+    width: "How far from the pointer the tool looks for an edge to snap to."
+    contrast: "Edges weaker than this share of the strongest edge are ignored."
+    spacing: "After this much path, an anchor is fixed by itself, so the path does not jump."
+  tryThis:
+    - "Trace a disk in the Disks and dots test image. Move slowly around its edge."
+    - "Raise the contrast on a noisy image so the path ignores the noise."
+  pitfalls:
+    - "Where two edges are close, the path can jump to the wrong one. Click to fix an anchor before that place."
+  demos: []
+docsPage: "selection/magnetic-lasso.md"

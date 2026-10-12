@@ -104,12 +104,24 @@ nav:
       - The Learn panel: user-guide/learn-panel.md
       - Export: user-guide/export.md
       - Keyboard shortcuts: user-guide/keyboard-shortcuts.md
+  - Selections:
+      - selection/index.md
+      - Marquee: selection/marquee.md
+      - Lasso: selection/lasso.md
+      - Magnetic lasso: selection/magnetic-lasso.md
+      - Selection brush and eraser: selection/selection-brush.md
+      - Magic Wand: selection/magic-wand.md
+      - Color Range and tone: selection/color-range.md
+      - Quick Selection: selection/quick-selection.md
+      - Snap to edges: selection/snap-to-edges.md
+      - Subject and background: selection/subject.md
   - Architecture:
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
       - Preview and rendering: architecture/preview-and-rendering.md
       - Filter catalog and registry: architecture/filter-catalog.md
       - Processing pipeline: architecture/processing-pipeline.md
+      - Selection and masking: architecture/selection-and-masking.md
       - Execution model: architecture/execution-model.md
       - Learn panel architecture: architecture/learn-panel.md
   - Mathematics:

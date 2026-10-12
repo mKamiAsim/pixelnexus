@@ -247,8 +247,9 @@ def yaml_prose(path: Path) -> Iterator[tuple[int, str, bool]]:
 def check_text(prose: str, citation: bool = False) -> Iterator[tuple[str, str]]:
     """Yield (level, message) for one piece of prose.
 
-    A citation keeps the spelling and the length of the cited title, so those two checks are
-    skipped. Dashes, quotes and the other character rules still apply.
+    A citation keeps the spelling, the words and the length of the cited title, so those checks
+    are skipped. A title such as "Compared to State-of-the-Art Methods" stays as published.
+    Dashes, quotes and the other character rules still apply.
     """
     if "\N{EM DASH}" in prose:
         yield "error", "em dash found. Use a full stop or a comma."
@@ -263,7 +264,7 @@ def check_text(prose: str, citation: bool = False) -> Iterator[tuple[str, str]]:
     if EMOJI.search(prose):
         yield "error", "emoji found."
     lowered = prose.lower()
-    for word in BANNED_WORDS:
+    for word in [] if citation else BANNED_WORDS:
         if re.search(rf"(?<![\w-]){re.escape(word)}(?![\w-])", lowered):
             yield "error", f"avoid the word '{word}'."
     for pattern, message in BANNED_PATTERNS:

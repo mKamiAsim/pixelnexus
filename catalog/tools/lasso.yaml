@@ -4,7 +4,7 @@ group: lasso
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: feather
     label: Feather
@@ -22,3 +22,29 @@ params:
     default: true
     description: Gives edge pixels a value for the part of them that the shape covers.
     effect: Curved and slanted edges look smooth instead of stepped.
+summary: "Selects the area inside a path that you draw freehand."
+steps:
+  - "Record the pointer positions while you drag."
+  - "On release, close the path back to the first point."
+  - "Fill the polygon with the nonzero winding rule, with anti-aliasing from 4 rows of samples per pixel."
+  - "Feather the shape when the feather setting is above 0."
+  - "Combine it with the current selection by the mode."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "polygonMask"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The freehand lasso selects whatever you draw around."
+  howItWorks:
+    - "Drag around the area. The path follows the pointer."
+    - "When you let go, a straight line closes the path."
+    - "Every pixel inside the closed path is selected."
+  tryThis:
+    - "Draw a figure eight. Both loops are selected, by the nonzero winding rule."
+  pitfalls:
+    - "The closing line is straight. End near the start to keep the shape you meant."
+  demos: []
+docsPage: "selection/lasso.md"

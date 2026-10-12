@@ -4,7 +4,7 @@ group: color
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: low
     label: From
@@ -31,3 +31,26 @@ params:
     step: 1
     description: Brightness levels over which the selection fades outside the range.
     effect: Higher values give a smoother change at the ends of the range.
+summary: "Selects pixels whose brightness lies in a range, with a soft fade outside it."
+steps:
+  - "Compute the BT.709 luma of each pixel, from 0 to 255."
+  - "Select it fully when it lies between From and To."
+  - "Outside the range, fade the selection to 0 over the softness, in luma levels."
+implementation:
+  path: "web/src/core/selection/range.ts"
+  symbol: "selectBrightness"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "Select by brightness picks the pixels between two brightness levels."
+  howItWorks:
+    - "Brightness here is BT.709 luma, a weighted sum of red, green and blue."
+    - "Pixels inside the range are fully selected."
+    - "Softness fades the selection out over a few levels past each end of the range."
+  tryThis:
+    - "Select only the dark parts of an image and brighten them."
+  pitfalls:
+    - "Luma ignores color. A pure blue and a dark gray can have the same luma."
+  demos: []
+docsPage: "selection/color-range.md"

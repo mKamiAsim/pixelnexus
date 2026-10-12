@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 4: selection and masking |
-| Next action | Phase 4: Learn entries for the selection tools, catalog entries to implemented-tested, docs (selection section, selection and masking architecture, tool pages), full CI. Then Phase 4 exit. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Current phase | Phase 5: browser filter library |
+| Next action | Phase 5a: linear filters and sharpening from CATALOG.md, with the channel-scope option, docs pages and fixture tests. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-12 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 4: Select > Subject and Select > Background without AI (core/selection/saliency.ts, subject.ts) in a worker |
-| In progress | Phase 4: selection and masking |
-| Next steps | Phase 4: Learn entries for the selection tools, catalog entries to implemented-tested, docs (selection section, selection and masking architecture, tool pages), full CI. Then Phase 4 exit. |
+| Last finished step | Phase 4 complete: selection tools, dialogs, Masks panel, filters through the selection, magnetic lasso, Quick Selection, Snap to edges, Subject and Background, Learn lessons, catalog entries and docs |
+| In progress | Phase 5: browser filter library |
+| Next steps | Phase 5a: linear filters and sharpening. Read CATALOG.md for the 5a entries, then build each with its catalog entry, docs page and fixture tests. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -554,24 +554,24 @@ Exit: all of the above meet the definition of done. **Checkpoint: you review the
 
 ### Phase 4: Selection and masking
 
-- [ ] Mask core: add, subtract, intersect, invert, select all, deselect, disable for a while, named masks, save, load, mask from alpha, mask from luminance.
-- [ ] Overlays: marching ants, quick-mask tint, grayscale mask view. The status bar describes the selection in text.
-- [ ] Manual tools: rectangle and ellipse (constrain, from center, fixed ratio, fixed size), freehand lasso, polygonal lasso, magnetic lasso (live wire on gradient cost), brush and eraser (size, hardness).
-- [ ] Modes: new, add, subtract, intersect. In the options bar and with Shift and Alt.
-- [ ] Magic Wand: tolerance 0 to 255 (default 32), contiguous, sample 1x1, 3x3 or 5x5 (default 3x3), anti-alias, RGB, HSV or Lab distance, feather.
-- [ ] Color Range: several samples, fuzziness, range, localized colors, highlights, midtones and shadows presets, grayscale preview.
-- [ ] Select by brightness and select by hue and saturation.
-- [ ] Quick Selection: brush seeds, SLIC superpixels in a worker, growth by color, texture and edge similarity. Size, hardness, tolerance, edge sensitivity and smoothness. Add and subtract.
-- [ ] Edge-assisted selection: snap the boundary to nearby edges with strength, smoothing and tolerance.
-- [ ] Subject select without AI: saliency (spectral residual and frequency tuned), center prior, edge density, color clustering and connected components. Gives a soft mask. Background select is its inverse with correction tools.
-- [ ] Refine: feather, grow, shrink (exact distance transform), smooth, border.
-- [ ] Scope in Properties: whole image, selection, inverted selection. Region processing with halo.
-- [ ] Coordinate mapping between screen and image, tested at many zoom levels.
-- [ ] Learn entries for each tool.
+- [x] Mask core: add, subtract, intersect, invert, select all, deselect, disable for a while, named masks, save, load, mask from alpha, mask from luminance.
+- [x] Overlays: marching ants, quick-mask tint, grayscale mask view. The status bar describes the selection in text.
+- [x] Manual tools: rectangle and ellipse (constrain, from center, fixed ratio, fixed size), freehand lasso, polygonal lasso, magnetic lasso (live wire on gradient cost), brush and eraser (size, hardness).
+- [x] Modes: new, add, subtract, intersect. In the options bar and with Shift and Alt.
+- [x] Magic Wand: tolerance 0 to 255 (default 32), contiguous, sample 1x1, 3x3 or 5x5 (default 3x3), anti-alias, RGB, HSV or Lab distance, feather.
+- [x] Color Range: several samples, fuzziness, range, localized colors, highlights, midtones and shadows presets, grayscale preview.
+- [x] Select by brightness and select by hue and saturation.
+- [x] Quick Selection: brush seeds, SLIC superpixels in a worker, growth by color, texture and edge similarity. Size, hardness, tolerance, edge sensitivity and smoothness. Add and subtract.
+- [x] Edge-assisted selection: snap the boundary to nearby edges with strength, smoothing and tolerance.
+- [x] Subject select without AI: saliency (spectral residual and frequency tuned), center prior, edge density, color clustering and connected components. Gives a soft mask. Background select is its inverse with correction tools.
+- [x] Refine: feather, grow, shrink (exact distance transform), smooth, border.
+- [x] Scope in Properties: whole image, selection, inverted selection. Region processing with halo.
+- [x] Coordinate mapping between screen and image, tested at many zoom levels.
+- [x] Learn entries for each tool.
 
 Docs: the selection section, selection and masking architecture, masks and alpha blending maths.
 
-Exit: unit tests for every tool on synthetic images. A test proves that pixels with M = 0 stay bit-identical after any filter. Feather blending matches the formula within 1/255. An E2E test runs select then filter.
+Exit: unit tests for every tool on synthetic images. A test proves that pixels with M = 0 stay bit-identical after any filter. Feather blending matches the formula within 1/255. An E2E test runs select then filter. Phase 4 exit checks passed on 2026-10-12.
 
 ### Phase 5: Browser filter library
 
@@ -839,3 +839,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 4 | Quick Selection: SLIC superpixels (Achanta et al. 2012, compactness 10) in a worker on a copy of at most 2 MP, with mean CIELAB color, L* texture and the edge strength between neighbors above the inner gradient. A stroke seeds the superpixels under the brush; neighbors join while color plus texture difference from the nearest seed plus the weighted edge stays within the tolerance (PixelNexus's own rule, documented as such). Smoothing at the work size, then a bilinear scale-up for soft edges. Alt subtracts. Options bar says while the image is being prepared (about 0.25 s at 512 x 512). E2E: coordinates checked by the pointer readout and a marquee at seven zoom levels; Quick Selection selects the 144 x 144 disk from one stroke. 554 unit tests and 20 E2E tests pass. | Edge-assisted refine and subject selection. |
 | 2026-10-12 | 4 | Snap to edges (edge-assisted selection): the edge may move within a band from the exact distance transform. Both sides flood into the band by priority (a seeded watershed with a bucket queue). Edges at least as strong as the contrast setting rank above every other pixel, and weaker pixels rank higher near the old edge, so with no edge the selection stays put (a sharp corner rounds by one pixel). Then optional majority smoothing and a one-pixel anti-alias. A circle 4 px larger than a disk snaps to it (area within 0.3%). Unit and E2E tests pass. | Subject and background selection. |
 | 2026-10-12 | 4 | Subject and background without AI: frequency-tuned saliency (Achanta et al. 2009) and spectral residual (Hou and Zhang 2007, with a small radix-2 FFT at 64 x 64), plus PixelNexus's own center prior, edge density, k-means color clusters scored against the image border, Otsu's threshold, connected parts with filled holes, a bilinear scale-up and Snap to edges. Runs in a worker on a copy of at most 512 px, about 1 s at 512 x 512. On a synthetic red disk the result overlaps the disk by more than 90%. Citations checked online; the Mortensen and Barrett DOI could not be confirmed, so it is left out. 562 unit tests and 22 E2E tests pass. | Learn entries, catalog entries and docs. |
+| 2026-10-12 | 4 | Phase 4 done. Catalog entries for all 15 selection tools are complete and `implemented-tested`, with summary, steps, code, tests, Learn lessons, docs pages and references. The catalog checker no longer asks tools for a filter registry entry. `gen_docs.py` writes facts, parameters, steps, tests and references for tools, and a tools index. Docs: a Selections section with nine tool pages, a selection and masking architecture page, and combining, distances, feather and smooth on the masks maths page. The Learn panel shows a lesson for the active selection tool. The prose lint keeps the words of cited titles. All CI checks pass on this PC: 620 Vitest tests, 22 E2E tests, pytest, ruff, mypy, catalog, prose, fixtures, generated docs and the strict docs build. | Phase 5a. |

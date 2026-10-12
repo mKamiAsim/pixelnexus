@@ -4,6 +4,8 @@ The Learn panel teaches the selected filter. It explains the idea in plain words
 
 Open it from **Window > Learn**, or choose the **Study** workspace. Choose a filter in the Library first.
 
+While a selection tool is active, such as the Magic Wand, the panel first shows a short lesson about that tool. It says what the tool does, how it works, what its settings do and which mistakes are common.
+
 ## Basic and Academic
 
 The switch at the top sets the level of detail.

@@ -76,7 +76,7 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
             yield from _param_issues(entry, common, where)
             yield from _formula_issues(entry, where)
             if entry.get("status") in FULL_STATUSES:
-                yield from _code_issues(entry, where)
+                yield from _code_issues(entry, where, section)
 
     all_ids = set(seen)
     for section in ("filters", "tools"):
@@ -134,7 +134,7 @@ def _formula_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
             yield Issue("error", where, f"formula placeholder '{name}' is not a parameter")
 
 
-def _code_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
+def _code_issues(entry: dict[str, Any], where: str, section: str) -> Iterator[Issue]:
     implementation = entry.get("implementation") or {}
     source = ROOT / implementation.get("path", "")
     if not source.is_file():
@@ -142,7 +142,7 @@ def _code_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
         yield Issue("error", where, f"implementation file '{missing}' is missing")
     elif implementation.get("symbol", "") not in source.read_text(encoding="utf-8"):
         yield Issue("error", where, f"symbol '{implementation.get('symbol')}' is not in its file")
-    else:
+    elif section == "filters":
         yield from _registration_issues(entry, source.read_text(encoding="utf-8"), where)
     for test in entry.get("tests", []) or []:
         if not (ROOT / test).is_file():

@@ -4,7 +4,7 @@ group: brush
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: size
     label: Size
@@ -25,3 +25,25 @@ params:
     unit: '%'
     description: How sharp the edge of the brush is.
     effect: At 100% the edge is hard with one pixel of anti-aliasing. Lower values fade the edge over more of the radius.
+summary: "Removes parts of the selection with a round brush."
+steps:
+  - "Stamp the brush along the pointer path, keeping the larger value where stamps overlap."
+  - "Lower the selection by the stroke: the result is the smaller of the selection and 255 minus the stroke."
+  - "Show the result while you paint, then add it to the history when you let go."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "paintStroke"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+learn:
+  oneSentence: "The selection eraser removes the selection where you paint."
+  howItWorks:
+    - "The eraser works like the selection brush with Alt held."
+    - "Hardness sets how quickly the eraser fades at its edge."
+  tryThis:
+    - "Select a disk with Quick Selection, then erase a bite out of it."
+  pitfalls:
+    - "Erasing outside the selection does nothing, because there is nothing to remove."
+  demos: []
+docsPage: "selection/selection-brush.md"

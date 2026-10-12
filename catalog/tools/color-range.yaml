@@ -4,7 +4,7 @@ group: color
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: preset
     label: Select
@@ -61,3 +61,33 @@ params:
     unit: '%'
     description: For localized colors, how far a sample reaches, in percent of the longer image side.
     effect: Smaller values keep the selection close to the samples.
+summary: "Selects all pixels near sampled colors, or the shadows, midtones or highlights."
+steps:
+  - "For sampled colors, read the color of each sample."
+  - "For each pixel, find the nearest sample in the chosen color space."
+  - "Select it fully up to the tolerance, then fade the selection to 0 over the fuzziness."
+  - "With localized colors, also fade by the distance in pixels from each sample."
+  - "For a tone preset, weight each pixel by its BT.709 luma instead."
+  - "Combine with the current selection by the mode chosen in the dialog."
+implementation:
+  path: "web/src/core/selection/range.ts"
+  symbol: "colorRange"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "Color Range selects every pixel of a color, with a soft edge in color."
+  howItWorks:
+    - "Click the preview to sample a color. Shift-click adds more samples."
+    - "Pixels close to a sample are fully selected. Farther ones fade out over the fuzziness."
+    - "The tone presets select shadows, midtones or highlights instead."
+  paramNotes:
+    fuzziness: "The color distance over which the selection fades out. It gives a soft selection."
+    localized: "Localized colors also fade with the distance in pixels from your samples."
+  tryThis:
+    - "Select the highlights, then darken them with a curve or gamma filter."
+    - "Sample a skin tone with localized colors on, so similar colors elsewhere stay out."
+  pitfalls:
+    - "Similar colors in other places are selected too, unless you use localized colors."
+  demos: []
+docsPage: "selection/color-range.md"

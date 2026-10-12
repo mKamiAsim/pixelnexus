@@ -4,7 +4,7 @@ group: color
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: hue
     label: Hue
@@ -75,3 +75,30 @@ params:
     step: 1
     description: Fade outside every range, in degrees for hue and percent for saturation and value.
     effect: Higher values give a smoother selection edge.
+summary: "Selects pixels by hue, saturation and value ranges."
+steps:
+  - "Convert each pixel to hue, saturation and value."
+  - "Measure how far the hue is from the center hue, around the color circle."
+  - "Measure how far saturation and value are outside their ranges."
+  - "Fade each part to 0 over the softness, and take the smallest of the three."
+implementation:
+  path: "web/src/core/selection/range.ts"
+  symbol: "selectHsv"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "Select by hue and saturation picks one family of colors, such as all the greens."
+  howItWorks:
+    - "Hue is the position on the color circle, from 0 to 360 degrees."
+    - "Saturation is how colorful a pixel is. Value is its largest channel."
+    - "A pixel is selected when all three lie in their ranges."
+  paramNotes:
+    hueWidth: "How many degrees on each side of the center hue still count."
+    saturationMin: "Raise it to leave out grayish pixels, whose hue means little."
+  tryThis:
+    - "Select the greens of the Hue sweep test image, then rotate them with a hue filter."
+  pitfalls:
+    - "Gray pixels have no real hue. Keep the saturation minimum above 0 to leave them out."
+  demos: []
+docsPage: "selection/color-range.md"

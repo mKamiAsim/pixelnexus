@@ -194,16 +194,84 @@ def filter_fragments(entry: dict[str, Any], bundle: dict[str, Any]) -> dict[str,
     )
     out["tests"] = "\n".join(f"- [`{t}`]({REPO_URL}{t})" for t in entry["tests"]) + "\n"
 
+    out["references"] = references_list(entry)
+    return {f"filters/{entry['id']}-{part}.md": HEADER + text for part, text in out.items()}
+
+
+GROUP_LABELS = {
+    "marquee": "Marquee",
+    "lasso": "Lasso",
+    "brush": "Brush",
+    "color": "Color and tone",
+    "auto": "Automatic",
+    "ai": "AI",
+}
+
+
+def references_list(entry: dict[str, Any]) -> str:
     references = []
-    for ref in entry["references"]:
+    for ref in entry.get("references", []) or []:
         text = " ".join(ref["text"].split())
         if ref.get("url"):
             text += f" <{ref['url']}>"
         if ref.get("doi"):
             text += f" DOI [{ref['doi']}](https://doi.org/{ref['doi']})."
         references.append(f"- {text}")
-    out["references"] = "\n".join(references) + "\n"
-    return {f"filters/{entry['id']}-{part}.md": HEADER + text for part, text in out.items()}
+    return "\n".join(references) + "\n"
+
+
+def tool_fragments(entry: dict[str, Any], bundle: dict[str, Any]) -> dict[str, str]:
+    """Facts, parameters, steps, tests and references of a selection tool."""
+    common = {p["key"]: p for p in bundle["commonParams"]}
+    params = resolve_params(entry, common)
+    impl = entry["implementation"]
+    facts = [
+        ["Status", STATUS_LABELS[entry["status"]]],
+        ["Group", GROUP_LABELS.get(entry["group"], entry["group"])],
+        ["Engine", "Browser" if entry["engine"] == "browser" else "Science engine"],
+        ["Code", f"[`{impl['path']}`]({REPO_URL}{impl['path']}), `{impl['symbol']}`"],
+    ]
+    if entry.get("aliases"):
+        facts.insert(0, ["Also called", ", ".join(entry["aliases"])])
+    out: dict[str, str] = {"facts": table(["Fact", "Value"], facts, ["left", "left"])}
+    if params:
+        rows = [
+            [
+                f"**{p['label']}** `{p['key']}`",
+                label_of(p["default"], p),
+                value_rule(p),
+                p["description"],
+            ]
+            for p in params
+        ]
+        out["params"] = table(
+            ["Parameter", "Default", "Values", "Meaning"], rows, ["left", "left", "left", "left"]
+        )
+    else:
+        out["params"] = "This tool has no settings.\n"
+    out["steps"] = "\n".join(f"{i}. {step}" for i, step in enumerate(entry["steps"], 1)) + "\n"
+    out["tests"] = "\n".join(f"- [`{t}`]({REPO_URL}{t})" for t in entry["tests"]) + "\n"
+    if entry.get("references"):
+        out["references"] = references_list(entry)
+    return {f"tools/{entry['id']}-{part}.md": HEADER + text for part, text in out.items()}
+
+
+def tools_index(bundle: dict[str, Any]) -> str:
+    """Every selection tool with a docs page, for docs/selection/index.md."""
+    order = list(GROUP_LABELS)
+    entries = [e for e in bundle["tools"] if e.get("docsPage")]
+    entries.sort(key=lambda e: (order.index(e["group"]) if e["group"] in order else 99, e["name"]))
+    rows = [
+        [
+            f"[{e['name']}]({e['docsPage'].removeprefix('selection/')})",
+            GROUP_LABELS.get(e["group"], e["group"]),
+            e.get("summary", ""),
+            STATUS_LABELS[e["status"]],
+        ]
+        for e in entries
+    ]
+    headers = ["Tool", "Group", "What it does", "Status"]
+    return HEADER + table(headers, rows, ["left", "left", "left", "left"])
 
 
 def filters_index(bundle: dict[str, Any]) -> str:
@@ -230,10 +298,14 @@ def build() -> dict[str, str]:
         "catalog-status.md": catalog_status(bundle),
         "catalog-families.md": catalog_families(bundle),
         "filters-index.md": filters_index(bundle),
+        "tools-index.md": tools_index(bundle),
     }
     for entry in bundle["filters"]:
         if entry.get("docsPage") and entry.get("formula"):
             files.update(filter_fragments(entry, bundle))
+    for entry in bundle["tools"]:
+        if entry.get("docsPage"):
+            files.update(tool_fragments(entry, bundle))
     return files
 
 

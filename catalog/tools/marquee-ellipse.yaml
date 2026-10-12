@@ -4,7 +4,7 @@ group: marquee
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: style
     label: Style
@@ -64,3 +64,31 @@ params:
     default: true
     description: Gives edge pixels a value for the part of them that the shape covers.
     effect: Curved and slanted edges look smooth instead of stepped.
+summary: "Selects an ellipse or circle that you drag on the image."
+steps:
+  - "Snap the two corners of the drag to whole pixels. They bound the ellipse."
+  - "With Shift, make a circle. With Alt, use the start point as the center."
+  - "Give each pixel the part of it that lies inside the ellipse, from 4 rows of samples per pixel."
+  - "Feather the shape when the feather setting is above 0."
+  - "Combine it with the current selection by the mode."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "ellipseMask"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The elliptical marquee selects an ellipse that fits the box you drag."
+  howItWorks:
+    - "Drag a box. The ellipse touches the middle of each side of the box."
+    - "With anti-alias on, edge pixels are partly selected, so curves look smooth."
+    - "Shift makes a circle. Alt draws from the center."
+  paramNotes:
+    antiAlias: "Anti-alias gives edge pixels a value between 0 and 255 for the part the ellipse covers."
+  tryThis:
+    - "Turn on Quick Mask (Q) to see the soft edge pixels in red."
+  pitfalls:
+    - "A thin ellipse with anti-alias off looks stepped at the ends."
+  demos: []
+docsPage: "selection/marquee.md"

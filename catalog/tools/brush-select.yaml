@@ -4,7 +4,7 @@ group: brush
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 params:
   - key: size
     label: Size
@@ -25,3 +25,30 @@ params:
     unit: '%'
     description: How sharp the edge of the brush is.
     effect: At 100% the edge is hard with one pixel of anti-aliasing. Lower values fade the edge over more of the radius.
+summary: "Paints a selection with a round brush."
+steps:
+  - "Stamp the brush along the pointer path, with the brush value at each distance from the center."
+  - "Keep the larger value where stamps overlap."
+  - "Add the stroke to the selection, or remove it while Alt is held."
+  - "Show the result while you paint, then add it to the history when you let go."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "paintStroke"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+learn:
+  oneSentence: "The selection brush paints the selection, like painting with white on the mask."
+  howItWorks:
+    - "The brush adds to the selection where you paint."
+    - "Hold Alt to remove instead."
+    - "Hardness sets how quickly the brush fades at its edge."
+  paramNotes:
+    size: "The diameter of the brush in image pixels."
+    hardness: "At 100% the brush edge is sharp. Lower values make a soft edge, for a gentle blend."
+  tryThis:
+    - "Turn on Quick Mask (Q) and paint. The red tint shows what is not selected."
+  pitfalls:
+    - "A soft brush selects pixels only partly. Filters then blend in at the edge."
+  demos: []
+docsPage: "selection/selection-brush.md"

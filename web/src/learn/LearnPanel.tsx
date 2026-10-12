@@ -11,6 +11,8 @@ import { GlossaryText } from "@/components/GlossaryText";
 import { Formula } from "@/components/math/Formula";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { isSelectionTool } from "@/selection/ids";
+import { toolEntry, useToolValues } from "@/selection/values";
 import { activeDocument, useDocuments } from "@/state/documents";
 import type { Params } from "@/core/filters/types";
 import { useFilters } from "@/state/filters";
@@ -29,19 +31,28 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** The teacher: what a filter does, in plain words, with live demos on your own image. */
+/**
+ * The teacher: what a filter does, in plain words, with live demos on your own image. While a
+ * selection tool is active, its lesson comes first.
+ */
 export function LearnPanel() {
   const entry = filterById(useFilters((s) => s.selectedId));
+  const tool = useUi((s) => s.tool);
   const [level, setLevel] = useState<Level>("basic");
+  const toolLesson = isSelectionTool(tool) ? <ToolLesson tool={tool} level={level} /> : null;
   if (!entry) {
     return (
-      <p className="p-3 text-sm text-text-secondary">
-        Choose a filter in the Library. This panel then explains it on your image.
-      </p>
+      <div className="flex flex-col">
+        {toolLesson}
+        <p className="p-3 text-sm text-text-secondary">
+          Choose a filter in the Library. This panel then explains it on your image.
+        </p>
+      </div>
     );
   }
   return (
     <div className="flex flex-col">
+      {toolLesson}
       <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-3 py-2">
         <h3 className="truncate text-base font-semibold">{entry.name}</h3>
         <SegmentedControl
@@ -230,5 +241,95 @@ function Demos({ entry, values }: { entry: Filter; values: Params }) {
         );
       })}
     </Section>
+  );
+}
+
+/** The lesson for a selection tool, from its catalog entry. */
+function ToolLesson({ tool, level }: { tool: string; level: Level }) {
+  const entry = toolEntry(tool);
+  const values = useToolValues(tool);
+  const learn = entry?.learn;
+  if (!entry || !learn) return null;
+  const notes = entryParams(entry).filter((p) => learn.paramNotes?.[p.key]);
+  return (
+    <div className="border-b-4 border-border-subtle">
+      <div className="border-b border-border-subtle px-3 py-2">
+        <p className="text-2xs font-medium text-text-muted uppercase">Selection tool</p>
+        <h3 className="text-base font-semibold">{entry.name}</h3>
+      </div>
+      <Section title="In one sentence">
+        <p className="text-sm text-text">
+          <GlossaryText text={learn.oneSentence} />
+        </p>
+      </Section>
+      <Section title="How it works">
+        <ol className="flex list-decimal flex-col gap-1 pl-4">
+          {learn.howItWorks.map((step) => (
+            <li key={step}>
+              <GlossaryText text={step} />
+            </li>
+          ))}
+        </ol>
+        {level === "academic" && learn.academic ? (
+          <p>
+            <GlossaryText text={learn.academic} />
+          </p>
+        ) : null}
+      </Section>
+      {notes.length > 0 ? (
+        <Section title="What the settings do">
+          <dl className="flex flex-col gap-1.5">
+            {notes.map((p) => (
+              <div key={p.key}>
+                <dt className="font-medium text-text">
+                  {p.label}:{" "}
+                  <span className="tabular font-normal text-text-secondary">
+                    {String(
+                      p.options?.find((o) => o.value === values[p.key])?.label ??
+                        (typeof values[p.key] === "boolean"
+                          ? values[p.key]
+                            ? "on"
+                            : "off"
+                          : values[p.key]),
+                    )}
+                    {p.unit && p.type !== "select" ? ` ${p.unit}` : ""}
+                  </span>
+                </dt>
+                <dd>
+                  <GlossaryText text={learn.paramNotes?.[p.key] ?? ""} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      ) : null}
+      {learn.tryThis?.length ? (
+        <Section title="Try this">
+          <ul className="flex list-disc flex-col gap-1 pl-4">
+            {learn.tryThis.map((item) => (
+              <li key={item}>
+                <GlossaryText text={item} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+      {learn.pitfalls?.length ? (
+        <Section title="Common mistakes">
+          <ul className="flex list-disc flex-col gap-1 pl-4">
+            {learn.pitfalls.map((item) => (
+              <li key={item}>
+                <GlossaryText text={item} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+      {entry.docsPage ? (
+        <Section title="Where to go next">
+          <p>The docs page is docs/{entry.docsPage}, with the maths and the tests.</p>
+        </Section>
+      ) : null}
+    </div>
   );
 }

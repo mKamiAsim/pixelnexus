@@ -4,6 +4,35 @@ group: auto
 tier: core
 engine: browser
 phase: '4'
-status: planned
+status: implemented-tested
 planNotes: Inverse of the subject mask, with corrections.
 params: []
+summary: "Selects everything except the main subject, without AI."
+steps:
+  - "Find the subject as Select > Subject does."
+  - "Invert the result, so the background is selected."
+implementation:
+  path: "web/src/core/selection/subject.ts"
+  symbol: "subjectMask"
+tests:
+  - "web/src/core/selection/subject.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+references:
+  - kind: "paper"
+    text: "Achanta, R., Hemami, S., Estrada, F. and Süsstrunk, S. Frequency-tuned Salient Region Detection. IEEE Conference on Computer Vision and Pattern Recognition, 1597 to 1604, 2009."
+    doi: "10.1109/CVPR.2009.5206596"
+  - kind: "paper"
+    text: "Hou, X. and Zhang, L. Saliency Detection: A Spectral Residual Approach. IEEE Conference on Computer Vision and Pattern Recognition, 2007."
+    doi: "10.1109/CVPR.2007.383267"
+learn:
+  oneSentence: "Select > Background selects everything around the main subject."
+  howItWorks:
+    - "It finds the subject first."
+    - "Then it selects the rest of the image."
+    - "Fix mistakes with the selection brush, the eraser or Quick Selection."
+  tryThis:
+    - "Select the background, then blur it to make the subject stand out."
+  pitfalls:
+    - "Mistakes in the subject become mistakes in the background."
+  demos: []
+docsPage: "selection/subject.md"
