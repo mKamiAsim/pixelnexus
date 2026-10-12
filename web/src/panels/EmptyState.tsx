@@ -10,15 +10,18 @@ import { Thumbnail } from "./Thumbnail";
 
 /** Shown in the canvas when no image is open. */
 export function EmptyState() {
-  const previews = useMemo(() => SYNTHETIC_IMAGES.map((s) => ({ ...s, image: s.make(96, 96) })), []);
+  const previews = useMemo(
+    () => SYNTHETIC_IMAGES.map((s) => ({ ...s, image: s.make(96, 96) })),
+    [],
+  );
   return (
     <div className="flex h-full items-center justify-center overflow-auto bg-canvas p-6">
       <div className="flex w-full max-w-2xl flex-col gap-6 rounded-panel border border-border bg-panel p-6 shadow-popover">
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold">Open an image to start</h2>
           <p className="text-sm text-text-secondary">
-            Drop image files anywhere in this window, or use the buttons below. PNG, JPEG, WebP, AVIF,
-            GIF, BMP and TIFF are supported.
+            Drop image files anywhere in this window, or use the buttons below. PNG, JPEG, WebP,
+            AVIF, GIF, BMP and TIFF are supported.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

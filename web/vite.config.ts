@@ -16,7 +16,17 @@ export default defineConfig({
   },
   worker: { format: "es" },
   // Pre-bundle CommonJS packages up front, so tests do not reload when Vite finds them.
-  optimizeDeps: { include: ["utif2"] },
+  optimizeDeps: {
+    include: [
+      "utif2",
+      "clsx",
+      "dockview-react",
+      "lucide-react",
+      "radix-ui",
+      "zustand",
+      "@testing-library/react",
+    ],
+  },
   build: {
     rollupOptions: {
       // The style tile is a living reference for the design system.

@@ -3,6 +3,8 @@ import { SYNTHETIC_IMAGES } from "@/core/image/synthetic";
 import { decodeInWorker } from "@/core/workers/decode-client";
 import { useDocuments } from "@/state/documents";
 import { notify } from "@/state/notifications";
+import { useSettings } from "@/state/settings";
+import { useUi } from "@/state/ui";
 
 let pickerOpener: (() => void) | null = null;
 
@@ -17,30 +19,52 @@ export function chooseFiles(): void {
 
 let pastedCount = 0;
 
-export async function openFiles(files: Iterable<File>, source: "file" | "paste" = "file"): Promise<void> {
-  for (const file of files) {
-    const name = file.name || `Pasted image ${++pastedCount}.png`;
-    try {
-      const decoded = await decodeInWorker(await file.arrayBuffer());
-      useDocuments.getState().open({
-        name,
-        source,
-        fileBytes: file.size,
-        header: decoded.header,
-        warnings: decoded.warnings,
-        decodePath: decoded.path,
-        original: decoded.image,
-      });
-      const { width, height } = decoded.image;
-      if (decoded.warnings.length > 0) {
-        notify("warning", `Opened ${name} with notes`, decoded.warnings.map((w) => w.message).join(" "));
-      } else {
-        notify("success", `Opened ${name}`, `${width} x ${height} pixels.`);
+/**
+ * Open each file in turn. Files that are not images, or that break the limits, get a clear
+ * error message and do not stop the others.
+ */
+export async function openFiles(
+  files: Iterable<File>,
+  source: "file" | "paste" = "file",
+): Promise<void> {
+  const list = [...files];
+  if (list.length === 0) return;
+  const { beginWork, endWork } = useUi.getState();
+  beginWork(list.length === 1 ? "Opening 1 image" : `Opening ${list.length} images`);
+  try {
+    for (const file of list) {
+      const name = file.name || `Pasted image ${++pastedCount}.png`;
+      try {
+        const decoded = await decodeInWorker(
+          await file.arrayBuffer(),
+          useSettings.getState().limits,
+        );
+        useDocuments.getState().open({
+          name,
+          source,
+          fileBytes: file.size,
+          header: decoded.header,
+          warnings: decoded.warnings,
+          decodePath: decoded.path,
+          original: decoded.image,
+        });
+        const { width, height } = decoded.image;
+        if (decoded.warnings.length > 0) {
+          notify(
+            "warning",
+            `Opened ${name} with notes`,
+            decoded.warnings.map((w) => w.message).join(" "),
+          );
+        } else {
+          notify("success", `Opened ${name}`, `${width} x ${height} pixels.`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "The file could not be opened.";
+        notify("error", `Could not open ${name}`, message);
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The file could not be opened.";
-      notify("error", `Could not open ${name}`, message);
     }
+  } finally {
+    endWork();
   }
 }
 
@@ -56,7 +80,11 @@ export function openSample(id: string): void {
     warnings: [],
     original: image,
   });
-  notify("success", `Opened sample: ${sample.name}`, `${image.width} x ${image.height} pixels.`);
+  notify(
+    "success",
+    `Opened test image: ${sample.name}`,
+    `${image.width} x ${image.height} pixels.`,
+  );
 }
 
 /** Read an image from the clipboard. Browsers ask for permission the first time. */
@@ -72,7 +100,11 @@ export async function pasteFromClipboard(): Promise<void> {
       const type = item.types.find((t) => t.startsWith("image/"));
       if (type) {
         const blob = await item.getType(type);
-        files.push(new File([blob], `Pasted image ${++pastedCount}.${type.split("/")[1] ?? "png"}`, { type }));
+        files.push(
+          new File([blob], `Pasted image ${++pastedCount}.${type.split("/")[1] ?? "png"}`, {
+            type,
+          }),
+        );
       }
     }
     if (files.length === 0) notify("info", "The clipboard has no image.");
@@ -82,7 +114,10 @@ export async function pasteFromClipboard(): Promise<void> {
   }
 }
 
-/** Image files in a paste or drop, ignoring anything else. */
-export function imageFiles(list: FileList | null | undefined): File[] {
-  return Array.from(list ?? []).filter((file) => file.type.startsWith("image/") || /\.(tiff?|avif|bmp)$/i.test(file.name));
+/** The image files in a paste event. Text and other content are ignored. */
+export function pastedImageFiles(data: DataTransfer | null): File[] {
+  return Array.from(data?.files ?? []).filter((file) => file.type.startsWith("image/"));
 }
+
+/** File picker filter. The decoder checks the real format from the bytes, not the name. */
+export const ACCEPTED_FILES = "image/*,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff";

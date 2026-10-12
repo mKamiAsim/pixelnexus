@@ -1,0 +1,70 @@
+import { clsx } from "clsx";
+import { X } from "lucide-react";
+import { Dialog as RadixDialog } from "radix-ui";
+import type { ReactNode } from "react";
+
+/** A modal dialog with a title, an optional description and a close button. */
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  footer,
+  className,
+  hideHeader = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  className?: string;
+  /** Keep the title for screen readers only, for example in the command palette. */
+  hideHeader?: boolean;
+}) {
+  return (
+    <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <RadixDialog.Content
+          className={clsx(
+            "fixed top-[12vh] left-1/2 z-50 flex max-h-[76vh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-panel border border-border bg-panel text-text shadow-popover outline-none",
+            className,
+          )}
+        >
+          {hideHeader ? (
+            <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>
+          ) : (
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
+              <div className="flex flex-col gap-0.5">
+                <RadixDialog.Title className="text-base font-semibold">{title}</RadixDialog.Title>
+                {description ? (
+                  <RadixDialog.Description className="text-xs text-text-secondary">
+                    {description}
+                  </RadixDialog.Description>
+                ) : null}
+              </div>
+              <RadixDialog.Close
+                aria-label="Close"
+                className="-mr-1 rounded-control p-1 text-text-muted hover:bg-hover hover:text-text"
+              >
+                <X size={15} />
+              </RadixDialog.Close>
+            </div>
+          )}
+          {hideHeader || !description ? (
+            <RadixDialog.Description className="sr-only">{title}</RadixDialog.Description>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+          {footer ? (
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">
+              {footer}
+            </div>
+          ) : null}
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
+  );
+}

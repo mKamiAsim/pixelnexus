@@ -47,7 +47,7 @@ export function SegmentedControl({
             aria-label={segment.label}
             className={clsx(
               "inline-flex h-full items-center gap-1 rounded-[3px] px-2 text-xs text-text-secondary hover:text-text",
-              "data-[state=on]:bg-accent data-[state=on]:text-on-accent",
+              "aria-checked:bg-accent aria-checked:text-on-accent",
               iconOnly && "w-7 justify-center px-0",
               fullWidth && "flex-1 justify-center",
             )}

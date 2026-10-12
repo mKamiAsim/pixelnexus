@@ -19,6 +19,7 @@ coverage/
 htmlcov/
 playwright-report/
 test-results/
+.vitest/
 *.tsbuildinfo
 
 # Local settings and secrets

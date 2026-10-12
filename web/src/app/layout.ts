@@ -5,6 +5,8 @@
  */
 import type { DockviewApi } from "dockview-react";
 
+import { resetRails } from "./rails";
+
 export const CANVAS_PANEL = "canvas";
 
 export const PANELS = [
@@ -17,18 +19,43 @@ export const PANELS = [
 export type PanelId = (typeof PANELS)[number]["id"];
 
 export const PRESETS = [
-  { id: "essentials", name: "Essentials" },
-  { id: "study", name: "Study" },
+  {
+    id: "essentials",
+    name: "Essentials",
+    description: "Images on the left, Navigator and Info on the right",
+  },
+  { id: "study", name: "Study", description: "Info and Histogram large, for looking at values" },
+  {
+    id: "compact",
+    name: "Compact",
+    description: "All panels in one narrow tab group, for small screens",
+  },
 ] as const;
 
 export type PresetId = (typeof PRESETS)[number]["id"];
 
 const STORAGE_KEY = "pixelnexus.layout.v1";
+const PRESET_KEY = "pixelnexus.preset.v1";
 
 let api: DockviewApi | null = null;
+const listeners = new Set<() => void>();
 
 export function setWorkspaceApi(next: DockviewApi | null): void {
   api = next;
+}
+
+export function workspaceApi(): DockviewApi | null {
+  return api;
+}
+
+/** Tell menus that the set of open panels changed, so check marks stay right. */
+export function onPanelsChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function notifyPanelsChange(): void {
+  for (const listener of listeners) listener();
 }
 
 function addCanvas(dock: DockviewApi): void {
@@ -49,30 +76,61 @@ function titleOf(id: PanelId): string {
   return PANELS.find((panel) => panel.id === id)?.title ?? id;
 }
 
+export function currentPreset(): PresetId {
+  try {
+    const saved = localStorage.getItem(PRESET_KEY);
+    return PRESETS.some((preset) => preset.id === saved) ? (saved as PresetId) : "essentials";
+  } catch {
+    return "essentials";
+  }
+}
+
 export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void {
   if (!dock) return;
+  resetRails();
   dock.clear();
   addCanvas(dock);
-  const add = (panel: PanelId, reference: string, direction: "left" | "right" | "below" | "within", width?: number) =>
+  const add = (
+    panel: PanelId,
+    reference: string,
+    direction: "left" | "right" | "below" | "within",
+  ) =>
     dock.addPanel({
       id: panel,
       component: panel,
       title: titleOf(panel),
       position: { referencePanel: reference, direction },
-      ...(width ? { initialWidth: width } : {}),
       inactive: direction === "within",
     });
-  add("images", CANVAS_PANEL, "left", 248);
-  if (id === "study") {
-    add("info", CANVAS_PANEL, "right", 340);
+  // Group widths are set after all panels exist, because each split shares out the space.
+  const widths: [PanelId, number][] = [];
+  if (id === "compact") {
+    add("navigator", CANVAS_PANEL, "right");
+    add("info", "navigator", "within");
+    add("histogram", "navigator", "within");
+    add("images", "navigator", "within");
+    widths.push(["navigator", 260]);
+  } else if (id === "study") {
+    add("images", CANVAS_PANEL, "left");
+    add("info", CANVAS_PANEL, "right");
     add("histogram", "info", "below");
     add("navigator", "histogram", "within");
+    widths.push(["images", 220], ["info", 340]);
   } else {
-    add("navigator", CANVAS_PANEL, "right", 300);
+    add("images", CANVAS_PANEL, "left");
+    add("navigator", CANVAS_PANEL, "right");
     add("info", "navigator", "below");
     add("histogram", "info", "within");
+    widths.push(["images", 248], ["navigator", 300]);
+  }
+  for (const [panel, width] of widths) dock.getPanel(panel)?.group.api.setSize({ width });
+  try {
+    localStorage.setItem(PRESET_KEY, id);
+  } catch {
+    // Storage is blocked. The preset still applies for this visit.
   }
   dock.getPanel(CANVAS_PANEL)?.api.setActive();
+  notifyPanelsChange();
 }
 
 export function isPanelOpen(id: PanelId): boolean {
@@ -86,10 +144,13 @@ export function togglePanel(id: PanelId): void {
   const existing = dock.getPanel(id);
   if (existing) {
     existing.api.close();
+    notifyPanelsChange();
     return;
   }
   const side = PANELS.find((panel) => panel.id === id)?.side ?? "right";
-  const neighbor = PANELS.find((panel) => panel.side === side && panel.id !== id && dock.getPanel(panel.id));
+  const neighbor =
+    PANELS.find((panel) => panel.side === side && panel.id !== id && dock.getPanel(panel.id)) ??
+    PANELS.find((panel) => panel.id !== id && dock.getPanel(panel.id));
   dock.addPanel({
     id,
     component: id,
@@ -98,6 +159,13 @@ export function togglePanel(id: PanelId): void {
       ? { referencePanel: neighbor.id, direction: "within" }
       : { referencePanel: CANVAS_PANEL, direction: side === "left" ? "left" : "right" },
   });
+  notifyPanelsChange();
+}
+
+/** Bring a panel to the front of its group, opening it first when it is closed. */
+export function showPanel(id: PanelId): void {
+  if (!api?.getPanel(id)) togglePanel(id);
+  api?.getPanel(id)?.api.setActive();
 }
 
 export function saveLayout(dock: DockviewApi): void {
@@ -119,5 +187,14 @@ export function restoreLayout(dock: DockviewApi): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Forget the saved layout. Used when a saved layout cannot be restored. */
+export function forgetLayout(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Nothing to forget.
   }
 }

@@ -65,6 +65,11 @@ export function fitZoom(image: Size, view: Size, margin = 24, allowEnlarge = fal
   return clampZoom(allowEnlarge ? zoom : Math.min(1, zoom));
 }
 
+/** The smallest zoom at which the image covers the whole view. */
+export function fillZoom(image: Size, view: Size): number {
+  return clampZoom(Math.max(view.width / image.width, view.height / image.height));
+}
+
 /** A view that centers the image at the given zoom. */
 export function centeredView(image: Size, view: Size, zoom: number): ViewState {
   const z = clampZoom(zoom);
@@ -139,4 +144,15 @@ export function showPixelGrid(zoom: number): boolean {
 export function formatZoom(zoom: number): string {
   const percent = zoom * 100;
   return `${Number.isInteger(Math.round(percent * 10) / 10) ? Math.round(percent) : percent.toFixed(1)}%`;
+}
+
+/** Ruler steps for labeled ticks, in image pixels. Labels stay MIN_LABEL_GAP screen pixels apart. */
+const RULER_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+const MIN_LABEL_GAP = 56;
+
+/** The labeled tick step and the minor tick step of a ruler at a zoom level. */
+export function rulerSteps(zoom: number): { major: number; minor: number } {
+  const major = RULER_STEPS.find((step) => step * zoom >= MIN_LABEL_GAP) ?? RULER_STEPS.at(-1) ?? 1;
+  const minor = major % 5 === 0 ? major / 5 : major / 2;
+  return { major, minor: Math.max(1, minor) };
 }

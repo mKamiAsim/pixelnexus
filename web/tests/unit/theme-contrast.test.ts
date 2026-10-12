@@ -95,3 +95,12 @@ describe.each(THEMES.map((theme) => [theme.id] as const))("theme %s", (id) => {
 it("tokens.css has no theme that themes.ts does not list", () => {
   expect([...themes.keys()].sort()).toEqual(THEMES.map((t) => t.id).sort());
 });
+
+describe("theme selectors", () => {
+  it("never let the default theme override a theme set on <html>", () => {
+    // A bare ":root" block after "[data-theme=dark]" has the same specificity and wins, so the
+    // dark theme would never show. The default block must exclude any explicit data-theme.
+    expect(css).not.toMatch(/^:root\s*[,{]/m);
+    expect(css).toMatch(/:root:not\(\[data-theme\]\)/);
+  });
+});

@@ -14,8 +14,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 2: studio shell, canvas and image I/O |
-| Next action | Phase 2 shell: dockview workspace, WebGL2 viewport, import UI, panels, export. |
-| Last updated | 2026-10-11 |
+| Next action | Phase 2 exit checks: E2E flow, 6000x6000 test, axe. Then the Phase 2 docs pages. |
+| Last updated | 2026-10-12 |
 
 ## Handoff
 
@@ -24,11 +24,11 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Viewport renderer (WebGL2) with GPU tests, document and UI stores |
-| In progress | Phase 2 shell: dockview workspace, panels, import UI, export, command palette |
-| Next steps | Finish the Phase 2 tasks in section 5, run the exit checks, open the Phase 2 PR |
+| Last finished step | Phase 2 shell: dockview workspace, menus, palette, panels, import, export, rulers, rails |
+| In progress | Phase 2 exit checks and docs |
+| Next steps | E2E for the exit flow, 6000x6000 check, axe, docs pages (frontend architecture, preview and rendering, workspace guide) |
 | Open questions | None |
-| Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling |
+| Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). |
 
 ## 1. How to continue in a new session
 
@@ -508,19 +508,19 @@ Goal: a real editor that opens, navigates, compares and exports images. No filte
 
 - [x] Style tile in dark and light: palette, type scale, controls, panel chrome, and a phone layout sketch. **Checkpoint: your review.** Approved 2026-10-12: blue accent and density kept, light made the default, two themes added. The layout review moves to the Phase 3 checkpoint.
 - [x] Design tokens as CSS variables and a Tailwind theme. Dark, light and high contrast. In `web/src/styles/tokens.css`. Contrast checked: text 4.5:1 or more, control borders 3:1 or more.
-- [ ] App shell: menu bar, options bar, tool strip, status bar, dockview workspace, Window menu, workspace presets, saved layouts, icon-rail collapse.
-- [ ] Command palette (Ctrl or Cmd + K).
-- [ ] Import by file picker, drag and drop, and paste. PNG, JPEG, WebP, AVIF, BMP, GIF (first frame) and TIFF (utif2, MIT). Decoding runs in a worker. Core done: `core/image/decode.ts`, `core/workers/decode-*` (WebGL2 exact readback), tested in Chromium for all 20 sample files. Still to do: the picker, drop and paste UI.
-- [ ] Validation: 30 MB default size limit, configurable pixel limit, magic-byte check, clear errors for corrupt or oversized files. EXIF orientation applied. Privacy notice: "Images are processed locally in your browser." Core done: `core/image/format.ts` and `core/image/limits.ts`. Still to do: show errors and the notice in the shell.
-- [ ] Metadata: name, format, file size, dimensions, channels, bit depth from headers, alpha, color profile name. Warnings when decoding changes bit depth or drops a profile. Core done: header parser and warnings. Still to do: the metadata view.
-- [ ] Several documents: tabs plus the Images panel.
-- [ ] WebGL2 viewport (maths done in `web/src/canvas/viewport.ts`): zoom by wheel, keys and menu. Pan by space-drag, middle mouse and trackpad. Fit, 100%, nearest-neighbor above 100%, pixel grid at 800% and more, checkerboard for transparency, optional rulers, Navigator panel.
-- [ ] Compare modes: split with a draggable divider, side by side with synced view, opacity overlay, hold to see original, difference.
-- [ ] Probe tool, Info panel and Histogram panel. Core done: `core/color/convert.ts` (checked against scikit-image) and `core/image/histogram.ts`.
-- [ ] Export: PNG, JPEG and WebP with quality, TIFF, resize, filename pattern `name_filter-param.ext`, metadata stripped (stated in the dialog).
+- [x] App shell: menu bar, options bar, tool strip, status bar, dockview workspace, Window menu, workspace presets (Essentials, Study, Compact), saved layouts, icon-rail collapse per side (`app/rails.ts`). Every action is a command in `app/commands.ts`.
+- [x] Command palette (Ctrl or Cmd + K). Search in `app/palette.ts`, tested.
+- [x] Import by file picker, drag and drop, and paste. PNG, JPEG, WebP, AVIF, BMP, GIF (first frame) and TIFF (utif2, MIT). Decoding runs in a worker with exact WebGL2 readback, tested in Chromium for all 20 sample files.
+- [x] Validation: 30 MB default size limit, configurable limits (Edit > Preferences), magic-byte check, clear errors for corrupt or oversized files. EXIF orientation applied. Privacy notice in the empty state, the drop overlay and the status bar.
+- [x] Metadata: name, format, file size, dimensions, channels, bit depth from headers, alpha, color profile name, read path. Warnings when decoding changes bit depth or drops a profile. Shown in the Images panel.
+- [x] Several documents: tabs plus the Images panel.
+- [x] WebGL2 viewport: zoom by wheel, keys and menu. Pan by space-drag, middle mouse and trackpad. Fit, fill, 100%, nearest-neighbor above 100%, pixel grid at 800% and more, checkerboard for transparency, optional rulers, Navigator panel.
+- [x] Compare modes: split with a draggable divider, side by side with synced view, opacity overlay, hold to see original (the `\` key or the eye button), difference.
+- [x] Probe tool, Info panel (RGBA, hex, luma, HSV, Lab, 5x5 window) and Histogram panel (RGB, luma, channels, log scale, statistics).
+- [x] Export: PNG (exact), JPEG and WebP with quality, TIFF, resize, filename pattern `name_filter-param.ext`, metadata stripped (stated in the dialog). PNG and TIFF round trips are bit-exact in a browser test.
 - [x] Built-in synthetic images, generated in code (`core/image/synthetic.ts`). The menu to open them comes with the shell.
-- [ ] Shortcuts from requirements 2 and a shortcut sheet.
-- [ ] Screen-reader announcer, focus rings, reduced motion.
+- [x] Shortcuts from requirements 2 and a shortcut sheet (Help > Keyboard shortcuts, Ctrl or Cmd + /). Ctrl+D is listed and arrives with selections in Phase 4.
+- [ ] Screen-reader announcer, focus rings, reduced motion. Announcer done (`app/Notices.tsx`, polite and assertive live regions). Still to do: the axe check.
 
 Docs: frontend architecture, image data model, preview and rendering, user guide for the workspace and panels.
 
@@ -822,3 +822,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 2 | Phase 1 committed on `claude/phase-1-foundation` and pushed. The PR still needs opening (gh is not installed here). Phase 2 on `claude/phase-2-studio-shell`: design tokens, UI components on Radix, style tile with workspace and phone mocks, image format parser for 7 formats, limits and warnings, worker decoder with exact WebGL2 readback, color conversion, Gaussian kernel generator, synthetic images, histogram, viewport maths, Vitest browser mode, image data model docs page. 189 tests pass. Fixed: channel scope label renamed to Channels, Mermaid diagrams now top to bottom so they stay readable on phones. | Style tile review. Then build the shell on dockview. |
 | 2026-10-12 | 2 | Style tile approved. Light is now the default (D25). Added Dim and Midnight themes and an automated contrast test for all themes (D26). The test caught light-theme green and red text below 4.5:1 on the app background, now fixed. Layout review moved to the end of Phase 3. | Build the Phase 2 shell. |
 | 2026-10-12 | 2 | Viewport renderer, stores, rotate and flip, exact PNG encoder committed. You merged PRs 1 and 2 and created `Development`. Merged the three newer commits into it. From now on only `Development` is used (D18). | Finish the Phase 2 shell on `Development`. |
+| 2026-10-12 | 2 | Second PC set up. Built the shell: dockview workspace with presets, saved layouts and icon rails, menu bar and command palette from one command list, options bar, tool strip, status bar, toasts with live regions, Images, Navigator, Info and Histogram panels, rulers, export dialog (PNG, JPEG, WebP, TIFF, resize), preferences with image limits. Fixed: `Viewport.tsx` and `viewport.ts` clashed on Windows (renamed to `ImageViewport.tsx`), the Dark theme never applied on `<html>` (selector order, now tested), active compare segment not highlighted. Added `.gitattributes` for LF line endings on both PCs. 314 tests pass. | Phase 2 exit checks and docs. |

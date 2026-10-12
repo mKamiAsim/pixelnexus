@@ -64,7 +64,8 @@
   --px-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45), 0 0 0 1px var(--px-border);
 }
 
-:root,
+/* Light is the default. ":not([data-theme])" keeps it from overriding a theme set on <html>. */
+:root:not([data-theme]),
 [data-theme="light"] {
   color-scheme: light;
 

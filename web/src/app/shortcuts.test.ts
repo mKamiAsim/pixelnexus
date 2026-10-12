@@ -20,14 +20,20 @@ describe("shortcuts", () => {
   });
 
   it("requires the exact modifiers", () => {
-    expect(matchesShortcut(key("z", "KeyZ", { ctrlKey: true, shiftKey: true }), "Mod+Z", false)).toBe(false);
-    expect(matchesShortcut(key("Z", "KeyZ", { ctrlKey: true, shiftKey: true }), "Mod+Shift+Z", false)).toBe(true);
+    expect(
+      matchesShortcut(key("z", "KeyZ", { ctrlKey: true, shiftKey: true }), "Mod+Z", false),
+    ).toBe(false);
+    expect(
+      matchesShortcut(key("Z", "KeyZ", { ctrlKey: true, shiftKey: true }), "Mod+Shift+Z", false),
+    ).toBe(true);
     expect(matchesShortcut(key("h", "KeyH", { ctrlKey: true }), "H", false)).toBe(false);
   });
 
   it("treats = and + as the same zoom key, with or without Shift", () => {
     expect(matchesShortcut(key("=", "Equal", { ctrlKey: true }), "Mod+Plus", false)).toBe(true);
-    expect(matchesShortcut(key("+", "Equal", { ctrlKey: true, shiftKey: true }), "Mod+Plus", false)).toBe(true);
+    expect(
+      matchesShortcut(key("+", "Equal", { ctrlKey: true, shiftKey: true }), "Mod+Plus", false),
+    ).toBe(true);
     expect(matchesShortcut(key("-", "Minus", { ctrlKey: true }), "Mod+Minus", false)).toBe(true);
   });
 

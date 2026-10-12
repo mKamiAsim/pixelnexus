@@ -1,0 +1,3 @@
+# Check out text files with LF on every machine, so Prettier and the prose lint agree
+# on Windows, macOS and Linux. Git detects binary files by itself.
+* text=auto eol=lf

@@ -42,7 +42,7 @@ function isTyping(target: EventTarget | null): boolean {
  * - Click with the Probe tool to pin a pixel for the Info panel.
  * - With the canvas focused, arrow keys pan.
  */
-export function Viewport({ document: doc }: { document: ImageDocument }) {
+export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ImageRenderer | null>(null);
@@ -54,6 +54,7 @@ export function Viewport({ document: doc }: { document: ImageDocument }) {
 
   const setView = useDocuments((s) => s.setView);
   const tool = useUi((s) => s.tool);
+  const zoomOut = useUi((s) => s.zoomOut);
   const compare = useUi((s) => s.compare);
   const split = useUi((s) => s.split);
   const setSplit = useUi((s) => s.setSplit);
@@ -271,7 +272,7 @@ export function Viewport({ document: doc }: { document: ImageDocument }) {
     if (event.button !== 0 || !doc.view) return;
     if (tool === "zoom") {
       updateView((view) =>
-        zoomAt(view, nextZoomStep(view.zoom, event.altKey ? -1 : 1), point.x, point.y),
+        zoomAt(view, nextZoomStep(view.zoom, event.altKey !== zoomOut ? -1 : 1), point.x, point.y),
       );
     } else if (tool === "probe") {
       const pixel = pixelAt(doc.view, doc.current, point.x, point.y);

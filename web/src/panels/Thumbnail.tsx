@@ -3,7 +3,15 @@ import { useEffect, useRef } from "react";
 import type { RgbaImage } from "@/core/image/types";
 
 /** A small preview drawn at most `max` CSS pixels on its longest side, over a checkerboard. */
-export function Thumbnail({ image, max = 48, label }: { image: RgbaImage; max?: number; label: string }) {
+export function Thumbnail({
+  image,
+  max = 48,
+  label,
+}: {
+  image: RgbaImage;
+  max?: number;
+  label: string;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const scale = Math.min(1, max / Math.max(image.width, image.height));
   const width = Math.max(1, Math.round(image.width * scale));

@@ -6,11 +6,13 @@ import {
   ZOOM_STEPS,
   centeredView,
   clampPan,
+  fillZoom,
   fitZoom,
   formatZoom,
   imageToScreen,
   nextZoomStep,
   pixelAt,
+  rulerSteps,
   screenToImage,
   showPixelGrid,
   zoomAt,
@@ -82,5 +84,23 @@ describe("viewport", () => {
     expect(formatZoom(2 / 3)).toBe("66.7%");
     expect(formatZoom(0.0625)).toBe("6.3%");
     expect(formatZoom(8)).toBe("800%");
+  });
+});
+
+describe("fill zoom and rulers", () => {
+  it("fills the view with the image, cropping the longer side", () => {
+    expect(fillZoom(image, view)).toBeCloseTo(4);
+    expect(fillZoom({ width: 2000, height: 1000 }, { width: 500, height: 500 })).toBeCloseTo(0.5);
+  });
+
+  it("keeps ruler labels at least 56 screen pixels apart", () => {
+    for (const zoom of [0.02, 0.1, 0.5, 1, 3, 8, 32, 64]) {
+      const { major, minor } = rulerSteps(zoom);
+      expect(major * zoom).toBeGreaterThanOrEqual(56);
+      expect(major % minor).toBe(0);
+      expect(minor).toBeGreaterThanOrEqual(1);
+    }
+    expect(rulerSteps(1)).toEqual({ major: 100, minor: 20 });
+    expect(rulerSteps(64)).toEqual({ major: 1, minor: 1 });
   });
 });

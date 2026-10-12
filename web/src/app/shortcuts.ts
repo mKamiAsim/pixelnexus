@@ -4,7 +4,8 @@
  */
 
 export const isApple =
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 export interface ParsedShortcut {
   readonly mod: boolean;

@@ -81,6 +81,19 @@ function decodeTiff(bytes: Uint8Array): DecodeResult {
   };
 }
 
+/**
+ * Read the pixels of a decoded bitmap. Uses the exact WebGL2 path when it can, and the 2D canvas
+ * otherwise.
+ */
+export function readBitmapPixels(bitmap: ImageBitmap): DecodeResult {
+  const exact = readExact(bitmap);
+  const data = exact ?? readWithCanvas(bitmap);
+  return {
+    image: { width: bitmap.width, height: bitmap.height, data },
+    path: exact ? "webgl2" : "canvas2d",
+  };
+}
+
 /** Decode the first frame. EXIF orientation is applied and colors are converted to sRGB. */
 export async function decodeImageBytes(
   bytes: Uint8Array,
@@ -103,12 +116,7 @@ export async function decodeImageBytes(
     );
   }
   try {
-    const exact = readExact(bitmap);
-    const data = exact ?? readWithCanvas(bitmap);
-    return {
-      image: { width: bitmap.width, height: bitmap.height, data },
-      path: exact ? "webgl2" : "canvas2d",
-    };
+    return readBitmapPixels(bitmap);
   } finally {
     bitmap.close();
   }
