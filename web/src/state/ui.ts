@@ -17,6 +17,7 @@ export type DialogId =
   | "select-brightness"
   | "select-hsv"
   | "select-save"
+  | "select-snap"
   | null;
 
 export interface PixelPoint {

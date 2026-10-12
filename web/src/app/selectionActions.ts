@@ -18,6 +18,7 @@ import {
   type Mask,
 } from "@/core/mask/mask";
 import { borderMask, featherMask, growMask, shrinkMask, smoothMask } from "@/core/mask/refine";
+import { snapToEdges } from "@/core/selection/snap";
 import { decodeInWorker } from "@/core/workers/decode-client";
 import { activeDocument, useDocuments, type ImageDocument } from "@/state/documents";
 import { announce, notify } from "@/state/notifications";
@@ -196,6 +197,22 @@ export function refineSelection(kind: RefineKind, amount: number, edges = false)
   const mask = refineMask(doc.selection, kind, amount, edges);
   const label = `${REFINE[kind].title.replace(" selection", "")} ${amount} px`;
   commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, label);
+}
+
+/** Select > Modify > Snap to edges: move the selection edge onto nearby image edges. */
+export function snapSelection(values: {
+  radius: number;
+  contrast: number;
+  smoothing: number;
+}): void {
+  const doc = activeDocument();
+  if (!doc?.selection) return;
+  const mask = snapToEdges(doc.current, doc.selection, {
+    radius: values.radius,
+    contrast: values.contrast / 100,
+    smoothing: values.smoothing,
+  });
+  commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, "Snap to edges");
 }
 
 export function saveSelection(name: string): void {

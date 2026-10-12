@@ -1,8 +1,40 @@
 id: edge-assisted
 name: Edge-assisted selection
+aliases: [Snap to edges]
 group: lasso
 tier: core
 engine: browser
 phase: '4'
 status: planned
 planNotes: Snaps to nearby edges.
+params:
+  - key: radius
+    label: Reach
+    type: number
+    default: 8
+    min: 1
+    max: 64
+    step: 1
+    unit: px
+    description: How far the selection edge may move to meet an image edge.
+    effect: Larger values find edges farther away, but may jump to the wrong one.
+  - key: contrast
+    label: Contrast
+    type: number
+    default: 10
+    min: 1
+    max: 100
+    step: 1
+    unit: '%'
+    description: The weakest edge that counts, in percent of the strongest edge in the image.
+    effect: Higher values snap only to clear edges. Where no edge counts, the selection stays where it was.
+  - key: smoothing
+    label: Smoothing
+    type: number
+    default: 1
+    min: 0
+    max: 20
+    step: 1
+    unit: px
+    description: Radius of the majority smoothing after snapping.
+    effect: Higher values remove small bumps along the new edge.

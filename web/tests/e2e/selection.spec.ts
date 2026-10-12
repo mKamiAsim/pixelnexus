@@ -303,3 +303,24 @@ test("Quick Selection grows over a disk from one short stroke", async ({ page })
     "Quick Selection. Selection: 144 x 144 px at x 56, y 248",
   );
 });
+
+test("Snap to edges moves a rough circle onto a disk", async ({ page }) => {
+  await openTestImage(page, "Disks and dots");
+  await canvas(page).focus();
+  await page.keyboard.press("Shift+M");
+  // A circle 4 pixels larger than the disk at (352, 320) with radius 36.
+  const a = await screenOf(page, 312, 280);
+  const b = await screenOf(page, 392, 360);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 80 x 80 px");
+  await menu(page, "Select", /^Modify/, /^Snap to edges/);
+  const dialog = page.getByRole("dialog", { name: "Snap to edges" });
+  await expect(dialog.getByRole("textbox", { name: "Reach" })).toBeFocused();
+  await dialog.getByRole("button", { name: "OK" }).click();
+  await expect(announcer(page)).toContainText(
+    "Snap to edges. Selection: 74 x 74 px at x 315, y 283",
+  );
+});

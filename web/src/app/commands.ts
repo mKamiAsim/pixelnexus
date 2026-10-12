@@ -395,6 +395,16 @@ export function buildCommands(): Command[] {
       },
     })),
     {
+      id: "select.modify.snap",
+      label: "Snap to edges...",
+      menu: "select",
+      submenu: "Modify",
+      section: "modify",
+      keywords: "edge assisted snap refine boundary",
+      enabled: hasSelection,
+      run: () => useUi.getState().setDialog("select-snap"),
+    },
+    {
       id: "select.from-alpha",
       label: "Selection from alpha",
       menu: "select",
