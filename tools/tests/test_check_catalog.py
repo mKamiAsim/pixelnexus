@@ -120,3 +120,25 @@ def test_channel_scope_default_must_be_allowed(catalog: Any) -> None:
             item["channelScopes"] = ["rgb"]
     messages = [i.message for i in structure_issues(broken)]
     assert "channelScope default is not in channelScopes" in messages
+
+
+def test_browser_filter_must_be_registered(catalog: Any) -> None:
+    broken = copy.deepcopy(catalog)
+    for item in broken.bundle["filters"]:
+        if item["id"] == "gaussian":
+            item["status"] = "implemented-tested"
+            item["implementation"] = {
+                "path": "web/src/core/filters/linear/gaussian.ts",
+                "symbol": "gaussianKernel1d",
+            }
+    messages = [i.message for i in structure_issues(broken)]
+    assert any("'gaussianKernel1d' is not registered" in m for m in messages)
+
+
+def test_registered_browser_filter_passes(catalog: Any) -> None:
+    fine = copy.deepcopy(catalog)
+    for item in fine.bundle["filters"]:
+        if item["id"] == "gaussian":
+            item["status"] = "implemented-tested"
+    messages = [i.message for i in structure_issues(fine)]
+    assert not any("registered" in m or "declare id" in m for m in messages)

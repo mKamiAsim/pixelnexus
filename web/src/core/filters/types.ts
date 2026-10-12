@@ -1,0 +1,131 @@
+/**
+ * The contract between a browser filter and the framework in run.ts.
+ *
+ * A filter says what kind of operation it is and supplies one small function. The framework
+ * does the rest in the same way for every filter: border padding, channel scopes, alpha,
+ * linear light and the mapping to 8 bits. The catalog entry with the same id describes the
+ * filter for people. This file describes it for the code.
+ */
+import type { BorderMode, Plane } from "./planes";
+
+export type ParamValue = number | string | boolean;
+export type Params = Readonly<Record<string, ParamValue>>;
+
+export type ChannelScope = "rgb" | "per-channel" | "luminance" | "chroma";
+export type OutputMapping = "abs" | "offset" | "normalize" | "clip";
+
+/** Where the plane sits in the full image. Noise uses it, so tiles give the same result. */
+export interface PlaneContext {
+  readonly border: BorderMode;
+  /** Image x of the plane's first column. */
+  readonly originX: number;
+  /** Image y of the plane's first row. */
+  readonly originY: number;
+  /** Channel number: 0 red, 1 green, 2 blue, or 0 for a brightness plane. */
+  readonly channel: number;
+}
+
+/** One kernel as the Inspector shows it. It comes from the same function the filter runs. */
+export interface KernelInfo {
+  /** Short name, as LaTeX, for example "K_x". */
+  readonly name: string;
+  readonly rows: readonly (readonly number[])[];
+  readonly anchor: { readonly x: number; readonly y: number };
+  /** True when the weights add up to 1. */
+  readonly normalized: boolean;
+  /** Divide the shown whole numbers by this to get the weights, for fixed integer kernels. */
+  readonly divisor?: number;
+  /** Factors when the kernel is the outer product column x row. */
+  readonly separable?: { readonly column: readonly number[]; readonly row: readonly number[] };
+  /** A sentence about this kernel, such as how it relates to the filter. */
+  readonly note?: string;
+}
+
+export type Representation =
+  | { readonly kind: "kernels"; readonly kernels: readonly KernelInfo[] }
+  | {
+      readonly kind: "rank";
+      readonly size: number;
+      /** 1-based rank of the chosen value in the sorted window. */
+      readonly rank: number;
+      readonly count: number;
+    }
+  | {
+      readonly kind: "curve";
+      /** Output value for each input value from 0 to 255, before rounding. */
+      readonly values: readonly number[];
+    }
+  | {
+      readonly kind: "weights";
+      readonly weights: readonly { readonly name: string; readonly value: number }[];
+      readonly space: "encoded" | "linear";
+    }
+  | { readonly kind: "generator"; readonly description: string };
+
+interface FilterBase {
+  /** The catalog id. */
+  readonly id: string;
+  /** Halo in pixels that a region needs around it. 0 for point and pixel operations. */
+  radius(params: Params): number;
+  /** The operator, for the Inspector. Built by the same code that the filter runs. */
+  representation(params: Params): Representation;
+}
+
+/**
+ * A neighborhood operation on one plane.
+ * - "smooth" keeps the meaning of the values, as a blur or a median does. Results are clipped.
+ * - "derived" computes a new signed quantity, as a gradient does. Results use the output mapping.
+ */
+export interface PlaneFilter extends FilterBase {
+  readonly kind: "smooth" | "derived";
+  /**
+   * True for averaging filters with positive weights. On transparent images they average
+   * colors weighted by alpha, so transparent pixels do not darken the result.
+   */
+  readonly alphaWeighted: boolean;
+  plane(input: Plane, params: Params, context: PlaneContext): Plane;
+}
+
+/** A function of one value, applied to every pixel. */
+export interface PointFilter extends FilterBase {
+  readonly kind: "point";
+  /** The transfer function from 0..255 to a value that is clipped and rounded later. */
+  transfer(params: Params): (value: number) => number;
+}
+
+/** A function of all three color values of one pixel, such as a grayscale conversion. */
+export interface PixelFilter extends FilterBase {
+  readonly kind: "pixel";
+  /** Writes the new red, green and blue values into out. */
+  pixel(r: number, g: number, b: number, params: Params, out: Float64Array): void;
+}
+
+/** Adds synthetic noise. Values depend on the image position and the seed, never on tiles. */
+export interface NoiseFilter extends FilterBase {
+  readonly kind: "noise";
+  /** Changes the three color planes in place. */
+  noise(
+    color: readonly [Plane, Plane, Plane],
+    params: Params,
+    originX: number,
+    originY: number,
+  ): void;
+}
+
+export type BrowserFilter = PlaneFilter | PointFilter | PixelFilter | NoiseFilter;
+
+/** Read parameters with a default, so filters never see undefined. */
+export const read = {
+  number(params: Params, key: string, fallback: number): number {
+    const value = params[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  },
+  string<T extends string>(params: Params, key: string, fallback: T): T {
+    const value = params[key];
+    return (typeof value === "string" ? value : fallback) as T;
+  },
+  boolean(params: Params, key: string, fallback: boolean): boolean {
+    const value = params[key];
+    return typeof value === "boolean" ? value : fallback;
+  },
+};

@@ -142,12 +142,30 @@ def _code_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
         yield Issue("error", where, f"implementation file '{missing}' is missing")
     elif implementation.get("symbol", "") not in source.read_text(encoding="utf-8"):
         yield Issue("error", where, f"symbol '{implementation.get('symbol')}' is not in its file")
+    else:
+        yield from _registration_issues(entry, source.read_text(encoding="utf-8"), where)
     for test in entry.get("tests", []) or []:
         if not (ROOT / test).is_file():
             yield Issue("error", where, f"test file '{test}' is missing")
     docs_page = entry.get("docsPage")
     if docs_page and not (ROOT / "docs" / docs_page).is_file():
         yield Issue("error", where, f"docs page 'docs/{docs_page}' is missing")
+
+
+BROWSER_REGISTRY = ROOT / "web" / "src" / "core" / "filters" / "registry.ts"
+
+
+def _registration_issues(entry: dict[str, Any], source: str, where: str) -> Iterator[Issue]:
+    """A browser filter declares its catalog id and is listed in the browser registry."""
+    if entry.get("engine") != "browser":
+        return
+    entry_id = entry.get("id", "")
+    symbol = (entry.get("implementation") or {}).get("symbol", "")
+    if f'id: "{entry_id}"' not in source:
+        yield Issue("error", where, f'the implementation does not declare id "{entry_id}"')
+    registry = BROWSER_REGISTRY.read_text(encoding="utf-8") if BROWSER_REGISTRY.is_file() else ""
+    if not re.search(rf"\b{re.escape(symbol)}\b", registry):
+        yield Issue("error", where, f"'{symbol}' is not registered in {_rel(BROWSER_REGISTRY)}")
 
 
 def summary(catalog: Catalog) -> str:

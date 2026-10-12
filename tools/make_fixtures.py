@@ -8,10 +8,10 @@ What it writes:
     synthetic.json   Small synthetic images shared by browser and engine tests.
     color.json       Color conversions computed with scikit-image.
     gaussian.json    Gaussian kernels computed with SciPy.
+    filters.json     Reference results of the browser filters, made by tools/fixtures_filters.py
+                     with SciPy, NumPy and scikit-image, and cross-checked with OpenCV.
     formats/         Small image files in every supported format, encoded by Pillow, and
                      manifest.json with the header facts and one decoded pixel for each file.
-
-From Phase 3 it also writes one reference case per browser filter.
 """
 
 from __future__ import annotations
@@ -32,6 +32,8 @@ from PIL import Image as PILImage
 from PIL import ImageCms, ImageOps
 from scipy import ndimage
 from skimage import color as skcolor
+
+from fixtures_filters import filter_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "web" / "tests" / "fixtures"
@@ -334,6 +336,8 @@ def build() -> dict[str, str]:
         "color.json": json.dumps(color_cases(), indent=1) + "\n",
         "gaussian.json": json.dumps(gaussian_cases(), indent=1) + "\n",
         "formats/manifest.json": json.dumps(manifest, indent=1) + "\n",
+        # One line, because the file holds thousands of numbers.
+        "filters.json": json.dumps(filter_cases(), separators=(",", ":")) + "\n",
     }
 
 
@@ -357,29 +361,44 @@ def same_data(a: Any, b: Any) -> bool:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if files are out of date")
+    parser.add_argument(
+        "--formats",
+        action="store_true",
+        help="rewrite the image files in formats/ too. Pillow builds differ in their bytes, "
+        "so they are written only when missing unless you ask.",
+    )
     args = parser.parse_args(argv)
 
     stale = []
+    written = []
     for name, text in build().items():
         path = OUT_DIR / name
+        current = path.read_text(encoding="utf-8") if path.exists() else None
+        # Last-bit float differences between platforms do not count as a change.
+        if current is not None and same_data(json.loads(current), json.loads(text)):
+            continue
         if args.check:
-            if not path.exists() or not same_data(
-                json.loads(path.read_text(encoding="utf-8")), json.loads(text)
-            ):
-                stale.append(name)
+            stale.append(name)
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-    if args.check:
-        missing = [n for n, _d, _f in format_files() if not (FORMATS_DIR / n).exists()]
-        stale.extend(f"formats/{n}" for n in missing)
-    else:
-        for name, data, _facts in format_files():
-            (FORMATS_DIR / name).write_bytes(data)
+        path.write_text(text, encoding="utf-8", newline="\n")
+        written.append(name)
+    for name, data, _facts in format_files():
+        path = FORMATS_DIR / name
+        if path.exists() and not args.formats:
+            continue
+        if args.check:
+            stale.append(f"formats/{name}")
+            continue
+        path.write_bytes(data)
+        written.append(f"formats/{name}")
     if stale:
         print("Out of date: " + ", ".join(stale) + ". Run tools/make_fixtures.py.")
         return 1
-    print("Fixtures are up to date." if args.check else f"Fixtures written to {OUT_DIR}.")
+    if args.check:
+        print("Fixtures are up to date.")
+    else:
+        print(f"Wrote {len(written)} file(s) in {OUT_DIR}: " + (", ".join(written) or "none"))
     return 0
 
 

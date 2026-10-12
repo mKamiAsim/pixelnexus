@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 3: filter framework, Inspector, Learn and the first filters |
-| Next action | Phase 3, first task: the engine client (run, preview, cancel, progress, timing). |
+| Next action | Phase 3: full catalog entries for the first filters, then Library and Properties panels. |
 | Last updated | 2026-10-12 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 2 complete: exit checks passed, docs written |
-| In progress | Nothing. Phase 3 not started. |
-| Next steps | Phase 3 tasks in order: engine client, worker pool, compositor, Library, Properties, then the first filters |
+| Last finished step | Phase 3 core: filter framework, 11 browser filters with SciPy fixtures, worker pool, engine client, compositor |
+| In progress | Phase 3: catalog entries and studio panels |
+| Next steps | Full catalog entries and docs pages for the 11 filters, then Library, Properties with preview, History, Inspector, Learn, Developer |
 | Open questions | None |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). |
 
@@ -530,9 +530,9 @@ Exit: E2E test opens three images, zooms, pans, compares and exports in each for
 
 Goal: prove the full path from catalog to pixels to maths to docs with a small set.
 
-- [ ] Engine client: run, preview, cancel, progress, timing. Same interface for both engines.
-- [ ] Browser worker pool: tiles with halos, transferable buffers, cancellation, memory guard.
-- [ ] Compositor: mask blend, channel scope (RGB, per channel, luminance only, chroma only), alpha handling, output mapping for signed results.
+- [x] Engine client: run, cancel, progress, timing. Same interface for both engines (`web/src/engine-client/`). The science engine answers that it arrives in Phase 6. Parameters are validated against the catalog before every run. Preview scheduling sits on top of it in the studio.
+- [x] Browser worker pool: strips with halos, transferable buffers, cancellation that replaces busy workers, memory guard (`core/workers/pool.ts`, `engine-client/browser.ts`). A browser test proves tiled runs are byte-identical to whole-image runs.
+- [x] Compositor (`core/composite/compose.ts`): mask blend, M = 0 stays bit-identical. Channel scopes, alpha weighting, linear light and output mapping live in the filter framework (`core/filters/run.ts`), shared by every filter.
 - [ ] Library panel: search by name, alias, method, category and purpose. Facets for family, linearity, domain, noise type, purpose, engine and status. Favorites. Status badges. Planned entries are visible but cannot run.
 - [ ] Properties panel built from the schema: scrubby slider with number input, integer and odd-size rules, select, boolean, color, angle dial, kernel editor, preview toggle, apply, cancel, reset, presets, copy JSON, last run time.
 - [ ] Preview engine as in section 3.7. Cache keyed by image version, parameters and mask version.
@@ -542,7 +542,7 @@ Goal: prove the full path from catalog to pixels to maths to docs with a small s
 - [ ] Developer panel: id, schema, parameters JSON, engine, repo-relative source path with a GitHub link, dependency versions, tests, timing, warnings.
 - [ ] Glossary tooltips.
 - [ ] First filters in the browser: box, gaussian, motion-blur, sobel, laplacian, median, unsharp-mask, gamma, grayscale. Noise generators for Gaussian and salt-and-pepper noise.
-- [ ] Fixture tests against SciPy or OpenCV for each of them.
+- [x] Fixture tests against SciPy or OpenCV for each of them. `tools/fixtures_filters.py` writes `filters.json` with SciPy, NumPy and scikit-image, and cross-checks scikit-image and OpenCV where they offer the same operation. All match within a relative 1e-4.
 
 Docs: filter registry, processing pipeline, execution model, maths foundations (image representation, convolution and correlation, boundary conditions, linearity, masks and alpha blending, numerical precision), Inspector pages, Learn panel page, one page per filter above with generated figures.
 
@@ -824,3 +824,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 2 | Viewport renderer, stores, rotate and flip, exact PNG encoder committed. You merged PRs 1 and 2 and created `Development`. Merged the three newer commits into it. From now on only `Development` is used (D18). | Finish the Phase 2 shell on `Development`. |
 | 2026-10-12 | 2 | Second PC set up. Built the shell: dockview workspace with presets, saved layouts and icon rails, menu bar and command palette from one command list, options bar, tool strip, status bar, toasts with live regions, Images, Navigator, Info and Histogram panels, rulers, export dialog (PNG, JPEG, WebP, TIFF, resize), preferences with image limits. Fixed: `Viewport.tsx` and `viewport.ts` clashed on Windows (renamed to `ImageViewport.tsx`), the Dark theme never applied on `<html>` (selector order, now tested), active compare segment not highlighted. Added `.gitattributes` for LF line endings on both PCs. 314 tests pass. | Phase 2 exit checks and docs. |
 | 2026-10-12 | 2 | Phase 2 done. E2E tests for the exit flow, a 6000x6000 image and axe (dev dependency `@axe-core/playwright`, MPL 2.0, test only, never shipped, so D17 holds). Viewport benchmark script, numbers in the docs. Docs: frontend architecture, preview and rendering, workspace, panels, export, keyboard shortcuts, figure checklist. Fixed: Enter in a number field submitted forms with the old value, theme colors were read from CSS on every frame, the document tab strip broke an ARIA rule, `make_fixtures.py --check` failed on Windows over last-bit float differences (now compares numerically). All CI checks pass on this PC. | Phase 3: engine client. |
+| 2026-10-12 | 3 | Filter framework (borders, channel scopes, alpha weighting, linear light, output mapping), 11 browser filters (box, Gaussian, motion blur, Sobel, Laplacian, median, unsharp mask, gamma, grayscale, Gaussian and salt-and-pepper noise), compositor, worker pool, engine client. Reference fixtures from SciPy and scikit-image with OpenCV cross-checks. The checker now verifies browser registration. `make_fixtures.py` no longer rewrites files that only differ in float noise. Catalog statuses stay planned until each entry and its docs page are complete. 501 tests pass. | Catalog entries, then the studio panels. |
