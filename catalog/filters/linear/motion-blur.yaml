@@ -1,8 +1,138 @@
 id: motion-blur
 name: Motion blur
 family: linear
+tags: [purpose:blur, purpose:simulation]
 tier: core
 engine: browser
-phase: '3'
-status: planned
+phase: "3"
+status: implemented-tested
 planNotes: Line PSF with length and angle. Anti-aliased line.
+
+summary: Blurs the image along a straight line, like a camera that moved during the exposure.
+purpose: Simulate camera or object motion, or make test images for deblurring.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/motion-blur.ts, symbol: motionKernel}
+supportRadius: ceil((length / 2) * max(|cos(angle)|, |sin(angle)|) - 0.5)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are blurred with the same kernel. Alpha is kept. On images with
+  transparency, colors are weighted by alpha. Linear light makes bright details streak like
+  real light does.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: length
+    label: Length
+    type: number
+    min: 1
+    max: 101
+    step: 0.5
+    default: 9
+    unit: px
+    description: Length of the motion, in pixels.
+    effect: Longer motion gives longer streaks.
+  - key: angle
+    label: Angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: Direction of the motion. 0 is horizontal and 90 is vertical. Angles turn counterclockwise.
+    effect: The streaks follow this direction.
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Blur linear light values instead of sRGB encoded values.
+    effect: Bright points streak more like real light.
+    advanced: true
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=-r}^{r} \sum_{i=-r}^{r} M(i,j)\, I(x+i,\, y+j),
+  \qquad
+  M(i,j) = \frac{\ell(i,j)}{L},
+  \qquad
+  L = {{length}},
+  \quad
+  \theta = {{angle}}^{\circ}
+formulaExplanation: >-
+  The kernel is a line segment of length L through the center of the window, at angle theta.
+  The weight of each cell is the length of the segment that passes through that cell's square,
+  divided by L. The weights add up to 1. A slanted line gets smooth, anti-aliased weights
+  instead of a jagged staircase.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'M(i, j)', meaning: 'Kernel weight at offset i to the right and j down'}
+  - {symbol: '\ell(i, j)', meaning: 'Length of the line segment inside the unit square of cell (i, j)'}
+  - {symbol: 'L', meaning: 'Length of the motion in pixels'}
+  - {symbol: '\theta', meaning: 'Angle of the motion, counterclockwise from the x axis'}
+  - {symbol: 'r', meaning: 'Kernel radius in pixels, the smallest one that holds the whole segment'}
+steps:
+  - Find the smallest square kernel that holds a segment of length L at angle theta.
+  - For each cell, clip the segment to the cell's square and measure the length inside.
+  - Divide every length by the total, so the weights add up to 1.
+  - Pad the image with the border mode and correlate it with the kernel.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: >-
+    N is the number of pixels per channel and k is the number of nonzero kernel weights, about
+    L to 2L. Zero weights are skipped.
+useCases:
+  - Simulate a moving camera or a moving object.
+  - Make blurred test images for deblurring and Wiener filtering.
+  - Add a sense of speed to an image.
+advantages:
+  - The kernel is exact for any length and angle, including fractions of a pixel.
+  - The kernel is the point spread function, so it shows exactly what one bright point becomes.
+limitations:
+  - Models straight motion at constant speed only. Real camera shake follows curved paths.
+  - Other programs build motion kernels in other ways, so their results can differ slightly.
+artifacts:
+  - Bright points become streaks with sharp ends.
+  - Edges across the motion stay sharp, while edges along it blur.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5.
+  - kind: paper
+    text: >-
+      Liang, Y.-D. and Barsky, B. A. A new concept and method for line clipping. ACM
+      Transactions on Graphics, 3(1), 1984.
+    doi: 10.1145/357332.357333
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.correlate.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.correlate.html
+implementation: {path: web/src/core/filters/linear/motion-blur.ts, symbol: motionBlurFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes the average of the pixels along a short line, as if the camera moved along that line.
+  howItWorks:
+    - Draw a short line through the pixel, at the chosen angle.
+    - Give each neighbor a weight by how much of the line passes through it.
+    - Add up the neighbors times their weights.
+    - Use the result as the new pixel.
+  academic: >-
+    The kernel is the point spread function of uniform straight motion during the exposure.
+    Its weights are exact line lengths inside each cell, divided by the total length.
+  paramNotes:
+    length: How far the camera moved, in pixels.
+    angle: The direction of the motion. 0 is horizontal.
+  tryThis:
+    - Open the Impulse response demo. Change the angle and watch the streak turn.
+    - Open the Siemens star test image. Spokes along the motion stay sharp, spokes across it blur.
+  pitfalls:
+    - Expecting it to look like real camera shake. Real shake follows a curved path.
+  demos: [impulse-response, line-profile, neighborhood-stepper]
+related: [box, gaussian, unsharp-mask]
+docsPage: filters/linear/motion-blur.md

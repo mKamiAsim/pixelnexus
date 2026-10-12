@@ -31,3 +31,61 @@ terms:
   - term: Spectrum
     aliases: [Fourier spectrum]
     definition: A picture of how much of each spatial frequency the image contains. The center holds slow changes and the edges hold fast changes.
+  - term: Support radius
+    aliases: [Halo]
+    definition: How far from a pixel a filter reads. A region is padded by this many pixels on every side, so its result matches a run on the whole image.
+    seeAlso: [Neighborhood, Border mode]
+  - term: Separable kernel
+    aliases: [Separable filter]
+    definition: A 2D kernel that equals one 1D kernel along the rows times one along the columns. The filter can then run as two fast 1D passes.
+    seeAlso: [Kernel]
+  - term: Anchor
+    definition: The kernel cell that sits on top of the pixel being computed. It is usually the center.
+    seeAlso: [Kernel]
+  - term: Normalized kernel
+    definition: A kernel whose weights add up to 1. It keeps flat areas at the same brightness.
+    seeAlso: [Kernel]
+  - term: Output mapping
+    definition: The rule that turns signed results, such as gradients, into 8-bit values from 0 to 255. The computed values do not change, only how they are shown.
+  - term: Channel scope
+    aliases: [Channels]
+    definition: Which part of a color image a filter changes. RGB changes every channel. Brightness only changes luma and keeps the color differences. Color only does the opposite.
+    seeAlso: [Luma]
+  - term: Linear light
+    definition: Pixel values decoded from sRGB, so that the numbers are proportional to light intensity. Blurs in linear light behave more like real optics.
+    seeAlso: [Luminance, Gamma]
+  - term: Luminance
+    definition: Brightness computed from linear light values with fixed weights for red, green and blue. Luma is the same sum on gamma-encoded values.
+    seeAlso: [Luma, Linear light]
+  - term: Gamma
+    definition: The exponent of a power curve that maps pixel values to output values. Below 1 it brightens the midtones, above 1 it darkens them.
+  - term: Point operation
+    definition: A filter where each output pixel depends only on the same input pixel, such as gamma correction. It needs no neighbors.
+  - term: Order statistic
+    aliases: [Rank]
+    definition: A value picked by its position in the sorted list of window values, such as the minimum, the median or the maximum.
+    seeAlso: [Median]
+  - term: Median
+    definition: The middle value after sorting. Half of the values are at or below it, half at or above it.
+    seeAlso: [Order statistic]
+  - term: Gradient
+    definition: How fast brightness changes at a pixel, and in which direction. It has a horizontal part Gx and a vertical part Gy.
+  - term: Laplacian
+    definition: The sum of the second derivatives along x and y. It is 0 on flat areas and on straight ramps, and large at fine detail and edges.
+    seeAlso: [Gradient]
+  - term: Impulse noise
+    aliases: [Salt-and-pepper noise]
+    definition: Noise that replaces some pixels with extreme values, often pure white or black, instead of adding a small amount to all of them.
+    seeAlso: [Median]
+  - term: Gaussian noise
+    definition: Noise where each pixel gets a random amount added, drawn from a normal distribution with mean 0.
+    seeAlso: [Sigma]
+  - term: Alpha
+    aliases: [Transparency]
+    definition: The fourth channel of a pixel. 255 means fully opaque and 0 means fully transparent.
+  - term: Alpha weighting
+    aliases: [Premultiplied alpha]
+    definition: Averaging colors weighted by their alpha, so that transparent pixels add no color. It avoids dark fringes around transparent areas.
+    seeAlso: [Alpha]
+  - term: Seed
+    definition: The starting number of a random generator. The same seed always gives the same random numbers, so results can be repeated.

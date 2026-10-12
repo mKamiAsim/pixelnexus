@@ -31,6 +31,8 @@ jobs:
       # Browser tests (Vitest browser mode) and end-to-end tests both need Chromium.
       - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium
       - run: pnpm test:coverage
+      # Kernels and worked examples in the docs come from the filter code.
+      - run: pnpm --filter @pixelnexus/web gen:filter-docs --check
       - run: pnpm build
       - run: pnpm e2e
       - if: failure()

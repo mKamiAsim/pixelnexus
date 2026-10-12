@@ -101,3 +101,10 @@ def test_yaml_checks_prose_fields_only(tmp_path: Path) -> None:
     findings = lint_file(entry)
     assert len(findings) == 1
     assert "powerful" in findings[0].message
+
+
+def test_citations_keep_their_spelling_but_not_their_dashes() -> None:
+    title = "IEC 61966-2-1. Colour measurement and management, part 2-1, default RGB colour space"
+    assert [level for level, _ in check_text(title, citation=True)] == []
+    assert "error" in [level for level, _ in check_text(title)]
+    assert "error" in [level for level, _ in check_text("A title — with a dash", True)]

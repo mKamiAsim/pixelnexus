@@ -1,5 +1,3 @@
-# Full sample entry from Phase 1. The code arrives in Phase 3.
-# Change the status only after the tests listed below exist and pass.
 # The kernel matrices are not written here. The Inspector reads them from sobelKernels.
 id: sobel
 name: Sobel
@@ -10,7 +8,7 @@ tags: [purpose:edge, purpose:gradient]
 tier: core
 engine: browser
 phase: "3"
-status: planned
+status: implemented-tested
 planNotes: Outputs Gx, Gy, magnitude and direction.
 
 summary: Estimates the brightness gradient with two 3x3 kernels.
@@ -107,7 +105,7 @@ references:
     text: OpenCV documentation, image filtering, Sobel.
     url: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html
 implementation: {path: web/src/core/filters/edges/sobel.ts, symbol: sobelFilter}
-tests: [web/src/core/filters/edges/sobel.test.ts]
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
 learn:
   oneSentence: It measures how fast brightness changes at each pixel, and in which direction.
   howItWorks:

@@ -1,8 +1,109 @@
 id: grayscale
 name: Grayscale conversion
+aliases: [Desaturate, Convert to gray]
 family: enhancement
+tags: [purpose:color]
 tier: core
 engine: browser
-phase: '3'
-status: planned
+phase: "3"
+status: implemented-tested
 planNotes: Luma BT.709 by default, luminance option.
+
+summary: Turns a color image into shades of gray with a weighted sum of red, green and blue.
+purpose: Remove color, or prepare an image for filters that work on brightness only.
+classification: {linearity: linear, domain: color, operation: weighted channel sum}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/grayscale.ts, symbol: grayValue}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Red, green and blue all become the same gray value. Alpha is kept. The luma methods weight
+  the stored sRGB values. The luminance method converts to linear light first and back after.
+boundary: Not needed. Each pixel depends only on its own values.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: luma709
+    options:
+      - {value: luma709, label: Luma BT.709 (default)}
+      - {value: luma601, label: Luma BT.601}
+      - {value: luminance, label: Luminance (linear light)}
+    description: Which weights to use, and whether to work on stored or linear values.
+    effect: Changes how bright reds, greens and blues look in gray. Luminance keeps the perceived brightness of saturated colors best.
+
+formula: |
+  Y' = w_R R' + w_G G' + w_B B' \qquad \text{(luma)},
+  \\[4pt]
+  Y' = f\!\left( w_R\, f^{-1}(R') + w_G\, f^{-1}(G') + w_B\, f^{-1}(B') \right) \qquad \text{(luminance)},
+  \\[4pt]
+  \text{method} = {{method}}
+formulaExplanation: >-
+  The gray value is a weighted sum of the three channels. BT.709 uses the weights 0.2126,
+  0.7152 and 0.0722. BT.601 uses 0.299, 0.587 and 0.114. The luma methods apply the weights to
+  the stored, gamma-encoded values. The luminance method first decodes them to linear light,
+  sums, and encodes the result again. The Operator tab shows the weights in use.
+symbols:
+  - {symbol: "R', G', B'", meaning: 'Stored sRGB values from 0 to 255'}
+  - {symbol: "Y'", meaning: 'The gray value written to all three channels'}
+  - {symbol: 'w_R, w_G, w_B', meaning: 'Channel weights. They add up to 1.'}
+  - {symbol: 'f', meaning: 'The sRGB encoding function from IEC 61966-2-1. Its inverse decodes to linear light.'}
+steps:
+  - Read the red, green and blue values of the pixel.
+  - For luminance, decode each value to linear light.
+  - Multiply each value by its weight and add them up.
+  - For luminance, encode the sum back to sRGB.
+  - Write the result to all three channels and round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Black-and-white photos.
+  - Input for edge detection, thresholds and other brightness filters.
+  - Compare how different standards turn colors into gray.
+advantages:
+  - Matches common standards, so results agree with other tools.
+  - Green counts most, as it does for the human eye.
+limitations:
+  - Different colors with the same gray value become impossible to tell apart.
+  - The luma methods make saturated blues and reds look darker than they appear.
+artifacts:
+  - Red text on a green background can disappear when both have the same gray value.
+references:
+  - kind: standard
+    text: ITU-R Recommendation BT.709-6. Parameter values for the HDTV standards for production and international programme exchange, 2015.
+  - kind: standard
+    text: ITU-R Recommendation BT.601-7. Studio encoding parameters of digital television for standard 4:3 and wide-screen 16:9 aspect ratios, 2011.
+  - kind: standard
+    text: IEC 61966-2-1:1999. Multimedia systems and equipment, colour measurement and management, part 2-1, default RGB colour space, sRGB.
+  - kind: book
+    text: Poynton, C. Digital Video and HD, Algorithms and Interfaces, 2nd edition. Morgan Kaufmann, 2012.
+  - kind: library
+    text: OpenCV documentation, color conversions.
+    url: https://docs.opencv.org/4.x/de/d25/imgproc_color_conversions.html
+implementation: {path: web/src/core/filters/enhancement/grayscale.ts, symbol: grayscaleFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes a gray value made from its red, green and blue parts, with green counting most.
+  howItWorks:
+    - Read the red, green and blue values of the pixel.
+    - Multiply each one by a weight. Green has the largest weight, blue the smallest.
+    - Add the three results.
+    - Use the sum for all three channels.
+  academic: >-
+    Luma is a weighted sum of gamma-encoded values. Luminance is the same weighted sum on
+    linear-light values. They differ most for saturated colors.
+  paramNotes:
+    method: Which weights to use, and whether to decode to linear light first.
+  tryThis:
+    - Open the hue sweep test image. Compare the three methods and look at the blue and red areas.
+  pitfalls:
+    - Treating luma and luminance as the same thing. Luma is computed on encoded values.
+  demos: [line-profile]
+related: [gamma]
+docsPage: filters/enhancement/grayscale.md

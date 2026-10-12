@@ -18,7 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
-    "bench:viewport": "node scripts/bench-viewport.mjs"
+    "bench:viewport": "node scripts/bench-viewport.mjs",
+    "gen:filter-docs": "pnpm gen && node scripts/gen-filter-docs.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

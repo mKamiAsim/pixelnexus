@@ -214,8 +214,11 @@ def markdown_prose(text: str) -> Iterator[tuple[int, str]]:
         yield number, strip_inline(stripped)
 
 
-def yaml_prose(path: Path) -> Iterator[tuple[int, str]]:
-    """Yield (line number, prose) for prose strings in a catalog YAML file."""
+def yaml_prose(path: Path) -> Iterator[tuple[int, str, bool]]:
+    """Yield (line number, prose, is citation) for prose strings in a catalog YAML file.
+
+    Text inside `references` is a citation. Titles keep their original spelling and length.
+    """
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
 
@@ -226,23 +229,27 @@ def yaml_prose(path: Path) -> Iterator[tuple[int, str]]:
                 return number
         return 1
 
-    def walk(node: Any, key: str | None) -> Iterator[tuple[int, str]]:
+    def walk(node: Any, key: str | None, citation: bool) -> Iterator[tuple[int, str, bool]]:
         if key in NON_PROSE_KEYS:
             return
         if isinstance(node, dict):
             for child_key, value in node.items():
-                yield from walk(value, str(child_key))
+                yield from walk(value, str(child_key), citation or child_key == "references")
         elif isinstance(node, list):
             for item in node:
-                yield from walk(item, key)
+                yield from walk(item, key, citation)
         elif isinstance(node, str):
-            yield find_line(node), strip_inline(node)
+            yield find_line(node), strip_inline(node), citation
 
-    yield from walk(yaml.safe_load(text), None)
+    yield from walk(yaml.safe_load(text), None, False)
 
 
-def check_text(prose: str) -> Iterator[tuple[str, str]]:
-    """Yield (level, message) for one piece of prose."""
+def check_text(prose: str, citation: bool = False) -> Iterator[tuple[str, str]]:
+    """Yield (level, message) for one piece of prose.
+
+    A citation keeps the spelling and the length of the cited title, so those two checks are
+    skipped. Dashes, quotes and the other character rules still apply.
+    """
     if "\N{EM DASH}" in prose:
         yield "error", "em dash found. Use a full stop or a comma."
     if "\N{EN DASH}" in prose:
@@ -264,12 +271,12 @@ def check_text(prose: str) -> Iterator[tuple[str, str]]:
             yield "error", message
     if ROBUST.search(prose):
         yield "error", "'robust' is allowed only in its statistical meaning."
-    british = BRITISH.search(prose)
+    british = None if citation else BRITISH.search(prose)
     if british:
         yield "error", f"use American spelling instead of '{british.group(0)}'."
     if ";" in prose:
         yield "warning", "semicolon found. Split the sentence."
-    for sentence in SENTENCE_END.split(prose):
+    for sentence in [] if citation else SENTENCE_END.split(prose):
         words = WORD.findall(sentence)
         if len(words) > MAX_WORDS:
             yield "warning", f"sentence has {len(words)} words. Aim for 20 or fewer."
@@ -277,16 +284,17 @@ def check_text(prose: str) -> Iterator[tuple[str, str]]:
 
 def lint_file(path: Path) -> list[Finding]:
     relative = str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+    pieces: list[tuple[int, str, bool]]
     if path.suffix == ".md":
-        pieces = markdown_prose(path.read_text(encoding="utf-8"))
+        pieces = [(n, t, False) for n, t in markdown_prose(path.read_text(encoding="utf-8"))]
     elif path.suffix in (".yaml", ".yml"):
-        pieces = yaml_prose(path)
+        pieces = list(yaml_prose(path))
     else:
         return []
     return [
         Finding(level, relative, line, message)
-        for line, prose in pieces
-        for level, message in check_text(prose)
+        for line, prose, citation in pieces
+        for level, message in check_text(prose, citation)
     ]
 
 

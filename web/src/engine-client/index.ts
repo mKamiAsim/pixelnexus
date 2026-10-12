@@ -3,7 +3,7 @@
  * against it and sends the job to the entry's engine.
  */
 import { catalog, isRunnable, STATUS_LABELS, type Filter } from "@/catalog";
-import { resolveParams, validateParams } from "@/catalog/params";
+import { entryParams, validateParams } from "@/catalog/params";
 
 import { BrowserEngine } from "./browser";
 import {
@@ -42,7 +42,7 @@ export function engineFor(entry: Filter): EngineClient {
 
 /** Validate values against the catalog entry, exactly as the Properties panel does. */
 export function prepareParams(entry: Filter, values: Readonly<Record<string, unknown>>) {
-  return validateParams(resolveParams(entry.params), values);
+  return validateParams(entryParams(entry), values);
 }
 
 /**

@@ -107,3 +107,29 @@ nav:
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
       - Preview and rendering: architecture/preview-and-rendering.md
+  - Mathematics:
+      - Foundations: mathematics/foundations.md
+      - Image representation: mathematics/image-representation.md
+      - Convolution and correlation: mathematics/convolution-and-correlation.md
+      - Boundary conditions: mathematics/boundary-conditions.md
+      - Linearity and superposition: mathematics/linearity-and-superposition.md
+      - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
+      - Numerical precision: mathematics/numerical-precision.md
+  - Filters:
+      - filters/index.md
+      - Linear:
+          - Box filter: filters/linear/box.md
+          - Gaussian filter: filters/linear/gaussian.md
+          - Motion blur: filters/linear/motion-blur.md
+          - Laplacian: filters/linear/laplacian.md
+          - Unsharp mask: filters/linear/unsharp-mask.md
+      - Nonlinear:
+          - Median filter: filters/nonlinear/median.md
+      - Edges:
+          - Sobel: filters/edges/sobel.md
+      - Enhancement:
+          - Gamma correction: filters/enhancement/gamma.md
+          - Grayscale conversion: filters/enhancement/grayscale.md
+      - Utility:
+          - Add Gaussian noise: filters/utility/noise-gaussian.md
+          - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md

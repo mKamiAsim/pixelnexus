@@ -142,7 +142,10 @@
         "iterative",
         "estimator",
         "algorithm",
-        "neural"
+        "neural",
+        "point-transfer",
+        "color-transform",
+        "random-process"
       ]
     },
     "representationLabel": {

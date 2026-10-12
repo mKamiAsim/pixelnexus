@@ -86,3 +86,20 @@ export function validateParams(
   }
   return { values: out, warnings };
 }
+
+/**
+ * The parameters of a catalog entry, ready for the panel and the engine. Shared parameters are
+ * expanded, and the channel scope offers only the scopes the entry allows.
+ */
+export function entryParams(entry: {
+  readonly params?: readonly (Param | ParamRef)[];
+  readonly channelScopes?: readonly string[];
+}): Param[] {
+  const allowed = entry.channelScopes;
+  return resolveParams(entry.params).map((param) => {
+    if (param.key !== "channelScope" || !allowed || !param.options) return param;
+    const [first, ...rest] = param.options.filter((o) => allowed.includes(String(o.value)));
+    // The catalog checker makes sure the default scope is allowed, so the list is never empty.
+    return first ? { ...param, options: [first, ...rest] } : param;
+  });
+}

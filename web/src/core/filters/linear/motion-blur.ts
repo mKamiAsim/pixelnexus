@@ -77,8 +77,10 @@ export function motionKernel(length: number, angleDeg: number): Kernel2d {
         y0: y - 0.5,
         y1: y + 0.5,
       });
-      weights[j * size + i] = inside;
-      total += inside;
+      // A line through a cell corner leaves rounding dust of about 1e-17. It is 0.
+      const inCell = inside < 1e-12 ? 0 : inside;
+      weights[j * size + i] = inCell;
+      total += inCell;
     }
   }
   // total equals the length, up to rounding. Dividing by total makes the sum exactly 1.

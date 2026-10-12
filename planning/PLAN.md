@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 3: filter framework, Inspector, Learn and the first filters |
-| Next action | Phase 3: full catalog entries for the first filters, then Library and Properties panels. |
+| Next action | Phase 3: filter store, Library and Properties panels with preview and apply. |
 | Last updated | 2026-10-12 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 3 core: filter framework, 11 browser filters with SciPy fixtures, worker pool, engine client, compositor |
-| In progress | Phase 3: catalog entries and studio panels |
-| Next steps | Full catalog entries and docs pages for the 11 filters, then Library, Properties with preview, History, Inspector, Learn, Developer |
+| Last finished step | Phase 3: 11 filters implemented-tested with full catalog entries, docs pages, maths foundations, generated kernels, examples and figures |
+| In progress | Phase 3: studio panels |
+| Next steps | Filter store, Library, Properties with preview and apply, History, Inspector, Developer, glossary tooltips, Learn panel and widgets, then the remaining architecture and Inspector docs pages |
 | Open questions | None |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). |
 
@@ -201,7 +201,7 @@ Rules:
 
 ### 3.5 Operator representations
 
-The Inspector has one widget per representation type. Every algorithm uses the type that fits it. No algorithm is forced into a kernel.
+The Inspector has one widget per representation type. Every algorithm uses the type that fits it. No algorithm is forced into a kernel. The last three types were added in Phase 3, because point operations, color conversions and noise generators fit none of the first ten.
 
 | Type | Shown as | Examples |
 |---|---|---|
@@ -215,6 +215,9 @@ The Inspector has one widget per representation type. Every algorithm uses the t
 | estimator | Estimator equation, assumptions, local statistics | Lee, adaptive Wiener |
 | algorithm | Stage list with intermediate images | Canny, watershed, SIFT |
 | neural | Model card, pipeline diagram, tensor shapes | DnCNN, SAM |
+| point-transfer | Transfer curve from 0 to 255, with the input and output value | Gamma, levels, thresholds |
+| color-transform | Channel weights or conversion matrix, and the color space | Grayscale, color space conversions |
+| random-process | Distribution, parameters and the seed rule | Noise generators |
 
 ### 3.6 Execution flow
 
@@ -541,7 +544,7 @@ Goal: prove the full path from catalog to pixels to maths to docs with a small s
 - [ ] Learn panel framework with the first widgets: Neighborhood stepper, Impulse response, Rank stepper, Gradient explorer, Line profile.
 - [ ] Developer panel: id, schema, parameters JSON, engine, repo-relative source path with a GitHub link, dependency versions, tests, timing, warnings.
 - [ ] Glossary tooltips.
-- [ ] First filters in the browser: box, gaussian, motion-blur, sobel, laplacian, median, unsharp-mask, gamma, grayscale. Noise generators for Gaussian and salt-and-pepper noise.
+- [x] First filters in the browser: box, gaussian, motion-blur, sobel, laplacian, median, unsharp-mask, gamma, grayscale. Noise generators for Gaussian and salt-and-pepper noise. All 11 are `implemented-tested`, with full catalog entries and docs pages. The studio panels that run them are the next tasks.
 - [x] Fixture tests against SciPy or OpenCV for each of them. `tools/fixtures_filters.py` writes `filters.json` with SciPy, NumPy and scikit-image, and cross-checks scikit-image and OpenCV where they offer the same operation. All match within a relative 1e-4.
 
 Docs: filter registry, processing pipeline, execution model, maths foundations (image representation, convolution and correlation, boundary conditions, linearity, masks and alpha blending, numerical precision), Inspector pages, Learn panel page, one page per filter above with generated figures.
@@ -825,3 +828,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 2 | Second PC set up. Built the shell: dockview workspace with presets, saved layouts and icon rails, menu bar and command palette from one command list, options bar, tool strip, status bar, toasts with live regions, Images, Navigator, Info and Histogram panels, rulers, export dialog (PNG, JPEG, WebP, TIFF, resize), preferences with image limits. Fixed: `Viewport.tsx` and `viewport.ts` clashed on Windows (renamed to `ImageViewport.tsx`), the Dark theme never applied on `<html>` (selector order, now tested), active compare segment not highlighted. Added `.gitattributes` for LF line endings on both PCs. 314 tests pass. | Phase 2 exit checks and docs. |
 | 2026-10-12 | 2 | Phase 2 done. E2E tests for the exit flow, a 6000x6000 image and axe (dev dependency `@axe-core/playwright`, MPL 2.0, test only, never shipped, so D17 holds). Viewport benchmark script, numbers in the docs. Docs: frontend architecture, preview and rendering, workspace, panels, export, keyboard shortcuts, figure checklist. Fixed: Enter in a number field submitted forms with the old value, theme colors were read from CSS on every frame, the document tab strip broke an ARIA rule, `make_fixtures.py --check` failed on Windows over last-bit float differences (now compares numerically). All CI checks pass on this PC. | Phase 3: engine client. |
 | 2026-10-12 | 3 | Filter framework (borders, channel scopes, alpha weighting, linear light, output mapping), 11 browser filters (box, Gaussian, motion blur, Sobel, Laplacian, median, unsharp mask, gamma, grayscale, Gaussian and salt-and-pepper noise), compositor, worker pool, engine client. Reference fixtures from SciPy and scikit-image with OpenCV cross-checks. The checker now verifies browser registration. `make_fixtures.py` no longer rewrites files that only differ in float noise. Catalog statuses stay planned until each entry and its docs page are complete. 501 tests pass. | Catalog entries, then the studio panels. |
+| 2026-10-12 | 3 | Full catalog entries for the 11 filters, now `implemented-tested`. Three new representation types (point-transfer, color-transform, random-process) for operators that are not kernels. Docs: 11 filter pages on the 12-heading template, filter index, six maths foundation pages. `gen_docs.py` writes facts, formula, steps, parameters, complexity, limits, tests and references per filter from the catalog. `web/scripts/gen-filter-docs.mjs` runs the real filter code through Vite to write the kernels, worked examples and figure data. `tools/figures/make_figures.py` (matplotlib, docs group only) draws light and dark SVGs. KaTeX test for every catalog formula. The prose lint keeps citation titles as written. | Studio panels. |

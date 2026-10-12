@@ -27,6 +27,9 @@ test-results/
 .env.*
 !.env.example
 
+# Figure data, made by web/scripts/gen-filter-docs.mjs. Only the finished figures are committed.
+tools/figures/data/
+
 # Downloaded AI models
 models/
 

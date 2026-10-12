@@ -33,7 +33,7 @@ function Logo() {
         <span className="rounded-[1px] bg-text-muted" />
         <span className="rounded-[1px] bg-text" />
       </span>
-      <h1 className="text-sm font-semibold">PixelNexus</h1>
+      <h1 className="text-sm font-semibold">Pixel Nexus</h1>
     </span>
   );
 }

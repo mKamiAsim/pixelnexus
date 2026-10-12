@@ -1,5 +1,3 @@
-# Full sample entry from Phase 1. The code arrives in Phase 3.
-# Change the status only after the tests listed below exist and pass.
 id: median
 name: Median filter
 aliases: [Per-channel median filter]
@@ -8,7 +6,7 @@ tags: [purpose:denoise, noise:impulse]
 tier: core
 engine: browser
 phase: "3"
-status: planned
+status: implemented-tested
 
 summary: Replaces each pixel with the middle value of its window.
 purpose: Remove salt-and-pepper noise while keeping edges sharp.
@@ -23,7 +21,8 @@ preview: live
 channelScopes: [rgb, luminance]
 colorHandling: >-
   Each of red, green and blue gets its own median. The three medians can come from different
-  pixels, so new colors can appear at color edges. Alpha is kept.
+  pixels, so new colors can appear at color edges. With the brightness scope, luma is rounded to
+  whole values first, then its median replaces it. Alpha is kept.
 boundary: Set by the Border mode parameter. The default is reflect 101.
 
 params:
@@ -93,7 +92,7 @@ references:
     text: SciPy documentation, scipy.ndimage.median_filter.
     url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.median_filter.html
 implementation: {path: web/src/core/filters/nonlinear/median.ts, symbol: medianFilter}
-tests: [web/src/core/filters/nonlinear/median.test.ts]
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
 learn:
   oneSentence: Each pixel becomes the middle value of its neighbors after they are sorted.
   howItWorks:

@@ -81,7 +81,8 @@ def motion_kernel(length: float, angle_deg: float) -> FloatArray:
                     continue
                 ta, tb = a / d, b / d
                 lo, hi = max(lo, min(ta, tb)), min(hi, max(ta, tb))
-            kernel[j, i] = max(0.0, hi - lo) if inside else 0.0
+            in_cell = max(0.0, hi - lo) if inside else 0.0
+            kernel[j, i] = 0.0 if in_cell < 1e-12 else in_cell
     return np.asarray(kernel / kernel.sum(), dtype=np.float64)
 
 

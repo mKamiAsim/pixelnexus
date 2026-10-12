@@ -1,5 +1,3 @@
-# Full sample entry from Phase 1. The code arrives in Phase 3.
-# Change the status only after the tests listed below exist and pass.
 id: gaussian
 name: Gaussian filter
 aliases: [Gaussian blur, Separable Gaussian, Per-channel Gaussian]
@@ -8,7 +6,7 @@ tags: [purpose:smoothing, purpose:denoise, noise:gaussian]
 tier: core
 engine: browser
 phase: "3"
-status: planned
+status: implemented-tested
 planNotes: Always separable.
 
 summary: Blurs the image with a weighted average whose weights follow a Gaussian curve.
@@ -109,7 +107,7 @@ references:
     text: SciPy documentation, scipy.ndimage.gaussian_filter.
     url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
 implementation: {path: web/src/core/filters/linear/gaussian.ts, symbol: gaussianFilter}
-tests: [web/src/core/filters/linear/gaussian.test.ts]
+tests: [web/src/core/filters/linear/gaussian.test.ts, web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
 learn:
   oneSentence: Each pixel becomes a weighted average of its neighbors, and close neighbors count more than far ones.
   howItWorks:

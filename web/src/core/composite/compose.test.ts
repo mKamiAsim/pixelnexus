@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { runFilter } from "@/core/filters/run";
-import { browserFilter } from "@/core/filters/registry";
+import { BROWSER_FILTERS, browserFilter } from "@/core/filters/registry";
 import { createImage, type RgbaImage } from "@/core/image/types";
 import { mulberry32 } from "@/core/math/random";
 
@@ -29,9 +29,7 @@ describe("compositor", () => {
   }
 
   it("leaves every pixel with M = 0 bit-identical, for every filter", () => {
-    for (const id of ["gaussian", "median", "sobel", "gamma", "noise-gaussian"]) {
-      const filter = browserFilter(id);
-      if (!filter) throw new Error(id);
+    for (const filter of BROWSER_FILTERS) {
       const out = composite(original, runFilter(original, filter, {}).image, full(original), mask);
       for (let i = 0; i < 16 * 12; i++) {
         if (mask.data[i] !== 0) continue;
