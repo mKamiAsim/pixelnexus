@@ -3,6 +3,7 @@ import { LoaderCircle, ShieldCheck } from "lucide-react";
 import { formatZoom } from "@/canvas/viewport";
 import { getChannel } from "@/core/image/types";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 import { formatSize } from "./format";
@@ -12,6 +13,7 @@ export function StatusBar() {
   const doc = useDocuments((s) => activeDocument(s));
   const hover = useUi((s) => s.hover);
   const work = useUi((s) => s.work);
+  const progress = useFilters((s) => s.applying?.progress);
   const point = doc && hover?.documentId === doc.id ? hover : null;
   const image = doc?.current;
   const inside = image && point && point.x < image.width && point.y < image.height;
@@ -42,6 +44,7 @@ export function StatusBar() {
         <span className="flex items-center gap-1.5 text-text-secondary">
           <LoaderCircle size={12} className="animate-spin motion-reduce:animate-none" aria-hidden />
           {work[work.length - 1]}
+          {progress !== undefined ? ` ${Math.round(progress * 100)}%` : ""}
         </span>
       ) : null}
       <span className="ml-auto flex items-center gap-1.5">

@@ -1,12 +1,18 @@
 import { clsx } from "clsx";
 import {
+  ChartColumn,
   ChevronsLeft,
   ChevronsRight,
+  Code,
   Crosshair,
+  GraduationCap,
+  History,
   Image,
+  Library,
   Map,
+  Sigma,
+  SlidersHorizontal,
   X,
-  ChartColumn,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -18,8 +24,15 @@ import {
 import "dockview-react/dist/styles/dockview.css";
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IconButton } from "@/components/ui/IconButton";
+import { LearnPanel } from "@/learn/LearnPanel";
 import { CanvasPanel } from "@/panels/CanvasPanel";
+import { DeveloperPanel } from "@/panels/DeveloperPanel";
+import { HistoryPanel } from "@/panels/HistoryPanel";
+import { InspectorPanel } from "@/panels/InspectorPanel";
+import { LibraryPanel } from "@/panels/LibraryPanel";
+import { PropertiesPanel } from "@/panels/PropertiesPanel";
 import { HistogramPanel } from "@/panels/HistogramPanel";
 import { ImagesPanel } from "@/panels/ImagesPanel";
 import { InfoPanel } from "@/panels/InfoPanel";
@@ -50,38 +63,46 @@ import {
 } from "./rails";
 
 const PANEL_ICONS: Record<PanelId, LucideIcon> = {
+  library: Library,
+  properties: SlidersHorizontal,
+  inspector: Sigma,
+  learn: GraduationCap,
+  developer: Code,
+  history: History,
   images: Image,
   navigator: Map,
   info: Crosshair,
   histogram: ChartColumn,
 };
 
-function PanelBody({ children }: { children: ReactNode }) {
-  return <div className="h-full overflow-auto bg-panel text-text">{children}</div>;
-}
+/** Each panel gets its own error boundary, so one failing panel cannot blank the studio. */
+const panel = (name: string, body: ReactNode, scroll = true) => {
+  const PanelComponent = () => (
+    <div
+      className={clsx("h-full bg-panel text-text", scroll ? "overflow-auto" : "overflow-hidden")}
+    >
+      <ErrorBoundary name={`the ${name} panel`}>{body}</ErrorBoundary>
+    </div>
+  );
+  return PanelComponent;
+};
 
 const COMPONENTS = {
-  [CANVAS_PANEL]: () => <CanvasPanel />,
-  images: () => (
-    <PanelBody>
-      <ImagesPanel />
-    </PanelBody>
+  [CANVAS_PANEL]: () => (
+    <ErrorBoundary name="the canvas">
+      <CanvasPanel />
+    </ErrorBoundary>
   ),
-  navigator: () => (
-    <PanelBody>
-      <NavigatorPanel />
-    </PanelBody>
-  ),
-  info: () => (
-    <PanelBody>
-      <InfoPanel />
-    </PanelBody>
-  ),
-  histogram: () => (
-    <PanelBody>
-      <HistogramPanel />
-    </PanelBody>
-  ),
+  library: panel("Library", <LibraryPanel />, false),
+  properties: panel("Properties", <PropertiesPanel />),
+  inspector: panel("Inspector", <InspectorPanel />, false),
+  learn: panel("Learn", <LearnPanel />),
+  developer: panel("Developer", <DeveloperPanel />),
+  history: panel("History", <HistoryPanel />, false),
+  images: panel("Images", <ImagesPanel />),
+  navigator: panel("Navigator", <NavigatorPanel />),
+  info: panel("Info", <InfoPanel />),
+  histogram: panel("Histogram", <HistogramPanel />),
 };
 
 /** A panel tab with an icon. In a collapsed rail only the icon shows. */

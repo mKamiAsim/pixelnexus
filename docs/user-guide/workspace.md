@@ -9,11 +9,11 @@ This page shows you around the studio window: how to open images, move around th
 | Menu bar                          Undo Redo Export | Workspace |
 | Options bar: settings of the active tool                      |
 +----+---------+---------------------------------+--------------+
-| T  | Images  | Document tabs                   | Navigator    |
-| o  |         |                                 |              |
-| o  |         |            Canvas               +--------------+
-| l  |         |                                 | Info         |
-| s  |         |        Compare bar              | Histogram    |
+| T  | Library | Document tabs                   | Properties   |
+| o  | Images  |                                 | Inspector    |
+| o  |         |            Canvas               | Learn        |
+| l  |         |                                 +--------------+
+| s  |         |        Compare bar              | History      |
 +----+---------+---------------------------------+--------------+
 | Status bar: size | zoom | pixel under the pointer | messages    |
 +---------------------------------------------------------------+
@@ -23,7 +23,7 @@ This page shows you around the studio window: how to open images, move around th
 - **Options bar.** Settings of the active tool, and a one-line hint on how to use it.
 - **Tool strip.** The tools. Hover a tool to see its name and shortcut.
 - **Canvas.** The image, with one tab per open image above it and the compare bar below it.
-- **Panels.** Images on the left. Navigator, Info and Histogram on the right.
+- **Panels.** Library and Images on the left. Properties, Inspector, Learn and Developer on the right, with History, Navigator, Info and Histogram below them. Panels in one group are tabs. See [Panels](panels.md).
 - **Status bar.** The image size, the zoom and the exact values of the pixel under the pointer.
 
 Images are processed locally in your browser. Nothing is uploaded.
@@ -78,11 +78,12 @@ To look at the original for a moment, hold the `\` key or press and hold the eye
 
 - **Move a panel.** Drag its tab to another group, to an edge of a group, or out of the window area to float it.
 - **Stack panels.** Drop a tab onto another group's tabs.
-- **Close a panel.** Use the x on the group header. Reopen it from the **Window** menu.
+- **Close a panel.** Use the x on the group header. Reopen it from the **Window** menu. Choosing a panel that is open but hidden behind another tab brings it to the front.
 - **Collapse a side.** The double arrow on a group header folds that side of the workspace into a narrow strip of icons. Click an icon, or the expand arrow, to open the side again.
 - **Choose a workspace.** The Workspace menu in the top right, or **Window > Workspace**, sets a ready-made layout:
-    - **Essentials:** Images on the left, Navigator and Info on the right.
-    - **Study:** large Info and Histogram panels, for looking at values.
+    - **Essentials:** Library and Images on the left. Properties, Inspector, Learn and Developer on the right, with History, Navigator, Info and Histogram below.
+    - **Study:** a wide Learn panel with the Inspector and Properties, and Info, Histogram, Navigator and History below, for teaching and learning.
+    - **Developer:** a wide Developer panel with the Inspector and Properties, and History, Info, Histogram and Navigator below.
     - **Compact:** all panels in one narrow group, for small screens.
 - **Reset.** **Window > Reset workspace** restores the current workspace.
 

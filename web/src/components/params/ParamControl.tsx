@@ -1,4 +1,5 @@
 import type { ParamValue } from "@/catalog/params";
+import { AngleDial } from "@/components/ui/AngleDial";
 import { ScrubSlider } from "@/components/ui/ScrubSlider";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
@@ -18,9 +19,32 @@ export function ParamControl({
   onChange: (value: ParamValue) => void;
 }) {
   switch (param.type) {
+    case "angle":
+      return (
+        <div className="flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <ScrubSlider
+              label={param.label}
+              description={param.description}
+              value={Number(value)}
+              onChange={onChange}
+              min={param.min ?? 0}
+              max={param.max ?? 360}
+              step={param.step ?? 1}
+              unit={param.unit ?? "deg"}
+            />
+          </div>
+          <AngleDial
+            label={param.label}
+            value={Number(value)}
+            min={param.min ?? 0}
+            max={param.max ?? 360}
+            onChange={onChange}
+          />
+        </div>
+      );
     case "number":
     case "integer":
-    case "angle":
       return (
         <ScrubSlider
           label={param.label}
@@ -32,7 +56,7 @@ export function ParamControl({
           step={param.step}
           integer={param.type === "integer"}
           oddOnly={param.oddOnly}
-          unit={param.unit ?? (param.type === "angle" ? "deg" : undefined)}
+          unit={param.unit}
         />
       );
     case "select":

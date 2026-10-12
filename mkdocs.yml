@@ -101,12 +101,17 @@ nav:
   - User guide:
       - The workspace: user-guide/workspace.md
       - Panels: user-guide/panels.md
+      - The Learn panel: user-guide/learn-panel.md
       - Export: user-guide/export.md
       - Keyboard shortcuts: user-guide/keyboard-shortcuts.md
   - Architecture:
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
       - Preview and rendering: architecture/preview-and-rendering.md
+      - Filter catalog and registry: architecture/filter-catalog.md
+      - Processing pipeline: architecture/processing-pipeline.md
+      - Execution model: architecture/execution-model.md
+      - Learn panel architecture: architecture/learn-panel.md
   - Mathematics:
       - Foundations: mathematics/foundations.md
       - Image representation: mathematics/image-representation.md
@@ -115,6 +120,12 @@ nav:
       - Linearity and superposition: mathematics/linearity-and-superposition.md
       - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
       - Numerical precision: mathematics/numerical-precision.md
+  - Mathematical Inspector:
+      - The Inspector: mathematical-inspector/overview.md
+      - Kernel generation: mathematical-inspector/kernel-generation.md
+      - Formula rendering: mathematical-inspector/formula-rendering.md
+      - Parameter synchronization: mathematical-inspector/parameter-synchronization.md
+      - Developer mode: mathematical-inspector/developer-mode.md
   - Filters:
       - filters/index.md
       - Linear:

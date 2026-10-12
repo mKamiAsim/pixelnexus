@@ -21,6 +21,7 @@ import { activeDocument, useDocuments, type ImageDocument } from "@/state/docume
 import { notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
 
+import { exportSuffix } from "./filterActions";
 import { formatBytes } from "./format";
 
 /** Export choices are kept for the session, so a second export starts where the first ended. */
@@ -63,7 +64,10 @@ function ExportForm({ doc, onDone }: { doc: ImageDocument; onDone: () => void })
   const [resize, setResize] = useState(false);
   const [keepAspect, setKeepAspect] = useState(true);
   const [size, setSize] = useState({ width: image.width, height: image.height });
-  const [baseName, setBaseName] = useState(() => stripExtension(exportFileName(doc.name, "png")));
+  // The name describes the last filter, for example "photo_gaussian_sigma-2".
+  const [baseName, setBaseName] = useState(() =>
+    stripExtension(exportFileName(doc.name, "png", exportSuffix(doc))),
+  );
   const [busy, setBusy] = useState(false);
   const info = formatInfo(format);
   const transparent = useMemo(() => hasTransparency(image), [image]);

@@ -16,6 +16,7 @@ A unit test compares this table with the command list in the studio, so the two 
 | Undo | Edit | `Ctrl+Z` | `Cmd+Z` |
 | Redo | Edit | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
 | Deselect | Select | `Ctrl+D` | `Cmd+D` |
+| Apply selected filter | Filter | `Ctrl+Enter` | `Cmd+Enter` |
 | Zoom in | View | `Ctrl++` | `Cmd++` |
 | Zoom out | View | `Ctrl+-` | `Cmd+-` |
 | Fit on screen | View | `Ctrl+0` | `Cmd+0` |

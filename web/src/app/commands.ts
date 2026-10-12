@@ -13,15 +13,27 @@ import {
 import { SYNTHETIC_IMAGES } from "@/core/image/synthetic";
 import { flip, rotate } from "@/core/image/transform";
 import type { RgbaImage } from "@/core/image/types";
-import { activeDocument, useDocuments } from "@/state/documents";
+import { activeDocument, canRedo, canUndo, useDocuments } from "@/state/documents";
 import { announce } from "@/state/notifications";
+import { useFilters } from "@/state/filters";
 import { useSettings } from "@/state/settings";
 import { useUi, type CompareMode } from "@/state/ui";
 import { applyTheme, THEMES } from "@/styles/themes";
 
 import { chooseFiles, openSample, pasteFromClipboard } from "./importer";
+import { catalog, isRunnable } from "@/catalog";
+
+import { applySelected, filterById, selectFilter } from "./filterActions";
 import { TOOLS, type ToolInfo } from "./tools";
-import { PANELS, PRESETS, applyPreset, currentPreset, isPanelOpen, togglePanel } from "./layout";
+import {
+  PANELS,
+  PRESETS,
+  applyPreset,
+  currentPreset,
+  isPanelOpen,
+  showPanel,
+  togglePanel,
+} from "./layout";
 
 export type MenuId = "file" | "edit" | "image" | "select" | "filter" | "view" | "window" | "help";
 
@@ -102,6 +114,24 @@ const compare = (mode: CompareMode, label: string): Command => ({
   run: () => useUi.getState().setCompare(mode),
 });
 
+/** One command per filter that can run, in submenus by family. */
+function filterCommands(): Command[] {
+  const families = [...catalog.families].sort((a, b) => a.order - b.order);
+  return families.flatMap((family) =>
+    catalog.filters
+      .filter((f) => f.family === family.id && isRunnable(f))
+      .map<Command>((f) => ({
+        id: `filter.select.${f.id}`,
+        label: f.name,
+        menu: "filter",
+        submenu: family.name,
+        section: "filters",
+        keywords: `filter ${(f.aliases ?? []).join(" ")} ${f.summary ?? ""}`,
+        run: () => selectFilter(f.id),
+      })),
+  );
+}
+
 export function buildCommands(): Command[] {
   return [
     // File
@@ -160,11 +190,11 @@ export function buildCommands(): Command[] {
       label: "Undo",
       menu: "edit",
       shortcut: "Mod+Z",
-      enabled: () => (activeDocument()?.undoStack.length ?? 0) > 0,
+      enabled: () => canUndo(activeDocument()),
       run: () => {
         const doc = activeDocument();
-        const step = doc?.undoStack.at(-1);
-        if (!doc || !step) return;
+        const step = doc?.steps[doc.index];
+        if (!doc || !step || !canUndo(doc)) return;
         useDocuments.getState().undo(doc.id);
         announce(`Undid ${step.label}.`);
       },
@@ -174,10 +204,10 @@ export function buildCommands(): Command[] {
       label: "Redo",
       menu: "edit",
       shortcut: "Mod+Shift+Z",
-      enabled: () => (activeDocument()?.redoStack.length ?? 0) > 0,
+      enabled: () => canRedo(activeDocument()),
       run: () => {
         const doc = activeDocument();
-        const step = doc?.redoStack.at(-1);
+        const step = doc?.steps[doc.index + 1];
         if (!doc || !step) return;
         useDocuments.getState().redo(doc.id);
         announce(`Redid ${step.label}.`);
@@ -273,12 +303,38 @@ export function buildCommands(): Command[] {
       run: () => undefined,
     },
     {
-      id: "filter.later",
-      label: "Filters arrive in Phase 3",
+      id: "filter.apply",
+      label: "Apply selected filter",
       menu: "filter",
-      enabled: () => false,
-      run: () => undefined,
+      section: "apply",
+      shortcut: "Mod+Enter",
+      keywords: "run filter",
+      enabled: () => {
+        const entry = filterById(useFilters.getState().selectedId);
+        return Boolean(
+          entry && isRunnable(entry) && activeDocument() && !useFilters.getState().applying,
+        );
+      },
+      run: () => void applySelected(),
     },
+    {
+      id: "filter.preview",
+      label: "Preview",
+      menu: "filter",
+      section: "apply",
+      keywords: "live preview filter",
+      checked: () => useFilters.getState().previewOn,
+      run: () => useFilters.getState().setPreviewOn(!useFilters.getState().previewOn),
+    },
+    {
+      id: "filter.library",
+      label: "Browse all filters",
+      menu: "filter",
+      section: "apply",
+      keywords: "library catalog search",
+      run: () => showPanel("library"),
+    },
+    ...filterCommands(),
     // View
     {
       id: "view.zoom-in",

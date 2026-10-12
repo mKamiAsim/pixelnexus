@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { IconButton } from "@/components/ui/IconButton";
 import { Select } from "@/components/ui/Select";
 import { TooltipProvider } from "@/components/ui/Tooltip";
-import { activeDocument, useDocuments } from "@/state/documents";
+import { activeDocument, canRedo, canUndo, useDocuments } from "@/state/documents";
 import { notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
 
@@ -14,6 +14,7 @@ import { ExportDialog } from "./ExportDialog";
 import { ACCEPTED_FILES, openFiles, pastedImageFiles, registerFilePicker } from "./importer";
 import { applyPreset, currentPreset, onPanelsChange, PRESETS, type PresetId } from "./layout";
 import { MenuBar } from "./MenuBar";
+import { startPreview } from "./preview";
 import { Notices } from "./Notices";
 import { OptionsBar } from "./OptionsBar";
 import { PreferencesDialog } from "./PreferencesDialog";
@@ -53,7 +54,7 @@ function HeaderActions() {
         shortcut={displayShortcut("Mod+Z")}
         icon={<Undo2 size={15} />}
         size="sm"
-        disabled={!doc || doc.undoStack.length === 0}
+        disabled={!canUndo(doc)}
         onClick={() => runCommand("edit.undo")}
       />
       <IconButton
@@ -61,7 +62,7 @@ function HeaderActions() {
         shortcut={displayShortcut("Mod+Shift+Z")}
         icon={<Redo2 size={15} />}
         size="sm"
-        disabled={!doc || doc.redoStack.length === 0}
+        disabled={!canRedo(doc)}
         onClick={() => runCommand("edit.redo")}
       />
       <IconButton
@@ -169,6 +170,9 @@ export function App() {
     registerFilePicker(() => fileInput.current?.click());
     return () => registerFilePicker(null);
   }, []);
+
+  // Keep the filter preview in step with the selected filter, its values and the view.
+  useEffect(() => startPreview(), []);
 
   return (
     <TooltipProvider>

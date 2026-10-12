@@ -1,7 +1,13 @@
 /**
- * Open images. Each document keeps the original pixels untouched and a current version that
- * edits replace. Phase 2 keeps a simple in-memory undo stack of whole images, limited to
- * MAX_UNDO steps. Phase 3 replaces it with the full history (compressed snapshots, timeline).
+ * Open images and their history.
+ *
+ * Each document keeps a list of steps. Step 0 is the image as it was opened and is never
+ * dropped. Each edit adds a step after the current position and removes any steps that were
+ * undone. Undo and redo move the position, and the History panel can jump to any step.
+ *
+ * Steps hold whole images, so the history has a memory budget. When it is full, the oldest
+ * steps after the original are dropped. Compressed snapshots arrive with the full history in
+ * Phase 8.
  */
 import { create } from "zustand";
 
@@ -10,14 +16,29 @@ import type { DecodePath } from "@/core/image/decode";
 import type { ImageHeader } from "@/core/image/format";
 import type { LoadIssue } from "@/core/image/limits";
 import type { RgbaImage } from "@/core/image/types";
+import type { ParamValue } from "@/core/filters/types";
 
 export type DocumentSource = "file" | "paste" | "sample";
 
-export const MAX_UNDO = 20;
+/** The most steps a document keeps, the original included. */
+export const MAX_STEPS = 51;
+/** The most bytes of image data a document's history keeps. */
+export const HISTORY_BYTES = 768 * 1024 * 1024;
 
-export interface EditStep {
-  readonly image: RgbaImage;
+/** The limits in use. Tests lower them to stay small. */
+export const historyLimits = { steps: MAX_STEPS, bytes: HISTORY_BYTES };
+
+export interface HistoryStep {
+  readonly id: number;
   readonly label: string;
+  readonly image: RgbaImage;
+  /** For filter steps: the filter and the validated parameters it ran with. */
+  readonly filter?: {
+    readonly id: string;
+    readonly params: Readonly<Record<string, ParamValue>>;
+  };
+  /** Milliseconds since 1970, when the step was made. */
+  readonly at: number;
 }
 
 export interface ImageDocument {
@@ -31,21 +52,26 @@ export interface ImageDocument {
   readonly warnings: readonly LoadIssue[];
   readonly decodePath?: DecodePath;
   readonly original: RgbaImage;
+  /** The image at the current step. */
   readonly current: RgbaImage;
-  /** Short labels of the edits applied since opening, oldest first. */
-  readonly edits: readonly string[];
-  /** Earlier versions, newest last. */
-  readonly undoStack: readonly EditStep[];
-  /** Versions removed by undo, newest last. */
-  readonly redoStack: readonly EditStep[];
+  readonly steps: readonly HistoryStep[];
+  /** Position of the current step in `steps`. */
+  readonly index: number;
+  /** How many old steps were dropped to stay within the budget. */
+  readonly dropped: number;
   /** Null until the viewport has measured itself and fitted the image. */
   readonly view: ViewState | null;
 }
 
 export type NewDocument = Omit<
   ImageDocument,
-  "id" | "current" | "edits" | "view" | "undoStack" | "redoStack"
+  "id" | "current" | "steps" | "index" | "dropped" | "view"
 >;
+
+export interface FilterRecord {
+  readonly id: string;
+  readonly params: Readonly<Record<string, ParamValue>>;
+}
 
 interface DocumentsState {
   documents: readonly ImageDocument[];
@@ -54,11 +80,13 @@ interface DocumentsState {
   close: (id: string) => void;
   activate: (id: string) => void;
   setView: (id: string, view: ViewState) => void;
-  /** Replace the current pixels. A size change resets the view so the image fits again. */
-  edit: (id: string, image: RgbaImage, label: string) => void;
+  /** Add a step with new pixels. A size change resets the view so the image fits again. */
+  edit: (id: string, image: RgbaImage, label: string, filter?: FilterRecord) => void;
   revert: (id: string) => void;
   undo: (id: string) => void;
   redo: (id: string) => void;
+  /** Go to any step in the history. */
+  jumpTo: (id: string, index: number) => void;
 }
 
 let counter = 0;
@@ -66,8 +94,49 @@ const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `doc-${Date.now()}-${++counter}`;
+let stepCounter = 0;
 
 const sameSize = (a: RgbaImage, b: RgbaImage) => a.width === b.width && a.height === b.height;
+
+/** Bytes held by the steps. An image used by several steps counts once. */
+export function historyBytes(steps: readonly HistoryStep[]): number {
+  let bytes = 0;
+  for (const image of new Set(steps.map((s) => s.image))) bytes += image.data.byteLength;
+  return bytes;
+}
+
+export const canUndo = (doc: ImageDocument | null) => doc !== null && doc.index > 0;
+export const canRedo = (doc: ImageDocument | null) =>
+  doc !== null && doc.index < doc.steps.length - 1;
+/** The steps that made the current image, oldest first, without the original. */
+export const appliedSteps = (doc: ImageDocument) => doc.steps.slice(1, doc.index + 1);
+
+/** Move to a step. The view is kept when the size stays the same. */
+function moveTo(doc: ImageDocument, index: number): ImageDocument {
+  const step = doc.steps[index];
+  if (!step || index === doc.index) return doc;
+  return {
+    ...doc,
+    index,
+    current: step.image,
+    view: sameSize(step.image, doc.current) ? doc.view : null,
+  };
+}
+
+/** Drop the oldest steps after the original until the history fits its limits. */
+function trim(doc: ImageDocument): ImageDocument {
+  let { steps, index, dropped } = doc;
+  while (
+    steps.length > 2 &&
+    index > 1 &&
+    (steps.length > historyLimits.steps || historyBytes(steps) > historyLimits.bytes)
+  ) {
+    steps = [steps[0] as HistoryStep, ...steps.slice(2)];
+    index--;
+    dropped++;
+  }
+  return { ...doc, steps, index, dropped };
+}
 
 const update = (
   documents: readonly ImageDocument[],
@@ -75,11 +144,35 @@ const update = (
   change: (d: ImageDocument) => ImageDocument,
 ) => documents.map((d) => (d.id === id ? change(d) : d));
 
+function addStep(doc: ImageDocument, image: RgbaImage, label: string, filter?: FilterRecord) {
+  const step: HistoryStep = {
+    id: ++stepCounter,
+    label,
+    image,
+    at: Date.now(),
+    ...(filter ? { filter } : {}),
+  };
+  const steps = [...doc.steps.slice(0, doc.index + 1), step];
+  return trim({
+    ...doc,
+    steps,
+    index: steps.length - 1,
+    current: image,
+    view: sameSize(image, doc.current) ? doc.view : null,
+  });
+}
+
 export const useDocuments = create<DocumentsState>()((set) => ({
   documents: [],
   activeId: null,
   open: (document) => {
     const id = newId();
+    const first: HistoryStep = {
+      id: ++stepCounter,
+      label: "Open",
+      image: document.original,
+      at: Date.now(),
+    };
     set((state) => ({
       documents: [
         ...state.documents,
@@ -87,10 +180,10 @@ export const useDocuments = create<DocumentsState>()((set) => ({
           ...document,
           id,
           current: document.original,
-          edits: [],
+          steps: [first],
+          index: 0,
+          dropped: 0,
           view: null,
-          undoStack: [],
-          redoStack: [],
         },
       ],
       activeId: id,
@@ -110,64 +203,22 @@ export const useDocuments = create<DocumentsState>()((set) => ({
   activate: (id) => set({ activeId: id }),
   setView: (id, view) =>
     set((state) => ({ documents: update(state.documents, id, (d) => ({ ...d, view })) })),
-  edit: (id, image, label) =>
+  edit: (id, image, label, filter) =>
     set((state) => ({
-      documents: update(state.documents, id, (d) => ({
-        ...d,
-        current: image,
-        edits: [...d.edits, label],
-        view: sameSize(image, d.current) ? d.view : null,
-        undoStack: [...d.undoStack, { image: d.current, label }].slice(-MAX_UNDO),
-        redoStack: [],
-      })),
+      documents: update(state.documents, id, (d) => addStep(d, image, label, filter)),
     })),
   revert: (id) =>
     set((state) => ({
       documents: update(state.documents, id, (d) =>
-        d.current === d.original
-          ? d
-          : {
-              ...d,
-              current: d.original,
-              edits: [...d.edits, "Revert to original"],
-              view: sameSize(d.original, d.current) ? d.view : null,
-              undoStack: [...d.undoStack, { image: d.current, label: "Revert to original" }].slice(
-                -MAX_UNDO,
-              ),
-              redoStack: [],
-            },
+        d.current === d.original ? d : addStep(d, d.original, "Revert to original"),
       ),
     })),
   undo: (id) =>
-    set((state) => ({
-      documents: update(state.documents, id, (d) => {
-        const step = d.undoStack.at(-1);
-        if (!step) return d;
-        return {
-          ...d,
-          current: step.image,
-          edits: d.edits.slice(0, -1),
-          view: sameSize(step.image, d.current) ? d.view : null,
-          undoStack: d.undoStack.slice(0, -1),
-          redoStack: [...d.redoStack, { image: d.current, label: step.label }],
-        };
-      }),
-    })),
+    set((state) => ({ documents: update(state.documents, id, (d) => moveTo(d, d.index - 1)) })),
   redo: (id) =>
-    set((state) => ({
-      documents: update(state.documents, id, (d) => {
-        const step = d.redoStack.at(-1);
-        if (!step) return d;
-        return {
-          ...d,
-          current: step.image,
-          edits: [...d.edits, step.label],
-          view: sameSize(step.image, d.current) ? d.view : null,
-          undoStack: [...d.undoStack, { image: d.current, label: step.label }],
-          redoStack: d.redoStack.slice(0, -1),
-        };
-      }),
-    })),
+    set((state) => ({ documents: update(state.documents, id, (d) => moveTo(d, d.index + 1)) })),
+  jumpTo: (id, index) =>
+    set((state) => ({ documents: update(state.documents, id, (d) => moveTo(d, index)) })),
 }));
 
 export function activeDocument(

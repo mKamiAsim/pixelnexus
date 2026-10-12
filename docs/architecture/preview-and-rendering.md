@@ -97,4 +97,11 @@ A display that refreshes 60 times per second shows a new frame every 16.7 ms, so
 
 ## Filter previews
 
-Filters arrive in Phase 3. The preview policy is set in the project plan. At 50% zoom or more, a preview covers the visible part at full resolution. Below 50%, a smaller copy is used and the studio shows an "Approximate preview" badge. Apply always runs at full resolution.
+The preview scheduler decides what to compute. See [Execution model](execution-model.md). The renderer then draws the preview:
+
+- The preview result is a second texture with its own rectangle in image coordinates.
+- Inside that rectangle the shader reads the preview instead of the current image. Outside it, the current image shows.
+- While a preview shows, the compare modes compare the image before the filter with the preview. The split view labels its halves "Before" and "After (preview)". Without a preview they compare the current image with the original.
+- A smaller preview copy stretches over the whole image. The "Approximate preview" note says so.
+
+When the preview is off, or no filter is selected, the renderer draws the current image only.

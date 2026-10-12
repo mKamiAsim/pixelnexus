@@ -2,7 +2,54 @@
 
 This page describes each panel of the studio. Open a closed panel from the **Window** menu. See [The workspace](workspace.md) to move and stack panels.
 
-More panels arrive with later phases: Library, Properties, Inspector, Learn and Developer with the first filters, then Masks, Pipeline, Metrics and others.
+More panels arrive with later phases, such as Masks, Pipeline and Metrics.
+
+## Library
+
+The Library lists every filter in the catalog, grouped by family. Each row has a status badge: **Tested** filters can run, **Planned** filters cannot run yet.
+
+- **Search.** Type part of a name, an alias, a method or a purpose, for example "blur", "edge" or "salt". Every word must match. Names count most.
+- **Show.** **All**, **Ready** (filters that can run) or **Planned**.
+- **Refine.** Narrow the list by family, linearity, domain, purpose, noise type and engine. **Clear refinements** removes them.
+- **Favorites.** The star next to a filter adds it to **Favorites** at the top of the list. Favorites are saved in this browser.
+
+Click a filter to select it. The Properties, Inspector, Learn and Developer panels then show that filter. The **Filter** menu and the command palette (Ctrl+K) list the same filters by family.
+
+## Properties
+
+The Properties panel shows the settings of the selected filter and runs it.
+
+- **Header.** The name, the status, a one-line summary, and badges for linearity, domain and engine.
+- **Parameters.** One control per parameter, built from the catalog. Drag a slider or type a number. Size parameters accept only allowed values, for example odd sizes. Angles have a dial. **More settings** holds the advanced ones, such as the border mode and the channel scope.
+- **Preview.** Shows the result on the canvas while you change values. A line below it says whether the preview is exact or approximate. See [Execution model](../architecture/execution-model.md).
+- **Apply** runs the filter on the whole image at full resolution (Ctrl+Enter or Cmd+Enter). While it runs, a progress bar and **Cancel** appear.
+- **Reset** returns the parameters to their defaults.
+- **Presets.** Save the current values under a name, load them later or delete them. Presets are saved in this browser.
+- **Copy JSON** copies the filter id and the values.
+- **Last run** shows how long the last preview or Apply took.
+
+A planned filter shows its settings where they are known, says which phase brings it, and keeps **Apply** disabled.
+
+## Inspector
+
+The Inspector shows the mathematics of the selected filter: formula, operator, parameters, algorithm, limits and references. All of it uses your current values. See [The Inspector](../mathematical-inspector/overview.md).
+
+## Learn
+
+The Learn panel explains the selected filter in plain words and runs small demos on your image. See [The Learn panel](learn-panel.md).
+
+## Developer
+
+The Developer panel shows the code, the data types, the timing and the full catalog entry of the selected filter. See [Developer mode](../mathematical-inspector/developer-mode.md).
+
+## History
+
+The History panel lists the steps of the active image. Step 0 is the original.
+
+- Click a step to go back or forward to it. Steps after the current one are grayed out and crossed through. They come back with **Redo**.
+- **Undo** (Ctrl+Z), **Redo** (Ctrl+Shift+Z) and **Revert to original** sit at the top. Revert adds a step, so you can undo it.
+- Each filter step names the filter and its main values, for example "Gaussian filter (sigma 2 px)".
+- An image keeps at most 50 steps and at most 768 MB of pixels. When it needs room, the oldest steps go first, and the panel says how many were dropped. The original always stays.
 
 ## Images
 
@@ -24,7 +71,7 @@ The Images panel lists the open images with a thumbnail, the size, the format an
 | Working format | Always 8-bit RGBA, sRGB. |
 | Pixels read by | How the browser's pixels were read. "Exact" means no value was changed on the way. |
 
-Notes about the file follow the table. **Edits** lists the changes made since the image was opened.
+Notes about the file follow the table. The History panel lists the changes made since the image was opened.
 
 ## Navigator
 

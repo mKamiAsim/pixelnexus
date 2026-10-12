@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 3: filter framework, Inspector, Learn and the first filters |
-| Next action | Phase 3: filter store, Library and Properties panels with preview and apply. |
+| Current phase | Phase 4: selection and masking |
+| Next action | Phase 4: mask core (`web/src/core/mask/`). Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-12 |
 
 ## Handoff
@@ -24,11 +24,11 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 3: 11 filters implemented-tested with full catalog entries, docs pages, maths foundations, generated kernels, examples and figures |
-| In progress | Phase 3: studio panels |
-| Next steps | Filter store, Library, Properties with preview and apply, History, Inspector, Developer, glossary tooltips, Learn panel and widgets, then the remaining architecture and Inspector docs pages |
-| Open questions | None |
-| Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). |
+| Last finished step | Phase 3 complete: studio panels (Library, Properties, preview, History, Inspector, Learn, Developer, glossary tooltips), E2E tests and the remaining docs pages |
+| In progress | Phase 4: selection and masking |
+| Next steps | Mask core, overlays, manual selection tools, modes, then Magic Wand and Color Range. See the Phase 4 task list. |
+| Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
+| Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
 ## 1. How to continue in a new session
 
@@ -536,20 +536,20 @@ Goal: prove the full path from catalog to pixels to maths to docs with a small s
 - [x] Engine client: run, cancel, progress, timing. Same interface for both engines (`web/src/engine-client/`). The science engine answers that it arrives in Phase 6. Parameters are validated against the catalog before every run. Preview scheduling sits on top of it in the studio.
 - [x] Browser worker pool: strips with halos, transferable buffers, cancellation that replaces busy workers, memory guard (`core/workers/pool.ts`, `engine-client/browser.ts`). A browser test proves tiled runs are byte-identical to whole-image runs.
 - [x] Compositor (`core/composite/compose.ts`): mask blend, M = 0 stays bit-identical. Channel scopes, alpha weighting, linear light and output mapping live in the filter framework (`core/filters/run.ts`), shared by every filter.
-- [ ] Library panel: search by name, alias, method, category and purpose. Facets for family, linearity, domain, noise type, purpose, engine and status. Favorites. Status badges. Planned entries are visible but cannot run.
-- [ ] Properties panel built from the schema: scrubby slider with number input, integer and odd-size rules, select, boolean, color, angle dial, kernel editor, preview toggle, apply, cancel, reset, presets, copy JSON, last run time.
-- [ ] Preview engine as in section 3.7. Cache keyed by image version, parameters and mask version.
-- [ ] Basic history: every apply adds an entry. Undo, redo, reset to original.
-- [ ] Inspector panel as in section 4.6.
-- [ ] Learn panel framework with the first widgets: Neighborhood stepper, Impulse response, Rank stepper, Gradient explorer, Line profile.
-- [ ] Developer panel: id, schema, parameters JSON, engine, repo-relative source path with a GitHub link, dependency versions, tests, timing, warnings.
-- [ ] Glossary tooltips.
+- [x] Library panel: search by name, alias, method, category and purpose. Facets for family, linearity, domain, noise type, purpose, engine and status. Favorites. Status badges. Planned entries are visible but cannot run. The Filter menu and the command palette list the same filters.
+- [x] Properties panel built from the schema: scrubby slider with number input, integer and odd-size rules, select, boolean, angle dial, preview toggle, apply, cancel, reset, presets, copy JSON, last run time. No Phase 3 filter has a color or kernel parameter, so the color and kernel editors arrive with the first filters that need them in Phase 5.
+- [x] Preview engine as in section 3.7 (`app/preview.ts`): whole image up to 4 MP, visible region plus 64 px at 50% zoom or more, proxy up to 2048 px with pixel sizes scaled, 120 ms debounce, cancel. Cache of 8 previews per image version, keyed by filter, values, region and scale. The mask version joins the key in Phase 4.
+- [x] Basic history: every apply adds a step with the filter id and parameters. Undo, redo, jump to a step, revert to original. At most 50 steps and 768 MB per image. History panel.
+- [x] Inspector panel as in section 4.6: Overview with a live example, Formula with current values, Operator (kernels, rank, curve, weights, generator) with correlation or flipped order, Parameters, Algorithm, Limits, References. Copy as LaTeX, NumPy and JSON.
+- [x] Learn panel framework with the first widgets: Neighborhood stepper, Impulse response, Rank stepper, Gradient explorer, Line profile. Basic and Academic levels. Demos for later phases name their phase.
+- [x] Developer panel: id, schema, parameters JSON, engine, repo-relative source path with a GitHub link, dependencies, tests, timing, memory estimate, warnings, numeric example.
+- [x] Glossary tooltips (`components/GlossaryText.tsx`), first use of a term in each text.
 - [x] First filters in the browser: box, gaussian, motion-blur, sobel, laplacian, median, unsharp-mask, gamma, grayscale. Noise generators for Gaussian and salt-and-pepper noise. All 11 are `implemented-tested`, with full catalog entries and docs pages. The studio panels that run them are the next tasks.
 - [x] Fixture tests against SciPy or OpenCV for each of them. `tools/fixtures_filters.py` writes `filters.json` with SciPy, NumPy and scikit-image, and cross-checks scikit-image and OpenCV where they offer the same operation. All match within a relative 1e-4.
 
 Docs: filter registry, processing pipeline, execution model, maths foundations (image representation, convolution and correlation, boundary conditions, linearity, masks and alpha blending, numerical precision), Inspector pages, Learn panel page, one page per filter above with generated figures.
 
-Exit: all of the above meet the definition of done. **Checkpoint: you review the look and feel of the Inspector and the Learn panel before the bulk work starts.**
+Exit: all of the above meet the definition of done. **Checkpoint: you review the look and feel of the Inspector and the Learn panel before the bulk work starts.** Phase 3 exit checks passed on 2026-10-12. The review is open, and Phase 4 started meanwhile at your request.
 
 ### Phase 4: Selection and masking
 
@@ -829,3 +829,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 2 | Phase 2 done. E2E tests for the exit flow, a 6000x6000 image and axe (dev dependency `@axe-core/playwright`, MPL 2.0, test only, never shipped, so D17 holds). Viewport benchmark script, numbers in the docs. Docs: frontend architecture, preview and rendering, workspace, panels, export, keyboard shortcuts, figure checklist. Fixed: Enter in a number field submitted forms with the old value, theme colors were read from CSS on every frame, the document tab strip broke an ARIA rule, `make_fixtures.py --check` failed on Windows over last-bit float differences (now compares numerically). All CI checks pass on this PC. | Phase 3: engine client. |
 | 2026-10-12 | 3 | Filter framework (borders, channel scopes, alpha weighting, linear light, output mapping), 11 browser filters (box, Gaussian, motion blur, Sobel, Laplacian, median, unsharp mask, gamma, grayscale, Gaussian and salt-and-pepper noise), compositor, worker pool, engine client. Reference fixtures from SciPy and scikit-image with OpenCV cross-checks. The checker now verifies browser registration. `make_fixtures.py` no longer rewrites files that only differ in float noise. Catalog statuses stay planned until each entry and its docs page are complete. 501 tests pass. | Catalog entries, then the studio panels. |
 | 2026-10-12 | 3 | Full catalog entries for the 11 filters, now `implemented-tested`. Three new representation types (point-transfer, color-transform, random-process) for operators that are not kernels. Docs: 11 filter pages on the 12-heading template, filter index, six maths foundation pages. `gen_docs.py` writes facts, formula, steps, parameters, complexity, limits, tests and references per filter from the catalog. `web/scripts/gen-filter-docs.mjs` runs the real filter code through Vite to write the kernels, worked examples and figure data. `tools/figures/make_figures.py` (matplotlib, docs group only) draws light and dark SVGs. KaTeX test for every catalog formula. The prose lint keeps citation titles as written. | Studio panels. |
+| 2026-10-12 | 3 | Studio panels: Library (search, facets, favorites), Properties built from the catalog (angle dial, presets, copy JSON), preview scheduler with exact and approximate plans and a WebGL overlay, Apply with progress and cancel, History panel with steps and limits, Inspector with seven tabs, Learn panel with five demo widgets, Developer panel, glossary tooltips, Filter menu, export names that describe the last filter, error boundary per panel. The Window menu brings a hidden panel to the front. E2E tests for the filter flow and axe on each panel. Docs: filter catalog and registry, processing pipeline, execution model, Learn panel (guide and architecture), five Inspector pages. Fixed: the E2E tests stalled on this PC when many browsers loaded `localhost` at once (probably the Norton network filter), now `127.0.0.1` with 4 local workers. Phase 3 done. 546 web tests, 14 E2E tests and 50 Python tests pass. | Checkpoint 3 review. Phase 4 mask core meanwhile. |

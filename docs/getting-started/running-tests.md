@@ -32,7 +32,11 @@ Unit tests sit next to the code they test, as `*.test.ts` or `*.test.tsx`. Tests
 - A file that is not an image, which must show a clear error.
 - Running a command from the palette, then undo.
 - Opening and panning a 6000x6000 image.
-- Accessibility checks with axe in several states and themes. A serious or critical issue fails the test.
+- Choosing a filter in the Library, the preview, Apply and undo.
+- The Inspector kernel following a parameter, the Learn panel demos, a planned filter that cannot run, the export name after a filter, and the Filter menu and palette.
+- Accessibility checks with axe in several states and themes, and on each filter panel. A serious or critical issue fails the test.
+
+The server listens on `127.0.0.1:4173`. On your own computer, Playwright runs at most 4 tests at once. On one Windows computer with security software, many browsers at once, or browsers that used `localhost` (the IPv6 address `::1`), made page loads stall at random. The IPv4 address and the limit of 4 avoid this. CI keeps the Playwright default.
 
 The accessibility checks use `@axe-core/playwright`. It is a test tool only and is never part of the studio. Its license is MPL 2.0.
 

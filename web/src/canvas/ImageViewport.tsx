@@ -24,6 +24,7 @@ import {
   type ViewState,
 } from "@/canvas/viewport";
 import { useDocuments, type ImageDocument } from "@/state/documents";
+import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 /** Wheel distance that doubles or halves the zoom. */
@@ -75,11 +76,20 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     [theme],
   );
   const probe = useUi((s) => s.probe);
+  const preview = useFilters((s) => s.preview);
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
 
   // Plain names for the document fields. Effects depend on these, not on the document object.
   const { id: docId, current: image, original, view } = doc;
+  // A filter preview of this exact image, if there is one. It stays visible while a newer one runs.
+  const previewShown = useMemo(
+    () =>
+      preview.result && preview.region && preview.documentId === docId && preview.source === image
+        ? { result: preview.result, region: preview.region }
+        : null,
+    [preview, docId, image],
+  );
 
   // Latest values for event handlers that are attached once.
   const latest = useRef({ doc, size });
@@ -163,7 +173,9 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     if (!renderer || !size || !view) return;
     const frame = requestAnimationFrame(() => {
       try {
-        renderer.setImages(image, original);
+        // While a preview shows, the compare modes compare the image before and after the filter.
+        renderer.setImages(image, previewShown ? image : original);
+        renderer.setPreview(previewShown?.result ?? null, previewShown?.region ?? null);
         const mode: RenderMode = showOriginal
           ? "original"
           : compare === "split" || compare === "overlay" || compare === "difference"
@@ -198,6 +210,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
     pixelGrid,
     colors,
     contextVersion,
+    previewShown,
   ]);
 
   // Wheel: pan, or zoom with a modifier key or a pinch gesture (which arrives with ctrlKey set).
@@ -401,10 +414,16 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       ) : null}
       {comparing && (compare === "split" || compare === "side-by-side") ? (
         <>
-          <CompareLabel side="left" text="Original" />
+          <CompareLabel side="left" text={previewShown ? "Before" : "Original"} />
           <CompareLabel
             side="right"
-            text={doc.edits.length ? "Current" : "Current (no edits yet)"}
+            text={
+              previewShown
+                ? "After (preview)"
+                : doc.index > 0
+                  ? "Current"
+                  : "Current (no edits yet)"
+            }
           />
         </>
       ) : null}

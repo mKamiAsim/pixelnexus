@@ -10,7 +10,13 @@ import { resetRails } from "./rails";
 export const CANVAS_PANEL = "canvas";
 
 export const PANELS = [
+  { id: "library", title: "Library", side: "left" },
   { id: "images", title: "Images", side: "left" },
+  { id: "properties", title: "Properties", side: "right" },
+  { id: "inspector", title: "Inspector", side: "right" },
+  { id: "learn", title: "Learn", side: "right" },
+  { id: "developer", title: "Developer", side: "right" },
+  { id: "history", title: "History", side: "right" },
   { id: "navigator", title: "Navigator", side: "right" },
   { id: "info", title: "Info", side: "right" },
   { id: "histogram", title: "Histogram", side: "right" },
@@ -22,9 +28,18 @@ export const PRESETS = [
   {
     id: "essentials",
     name: "Essentials",
-    description: "Images on the left, Navigator and Info on the right",
+    description: "Library on the left, Properties, History and Info on the right",
   },
-  { id: "study", name: "Study", description: "Info and Histogram large, for looking at values" },
+  {
+    id: "study",
+    name: "Study",
+    description: "Learn and Inspector large, with Info and Histogram, for teaching and learning",
+  },
+  {
+    id: "developer",
+    name: "Developer",
+    description: "Developer and Inspector panels, with History and Info",
+  },
   {
     id: "compact",
     name: "Compact",
@@ -34,7 +49,8 @@ export const PRESETS = [
 
 export type PresetId = (typeof PRESETS)[number]["id"];
 
-const STORAGE_KEY = "pixelnexus.layout.v1";
+// Version 2 adds the Phase 3 panels. Older saved layouts are replaced once by the preset.
+const STORAGE_KEY = "pixelnexus.layout.v2";
 const PRESET_KEY = "pixelnexus.preset.v1";
 
 let api: DockviewApi | null = null;
@@ -102,27 +118,54 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       position: { referencePanel: reference, direction },
       inactive: direction === "within",
     });
-  // Group widths are set after all panels exist, because each split shares out the space.
+  // Group sizes are set after all panels exist, because each split shares out the space.
   const widths: [PanelId, number][] = [];
+  const heights: [PanelId, number][] = [];
+  const stack = (first: PanelId, others: PanelId[]) =>
+    others.forEach((p) => add(p, first, "within"));
   if (id === "compact") {
-    add("navigator", CANVAS_PANEL, "right");
-    add("info", "navigator", "within");
-    add("histogram", "navigator", "within");
-    add("images", "navigator", "within");
-    widths.push(["navigator", 260]);
+    add("properties", CANVAS_PANEL, "right");
+    stack("properties", [
+      "library",
+      "learn",
+      "inspector",
+      "images",
+      "history",
+      "navigator",
+      "info",
+      "histogram",
+      "developer",
+    ]);
+    widths.push(["properties", 300]);
   } else if (id === "study") {
-    add("images", CANVAS_PANEL, "left");
-    add("info", CANVAS_PANEL, "right");
-    add("histogram", "info", "below");
-    add("navigator", "histogram", "within");
-    widths.push(["images", 220], ["info", 340]);
+    add("library", CANVAS_PANEL, "left");
+    stack("library", ["images"]);
+    add("learn", CANVAS_PANEL, "right");
+    stack("learn", ["inspector", "properties"]);
+    add("info", "learn", "below");
+    stack("info", ["histogram", "navigator", "history"]);
+    widths.push(["library", 240], ["learn", 400]);
+    heights.push(["info", 280]);
+  } else if (id === "developer") {
+    add("library", CANVAS_PANEL, "left");
+    stack("library", ["images"]);
+    add("developer", CANVAS_PANEL, "right");
+    stack("developer", ["inspector", "properties"]);
+    add("history", "developer", "below");
+    stack("history", ["info", "histogram", "navigator"]);
+    widths.push(["library", 240], ["developer", 400]);
+    heights.push(["history", 260]);
   } else {
-    add("images", CANVAS_PANEL, "left");
-    add("navigator", CANVAS_PANEL, "right");
-    add("info", "navigator", "below");
-    add("histogram", "info", "within");
-    widths.push(["images", 248], ["navigator", 300]);
+    add("library", CANVAS_PANEL, "left");
+    stack("library", ["images"]);
+    add("properties", CANVAS_PANEL, "right");
+    stack("properties", ["inspector", "learn", "developer"]);
+    add("history", "properties", "below");
+    stack("history", ["navigator", "info", "histogram"]);
+    widths.push(["library", 260], ["properties", 330]);
+    heights.push(["history", 260]);
   }
+  for (const [panel, height] of heights) dock.getPanel(panel)?.group.api.setSize({ height });
   for (const [panel, width] of widths) dock.getPanel(panel)?.group.api.setSize({ width });
   try {
     localStorage.setItem(PRESET_KEY, id);
@@ -137,13 +180,17 @@ export function isPanelOpen(id: PanelId): boolean {
   return Boolean(api?.getPanel(id));
 }
 
-/** Close an open panel, or open it next to its usual neighbors. */
+/**
+ * As in Photoshop's Window menu: a panel in front closes, an open panel behind another tab comes
+ * to the front, and a closed panel opens next to its usual neighbors.
+ */
 export function togglePanel(id: PanelId): void {
   const dock = api;
   if (!dock) return;
   const existing = dock.getPanel(id);
   if (existing) {
-    existing.api.close();
+    if (existing.api.isVisible) existing.api.close();
+    else existing.api.setActive();
     notifyPanelsChange();
     return;
   }

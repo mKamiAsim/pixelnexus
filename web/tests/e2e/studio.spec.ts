@@ -65,8 +65,9 @@ test("opens three images, zooms, pans, compares and exports in every format", as
   await tabs.filter({ hasText: "pattern.png" }).click();
   await expect(statusBar(page)).toContainText("640 x 480 px");
 
-  // Zoom with the keyboard. The 640x480 image opens at 100% in a 1280x720 window.
+  // Zoom with the keyboard. Start from 100%, because the fitted zoom depends on the panel layout.
   await canvas(page).focus();
+  await page.keyboard.press("Control+1");
   await expect(statusBar(page)).toContainText("Zoom 100%");
   await page.keyboard.press("Control+Equal");
   await page.keyboard.press("Control+Equal");
@@ -159,12 +160,16 @@ test("runs commands from the palette, and undo restores the image", async ({ pag
   await page.getByRole("combobox", { name: "Search commands" }).fill("rotate 90 clockwise");
   await page.keyboard.press("Enter");
   await expect(docTab(page, "Gray ramp.png")).toBeVisible();
-  const editsList = page.getByText("Rotate 90 clockwise", { exact: true });
+  // Undone steps stay in the History list, so redo and jumping forward still work.
+  const step = page
+    .getByRole("list", { name: "History steps" })
+    .getByRole("button", { name: /Rotate 90 clockwise/ });
   const spoken = page.getByTestId("announcer");
-  await expect(editsList).toBeVisible();
+  await expect(step).toHaveAttribute("aria-current", "step");
   await expect(spoken).toHaveText("Rotate 90 clockwise applied. The image is 512 by 512 pixels.");
   await page.keyboard.press("Control+z");
-  await expect(editsList).toBeHidden();
+  await expect(step).not.toHaveAttribute("aria-current", "step");
+  await expect(page.getByText("Step 0 of 1")).toBeVisible();
   await expect(spoken).toHaveText("Undid Rotate 90 clockwise.");
 });
 

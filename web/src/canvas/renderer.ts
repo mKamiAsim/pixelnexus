@@ -14,6 +14,14 @@ import type { RgbaImage } from "@/core/image/types";
 
 export type RenderMode = "current" | "original" | "split" | "overlay" | "difference";
 
+/** The part of the image a preview covers, in image pixels. */
+export interface PreviewRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export type Rgb = readonly [number, number, number];
 
 export interface RenderColors {
@@ -57,6 +65,10 @@ const FRAGMENT = `#version 300 es
 precision highp float;
 uniform sampler2D uCurrent;
 uniform sampler2D uOriginal;
+uniform sampler2D uPreview;
+uniform bool uHasPreview;
+uniform vec4 uPreviewRect;
+uniform vec2 uPreviewSize;
 uniform vec2 uCurrentSize;
 uniform vec2 uOriginalSize;
 uniform float uZoom;
@@ -83,6 +95,20 @@ vec4 fetch(sampler2D tex, vec2 size, vec2 p) {
   return texture(tex, p / size);
 }
 
+// The current image, with the filter preview on top where it has one.
+vec4 currentAt(vec2 p) {
+  if (uHasPreview) {
+    vec2 q = p - uPreviewRect.xy;
+    if (q.x >= 0.0 && q.y >= 0.0 && q.x < uPreviewRect.z && q.y < uPreviewRect.w) {
+      vec2 scale = uPreviewSize / uPreviewRect.zw;
+      vec2 t = q * scale;
+      if (uZoom * scale.x >= 1.0) return texelFetch(uPreview, ivec2(floor(t)), 0);
+      return texture(uPreview, t / uPreviewSize);
+    }
+  }
+  return fetch(uCurrent, uCurrentSize, p);
+}
+
 void main() {
   vec2 device = vec2(gl_FragCoord.x, uCanvasHeight - gl_FragCoord.y) - uRegionOrigin;
   vec2 css = device / uDpr;
@@ -97,11 +123,11 @@ void main() {
     return;
   }
   vec4 color;
-  if (uMode == 0) color = fetch(uCurrent, uCurrentSize, p);
+  if (uMode == 0) color = currentAt(p);
   else if (uMode == 1 || (uMode == 2 && showsOriginal)) color = fetch(uOriginal, uOriginalSize, p);
-  else if (uMode == 2) color = fetch(uCurrent, uCurrentSize, p);
+  else if (uMode == 2) color = currentAt(p);
   else {
-    vec4 current = fetch(uCurrent, uCurrentSize, p);
+    vec4 current = currentAt(p);
     vec4 original = fetch(uOriginal, uOriginalSize, p);
     if (uMode == 3) color = mix(current, original, uOpacity);
     else color = vec4(abs(current.rgb - original.rgb), max(current.a, original.a));
@@ -140,6 +166,7 @@ export class ImageRenderer {
   private readonly uniforms = new Map<string, WebGLUniformLocation | null>();
   private current: UploadedTexture | null = null;
   private original: UploadedTexture | null = null;
+  private preview: { texture: UploadedTexture; rect: PreviewRect } | null = null;
   readonly maxTextureSize: number;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -220,6 +247,24 @@ export class ImageRenderer {
     this.original = nextOriginal;
   }
 
+  /**
+   * Show a filter preview on top of the current image. `rect` is the part of the image it
+   * covers, in image pixels. The preview may have a lower resolution than that part.
+   */
+  setPreview(image: RgbaImage | null, rect: PreviewRect | null): void {
+    if (!image || !rect) {
+      if (this.preview) this.gl.deleteTexture(this.preview.texture.texture);
+      this.preview = null;
+      return;
+    }
+    if (this.preview?.texture.image === image) {
+      this.preview = { texture: this.preview.texture, rect };
+      return;
+    }
+    if (this.preview) this.gl.deleteTexture(this.preview.texture.texture);
+    this.preview = { texture: this.createTexture(image), rect };
+  }
+
   render(request: RenderRequest): void {
     const { gl, canvas, current, original } = this;
     if (!current || !original) return;
@@ -236,6 +281,23 @@ export class ImageRenderer {
     gl.bindTexture(gl.TEXTURE_2D, original.texture);
     gl.uniform1i(this.uniform("uCurrent"), 0);
     gl.uniform1i(this.uniform("uOriginal"), 1);
+    const preview = this.preview;
+    gl.uniform1i(this.uniform("uHasPreview"), preview ? 1 : 0);
+    if (preview) {
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, preview.texture.texture);
+      gl.uniform1i(this.uniform("uPreview"), 2);
+      const { x, y, width, height } = preview.rect;
+      gl.uniform4f(this.uniform("uPreviewRect"), x, y, width, height);
+      gl.uniform2f(
+        this.uniform("uPreviewSize"),
+        preview.texture.image.width,
+        preview.texture.image.height,
+      );
+    } else {
+      // Every sampler needs a valid texture unit, even when it is not read.
+      gl.uniform1i(this.uniform("uPreview"), 1);
+    }
     gl.uniform2f(this.uniform("uCurrentSize"), current.image.width, current.image.height);
     gl.uniform2f(this.uniform("uOriginalSize"), original.image.width, original.image.height);
     gl.uniform1f(this.uniform("uZoom"), request.view.zoom);
@@ -271,6 +333,7 @@ export class ImageRenderer {
 
   dispose(): void {
     const { gl } = this;
+    this.setPreview(null, null);
     for (const texture of new Set([this.current, this.original])) {
       if (texture) gl.deleteTexture(texture.texture);
     }

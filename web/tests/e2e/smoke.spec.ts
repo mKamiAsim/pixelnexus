@@ -9,7 +9,8 @@ test("the studio shell loads without errors", async ({ page }) => {
 
   await page.goto("/");
   await expect(page).toHaveTitle("PixelNexus");
-  await expect(page.getByRole("heading", { level: 1, name: "PixelNexus" })).toBeVisible();
+  // The logo text was changed to "Pixel Nexus" by hand. Accept both spellings.
+  await expect(page.getByRole("heading", { level: 1, name: /Pixel ?Nexus/ })).toBeVisible();
   await expect(page.getByRole("menubar", { name: "Main menu" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Open an image to start" })).toBeVisible();
   await expect(

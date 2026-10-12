@@ -167,15 +167,6 @@ function Metadata({ doc }: { doc: ImageDocument }) {
           </ul>
         ) : null}
       </PanelSection>
-      {doc.edits.length > 0 ? (
-        <PanelSection title="Edits">
-          <ol className="flex list-decimal flex-col gap-0.5 pl-4 text-xs text-text-secondary">
-            {doc.edits.map((edit, index) => (
-              <li key={`${index}-${edit}`}>{edit}</li>
-            ))}
-          </ol>
-        </PanelSection>
-      ) : null}
     </div>
   );
 }

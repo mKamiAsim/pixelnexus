@@ -109,7 +109,7 @@ function DocumentTabs({ activeId }: { activeId: string | null }) {
               {d.view ? (
                 <span className="tabular text-text-muted">{formatZoom(d.view.zoom)}</span>
               ) : null}
-              {d.edits.length > 0 ? (
+              {d.index > 0 ? (
                 <>
                   <span aria-hidden className="size-1.5 rounded-full bg-accent-fg" title="Edited" />
                   <span className="sr-only">, edited</span>
