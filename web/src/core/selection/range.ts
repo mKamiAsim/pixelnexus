@@ -19,10 +19,20 @@ export function ramp(value: number, full: number, soft: number): number {
 
 export type RangePreset = "sampled" | "highlights" | "midtones" | "shadows";
 
+export interface RangeSample {
+  readonly x: number;
+  readonly y: number;
+  readonly color?: readonly [number, number, number];
+}
+
 export interface ColorRangeOptions {
   readonly preset: RangePreset;
-  /** Pixels the user sampled. Used by the "sampled" preset. */
-  readonly samples: readonly { readonly x: number; readonly y: number }[];
+  /**
+   * Pixels the user sampled. Used by the "sampled" preset. `color` is the sampled color. When it
+   * is missing, the pixel at (x, y) is read. A preview on a smaller copy passes the colors read
+   * from the full image, so it matches the final result.
+   */
+  readonly samples: readonly RangeSample[];
   /** Distance up to which a color is fully selected. */
   readonly tolerance: number;
   /** Extra distance over which the selection fades to 0. */
@@ -65,7 +75,7 @@ export function colorRange(image: RgbaImage, options: ColorRangeOptions): Mask {
   if (samples.length === 0) return mask;
   const coords = imageCoords(image, options.colorSpace);
   const seeds = samples.map((s) =>
-    toCoords(...sampleColor(image, s.x, s.y, 1), options.colorSpace),
+    toCoords(...(s.color ?? sampleColor(image, s.x, s.y, 1)), options.colorSpace),
   );
   const reach = (options.range / 100) * Math.max(width, height);
   for (let i = 0; i < width * height; i++) {

@@ -21,12 +21,18 @@ interface SelectionState {
   previous: Readonly<Record<string, Mask>>;
   /** The operation the Modify dialog shows. */
   refineKind: RefineKind;
+  /** The last amount used for each refine operation, in pixels. */
+  refineAmounts: Readonly<Partial<Record<RefineKind, number>>>;
+  /** Shrink also pulls away from the image edge, as if the outside were unselected. */
+  shrinkEdges: boolean;
   setMode: (mode: CombineMode) => void;
   setValue: (tool: string, key: string, value: ParamValue) => void;
   resetValues: (tool: string) => void;
   setMaskView: (view: MaskView) => void;
   remember: (documentId: string, mask: Mask) => void;
   setRefineKind: (kind: RefineKind) => void;
+  setRefineAmount: (kind: RefineKind, amount: number) => void;
+  setShrinkEdges: (edges: boolean) => void;
 }
 
 export const useSelection = create<SelectionState>()((set) => ({
@@ -35,6 +41,8 @@ export const useSelection = create<SelectionState>()((set) => ({
   maskView: "ants",
   previous: {},
   refineKind: "grow",
+  refineAmounts: {},
+  shrinkEdges: false,
   setMode: (mode) => set({ mode }),
   setValue: (tool, key, value) =>
     set((state) => ({
@@ -49,4 +57,7 @@ export const useSelection = create<SelectionState>()((set) => ({
   remember: (documentId, mask) =>
     set((state) => ({ previous: { ...state.previous, [documentId]: mask } })),
   setRefineKind: (refineKind) => set({ refineKind }),
+  setRefineAmount: (kind, amount) =>
+    set((state) => ({ refineAmounts: { ...state.refineAmounts, [kind]: amount } })),
+  setShrinkEdges: (shrinkEdges) => set({ shrinkEdges }),
 }));

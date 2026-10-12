@@ -13,6 +13,7 @@ export function Dialog({
   footer,
   className,
   hideHeader = false,
+  focusField = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,12 +24,24 @@ export function Dialog({
   className?: string;
   /** Keep the title for screen readers only, for example in the command palette. */
   hideHeader?: boolean;
+  /** Focus the first text or number field on open, instead of the first button. */
+  focusField?: boolean;
 }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <RadixDialog.Content
+          onOpenAutoFocus={(event) => {
+            if (!focusField || !(event.target instanceof HTMLElement)) return;
+            const field = event.target.querySelector<HTMLInputElement>(
+              "input:not([type=hidden]):not([type=checkbox]):not([disabled])",
+            );
+            if (!field) return;
+            event.preventDefault();
+            field.focus();
+            field.select();
+          }}
           className={clsx(
             "fixed top-[12vh] left-1/2 z-50 flex max-h-[76vh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-panel border border-border bg-panel text-text shadow-popover outline-none",
             className,

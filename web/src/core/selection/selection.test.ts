@@ -130,6 +130,12 @@ describe("Color Range and tone selections", () => {
     const local = colorRange(scene, { ...base, localized: true, range: 50 });
     expect(local.data[6] ?? 0).toBeLessThan(mask.data[6] ?? 0);
     expect(local.data[0]).toBe(255);
+    // A sample that carries its color uses that color, not the pixel under it.
+    const given = colorRange(scene, {
+      ...base,
+      samples: [{ x: 2, y: 3, color: sampleColor(scene, 0, 0, 1) }],
+    });
+    expect(given.data).toEqual(mask.data);
   });
 
   it("splits tones into shadows, midtones and highlights that add up to 1", () => {

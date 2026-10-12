@@ -131,7 +131,7 @@ export const REFINE: Readonly<Record<RefineKind, RefineSpec>> = {
     max: 500,
     step: 1,
     fallback: 4,
-    help: "Adds every pixel within this distance of the selection.",
+    help: "Adds every pixel within this distance of the selection. The result has a hard edge.",
   },
   shrink: {
     kind: "shrink",
@@ -141,7 +141,7 @@ export const REFINE: Readonly<Record<RefineKind, RefineSpec>> = {
     max: 500,
     step: 1,
     fallback: 4,
-    help: "Keeps the pixels that are farther than this from any unselected pixel.",
+    help: "Keeps the pixels that are farther than this from any unselected pixel. The result has a hard edge.",
   },
   feather: {
     kind: "feather",
@@ -161,7 +161,7 @@ export const REFINE: Readonly<Record<RefineKind, RefineSpec>> = {
     max: 100,
     step: 1,
     fallback: 2,
-    help: "Each pixel takes the majority of its square neighborhood. Specks go and corners round.",
+    help: "Each pixel takes the majority of its square neighborhood. Specks go and corners round. The result has a hard edge.",
   },
   border: {
     kind: "border",
@@ -171,7 +171,7 @@ export const REFINE: Readonly<Record<RefineKind, RefineSpec>> = {
     max: 200,
     step: 1,
     fallback: 8,
-    help: "Selects a band along the edge, half inside and half outside.",
+    help: "Selects a band along the edge, half inside and half outside. The result has a hard edge.",
   },
 };
 

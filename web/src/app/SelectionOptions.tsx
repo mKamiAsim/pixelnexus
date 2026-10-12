@@ -1,5 +1,5 @@
-import { RotateCcw, Square, SquaresIntersect, SquaresSubtract, SquaresUnite } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { RotateCcw } from "lucide-react";
+import { useId } from "react";
 
 import { entryParams } from "@/catalog/params";
 import { IconButton } from "@/components/ui/IconButton";
@@ -13,28 +13,7 @@ import type { SelectionToolId } from "@/selection/ids";
 import { toolEntry, useToolValues } from "@/selection/values";
 import { useSelection } from "@/state/selection";
 
-const MODES: readonly { value: CombineMode; label: string; icon: ReactNode; shortcut?: string }[] =
-  [
-    { value: "new", label: "New selection", icon: <Square size={14} /> },
-    {
-      value: "add",
-      label: "Add to selection",
-      icon: <SquaresUnite size={14} />,
-      shortcut: "Shift",
-    },
-    {
-      value: "subtract",
-      label: "Subtract from selection",
-      icon: <SquaresSubtract size={14} />,
-      shortcut: "Alt",
-    },
-    {
-      value: "intersect",
-      label: "Intersect with selection",
-      icon: <SquaresIntersect size={14} />,
-      shortcut: "Shift+Alt",
-    },
-  ];
+import { MODES } from "./selectionModes";
 
 /** The brush tools always add or remove, so they have no mode buttons. */
 const HAS_MODES: readonly SelectionToolId[] = [

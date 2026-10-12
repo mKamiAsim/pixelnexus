@@ -8,6 +8,7 @@ import {
   GraduationCap,
   History,
   Image,
+  Layers,
   Library,
   Map,
   Sigma,
@@ -32,6 +33,7 @@ import { DeveloperPanel } from "@/panels/DeveloperPanel";
 import { HistoryPanel } from "@/panels/HistoryPanel";
 import { InspectorPanel } from "@/panels/InspectorPanel";
 import { LibraryPanel } from "@/panels/LibraryPanel";
+import { MasksPanel } from "@/panels/MasksPanel";
 import { PropertiesPanel } from "@/panels/PropertiesPanel";
 import { HistogramPanel } from "@/panels/HistogramPanel";
 import { ImagesPanel } from "@/panels/ImagesPanel";
@@ -73,6 +75,7 @@ const PANEL_ICONS: Record<PanelId, LucideIcon> = {
   navigator: Map,
   info: Crosshair,
   histogram: ChartColumn,
+  masks: Layers,
 };
 
 /** Each panel gets its own error boundary, so one failing panel cannot blank the studio. */
@@ -103,6 +106,7 @@ const COMPONENTS = {
   navigator: panel("Navigator", <NavigatorPanel />),
   info: panel("Info", <InfoPanel />),
   histogram: panel("Histogram", <HistogramPanel />),
+  masks: panel("Masks", <MasksPanel />),
 };
 
 /** A panel tab with an icon. In a collapsed rail only the icon shows. */

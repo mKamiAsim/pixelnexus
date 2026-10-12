@@ -18,6 +18,9 @@ import { startPreview } from "./preview";
 import { Notices } from "./Notices";
 import { OptionsBar } from "./OptionsBar";
 import { PreferencesDialog } from "./PreferencesDialog";
+import { RangeSelectDialogs } from "./RangeSelectDialog";
+import { RefineDialog } from "./RefineDialog";
+import { SaveSelectionDialog } from "./SaveSelectionDialog";
 import { ShortcutSheet } from "./ShortcutSheet";
 import { displayShortcut } from "./shortcuts";
 import { StatusBar } from "./StatusBar";
@@ -220,6 +223,9 @@ export function App() {
       <ShortcutSheet />
       <ExportDialog />
       <PreferencesDialog />
+      <RefineDialog />
+      <RangeSelectDialogs />
+      <SaveSelectionDialog />
     </TooltipProvider>
   );
 }
