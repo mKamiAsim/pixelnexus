@@ -51,7 +51,7 @@ describe("saliency maps", () => {
     expect(re[0]).toBeCloseTo(16, 10);
     fft(re, im, true);
     for (let i = 0; i < 8; i++) expect((re[i] ?? 0) / 8).toBeCloseTo(copy[i] ?? 0, 10);
-    expect(() => fft(new Float64Array(6), new Float64Array(6))).toThrow(RangeError);
+    expect(() => fft(new Float64Array(6), new Float64Array(5))).toThrow(RangeError);
   });
 
   it("finds the disk with both saliency maps", () => {

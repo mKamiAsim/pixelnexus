@@ -5,7 +5,7 @@
  *
  * Sums run in float64 and are stored as float32.
  */
-import { fft2d, nextPow2 } from "@/core/math/fft";
+import { fft2d, nextFastSize } from "@/core/math/fft";
 
 import { borderTable, createPlane, padPlane, type BorderMode, type Plane } from "./planes";
 
@@ -196,8 +196,8 @@ export interface PlaneSpectrum {
  */
 export function planeSpectrum(input: Plane, reach: number, border: BorderMode): PlaneSpectrum {
   const padded = padPlane(input, reach, border);
-  const rows = nextPow2(padded.height);
-  const cols = nextPow2(padded.width);
+  const rows = nextFastSize(padded.height);
+  const cols = nextFastSize(padded.width);
   const pr = new Float64Array(rows * cols);
   const pi = new Float64Array(rows * cols);
   for (let y = 0; y < padded.height; y++) {

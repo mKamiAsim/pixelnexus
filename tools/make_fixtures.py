@@ -9,6 +9,7 @@ What it writes:
     color.json       Color conversions computed with scikit-image.
     gaussian.json    Gaussian kernels computed with SciPy.
     geometry.json    Resize and rotation references, made by tools/fixtures_geometry.py.
+    fft.json         FFTs of random signals of many lengths, computed with NumPy.
     filters.json     Reference results of the browser filters, made by tools/fixtures_filters.py
                      with SciPy, NumPy and scikit-image, and cross-checked with OpenCV.
     formats/         Small image files in every supported format, encoded by Pillow, and
@@ -154,6 +155,50 @@ def gaussian_cases() -> dict[str, Any]:
         "source": "scipy.ndimage.gaussian_filter1d applied to a unit impulse",
         "tolerance": 1e-12,
         "cases": cases,
+    }
+
+
+# Fast Fourier transforms -----------------------------------------------------------------------
+
+# Powers of 2, products of 2, 3 and 5, and primes and other lengths that need Bluestein's method.
+FFT_LENGTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 20, 25, 27, 30, 31, 45, 49]
+FFT_LENGTHS += [60, 64, 97, 100, 120, 125, 128, 243, 250, 257, 360]
+FFT_GRIDS = [(4, 8), (6, 10), (7, 9), (5, 13)]
+
+
+def fft_cases() -> dict[str, Any]:
+    rng = np.random.default_rng(SEED)
+
+    def signal(shape: tuple[int, ...]) -> NDArray[np.complex128]:
+        return rng.uniform(-1, 1, shape) + 1j * rng.uniform(-1, 1, shape)
+
+    def pack(z: NDArray[np.complex128]) -> dict[str, list[float]]:
+        return {"re": z.real.ravel().tolist(), "im": z.imag.ravel().tolist()}
+
+    cases = []
+    for n in FFT_LENGTHS:
+        x = signal((n,))
+        cases.append(
+            {
+                "n": n,
+                "input": pack(x),
+                "forward": pack(np.fft.fft(x)),
+                # The browser inverse leaves out the 1/n factor.
+                "inverse": pack(np.fft.ifft(x) * n),
+            }
+        )
+    grids = []
+    for rows, cols in FFT_GRIDS:
+        x = signal((rows, cols))
+        grids.append(
+            {"rows": rows, "cols": cols, "input": pack(x), "forward": pack(np.fft.fft2(x))}
+        )
+    return {
+        "generator": "tools/make_fixtures.py",
+        "source": "numpy.fft.fft, numpy.fft.ifft and numpy.fft.fft2 of seeded random signals",
+        "tolerance": 1e-9,
+        "cases": cases,
+        "grids": grids,
     }
 
 
@@ -341,6 +386,7 @@ def build() -> dict[str, str]:
         # One line, because the file holds thousands of numbers.
         "filters.json": json.dumps(filter_cases(), separators=(",", ":")) + "\n",
         "geometry.json": json.dumps(geometry_cases(), separators=(",", ":")) + "\n",
+        "fft.json": json.dumps(fft_cases(), separators=(",", ":")) + "\n",
     }
 
 
