@@ -10,7 +10,7 @@ describe("catalog plugin", () => {
   it("loads and validates the repository catalog", () => {
     const loaded = loadCatalog();
     expect(validateCatalog(loaded)).toEqual([]);
-    expect(loaded.bundle.filters).toHaveLength(318);
+    expect(loaded.bundle.filters).toHaveLength(317);
     expect(loaded.bundle.tools).toHaveLength(20);
   });
 

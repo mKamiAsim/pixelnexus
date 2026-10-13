@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5c: Nevatia-Babu needs its six 5x5 masks checked against the paper, which is not available here, so it stays planned until the owner can supply or confirm the masks. Then Phase 5d to 5f. Later, in 5e: a faster FFT (real input, twiddle tables); the default Gabor bank takes about 2.4 s single-threaded on 512 x 512. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Next action | Phase 5d: morphology with a structuring-element editor (rectangle, ellipse, disk, cross, diamond, line with angle and length, custom) and the Morphology stepper. 22 entries: erosion, dilation, opening, closing, gradients, top-hat, black-hat, reconstruction and the filters built on it, hit-or-miss, thinning, thickening, skeleton, pruning, convex hull, ASF, leveling, connected components. Then Phase 5e and 5f. Later, in 5e: a faster FFT (real input, twiddle tables). Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5c: Moravec and FAST corner detectors, and a test that Inspector representations hold no control characters. |
+| Last finished step | Phase 5c complete. Nevatia-Babu removed from the catalog by the owner's decision (masks not checkable against the paper, little used today). |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5c: Nevatia-Babu needs its six 5x5 masks checked against the paper, which is not available here, so it stays planned until the owner can supply or confirm the masks. Then Phase 5d to 5f. Later, in 5e: a faster FFT (real input, twiddle tables); the default Gabor bank takes about 2.4 s single-threaded on 512 x 512. |
+| Next steps | Phase 5d: morphology with a structuring-element editor (rectangle, ellipse, disk, cross, diamond, line with angle and length, custom) and the Morphology stepper. 22 entries: erosion, dilation, opening, closing, gradients, top-hat, black-hat, reconstruction and the filters built on it, hit-or-miss, thinning, thickening, skeleton, pruning, convex hull, ASF, leveling, connected components. Then Phase 5e and 5f. Later, in 5e: a faster FFT (real input, twiddle tables). |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -579,7 +579,7 @@ Six sub-phases. The entries for each are listed in CATALOG.md. Each sub-phase en
 
 - [x] **5a** Linear filters and sharpening. Channel-scope option on all of them.
 - [x] **5b** Nonlinear, rank and adaptive statistical filters. Dead-pixel repair. Weight viewer, Noise lab and Metrics panel.
-- [ ] **5c** Edges, lines, corners and texture kernels. Canny with every stage visible. Stage viewer.
+- [x] **5c** Edges, lines, corners and texture kernels. Canny with every stage visible. Stage viewer. Nevatia-Babu was removed by the owner's decision.
 - [ ] **5d** Morphology with a structuring-element editor (rectangle, ellipse, cross, diamond, line with angle, custom). Morphology stepper.
 - [ ] **5e** Frequency domain, browser deconvolution, pyramids and scale space. Mixed-radix FFT (radix 2, 3 and 5 with a Bluestein fallback) checked against NumPy. Spectrum panel with notch placement. Frequency explorer and Iteration viewer.
 - [ ] **5f** Enhancement, color, thresholds, region growing, k-means, artistic and geometric effects. Point-op curve widget.
@@ -863,3 +863,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5c | Matched vessel filter (Chaudhuri et al. 1989). Zero-mean kernels -exp(-u^2 / 2 sigma^2) on the offsets with |u| <= 3 sigma across and |v| <= L / 2 along the vessel, in evenly spread directions, for dark or bright vessels. The grid rule for the offsets is documented as the filter's own. Outputs are the largest response and its direction, with a documented tie rule. No library has it, so the fixtures build the same kernels in Python, with checks that each kernel sums to 0 and that a Gaussian line at 30 degrees is found with direction 30. 96 catalog entries are implemented-tested. 1887 Vitest tests pass. | Corner detectors. |
 | 2026-10-13 | 5c | Harris and Shi-Tomasi. The structure tensor follows skimage.feature.structure_tensor (Sobel derivatives of the image on a 0 to 1 scale, products blurred by a Gaussian cut at 4 sigma), extended once with the border mode. The responses match skimage corner_harris and corner_shi_tomasi away from the border. Corner points are the pixels at or above the threshold that are the largest within the minimum distance; a bright square gives exactly its four corners. 98 catalog entries are implemented-tested. 1923 Vitest tests pass. | Moravec and FAST. |
 | 2026-10-13 | 5c | Moravec and FAST. Moravec uses the four shifts (1, 0), (1, 1), (0, 1) and (-1, 1) that Harris and Stephens list; skimage.feature.corner_moravec compares only the diagonal shifts, so the window rule is checked by running the reference with those. FAST uses the 16-pixel circle and the segment test, which finds the same corners as skimage.feature.corner_fast, with the score of Rosten and Drummond for non-maximum suppression. The reference rounds responses to 32-bit floats before comparing neighbors, as the filter does. A new test checks that no Inspector representation holds a control character, which caught single backslashes in LaTeX. 100 catalog entries are implemented-tested. 2051 Vitest tests pass. | Nevatia-Babu needs the paper; then Phase 5d. |
+| 2026-10-13 | 5d | Phase 5c complete. Nevatia-Babu removed by the owner's decision: its six masks could not be checked against the paper, and it sees little use today. The catalog now has 337 entries, 100 implemented-tested. 2051 Vitest tests and 27 E2E tests pass. | Phase 5d, morphology. |

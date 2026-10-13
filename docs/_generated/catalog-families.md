@@ -8,7 +8,7 @@
 | Morphological filters | 26 | Shape-based operations that probe the image with a structuring element. |
 | Frequency-domain filters | 23 | Filters that change the Fourier spectrum of the image. |
 | Wavelet and multiscale filters | 14 | Filters that split the image into scales or subbands, change them and rebuild the image. |
-| Edge detection and boundary analysis | 20 | Operators that find places where brightness changes fast. |
+| Edge detection and boundary analysis | 19 | Operators that find places where brightness changes fast. |
 | Texture, corners, blobs and features | 28 | Detectors and descriptors that find points, regions or texture patterns. |
 | Enhancement, illumination and color | 32 | Point operations, color transforms and illumination corrections. |
 | Restoration and reconstruction | 22 | Methods that undo a known or estimated degradation such as blur or noise. |

@@ -4,7 +4,7 @@ import { catalog, countBy, isRunnable, STATUS_LABELS } from "@/catalog";
 
 describe("catalog module", () => {
   it("loads every planned entry", () => {
-    expect(catalog.filters.length + catalog.tools.length).toBe(338);
+    expect(catalog.filters.length + catalog.tools.length).toBe(337);
     expect(catalog.families).toHaveLength(14);
   });
 

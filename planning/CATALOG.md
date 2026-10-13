@@ -218,7 +218,6 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | kirsch | Kirsch compass | Eight directions. | Core | Browser | 5c |
 | robinson | Robinson compass | | Core | Browser | 5c |
 | frei-chen | Frei-Chen | Nine basis masks. Edge and line subspace projection. | Core | Browser | 5c |
-| nevatia-babu | Nevatia-Babu | Six 5x5 masks. | Core | Browser | 5c |
 | farid-simoncelli | Farid-Simoncelli derivative filter | Coefficients checked against scikit-image. | Core | Browser | 5c |
 | sobel-nms | Sobel with non-maximum suppression | | Core | Browser | 5c |
 | canny | Canny | All five stages visible. L1 and L2 norms. | Core | Browser | 5c |
@@ -505,12 +504,14 @@ Counts cover every row in sections 1 to 15. Aliases and the pointer row for AI s
 
 | Tier | Engine | Count |
 |---|---|---|
-| Core | Browser | 219 |
+| Core | Browser | 218 |
 | Advanced | Science | 78 |
 | Optional | Science (optional package) | 4 |
 | Optional | Model | 14 |
 | Planned | none | 17 |
 | Unsupported | none | 6 |
-| **Total entries** | | **338** |
+| **Total entries** | | **337** |
 
 Every name in both requirement documents maps to an entry above, either by its own row or as an alias. Phase 9 adds an automated check of this mapping.
+
+One exception: the Nevatia-Babu edge detector was removed on 2026-10-13 by the owner's decision. Its six masks could not be checked against the original paper, and the method sees little use today.
