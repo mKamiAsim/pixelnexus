@@ -1,7 +1,108 @@
 id: roberts
 name: Roberts Cross
+aliases: [Roberts]
 family: edges
+tags: [purpose:edge, purpose:gradient]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
+planNotes: Two diagonal differences.
+
+summary: Estimates the gradient from the two diagonal differences of a 2x2 block of pixels.
+purpose: Find edges with the smallest possible kernel.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/gradients.ts, symbol: GRADIENT_PAIRS}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: gx, label: Falling diagonal (R1)}
+      - {value: gy, label: Rising diagonal (R2)}
+      - {value: direction, label: Direction}
+    description: Which part of the gradient to show.
+    effect: The two derivatives are signed. Magnitude is never negative. Direction is an angle.
+  - key: norm
+    label: Magnitude norm
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (square root of the sum of squares)}
+      - {value: l1, label: L1 (sum of absolute values)}
+    description: How the two derivatives are combined into the magnitude.
+    effect: L1 gives slightly larger values on diagonal edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  R_1 = I(x,y) - I(x+1,y+1),
+  \qquad
+  R_2 = I(x+1,y) - I(x,y+1)
+formulaExplanation: >-
+  The two differences along the diagonals of the 2x2 block that starts at the pixel. Roberts used them in 1963, one of the first edge operators. Here they run as 3x3 kernels with the pixel at the center. The direction output is the angle of (R_1, R_2), which is the gradient angle turned by 45 degrees.
+symbols:
+  - {symbol: 'R_1, R_2', meaning: The two diagonal differences}
+steps:
+  - Pad the image with the border mode.
+  - Subtract the neighbor below right from each pixel, and the neighbor below from the neighbor to the right.
+  - Combine R_1 and R_2 into the chosen output.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel.
+useCases:
+  - Find thin edges in clean images.
+  - Show the history of edge detection.
+advantages:
+  - The smallest gradient kernel, so edges stay thin.
+  - Very fast.
+limitations:
+  - No smoothing at all, so it is very sensitive to noise.
+  - The result is shifted half a pixel, because the 2x2 block has no center pixel.
+artifacts:
+  - Speckled responses on noisy images.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, Roberts cross-gradient operators.
+  - kind: library
+    text: scikit-image documentation, skimage.filters.roberts.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.roberts
+implementation: {path: web/src/core/filters/edges/gradients.ts, symbol: robertsFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Edges from the two diagonal differences of each 2x2 block of pixels.
+  howItWorks:
+    - Subtract the pixel diagonally below right from the pixel.
+    - Subtract the pixel below from the pixel to the right.
+    - Combine the two differences into a strength.
+  academic: >-
+    Two diagonal first differences, a gradient estimate rotated by 45 degrees. scikit-image's roberts divides the magnitude by the square root of 2.
+  paramNotes:
+    output: The magnitude, one of the two differences, or the angle of the pair.
+    norm: How the two differences combine into the magnitude.
+  tryThis:
+    - Add a little Gaussian noise and compare Roberts with Sobel.
+  pitfalls:
+    - Using it on noisy images. Every noisy pixel becomes an edge.
+  demos: [impulse-response, gradient-explorer]
+related: [sobel, prewitt]
+docsPage: filters/edges/roberts.md

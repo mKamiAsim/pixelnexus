@@ -1,8 +1,110 @@
 id: farid-simoncelli
 name: Farid-Simoncelli derivative filter
+aliases: [Farid filter]
 family: edges
+tags: [purpose:edge, purpose:gradient]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
 planNotes: Coefficients checked against scikit-image.
+
+summary: Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives.
+purpose: Find gradients more accurately than 3x3 kernels, for orientation and motion analysis.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/gradients.ts, symbol: FARID_DERIVATIVE}
+supportRadius: "2"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: gx, label: Horizontal change (Fx)}
+      - {value: gy, label: Vertical change (Fy)}
+      - {value: direction, label: Direction}
+    description: Which part of the gradient to show.
+    effect: The two derivatives are signed. Magnitude is never negative. Direction is an angle.
+  - key: norm
+    label: Magnitude norm
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (square root of the sum of squares)}
+      - {value: l1, label: L1 (sum of absolute values)}
+    description: How the two derivatives are combined into the magnitude.
+    effect: L1 gives slightly larger values on diagonal edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  G_x = (p\, d^{\mathsf T}) \star I,
+  \qquad
+  G_y = (d\, p^{\mathsf T}) \star I
+formulaExplanation: >-
+  d is a 5-tap derivative and p a 5-tap prefilter, a smoothing. Farid and Simoncelli optimized them together, so that d is the derivative of p as closely as possible. That makes the gradient direction accurate in every direction. The taps are those of skimage.filters.farid.
+symbols:
+  - {symbol: 'd', meaning: 'The 5-tap derivative, about -0.110, -0.277, 0, 0.277, 0.110'}
+  - {symbol: 'p', meaning: 'The 5-tap prefilter, about 0.038, 0.249, 0.426, 0.249, 0.038'}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with d along x and p along y for G_x, and the reverse for G_y.
+  - Combine G_x and G_y into the chosen output.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each kernel runs as two passes of 5 taps.
+useCases:
+  - Estimate gradient directions accurately.
+  - Compute derivatives for optical flow and orientation fields.
+advantages:
+  - More accurate directions than Sobel and Scharr.
+  - Separable.
+limitations:
+  - A 5x5 support blurs fine detail more than 3x3 kernels.
+  - The taps are not whole numbers.
+artifacts:
+  - Slightly wider edge responses than 3x3 kernels.
+references:
+  - kind: paper
+    text: Farid, H. and Simoncelli, E. P. Differentiation of discrete multidimensional signals. IEEE Transactions on Image Processing 13(4), 496 to 508, 2004.
+    doi: 10.1109/TIP.2004.823819
+  - kind: library
+    text: scikit-image documentation, skimage.filters.farid.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.farid
+implementation: {path: web/src/core/filters/edges/gradients.ts, symbol: faridFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: A derivative kernel and a smoothing kernel that were designed together for accurate gradients.
+  howItWorks:
+    - Smooth along the edge with the 5-tap prefilter.
+    - Take the 5-tap derivative across the edge.
+    - Combine the two directions into a strength and a direction.
+  academic: >-
+    Matched derivative and interpolator pairs, chosen to minimize the error of the derivative in the frequency domain, weighted for rotation invariance.
+  paramNotes:
+    output: The part of the gradient to show.
+    norm: How the two derivatives combine into the magnitude.
+  tryThis:
+    - Compare the direction output of Farid and Sobel on the Zone plate.
+  pitfalls:
+    - Expecting thinner edges. The 5-tap support makes them a little wider.
+  demos: [impulse-response, gradient-explorer]
+related: [sobel, scharr]
+docsPage: filters/edges/farid-simoncelli.md

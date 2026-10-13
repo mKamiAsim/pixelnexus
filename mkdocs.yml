@@ -195,6 +195,16 @@ nav:
           - Savitzky-Golay filter: filters/adaptive/savgol.md
       - Edges:
           - Sobel: filters/edges/sobel.md
+          - Prewitt: filters/edges/prewitt.md
+          - Scharr: filters/edges/scharr.md
+          - Roberts Cross: filters/edges/roberts.md
+          - Farid-Simoncelli: filters/edges/farid-simoncelli.md
+          - Kirsch compass: filters/edges/kirsch.md
+          - Robinson compass: filters/edges/robinson.md
+          - Frei-Chen: filters/edges/frei-chen.md
+      - Features:
+          - Line detectors: filters/features/line-detector.md
+          - Laws' texture energy: filters/features/laws.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

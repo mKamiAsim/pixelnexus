@@ -1031,6 +1031,13 @@ try {
     ...{ run, pic, figure, example, matrix, block, mdTable, fix, synthetic },
     ...{ browserFilter, runFilter },
   });
+  const { gradientDocs } = await import("./filter-docs/gradients.mjs");
+  const { compassMasks } = await load("/src/core/filters/edges/compass.ts");
+  const { LAWS_VECTORS } = await load("/src/core/filters/edges/laws.ts");
+  gradientDocs({
+    ...{ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
+    ...{ createImage, compassMasks, LAWS_VECTORS },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

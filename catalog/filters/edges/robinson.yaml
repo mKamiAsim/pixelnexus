@@ -1,7 +1,96 @@
 id: robinson
 name: Robinson compass
+aliases: [Robinson]
 family: edges
+tags: [purpose:edge]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
+planNotes: Eight directions.
+
+summary: A compass filter built from the Sobel mask, turned in eight steps of 45 degrees.
+purpose: Find edges and their direction to the nearest 45 degrees, with Sobel-like weights.
+classification: {linearity: nonlinear, domain: spatial, operation: compass convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/compass.ts, symbol: ROBINSON_NORTH}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Largest response}
+      - {value: direction, label: Direction of the largest response}
+    description: The strongest of the eight mask responses, or the direction of that mask.
+    effect: Direction is a multiple of 45 degrees.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  R_{\text{N}} = \begin{bmatrix} 1 & 2 & 1 \\ 0 & 0 & 0 \\ -1 & -2 & -1 \end{bmatrix},
+  \qquad
+  G = \max_{k = 0, \dots, 7} \bigl( R_k \star I \bigr)
+formulaExplanation: >-
+  The north mask is a Sobel kernel with its bright side at the top. Moving its outer ring by one cell turns it by 45 degrees. The four masks along the axes give plus or minus the Sobel derivatives. The largest of the eight responses is the edge strength, and its mask is the direction.
+symbols:
+  - {symbol: 'R_k', meaning: The mask turned by k steps of 45 degrees}
+  - {symbol: 'G', meaning: The largest response}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with each of the eight masks.
+  - Keep the largest response, or the direction of the mask that gives it.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Eight 3x3 correlations per pixel.
+useCases:
+  - Find edges and their direction in one step.
+advantages:
+  - Small whole-number weights.
+  - Opposite masks are negatives of each other, so only four need computing.
+limitations:
+  - The direction has only eight values.
+  - Sensitive to noise.
+artifacts:
+  - Thick edges and a coarse direction map.
+references:
+  - kind: paper
+    text: Robinson, G. S. Edge detection by compass gradient masks. Computer Graphics and Image Processing 6(5), 492 to 501, 1977.
+    doi: 10.1016/S0146-664X(77)80024-5
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2.
+implementation: {path: web/src/core/filters/edges/compass.ts, symbol: robinsonFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Eight turned Sobel masks, and the strongest answer wins.
+  howItWorks:
+    - Correlate the image with a Sobel mask for each of eight directions.
+    - Keep the strongest response as the edge strength.
+    - The direction of that mask is the edge direction.
+  academic: >-
+    A compass gradient with Sobel weights. Its axis-aligned masks reproduce the Sobel derivatives.
+  paramNotes:
+    output: The largest response or its direction.
+  tryThis:
+    - Compare the magnitude of Robinson and Sobel on the Siemens star.
+  pitfalls:
+    - Expecting fine angles. The direction is a multiple of 45 degrees.
+  demos: [impulse-response]
+related: [kirsch, sobel]
+docsPage: filters/edges/robinson.md

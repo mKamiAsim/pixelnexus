@@ -1,8 +1,95 @@
 id: frei-chen
 name: Frei-Chen
+aliases: [Frei-Chen edge detector]
 family: edges
+tags: [purpose:edge, purpose:analysis]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
 planNotes: Nine basis masks. Edge and line subspace projection.
+
+summary: Projects each 3x3 window onto nine orthonormal masks and reports how much of it looks like an edge or a line.
+purpose: Measure how edge-like or line-like a neighborhood is, independent of its contrast.
+classification: {linearity: nonlinear, domain: spatial, operation: subspace projection}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/compass.ts, symbol: FREI_CHEN}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: edge
+    options:
+      - {value: edge, label: Edge subspace}
+      - {value: line, label: Line subspace}
+    description: Which part of the window to measure.
+    effect: Edge shows boundaries between regions. Line shows thin lines.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  \cos\theta = \sqrt{\frac{\sum_{k \in S} (F_k \star I)^2}{\sum_{k=1}^{9} (F_k \star I)^2}},
+  \qquad
+  S = \{1,2,3,4\} \text{ or } \{5,6,7,8\}
+formulaExplanation: >-
+  The nine Frei-Chen masks are an orthonormal basis of 3x3 windows: four span edges, four span lines and one is the mean. The squared projections add up to the energy of the window. The ratio of the edge or line energy to the total is the squared cosine of the angle between the window and that subspace. The output is 255 times the cosine, so a pure edge or line gives 255.
+symbols:
+  - {symbol: 'F_k', meaning: The nine orthonormal masks}
+  - {symbol: 'S', meaning: The edge or the line subspace}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with the nine masks.
+  - Add the squared responses of the chosen subspace and of all nine.
+  - Write 255 times the square root of their ratio.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Nine 3x3 correlations per pixel.
+useCases:
+  - Find edges in images with uneven contrast.
+  - Tell edges and lines apart.
+advantages:
+  - The result does not depend on the contrast, only on the shape of the window.
+  - Separates edges from lines.
+limitations:
+  - Flat areas with tiny noise can look like perfect edges, because only the shape counts.
+  - The output mapping must not stretch it, or the noise grows.
+artifacts:
+  - Bright noise in flat areas, where the window energy is small.
+references:
+  - kind: paper
+    text: Frei, W. and Chen, C.-C. Fast boundary detection, a generalization and a new algorithm. IEEE Transactions on Computers C-26(10), 988 to 998, 1977.
+    doi: 10.1109/TC.1977.1674733
+implementation: {path: web/src/core/filters/edges/compass.ts, symbol: freiChenFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: How much of each small window looks like an edge, as a share of the whole window.
+  howItWorks:
+    - Split each 3x3 window into nine standard patterns. Four are edges, four are lines, and one is the mean.
+    - Measure how much of the window is in the edge patterns.
+    - Divide by the whole window and take the square root.
+  academic: >-
+    A projection onto an orthonormal basis. The output is the cosine of the angle between the window vector and the edge or line subspace.
+  paramNotes:
+    output: The edge or the line subspace.
+  tryThis:
+    - Compare Frei-Chen and Sobel on an image with a dark and a bright region. Frei-Chen finds edges in both equally.
+  pitfalls:
+    - Applying it to flat noisy areas. Their small noise patterns can look like edges.
+  demos: [impulse-response]
+related: [sobel, kirsch, line-detector]
+docsPage: filters/edges/frei-chen.md
