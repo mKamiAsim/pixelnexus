@@ -216,6 +216,8 @@ nav:
           - Laws' texture energy: filters/features/laws.md
           - Gabor filter bank: filters/features/gabor-bank.md
           - Matched vessel filter: filters/features/matched-vessel.md
+          - Harris corner detector: filters/features/harris.md
+          - Shi-Tomasi: filters/features/shi-tomasi.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

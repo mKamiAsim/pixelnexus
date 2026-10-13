@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="150.24pt" viewBox="0 0 360 150.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 150.24 
+L 360 150.24 
+L 360 0 
+L 0 0 
+L 0 150.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#pc03f398108)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAnUlEQVR4nO3aQQ0EMRADwU6zCI7whxAaS2MPRB7Rqbf+I/s7ksfzPC8H1lon5+y9uZkvcRIncRIncRIncRIncRIncRIncRIncWPO+f7zP3+aL3ESJ3ESJ3ESJ3ESJ3ESJ3ESJ3ESJ3Hj2wfESZzESZzESZzESZzESZzESZzESZzEjW8fECdxEidxEidxEidxEidxEidxEidx3i5w2w9auRxzbeAq8gAAAABJRU5ErkJggg==" id="image8e9bf10b82" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 3.6 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="60.8" y="13.92" transform="rotate(-0 60.8 13.92)">Checkerboard</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p53cb4bb9ee)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABfElEQVR4nO3YsarCQBQE0HG8iGiVxtLSxibfkg8V9HPEytJS0CJo8rhB5SGveEmENcw9ENisDMqyRndGeZ7X6OB6vWK/3zfj1WqF2Ww2qPwTIY4QR4gjxBHiCHGEOEIcIY4QR4izrkGSMLPXeGj5XgswmUyQZRnG43Fzv1gscLlcUJblIPK/mZ+q2vDV9jcvigLL5bKZOx6P2Gw2OJ/PqKrqq/N/qdtcZlav1+t6u93WTz72OX/t2/PvFyHOvExow7egf+d82+12u2bOxz53v9//tYVT5t+NujRC/hCaz+c4nU6dH2Ip871/BcqybB44h8OhufeVn06ng8l/5H9AVVW43W6v8dDyT4Q4QhwhjhBHiCPEEeKsazD1eT76gCz6AEQf8BB9QA8WfUAefUBrqc/z0Qcg+oCPIcQR4ghxhDhCHCHOugZTn+ejD8iiD0D0AQ/RB/Rg0Qfk0Qe0lvo8H30Aog/4GEIcIY4QR4gjxBHiCHGEOEIcU3+A1H4A9GpyRLhRK0sAAAAASUVORK5CYII=" id="imageb914d56751" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 122.8 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="180" y="13.92" transform="rotate(-0 180 13.92)">Response</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#p280aee43df)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAnElEQVR4nO3YMQoEMQwEwXb//88+dr/gBXO0ChQOKFCiWcAmTOIkTuIkTuIkTuIkTuIkTuIkTuIkzpPw3vudf80/8hewphCJkziJkziJkziJkziJkziJkziJ8yR8+5+fPuADa/qAOImTOImTOImTOImTOImTOImTOE/Ct//56QM+sKYPiJM4iZM4iZM4iZM4iZM4iZM4ifP2Arf9AGdYOkNrG0UxAAAAAElFTkSuQmCC" id="image1e7af1bc6a" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 242 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="299.2" y="13.92" transform="rotate(-0 299.2 13.92)">Corner points</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc03f398108">
+   <rect x="3.6" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p53cb4bb9ee">
+   <rect x="122.8" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p280aee43df">
+   <rect x="242" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+ </defs>
+</svg>
