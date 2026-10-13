@@ -90,6 +90,17 @@ export type Representation =
     }
   | { readonly kind: "generator"; readonly description: string }
   | {
+      readonly kind: "morphology";
+      /** The structuring element as rows of 0 and 1, as the operation reads it. */
+      readonly element: readonly (readonly number[])[];
+      readonly anchor: { readonly x: number; readonly y: number };
+      /** The operation as LaTeX. */
+      readonly operation: string;
+      /** For a single step, what it takes from the values under the element. */
+      readonly statistic?: "min" | "max" | "range";
+      readonly note: string;
+    }
+  | {
       readonly kind: "stages";
       /** The steps in order, each with a LaTeX formula. */
       readonly stages: readonly {

@@ -39,6 +39,17 @@ import { fastFilter, harrisFilter, moravecFilter, shiTomasiFilter } from "./feat
 import { gaborBankFilter } from "./features/gabor-bank";
 import { matchedVesselFilter } from "./features/matched-vessel";
 import { gaborFilter } from "./linear/gabor";
+import {
+  blackhatFilter,
+  closingFilter,
+  dilationFilter,
+  erosionFilter,
+  externalGradientFilter,
+  internalGradientFilter,
+  morphGradientFilter,
+  openingFilter,
+  tophatFilter,
+} from "./morphology/gray";
 import { steerableFilter } from "./linear/steerable";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
@@ -113,6 +124,15 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   shiTomasiFilter,
   moravecFilter,
   fastFilter,
+  erosionFilter,
+  dilationFilter,
+  openingFilter,
+  closingFilter,
+  morphGradientFilter,
+  internalGradientFilter,
+  externalGradientFilter,
+  tophatFilter,
+  blackhatFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

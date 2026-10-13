@@ -8,6 +8,7 @@ import { grayValue, type GrayscaleMethod } from "./enhancement/grayscale";
 import { diskKernel } from "./linear/disk-average";
 import { firTaps, type FirWindow } from "./linear/fir-lowpass";
 import { motionKernel } from "./linear/motion-blur";
+import { parseStructuringElement } from "./morphology/structuring";
 import { borderIndex, createPlane, isBorderMode, type BorderMode, type Plane } from "./planes";
 import { browserFilter, BROWSER_FILTERS } from "./registry";
 import type { ColorFilter, Params, PlaneFilter } from "./types";
@@ -36,6 +37,7 @@ const fixtures = JSON.parse(
   motionKernels: { length: number; angle: number; rows: number[][] }[];
   firTaps: { taps: number; cutoff: number; window: FirWindow; beta: number; output: number[] }[];
   diskKernels: { radius: number; rows: number[][] }[];
+  elements: { spec: string; rows: number[][] }[];
   color: {
     width: number;
     height: number;
@@ -251,5 +253,25 @@ describe("Inspector representations", () => {
   it.each(BROWSER_FILTERS.map((f) => f.id))("%s has no control characters", (id) => {
     const texts = strings(browserFilter(id)?.representation({}));
     expect(texts.filter((s) => [...s].some((c) => c.charCodeAt(0) < 32))).toEqual([]);
+  });
+});
+
+describe("structuring elements against scikit-image and the Python twin", () => {
+  it.each(fixtures.elements)("$spec", ({ spec, rows }) => {
+    const parsed = parseStructuringElement(spec);
+    if (!parsed.ok) throw new Error(parsed.message);
+    expect(parsed.element.rows).toEqual(rows);
+  });
+
+  it.each([
+    "disk 0",
+    "disk 16",
+    "rect 4 3",
+    "line 8 0",
+    "custom 1 2; 0 1",
+    "custom 1 1; 1 1",
+    "blob 3",
+  ])("refuses %s", (spec) => {
+    expect(parseStructuringElement(spec).ok).toBe(false);
   });
 });

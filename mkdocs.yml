@@ -220,6 +220,16 @@ nav:
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md
           - FAST corner detector: filters/features/fast.md
+      - Morphology:
+          - Erosion: filters/morphology/erosion.md
+          - Dilation: filters/morphology/dilation.md
+          - Opening: filters/morphology/opening.md
+          - Closing: filters/morphology/closing.md
+          - Morphological gradient: filters/morphology/morph-gradient.md
+          - Internal gradient: filters/morphology/internal-gradient.md
+          - External gradient: filters/morphology/external-gradient.md
+          - Top-hat: filters/morphology/tophat.md
+          - Black-hat: filters/morphology/blackhat.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

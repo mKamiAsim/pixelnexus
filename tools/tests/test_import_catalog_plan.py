@@ -3,8 +3,8 @@ from import_catalog_plan import ALIASES, PLAN_FILE, TOOL_GROUPS, parse_rows, stu
 
 def test_plan_rows_match_catalog_totals() -> None:
     rows = parse_rows(PLAN_FILE.read_text(encoding="utf-8"))
-    assert len(rows) == 338
-    assert len({row.entry_id for row in rows}) == 338
+    assert len(rows) == 337
+    assert len({row.entry_id for row in rows}) == 337
 
 
 def test_aliases_and_tool_groups_name_real_rows() -> None:

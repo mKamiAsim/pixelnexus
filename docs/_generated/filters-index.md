@@ -56,6 +56,15 @@
 | [Sigma filter](adaptive/sigma.md) | Adaptive and statistical filters | Averages only the window values that lie within k sigma of the center value, and repairs isolated spots. | Implemented and tested |
 | [Speckle reducing anisotropic diffusion](adaptive/srad.md) | Adaptive and statistical filters | Diffusion whose coefficient comes from the local coefficient of variation, so speckle diffuses away and edges stay. | Implemented and tested |
 | [Standard deviation filter](adaptive/local-std.md) | Adaptive and statistical filters | Maps the standard deviation of the window around each pixel, a measure of local contrast in levels. | Implemented and tested |
+| [Black-hat](morphology/blackhat.md) | Morphological filters | The closing minus the image. It keeps dark details smaller than the element. | Implemented and tested |
+| [Closing](morphology/closing.md) | Morphological filters | Dilation followed by erosion. It fills dark details smaller than the element and keeps the rest. | Implemented and tested |
+| [Dilation](morphology/dilation.md) | Morphological filters | Takes the largest value under the turned structuring element, so bright objects grow and dark details shrink. | Implemented and tested |
+| [Erosion](morphology/erosion.md) | Morphological filters | Takes the smallest value under the structuring element, so dark areas grow and bright objects shrink. | Implemented and tested |
+| [External gradient](morphology/external-gradient.md) | Morphological filters | The dilation minus the image. It marks the outer side of bright edges. | Implemented and tested |
+| [Internal gradient](morphology/internal-gradient.md) | Morphological filters | The image minus its erosion. It marks the inner side of bright edges. | Implemented and tested |
+| [Morphological gradient](morphology/morph-gradient.md) | Morphological filters | Dilation minus erosion. It is bright on edges, with a width set by the element. | Implemented and tested |
+| [Opening](morphology/opening.md) | Morphological filters | Erosion followed by dilation. It removes bright details smaller than the element and keeps the rest. | Implemented and tested |
+| [Top-hat](morphology/tophat.md) | Morphological filters | The image minus its opening. It keeps bright details smaller than the element and removes the background. | Implemented and tested |
 | [Canny](edges/canny.md) | Edge detection and boundary analysis | The classic edge detector. It smooths, finds the gradient, thins it to one-pixel lines and keeps edges with two thresholds. | Implemented and tested |
 | [Farid-Simoncelli derivative filter](edges/farid-simoncelli.md) | Edge detection and boundary analysis | Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives. | Implemented and tested |
 | [Frei-Chen](edges/frei-chen.md) | Edge detection and boundary analysis | Projects each 3x3 window onto nine orthonormal masks and reports how much of it looks like an edge or a line. | Implemented and tested |

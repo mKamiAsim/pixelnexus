@@ -91,6 +91,26 @@ test("the Stage viewer shows every stage of Canny", async ({ page }) => {
   }
 });
 
+test("the structuring element editor shapes erosion, and the stepper shows it", async ({
+  page,
+}) => {
+  await openTestImage(page, "Disks and dots");
+  await chooseFilter(page, "erosion", "Erosion");
+  await front(page, "Properties");
+  await expect(
+    page.getByRole("img", { name: "Structuring element, 3 by 3, 5 pixels" }).first(),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Structuring element shape" }).click();
+  await page.getByRole("option", { name: "Rectangle" }).click();
+  await expect(
+    page.getByRole("img", { name: "Structuring element, 5 by 3, 15 pixels" }).first(),
+  ).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Morphology stepper" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Values under the element" })).toBeVisible();
+  await expect(page.getByText("Erosion keeps the smallest.")).toBeVisible();
+});
+
 test("planned filters are listed but cannot run", async ({ page }) => {
   await openTestImage(page, "Siemens star");
   await chooseFilter(page, "dncnn", "DnCNN");

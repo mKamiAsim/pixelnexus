@@ -1061,6 +1061,8 @@ try {
   vesselDocs({ run, pic, figure, example, mdTable, fix, vesselKernel });
   const { cornerDocs } = await import("./filter-docs/corners.mjs");
   cornerDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
+  const { morphDocs } = await import("./filter-docs/morph.mjs");
+  morphDocs({ run, pic, figure, example, mdTable, synthetic, planeAt });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

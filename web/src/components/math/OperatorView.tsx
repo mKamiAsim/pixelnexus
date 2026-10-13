@@ -1,3 +1,5 @@
+import { clsx } from "clsx";
+
 import type { KernelInfo, Representation } from "@/core/filters/types";
 
 import { Formula } from "./Formula";
@@ -204,6 +206,46 @@ function StatisticWindow({
   );
 }
 
+/** A structuring element as a grid: filled cells belong to it, and the anchor is outlined. */
+export function ElementGrid({
+  element,
+  anchor,
+}: {
+  element: readonly (readonly number[])[];
+  anchor: { x: number; y: number };
+}) {
+  const width = element[0]?.length ?? 0;
+  const count = element.flat().filter(Boolean).length;
+  return (
+    <figure className="flex flex-col gap-1">
+      <div
+        role="img"
+        aria-label={`Structuring element, ${width} by ${element.length}, ${count} pixels`}
+        className="grid w-max gap-px rounded-control border border-border bg-border p-px"
+        style={{ gridTemplateColumns: `repeat(${width}, ${width > 15 ? 8 : 14}px)` }}
+      >
+        {element.flatMap((row, j) =>
+          row.map((v, i) => (
+            <span
+              key={`${i},${j}`}
+              className={clsx(
+                "aspect-square",
+                v ? "bg-accent" : "bg-panel",
+                i === anchor.x &&
+                  j === anchor.y &&
+                  "outline outline-2 -outline-offset-2 outline-text-secondary",
+              )}
+            />
+          )),
+        )}
+      </div>
+      <figcaption className="text-text-muted">
+        {width} x {element.length} element with {count} pixels. The outlined cell is the anchor.
+      </figcaption>
+    </figure>
+  );
+}
+
 /** The operator of a filter, drawn from its representation. */
 export function OperatorView({
   representation,
@@ -279,6 +321,16 @@ export function OperatorView({
       );
     case "generator":
       return <p className="text-xs text-text-secondary">{representation.description}</p>;
+    case "morphology":
+      return (
+        <div className="flex flex-col gap-2 text-xs">
+          <ElementGrid element={representation.element} anchor={representation.anchor} />
+          <Formula tex={representation.operation} />
+          {representation.note ? (
+            <p className="text-text-secondary">{representation.note}</p>
+          ) : null}
+        </div>
+      );
     case "stages":
       return (
         <div className="flex flex-col gap-2 text-xs">

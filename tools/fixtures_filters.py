@@ -25,6 +25,7 @@ from fixtures_corners import add_corner_cases
 from fixtures_edge import add_edge_plane_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
+from fixtures_morphology import add_morphology_cases, element_cases
 from fixtures_oriented import add_oriented_cases
 from fixtures_rank import add_rank_cases
 from fixtures_speckle import add_speckle_cases
@@ -464,6 +465,7 @@ def filter_cases() -> dict[str, Any]:
     add_canny_cases(plane, add)
     add_oriented_cases(plane, add)
     add_corner_cases(plane, add)
+    add_morphology_cases(plane, add)
 
     fir_taps = [
         {
@@ -537,4 +539,5 @@ def filter_cases() -> dict[str, Any]:
         "motionKernels": motion_kernels,
         "firTaps": fir_taps,
         "diskKernels": disk_kernels,
+        "elements": element_cases(),
     }

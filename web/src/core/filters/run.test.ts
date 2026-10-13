@@ -143,6 +143,15 @@ const CASES: [string, Params][] = [
   ["shi-tomasi", { sigma: 1.5, output: "corners", threshold: 0.005, outputMapping: "clip" }],
   ["moravec", { window: 1, output: "corners", threshold: 0.2, outputMapping: "clip" }],
   ["fast", { n: 9, threshold: 0.1, output: "corners", border: "reflect" }],
+  ["erosion", { element: "disk 2", iterations: 1, border: "reflect101" }],
+  ["dilation", { element: "line 5 30", iterations: 2, border: "wrap" }],
+  ["opening", { element: "rect 3 5", iterations: 1, border: "constant" }],
+  ["closing", { element: "custom 1 1 0; 0 1 0; 0 0 1", iterations: 1, border: "reflect" }],
+  ["morph-gradient", { element: "cross 1", iterations: 1, border: "replicate" }],
+  ["internal-gradient", { element: "diamond 1", iterations: 1, border: "reflect101" }],
+  ["external-gradient", { element: "ellipse 2 1", iterations: 1, border: "reflect101" }],
+  ["tophat", { element: "disk 1", iterations: 2, border: "reflect101" }],
+  ["blackhat", { element: "disk 1", iterations: 1, border: "wrap" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

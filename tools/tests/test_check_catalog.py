@@ -26,7 +26,7 @@ def test_repository_catalog_is_valid(catalog: Any) -> None:
 
 def test_catalog_has_every_planned_entry(catalog: Any) -> None:
     total = len(catalog.bundle["filters"]) + len(catalog.bundle["tools"])
-    assert total == 338
+    assert total == 337
 
 
 @pytest.mark.parametrize("sample", ["gaussian", "median", "sobel"])
