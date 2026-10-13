@@ -1,10 +1,175 @@
 id: gabor-bank
 name: Gabor filter bank
-aliases:
-- Gabor wavelet bank
+aliases: [Gabor wavelet bank]
 family: features
+tags: [purpose:texture, purpose:analysis]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: Gabor wavelet bank. Several scales and orientations.
+status: implemented-tested
+
+summary: Many Gabor filters at several scales and orientations, combined into one texture or orientation map.
+purpose: Measure texture strength and local orientation without choosing one scale and one direction.
+classification: {linearity: nonlinear, domain: spatial, operation: filter bank and maximum}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/features/gabor-bank.ts, symbol: gaborBank}
+supportRadius: the largest Gabor kernel half width in the bank
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  filtered on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: wavelength
+    label: Smallest wavelength
+    type: number
+    min: 2
+    max: 32
+    step: 0.5
+    default: 4
+    unit: px
+    description: The wavelength of the finest scale.
+    effect: Larger values move the whole bank to coarser texture.
+  - key: scales
+    label: Scales
+    type: number
+    min: 1
+    max: 5
+    step: 1
+    default: 3
+    description: How many wavelengths the bank holds.
+    effect: More scales cover a wider range of texture sizes, at a higher cost.
+  - key: factor
+    label: Scale factor
+    type: number
+    min: 1.2
+    max: 3
+    step: 0.1
+    default: 2
+    description: Each scale has this many times the wavelength of the one before.
+    effect: 2 doubles the wavelength from scale to scale, one octave apart.
+  - key: orientations
+    label: Orientations
+    type: number
+    min: 1
+    max: 12
+    step: 1
+    default: 4
+    description: How many angles the bank holds, spread evenly from 0 to 180 degrees.
+    effect: More angles give finer orientation steps, at a higher cost.
+  - key: bandwidth
+    label: Bandwidth
+    type: number
+    min: 0.5
+    max: 3
+    step: 0.1
+    default: 1
+    unit: octaves
+    description: The frequency bandwidth of each filter. It sets sigma from the wavelength.
+    effect: A smaller bandwidth gives a larger sigma, so each filter is more selective about wavelength.
+  - key: aspect
+    label: Aspect ratio
+    type: number
+    min: 0.2
+    max: 5
+    step: 0.05
+    default: 1
+    description: Sigma along the wave divided by sigma along the stripes, as in the Gabor filter.
+    effect: Low values make each filter more selective about direction.
+  - key: output
+    label: Output
+    type: select
+    default: max
+    options:
+      - {value: max, label: Largest magnitude}
+      - {value: mean, label: Mean magnitude}
+      - {value: orientation, label: Angle of the strongest filter}
+    description: How the responses of the bank become one value per pixel.
+    effect: The magnitudes show texture strength. The angle shows the local direction of the texture in degrees.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  \lambda_s = \lambda_0 f^{s},\quad \theta_k = \frac{180 k}{n},\quad \sigma_s = \frac{\lambda_s}{\pi}\sqrt{\frac{\ln 2}{2}}\,\frac{2^b + 1}{2^b - 1},\quad M(p) = \max_{s,k} \left| (g_{s,k} \star I)(p) \right|
+formulaExplanation: >-
+  Scale s has the wavelength lambda_0 f^s, and orientation k the angle 180 k / n. Sigma follows
+  from the bandwidth b in octaves, as in scikit-image. Each g_{s,k} is a Gabor kernel, and M is
+  the largest magnitude. The mean output averages the magnitudes instead. The angle output gives
+  theta_k of the strongest filter. When several filters are within a relative 1e-9 of the
+  largest magnitude, the first in the order of the bank wins. This makes exact ties, such as
+  theta and 180 - theta next to a mirrored border, independent of rounding.
+symbols:
+  - {symbol: '\lambda_0', meaning: The smallest wavelength}
+  - {symbol: 'f', meaning: The scale factor}
+  - {symbol: 'n', meaning: The number of orientations}
+  - {symbol: 'b', meaning: The bandwidth in octaves}
+  - {symbol: 'g_{s,k}', meaning: The Gabor kernel of scale s and orientation k}
+steps:
+  - List the wavelengths and angles of the bank, and sigma for each wavelength.
+  - Take the FFT of the image, extended by the largest kernel half width.
+  - Correlate with every complex Gabor kernel through that spectrum, and take the magnitude.
+  - Combine the magnitudes into the largest, the mean, or the angle of the strongest.
+complexity:
+  time: O(S K N log N)
+  memory: O(S K N)
+  notes: S scales, K orientations and N pixels in a tile with its halo. The magnitudes of every filter are kept until they are combined.
+useCases:
+  - Texture segmentation and classification.
+  - Maps of local orientation, such as fingerprint ridge flow.
+  - Feature maps for later analysis.
+advantages:
+  - Covers a range of scales and directions in one step.
+  - The orientation output shows the direction of stripes and edges.
+limitations:
+  - The cost grows with the number of filters.
+  - The angle output is noisy in flat areas, where every filter responds weakly.
+artifacts:
+  - Blocky angle maps where two orientations respond almost equally.
+references:
+  - kind: paper
+    text: Daugman, J. G. Uncertainty relation for resolution in space, spatial frequency, and orientation optimized by two-dimensional visual cortical filters. Journal of the Optical Society of America A 2(7), 1160 to 1169, 1985.
+    doi: 10.1364/JOSAA.2.001160
+  - kind: paper
+    text: Kruizinga, P. and Petkov, N. Nonlinear operator for oriented texture. IEEE Transactions on Image Processing 8(10), 1395 to 1407, 1999.
+    doi: 10.1109/83.791965
+  - kind: paper
+    text: Grigorescu, S. E., Petkov, N. and Kruizinga, P. Comparison of texture features based on Gabor filters. IEEE Transactions on Image Processing 11(10), 1160 to 1167, 2002.
+    doi: 10.1109/TIP.2002.804262
+  - kind: library
+    text: scikit-image documentation, skimage.filters.gabor_kernel, which sets sigma from the bandwidth.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.gabor_kernel
+implementation: {path: web/src/core/filters/features/gabor-bank.ts, symbol: gaborBankFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Run many Gabor filters at once and keep, for each pixel, the strongest response or its direction.
+  howItWorks:
+    - Make Gabor filters for several stripe sizes and several directions.
+    - Run each one on the image.
+    - At each pixel, keep the strongest response, the average, or the direction of the strongest.
+  academic: >-
+    A bank of Gabor filters that samples scale on a geometric grid and orientation evenly over
+    180 degrees. The maximum or mean magnitude is a common texture energy feature, and the
+    argmax gives a quantized local orientation.
+  paramNotes:
+    wavelength: The finest stripe size.
+    scales: How many sizes.
+    factor: The step between sizes.
+    orientations: How many directions.
+    bandwidth: How selective each filter is.
+    aspect: How long each window is along the stripes.
+    output: Strength, average or direction.
+  tryThis:
+    - Show the angle output on the Siemens star. Each spoke direction gets its own gray level.
+  pitfalls:
+    - Reading the angle in flat areas, where it means little.
+  demos: [line-profile]
+related: [gabor, laws, glcm, lbp]
+docsPage: filters/features/gabor-bank.md

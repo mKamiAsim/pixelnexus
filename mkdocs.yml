@@ -213,6 +213,7 @@ nav:
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md
+          - Gabor filter bank: filters/features/gabor-bank.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

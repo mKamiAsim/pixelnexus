@@ -3,6 +3,7 @@
 
 export function gaborDocs(h) {
   const { run, pic, figure, example, mdTable, synthetic, fix, gaborKernels } = h;
+  const { gaborBank, sigmaPerWavelength } = h;
   const star = synthetic.siemensStar(160, 160);
   const at = (angle) =>
     pic(
@@ -42,5 +43,38 @@ export function gaborDocs(h) {
       ],
     ) +
       `\nThe middle row of the kernels for wavelength 4, angle 0, sigma 1 and aspect ratio 1. The kernels are ${re.width} x ${re.height}, because the window ends at 3 sigma. On this row y = 0, so x' = x and y' = 0. Each weight is the envelope exp(-x^2 / 2) / (2 pi) times the cosine or the sine. The real kernel is even and finds thin lines. The imaginary kernel is odd and finds edges.\n`,
+  );
+
+  const bankOf = (output) => pic(run(star, "gabor-bank", { output, channelScope: "luminance" }));
+  figure("gabor-bank", {
+    message:
+      "A bank of 3 scales and 4 orientations on a Siemens star. The largest magnitude shows texture strength at every radius. The angle of the strongest filter gives each spoke direction its own gray level.",
+    panels: [
+      { title: "Input", image: pic(star) },
+      { title: "Largest", image: bankOf("max") },
+      { title: "Strongest angle", image: bankOf("orientation") },
+    ],
+  });
+
+  const bank = gaborBank({});
+  const ratio = sigmaPerWavelength(1);
+  const scales = [...new Set(bank.map((b) => b.wavelength))];
+  example(
+    "gabor-bank",
+    mdTable(
+      ["Scale", "Wavelength", "Sigma", "Kernel size at angle 0"],
+      scales.map((lambda, s) => {
+        const { re } = gaborKernels({
+          wavelength: lambda,
+          angle: 0,
+          sigma: lambda * ratio,
+          aspect: 1,
+        });
+        return [String(s), fix(lambda, 1), fix(lambda * ratio, 3), `${re.width} x ${re.height}`];
+      }),
+    ) +
+      `
+The default bank: smallest wavelength 4, 3 scales with factor 2, 4 orientations, bandwidth 1 octave and aspect ratio 1. For a bandwidth of 1 octave, sigma is (1 / pi) sqrt(ln 2 / 2) (2 + 1) / (2 - 1) = ${fix(ratio, 4)} times the wavelength. The angles are ${[...new Set(bank.map((b) => b.angle))].join(", ")} degrees, so the bank holds ${bank.length} filters. The largest kernel sets the halo of ${(gaborKernels({ wavelength: scales.at(-1), angle: 0, sigma: scales.at(-1) * ratio, aspect: 1 }).re.width - 1) / 2} pixels.
+`,
   );
 }

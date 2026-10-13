@@ -58,6 +58,8 @@ export function fft2d(
   for (let y = 0; y < rows; y++) {
     rr.set(re.subarray(y * cols, (y + 1) * cols));
     ri.set(im.subarray(y * cols, (y + 1) * cols));
+    // The transform of a row of zeros is zeros. Kernels and padding leave many such rows.
+    if (rr.every((v) => v === 0) && ri.every((v) => v === 0)) continue;
     fft(rr, ri, inverse);
     re.set(rr, y * cols);
     im.set(ri, y * cols);

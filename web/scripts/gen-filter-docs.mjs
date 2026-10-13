@@ -1049,7 +1049,11 @@ try {
   cannyDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
   const { gaborDocs } = await import("./filter-docs/gabor.mjs");
   const { gaborKernels } = await load("/src/core/filters/linear/gabor.ts");
-  gaborDocs({ run, pic, figure, example, mdTable, synthetic, fix, gaborKernels });
+  const { gaborBank, sigmaPerWavelength } = await load("/src/core/filters/features/gabor-bank.ts");
+  gaborDocs({
+    ...{ run, pic, figure, example, mdTable, synthetic, fix, gaborKernels },
+    ...{ gaborBank, sigmaPerWavelength },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

@@ -79,8 +79,88 @@ def _check_gabor(plane: FloatArray) -> None:
             _fail("Gabor disagrees with skimage.filters.gabor")
 
 
+def sigma_per_wavelength(bandwidth: float) -> float:
+    p = 2.0**bandwidth
+    return float(math.sqrt(math.log(2) / 2) * (p + 1) / (math.pi * (p - 1)))
+
+
+def gabor_bank(
+    plane: FloatArray,
+    wavelength: float,
+    scales: int,
+    factor: float,
+    orientations: int,
+    bandwidth: float,
+    aspect: float,
+    output: str,
+    mode: str,
+) -> FloatArray:
+    responses = []
+    angles = []
+    for s in range(scales):
+        lam = wavelength * factor**s
+        for k in range(orientations):
+            angle = k * 180 / orientations
+            sigma = lam * sigma_per_wavelength(bandwidth)
+            responses.append(gabor(plane, lam, angle, sigma, aspect, "magnitude", mode))
+            angles.append(angle)
+    stack = np.stack(responses)
+    if output == "mean":
+        return np.asarray(stack.mean(axis=0), dtype=np.float64)
+    if output == "max":
+        return np.asarray(stack.max(axis=0), dtype=np.float64)
+    # The first filter within a relative 1e-9 of the largest magnitude, as the filter does.
+    first = (stack >= stack.max(axis=0) * (1 - 1e-9)).argmax(axis=0)
+    return np.asarray(np.array(angles)[first], dtype=np.float64)
+
+
+def _check_bank(plane: FloatArray) -> None:
+    # With aspect ratio 1, each filter of the bank is skimage.filters.gabor with the bandwidth.
+    for lam, angle, bandwidth in ((3.0, 60.0, 1.0), (4.5, 0.0, 1.5)):
+        re, im = skfilters.gabor(  # type: ignore[no-untyped-call]
+            plane, 1 / lam, theta=-math.radians(angle), bandwidth=bandwidth, mode="mirror"
+        )
+        sigma = lam * sigma_per_wavelength(bandwidth)
+        if not np.allclose(
+            gabor(plane, lam, angle, sigma, 1, "magnitude", "mirror"), np.hypot(re, im)
+        ):
+            _fail("The Gabor bank sigma disagrees with skimage.filters.gabor and its bandwidth")
+
+
 def add_oriented_cases(plane: FloatArray, add: Add) -> None:
     _check_gabor(plane)
+    _check_bank(plane)
+    for border, mode in SCIPY_MODES.items():
+        for wavelength, scales, factor, orientations, bandwidth, aspect in (
+            (2.5, 2, 1.5, 4, 1.0, 1.0),
+            (3.0, 1, 2.0, 6, 1.5, 0.8),
+        ):
+            for output in ("max", "mean", "orientation"):
+                add(
+                    "gabor-bank",
+                    {
+                        "wavelength": wavelength,
+                        "scales": scales,
+                        "factor": factor,
+                        "orientations": orientations,
+                        "bandwidth": bandwidth,
+                        "aspect": aspect,
+                        "output": output,
+                        "border": border,
+                    },
+                    gabor_bank(
+                        plane,
+                        wavelength,
+                        scales,
+                        factor,
+                        orientations,
+                        bandwidth,
+                        aspect,
+                        output,
+                        mode,
+                    ),
+                    "scipy.ndimage.correlate per filter, checked with skimage.filters.gabor",
+                )
     for border, mode in SCIPY_MODES.items():
         for wavelength, angle, sigma, aspect in (
             (4, 0, 1.5, 1),
