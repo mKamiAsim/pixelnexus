@@ -57,11 +57,13 @@
 | [Farid-Simoncelli derivative filter](edges/farid-simoncelli.md) | Edge detection and boundary analysis | Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives. | Implemented and tested |
 | [Frei-Chen](edges/frei-chen.md) | Edge detection and boundary analysis | Projects each 3x3 window onto nine orthonormal masks and reports how much of it looks like an edge or a line. | Implemented and tested |
 | [Kirsch compass](edges/kirsch.md) | Edge detection and boundary analysis | Turns one 3x3 mask in eight steps of 45 degrees and keeps the strongest response at each pixel. | Implemented and tested |
+| [Marr-Hildreth](edges/marr-hildreth.md) | Edge detection and boundary analysis | Finds edges as the zero crossings of the Laplacian of Gaussian. | Implemented and tested |
 | [Prewitt](edges/prewitt.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels that average plainly along the edge. | Implemented and tested |
 | [Roberts Cross](edges/roberts.md) | Edge detection and boundary analysis | Estimates the gradient from the two diagonal differences of a 2x2 block of pixels. | Implemented and tested |
 | [Robinson compass](edges/robinson.md) | Edge detection and boundary analysis | A compass filter built from the Sobel mask, turned in eight steps of 45 degrees. | Implemented and tested |
 | [Scharr](edges/scharr.md) | Edge detection and boundary analysis | Estimates the gradient with 3x3 kernels whose 3, 10, 3 smoothing makes the result nearly the same in every direction. | Implemented and tested |
 | [Sobel](edges/sobel.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels. | Implemented and tested |
+| [Zero-crossing detector](edges/zero-crossing.md) | Edge detection and boundary analysis | Marks the pixels where a signed response changes sign, such as a Laplacian shown with the offset mapping. | Implemented and tested |
 | [Laws' texture energy filters](features/laws.md) | Texture, corners, blobs and features | Measures texture energy with 5x5 masks built from Laws' level, edge, spot, wave and ripple vectors. | Implemented and tested |
 | [Line detectors](features/line-detector.md) | Texture, corners, blobs and features | Finds thin bright lines with four 3x3 masks for horizontal, vertical and the two diagonal directions. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |

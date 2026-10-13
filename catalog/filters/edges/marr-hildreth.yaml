@@ -1,8 +1,114 @@
 id: marr-hildreth
 name: Marr-Hildreth
+aliases: [Marr-Hildreth edge detector, LoG edge detector]
 family: edges
+tags: [purpose:edge]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
 planNotes: LoG with zero crossings.
+
+summary: Finds edges as the zero crossings of the Laplacian of Gaussian.
+purpose: Detect closed, thin edges at a chosen scale.
+classification: {linearity: nonlinear, domain: spatial, operation: LoG and sign change test}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/zero-crossing.ts, symbol: marrHildrethFilter}
+supportRadius: floor(4 sigma + 0.5) + 1
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray mask. With RGB scope, each channel gets
+  its own mask.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full support, so strips
+  and whole images agree.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The sigma of the Laplacian of Gaussian.
+    effect: Larger values find fewer, larger-scale edges and ignore more noise.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 50
+    step: 0.1
+    default: 0
+    description: The smallest jump of the LoG across a crossing that counts.
+    effect: Higher values drop weak edges and noise.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  L = \nabla^2 (G_{\sigma} * I),
+  \qquad
+  E(p) = 255 \;\text{ if }\; L(p) < 0 \;\text{ and }\; \exists\, q \in N_4(p) : L(q) > 0,\; L(q) - L(p) > T
+formulaExplanation: >-
+  Marr and Hildreth proposed to smooth with a Gaussian and look for the zero crossings of the
+  Laplacian. At an edge the first derivative has its extremum, so the second derivative crosses
+  zero. The LoG is the one in this catalog, truncated at 4 sigma, and the crossing rule marks
+  the negative side, as in the zero-crossing detector.
+symbols:
+  - {symbol: 'L', meaning: The Laplacian of Gaussian}
+  - {symbol: 'T', meaning: The threshold}
+steps:
+  - Extend the image by the full support with the border mode.
+  - Compute the Laplacian of Gaussian.
+  - Mark each negative pixel with a positive 4-neighbor and a jump above the threshold.
+  - Cut the extension off and write 255 at marked pixels.
+complexity:
+  time: O(N\,\sigma)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The LoG costs four 1D passes of about 8 sigma taps.
+useCases:
+  - Find closed object outlines at a chosen scale.
+  - Teach the second-derivative view of edges.
+advantages:
+  - Edges are thin and form closed contours.
+  - Rotation invariant.
+limitations:
+  - Without a threshold, noise and gentle shading create many false edges.
+  - Corners are rounded at large sigmas.
+artifacts:
+  - Spaghetti-like loops in flat areas when the threshold is 0.
+references:
+  - kind: paper
+    text: Marr, D. and Hildreth, E. Theory of edge detection. Proceedings of the Royal Society of London, Series B 207(1167), 187 to 217, 1980.
+    doi: 10.1098/rspb.1980.0020
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, the Marr-Hildreth edge detector.
+implementation: {path: web/src/core/filters/edges/zero-crossing.ts, symbol: marrHildrethFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Smooth, measure how the brightness curves, and mark where the curve changes sign.
+  howItWorks:
+    - Apply the Laplacian of Gaussian with the chosen sigma.
+    - Find pixels where the result goes from negative to positive.
+    - Keep the crossings with a large enough jump.
+  academic: >-
+    Edges as zero crossings of the LoG, at the scale set by sigma. Marr and Hildreth linked it
+    to the center-surround receptive fields of early vision.
+  paramNotes:
+    sigma: The scale of the edges.
+    threshold: Drops weak crossings.
+  tryThis:
+    - Run it on the Disks image with threshold 0, then with threshold 2.
+  pitfalls:
+    - Leaving the threshold at 0 on a photo. Every small ripple becomes an edge loop.
+  demos: [line-profile]
+related: [log, zero-crossing, canny, dog]
+docsPage: filters/edges/marr-hildreth.md

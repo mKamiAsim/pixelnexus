@@ -1041,6 +1041,8 @@ try {
   const { dogLogDocs } = await import("./filter-docs/doglog.mjs");
   const { gaussianSecondDerivative } = await load("/src/core/filters/linear/dog-log.ts");
   dogLogDocs({ run, pic, row, figure, example, fix, synthetic, mdTable, gaussianSecondDerivative });
+  const { zeroCrossingDocs } = await import("./filter-docs/zc.mjs");
+  zeroCrossingDocs({ run, pic, row, figure, example, mdTable, synthetic });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

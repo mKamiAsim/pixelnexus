@@ -25,6 +25,7 @@ import { freiChenFilter, kirschFilter, lineDetectorFilter, robinsonFilter } from
 import { faridFilter, prewittFilter, robertsFilter, scharrFilter } from "./edges/gradients";
 import { lawsFilter } from "./edges/laws";
 import { sobelFilter } from "./edges/sobel";
+import { marrHildrethFilter, zeroCrossingFilter } from "./edges/zero-crossing";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
 import { binomialFilter } from "./linear/binomial";
@@ -92,6 +93,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   laplacianFilter,
   dogFilter,
   logFilter,
+  zeroCrossingFilter,
+  marrHildrethFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

@@ -120,6 +120,8 @@ const CASES: [string, Params][] = [
   ["laws", { vertical: "E5", horizontal: "L5", window: 5, outputMapping: "clip" }],
   ["dog", { sigma: 1.2, ratio: 1.6, outputMapping: "offset", channelScope: "luminance" }],
   ["log", { sigma: 1.5, outputMapping: "offset", border: "reflect" }],
+  ["zero-crossing", { level: 128, threshold: 10, outputMapping: "clip" }],
+  ["marr-hildreth", { sigma: 1.5, threshold: 1, outputMapping: "clip", border: "replicate" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

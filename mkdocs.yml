@@ -204,6 +204,8 @@ nav:
           - Kirsch compass: filters/edges/kirsch.md
           - Robinson compass: filters/edges/robinson.md
           - Frei-Chen: filters/edges/frei-chen.md
+          - Zero-crossing detector: filters/edges/zero-crossing.md
+          - Marr-Hildreth: filters/edges/marr-hildreth.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md

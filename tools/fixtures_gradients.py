@@ -162,7 +162,37 @@ def dog(plane: FloatArray, sigma: float, ratio: float, mode: str) -> FloatArray:
     return np.asarray(narrow - wide, dtype=np.float64)
 
 
+def zero_crossings(values: FloatArray, threshold: float) -> FloatArray:
+    """255 where v < 0 and a 4-neighbor is above 0 with a jump above the threshold."""
+    e = np.pad(values, 1, mode="edge")
+    out = np.zeros_like(values)
+    for sl in (np.s_[1:-1, 2:], np.s_[1:-1, :-2], np.s_[2:, 1:-1], np.s_[:-2, 1:-1]):
+        q = e[sl]
+        out = np.where((values < 0) & (q > 0) & (q - values > threshold), 255.0, out)
+    return out
+
+
+def zero_crossing_filter(
+    plane: FloatArray, level: float, threshold: float, border: str
+) -> FloatArray:
+    p = np.pad(plane, 1, mode=PAD_MODES[border]) - level  # type: ignore[call-overload]
+    return zero_crossings(p, threshold)[1:-1, 1:-1]
+
+
+def marr_hildreth(plane: FloatArray, sigma: float, threshold: float, border: str) -> FloatArray:
+    reach = int(4 * sigma + 0.5) + 1
+    p = np.pad(plane, reach, mode=PAD_MODES[border])  # type: ignore[call-overload]
+    response = ndimage.gaussian_laplace(p, sigma, mode="nearest")
+    return zero_crossings(response, threshold)[reach:-reach, reach:-reach]
+
+
 def _check_dog_log(plane: FloatArray) -> None:
+    step = np.tile(np.r_[np.full(6, 40.0), np.full(7, 200.0)], (10, 1))
+    edges = marr_hildreth(step, 1.5, 0.0, "reflect")
+    # The LoG is positive on the dark side and negative on the bright side, so the rule marks
+    # the first bright column, 6, and nothing far from the step.
+    if not (edges[:, 6] == 255).all() or edges[:, [0, 1, 2, 3, 9, 10, 11, 12]].any():
+        _fail("Marr-Hildreth does not mark the step at its bright side")
     theirs = skfilters.difference_of_gaussians(plane, 1.5, 2.4, mode="reflect", truncate=3.0)  # type: ignore[no-untyped-call]
     if not np.allclose(dog(plane, 1.5, 1.6, "reflect"), theirs):
         _fail("DoG disagrees with skimage.filters.difference_of_gaussians")
@@ -230,6 +260,20 @@ def add_gradient_cases(plane: FloatArray, add: Add) -> None:
                 {"sigma": sigma, "ratio": ratio, "border": border},
                 dog(plane, sigma, ratio, mode),
                 "scipy.ndimage.gaussian_filter, checked with skimage difference_of_gaussians",
+            )
+        for level, threshold in ((128.0, 0.0), (100.0, 20.0)):
+            add(
+                "zero-crossing",
+                {"level": level, "threshold": threshold, "border": border},
+                zero_crossing_filter(plane, level, threshold, border),
+                "NumPy, the rule of the docs page",
+            )
+        for sigma, threshold in ((1.5, 0.0), (2.0, 3.0)):
+            add(
+                "marr-hildreth",
+                {"sigma": sigma, "threshold": threshold, "border": border},
+                marr_hildreth(plane, sigma, threshold, border),
+                "scipy.ndimage.gaussian_laplace and the zero-crossing rule",
             )
         for sigma in (1.0, 1.7):
             add(

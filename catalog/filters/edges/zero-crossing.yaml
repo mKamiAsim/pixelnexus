@@ -1,7 +1,109 @@
 id: zero-crossing
 name: Zero-crossing detector
+aliases: [Zero crossings]
 family: edges
+tags: [purpose:edge]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
+
+summary: Marks the pixels where a signed response changes sign, such as a Laplacian shown with the offset mapping.
+purpose: Turn a second-derivative response into thin edge lines.
+classification: {linearity: nonlinear, domain: spatial, operation: sign change test}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/zero-crossing.ts, symbol: zeroCrossings}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray mask. With RGB scope, each channel gets
+  its own mask.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: level
+    label: Zero level
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 128
+    description: The value that counts as zero. 128 reads a result that was saved with the offset mapping.
+    effect: Values below the level count as negative, values above as positive.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 0
+    description: The smallest jump across the crossing that counts.
+    effect: Higher values drop weak crossings, which are often noise.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  E(p) = 255 \;\text{ if }\; v(p) < 0 \;\text{ and }\; \exists\, q \in N_4(p) : v(q) > 0,\; v(q) - v(p) > T
+formulaExplanation: >-
+  v is the value minus the zero level, N_4(p) the four neighbors of p and T the threshold. A
+  pixel is marked when it is negative and a neighbor is positive with a jump above T. Only the
+  negative side of each crossing is marked, so the lines are one pixel thick. Other detectors
+  mark the side closer to zero, or both sides. This is the rule used here.
+symbols:
+  - {symbol: 'v', meaning: The value minus the zero level}
+  - {symbol: 'N_4(p)', meaning: The four neighbors of p}
+  - {symbol: 'T', meaning: The threshold}
+steps:
+  - Pad the image by one pixel with the border mode.
+  - Subtract the zero level.
+  - Mark each negative pixel that has a positive neighbor with a jump above the threshold.
+  - Write 255 at marked pixels and 0 elsewhere.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each pixel checks four neighbors.
+useCases:
+  - Turn a Laplacian or LoG result, saved with the offset mapping, into edges.
+  - Find where any signed response changes sign.
+advantages:
+  - Gives closed, one-pixel-thick edge lines.
+  - Works on any signed response map.
+limitations:
+  - Noise crosses zero everywhere, so a threshold or smoothing is needed.
+  - The input must be a signed response with a known zero level, not a plain photo.
+artifacts:
+  - Small closed loops in flat noisy areas when the threshold is low.
+references:
+  - kind: paper
+    text: Marr, D. and Hildreth, E. Theory of edge detection. Proceedings of the Royal Society of London, Series B 207(1167), 187 to 217, 1980.
+    doi: 10.1098/rspb.1980.0020
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, the Marr-Hildreth edge detector.
+implementation: {path: web/src/core/filters/edges/zero-crossing.ts, symbol: zeroCrossingFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Mark the places where a signed result changes from negative to positive.
+  howItWorks:
+    - Read each value relative to the zero level.
+    - Look for a negative pixel next to a positive one.
+    - Mark it when the jump is large enough.
+  academic: >-
+    A sign-change detector on a discrete grid. Applied to the Laplacian of a smoothed image, the
+    zero crossings lie on the edges, where the first derivative has its extremum.
+  paramNotes:
+    level: The value that means zero.
+    threshold: The smallest jump that counts.
+  tryThis:
+    - Apply the Laplacian of Gaussian with the offset mapping, then the zero-crossing detector with level 128.
+  pitfalls:
+    - Running it on a plain photo. Every value is positive there, so the level decides everything.
+  demos: [line-profile]
+related: [marr-hildreth, log, laplacian]
+docsPage: filters/edges/zero-crossing.md
