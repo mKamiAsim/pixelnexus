@@ -17,6 +17,8 @@ interface FilterCase {
   params: Params & { border: BorderMode };
   source: string;
   output: number[];
+  /** A named input from `inputs`, when the case does not use the main input. */
+  input?: string;
 }
 
 const fixtures = JSON.parse(
@@ -26,6 +28,7 @@ const fixtures = JSON.parse(
   width: number;
   height: number;
   input: number[];
+  inputs: Record<string, number[]>;
   cases: FilterCase[];
   gamma: { gamma: number; output: number[] }[];
   grayscale: Record<GrayscaleMethod, number[]> & { rgb: number[] };
@@ -63,7 +66,10 @@ describe("browser filters against SciPy and scikit-image", () => {
   it.each(fixtures.cases.map((c) => [describeCase(c), c] as const))("%s", (_name, c) => {
     const filter = browserFilter(c.filter) as PlaneFilter;
     expect(filter.kind === "smooth" || filter.kind === "derived").toBe(true);
-    const output = filter.plane(input, c.params, {
+    const plane = c.input
+      ? { ...input, data: Float32Array.from(fixtures.inputs[c.input] ?? []) }
+      : input;
+    const output = filter.plane(plane, c.params, {
       border: c.params.border,
       originX: 0,
       originY: 0,

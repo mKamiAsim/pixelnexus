@@ -1,8 +1,106 @@
 id: min
 name: Min filter
+aliases: [Minimum filter, Local minimum]
 family: nonlinear
+tags: [purpose:denoise, noise:impulse]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Same result as gray erosion with a flat square. Shares code.
+
+summary: Replaces each pixel with the smallest value of its window.
+purpose: Remove bright specks (salt noise) and grow dark areas.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/min-max.ts, symbol: extremeRank}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue each get their own minimum, so the three can come from different pixels.
+  With the brightness scope, only luma changes and the colors stay. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. The constant mode reads 0 outside the image, so it darkens the border.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows remove bigger bright specks and grow dark areas further.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \min\,\{\, I(x+i,\, y+j) \;:\; -r \le i \le r,\; -r \le j \le r \,\},
+  \qquad
+  r = ({{size}} - 1) / 2
+formulaExplanation: >-
+  The output is the smallest value in the window. It is the first value of the sorted window,
+  so it is the rank-order filter with rank 1. It is also gray erosion with a flat square
+  structuring element.
+symbols:
+  - {symbol: 'I', meaning: Input channel value}
+  - {symbol: 'I_{\text{out}}', meaning: Output channel value}
+  - {symbol: '(x, y)', meaning: Pixel position}
+  - {symbol: 'r', meaning: Window radius in pixels}
+steps:
+  - Pad the image with the border mode.
+  - For each row, find the smallest value in each run of size pixels.
+  - For each column of that result, find the smallest value in each run of size pixels.
+  - Write it to the output pixel.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: >-
+    N is the number of pixels per channel and k is the window width. A square window is a row
+    times a column, so a row pass and a column pass of k values each give the minimum of all
+    k^2 values.
+useCases:
+  - Remove salt noise, the white specks.
+  - Grow dark lines and dark text.
+  - Find the local background under bright objects.
+advantages:
+  - Simple and exact. Values are never invented.
+  - Removes bright specks completely.
+limitations:
+  - Makes pepper noise worse. Dark specks grow into squares.
+  - Shrinks bright objects and thin bright lines.
+artifacts:
+  - Square dark blocks around dark pixels with large windows.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, order-statistic filters.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.minimum_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.minimum_filter.html
+implementation: {path: web/src/core/filters/nonlinear/min-max.ts, symbol: minFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Each pixel becomes the darkest value of its neighbors.
+  howItWorks:
+    - Take the window around the pixel.
+    - Find the smallest value in it.
+    - Use it as the new pixel.
+  academic: >-
+    The minimum is the order statistic of rank 1. It equals gray erosion with a flat square
+    structuring element, and it is separable, so it costs O(k) per pixel instead of O(k^2).
+  paramNotes:
+    size: Width of the square window. Larger windows spread dark values further.
+  tryThis:
+    - Add salt-and-pepper noise with only salt. Compare the min filter with the median.
+    - Put the Rank stepper on a bright speck. The output is the first value of the sorted list.
+  pitfalls:
+    - Using it on pepper noise. Every dark speck grows into a dark square.
+  demos: [rank-stepper, line-profile]
+related: [max, midpoint, rank-order, median]
+docsPage: filters/nonlinear/min.md

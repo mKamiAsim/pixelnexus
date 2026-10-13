@@ -120,26 +120,85 @@ function CurvePlot({ values }: { values: readonly number[] }) {
   );
 }
 
-function RankWindow({ size, rank, count }: { size: number; rank: number; count: number }) {
+function WindowCells({ size }: { size: number }) {
   const cells = Math.min(size, 9);
   return (
+    <div
+      aria-hidden
+      className="grid w-max gap-px rounded-control border border-border bg-border p-px"
+      style={{ gridTemplateColumns: `repeat(${cells}, 16px)` }}
+    >
+      {Array.from({ length: cells * cells }, (_, i) => (
+        <span
+          key={i}
+          className={i === (cells * cells - 1) / 2 ? "size-4 bg-accent" : "size-4 bg-raised"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RankWindow({
+  size,
+  rank,
+  rankTo,
+  count,
+  note,
+}: {
+  size: number;
+  rank: number;
+  rankTo?: number;
+  count: number;
+  note?: string;
+}) {
+  const range = rankTo !== undefined && rankTo !== rank;
+  return (
     <div className="flex flex-col gap-2 text-xs">
-      <div
-        aria-hidden
-        className="grid w-max gap-px rounded-control border border-border bg-border p-px"
-        style={{ gridTemplateColumns: `repeat(${cells}, 16px)` }}
-      >
-        {Array.from({ length: cells * cells }, (_, i) => (
-          <span
-            key={i}
-            className={i === (cells * cells - 1) / 2 ? "size-4 bg-accent" : "size-4 bg-raised"}
-          />
-        ))}
-      </div>
+      <WindowCells size={size} />
       <p className="text-text-secondary">
-        A {size}x{size} window holds {count} values. They are sorted, and the value at position{" "}
-        {rank} of {count} becomes the output. The highlighted cell is the pixel being computed.
+        A {size}x{size} window holds {count} values. They are sorted, and{" "}
+        {range
+          ? `the values at positions ${rank} to ${rankTo} of ${count} make the output.`
+          : `the value at position ${rank} of ${count} becomes the output.`}{" "}
+        The highlighted cell is the pixel being computed.
         {size > 9 ? " The drawing shows a 9x9 part of the window." : ""}
+      </p>
+      {note ? <p className="text-text-secondary">{note}</p> : null}
+    </div>
+  );
+}
+
+function StatisticWindow({
+  size,
+  count,
+  statistic,
+  note,
+  weights,
+}: {
+  size: number;
+  count: number;
+  statistic: string;
+  note: string;
+  weights?: readonly (readonly number[])[];
+}) {
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      {weights ? (
+        <div className="overflow-x-auto">
+          <KernelGrid
+            rows={weights.map((row) => [...row])}
+            digits={weights.flat().every(Number.isInteger) ? 0 : 3}
+            anchor={{ x: (weights[0]?.length ?? 1) >> 1, y: weights.length >> 1 }}
+            caption="Weights"
+          />
+        </div>
+      ) : (
+        <WindowCells size={size} />
+      )}
+      <Formula tex={`I_{\\text{out}} = ${statistic}`} />
+      <p className="text-text-secondary">
+        The window holds {count} values. {note}
+        {!weights && size > 9 ? " The drawing shows a 9x9 part of the window." : ""}
       </p>
     </div>
   );
@@ -168,6 +227,18 @@ export function OperatorView({
           size={representation.size}
           rank={representation.rank}
           count={representation.count}
+          {...(representation.rankTo !== undefined ? { rankTo: representation.rankTo } : {})}
+          {...(representation.note !== undefined ? { note: representation.note } : {})}
+        />
+      );
+    case "window":
+      return (
+        <StatisticWindow
+          size={representation.size}
+          count={representation.count}
+          statistic={representation.statistic}
+          note={representation.note}
+          {...(representation.weights ? { weights: representation.weights } : {})}
         />
       );
     case "curve":

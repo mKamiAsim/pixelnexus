@@ -229,21 +229,45 @@ export function ImpulseResponse({ filterId, values }: WidgetProps) {
   );
 }
 
-export function RankStepper({ values, image, point, onMove }: WidgetProps) {
-  const size = Math.min(Number(values.size ?? 3), 7);
+/** The window statistic of the real filter at the center of a window, before rounding. */
+function windowResult(filterId: string, values: Params, window: number[][]): number {
+  const filter = browserFilter(filterId);
+  if (!filter || (filter.kind !== "smooth" && filter.kind !== "derived")) return Number.NaN;
+  const size = window.length;
+  const plane = { width: size, height: size, data: Float32Array.from(window.flat()) };
+  const context = { border: borderOf(values), originX: 0, originY: 0, channel: 0 };
+  return filter.plane(plane, values, context).data[(size * size - 1) / 2] ?? Number.NaN;
+}
+
+const MAX_SHOWN = 7;
+
+export function RankStepper({ filterId, values, image, point, onMove }: WidgetProps) {
+  const representation = browserFilter(filterId)?.representation(values);
+  const size =
+    representation?.kind === "rank" || representation?.kind === "window"
+      ? representation.size
+      : Number(values.size ?? 3);
   const channel = channelOf(values);
-  const window = windowAt(image, point, size, borderOf(values), channel).map((row) =>
-    row.map((v) => Math.round(v)),
-  );
+  const full = windowAt(image, point, size, borderOf(values), channel);
+  const shown = Math.min(size, MAX_SHOWN);
+  const cut = (size - shown) >> 1;
+  const window = full
+    .slice(cut, cut + shown)
+    .map((row) => row.slice(cut, cut + shown).map((v) => Math.round(v)));
   const sorted = [...window.flat()].sort((a, b) => a - b);
-  const middle = (sorted.length - 1) >> 1;
-  const mean = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+  // Ranks are marked only when the whole window is shown.
+  const [from, to] =
+    representation?.kind === "rank" && shown === size
+      ? [representation.rank - 1, (representation.rankTo ?? representation.rank) - 1]
+      : [-1, -2];
+  const mean = full.flat().reduce((a, b) => a + b, 0) / (size * size);
+  const result = windowResult(filterId, values, full);
   return (
     <div className="flex flex-col gap-2">
       <Stepper point={point} image={image} onMove={onMove} />
       <Grid
         rows={window}
-        caption={`${size}x${size} window${Number(values.size ?? 3) > 7 ? " (the demo shows at most 7x7)" : ""}`}
+        caption={`${size}x${size} window${size > MAX_SHOWN ? ` (the demo shows the center ${MAX_SHOWN}x${MAX_SHOWN})` : ""}`}
         digits={0}
       />
       <div className="flex flex-col gap-1">
@@ -252,24 +276,32 @@ export function RankStepper({ values, image, point, onMove }: WidgetProps) {
           aria-label="Sorted window values"
           className="tabular flex flex-wrap gap-0.5 font-mono text-2xs"
         >
-          {sorted.map((v, i) => (
-            <li
-              key={i}
-              aria-current={i === middle ? "true" : undefined}
-              className={clsx(
-                "rounded-[3px] border px-1",
-                i === middle ? "border-accent bg-accent text-on-accent" : "border-border-subtle",
-              )}
-            >
-              {v}
-            </li>
-          ))}
+          {sorted.map((v, i) => {
+            const used = i >= from && i <= to;
+            return (
+              <li
+                key={i}
+                aria-current={used ? "true" : undefined}
+                className={clsx(
+                  "rounded-[3px] border px-1",
+                  used ? "border-accent bg-accent text-on-accent" : "border-border-subtle",
+                )}
+              >
+                {v}
+              </li>
+            );
+          })}
         </ol>
       </div>
       <p>
-        The middle value is <strong className="tabular">{sorted[middle]}</strong>. The mean of the
-        same window is <strong className="tabular">{round(mean, 1)}</strong>. One extreme value can
-        pull the mean far away, but not the median.
+        The filter gives <strong className="tabular">{round(result, 2)}</strong> here
+        {from >= 0
+          ? to > from
+            ? `, from the marked values at positions ${from + 1} to ${to + 1}`
+            : `, the value at position ${from + 1}`
+          : ""}
+        . The mean of the same window is <strong className="tabular">{round(mean, 1)}</strong>. One
+        extreme value can pull the mean far away.
       </p>
     </div>
   );

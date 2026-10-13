@@ -17,7 +17,17 @@ import { motionBlurFilter } from "./linear/motion-blur";
 import { triangularFilter } from "./linear/triangular";
 import { unsharpMaskFilter } from "./linear/unsharp-mask";
 import { weightedAverageFilter } from "./linear/weighted-average";
+import {
+  alphaTrimmedMeanFilter,
+  contraharmonicMeanFilter,
+  geometricMeanFilter,
+  harmonicMeanFilter,
+} from "./nonlinear/means";
 import { medianFilter } from "./nonlinear/median";
+import { maxFilter, midpointFilter, minFilter } from "./nonlinear/min-max";
+import { modeFilter } from "./nonlinear/mode";
+import { rankOrderFilter } from "./nonlinear/rank-order";
+import { weightedMedianFilter } from "./nonlinear/weighted-median";
 import type { BrowserFilter } from "./types";
 import { gaussianNoiseFilter, saltPepperNoiseFilter } from "./utility/noise";
 
@@ -33,6 +43,16 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   sobelFilter,
   laplacianFilter,
   medianFilter,
+  weightedMedianFilter,
+  minFilter,
+  maxFilter,
+  midpointFilter,
+  rankOrderFilter,
+  modeFilter,
+  alphaTrimmedMeanFilter,
+  geometricMeanFilter,
+  harmonicMeanFilter,
+  contraharmonicMeanFilter,
   unsharpMaskFilter,
   laplacianSharpenFilter,
   highPassFilter,

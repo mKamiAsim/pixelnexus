@@ -18,6 +18,8 @@ from numpy.typing import NDArray
 from scipy import integrate, ndimage, signal, special
 from skimage import exposure, filters
 
+from fixtures_rank import add_rank_cases
+
 FloatArray = NDArray[np.float64]
 
 # PixelNexus border mode -> SciPy ndimage mode. "grid-wrap" is SciPy's exact periodic extension.
@@ -259,10 +261,17 @@ def filter_cases() -> dict[str, Any]:
 
     cases: list[dict[str, Any]] = []
 
-    def add(filter_id: str, params: dict[str, Any], output: FloatArray, source: str) -> None:
-        cases.append(
-            {"filter": filter_id, "params": params, "source": source, "output": _values(output)}
-        )
+    def add(
+        filter_id: str,
+        params: dict[str, Any],
+        output: FloatArray,
+        source: str,
+        input_name: str | None = None,
+    ) -> None:
+        case = {"filter": filter_id, "params": params, "source": source, "output": _values(output)}
+        if input_name:
+            case["input"] = input_name
+        cases.append(case)
 
     for border in BORDERS:
         mode = SCIPY_MODES[border]
@@ -409,6 +418,8 @@ def filter_cases() -> dict[str, Any]:
                 "scipy.ndimage.correlate",
             )
 
+    extra_inputs = add_rank_cases(plane, add)
+
     fir_taps = [
         {
             "taps": taps,
@@ -471,6 +482,7 @@ def filter_cases() -> dict[str, Any]:
         "width": WIDTH,
         "height": HEIGHT,
         "input": plane.astype(int).reshape(-1).tolist(),
+        "inputs": {name: p.astype(int).reshape(-1).tolist() for name, p in extra_inputs.items()},
         "cases": cases,
         "gamma": gamma_cases,
         "grayscale": grayscale,

@@ -143,3 +143,26 @@ test("the filter panels have no serious accessibility issues", async ({ page }) 
     ).toEqual([]);
   }
 });
+
+test("window filters show their ranks in the Inspector and the Rank stepper", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "trimmed", "Alpha-trimmed mean filter");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText("the values at positions 3 to 7 of 9 make the output.")).toBeVisible();
+  await front(page, "Learn");
+  const sorted = page.getByRole("list", { name: "Sorted window values" });
+  await expect(sorted.locator("li[aria-current='true']")).toHaveCount(5);
+  await expect(page.getByText(/from the marked values at positions 3 to 7/)).toBeVisible();
+
+  await chooseFilter(page, "contraharmonic", "Contraharmonic mean filter");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText(/so dark specks \(pepper\) are removed/)).toBeVisible();
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Contraharmonic mean filter");
+  expect(errors).toEqual([]);
+});

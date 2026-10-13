@@ -1,8 +1,101 @@
 id: mode
 name: Mode filter
+aliases: [Majority filter, Modal filter]
 family: nonlinear
+tags: [purpose:denoise, purpose:smoothing]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Most frequent value in the window.
+
+summary: Replaces each pixel with the value that occurs most often in its window.
+purpose: Clean up images with few distinct values, such as label maps, posterized images and masks.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/mode.ts, symbol: histogramMode}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue each get their own mode. With the brightness scope, luma is rounded to
+  whole values, and its mode replaces it. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows remove bigger islands of a value.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \min\,\Bigl\{\, v \;:\; h_{xy}(v) = \max_{u} h_{xy}(u) \,\Bigr\}
+formulaExplanation: >-
+  h_xy(v) counts how often the whole value v occurs in the window around (x, y). The output is
+  the value with the highest count. When several values share the highest count, the smallest
+  of them wins, as in skimage.filters.rank.modal.
+symbols:
+  - {symbol: 'h_{xy}(v)', meaning: How often value v occurs in the window}
+  - {symbol: 'v, u', meaning: Whole values from 0 to 255}
+steps:
+  - Pad the image with the border mode.
+  - Keep a 256-bin histogram of the window as it slides along each row.
+  - Find the bin with the highest count, the lowest one on a tie.
+  - Write its value to the output pixel.
+complexity:
+  time: O(N\,(k + 256))
+  memory: O(N)
+  notes: N is the number of pixels per channel and k is the window width. Each step updates one column of the histogram and scans its 256 bins.
+useCases:
+  - Remove isolated wrong pixels from a label map or a classified image.
+  - Smooth a posterized image without making new values.
+  - Clean a mask or a binary image. For two values, the mode is the majority vote.
+advantages:
+  - Never makes a value that is not in the window.
+  - Keeps the sharp boundaries between flat regions.
+limitations:
+  - On photos with many distinct values, most values occur once, and the result is noisy.
+  - The tie rule favors dark values.
+artifacts:
+  - Blocky or jagged region boundaries with large windows.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.filters.rank.modal.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.rank.html#skimage.filters.rank.modal
+  - kind: paper
+    text: >-
+      Huang, T. S., Yang, G. J. and Tang, G. Y. A fast two-dimensional median filtering
+      algorithm. IEEE Transactions on Acoustics, Speech, and Signal Processing, 27(1), 1979.
+    doi: 10.1109/TASSP.1979.1163188
+implementation: {path: web/src/core/filters/nonlinear/mode.ts, symbol: modeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Each pixel takes the value that most of its neighbors share.
+  howItWorks:
+    - Take the window around the pixel.
+    - Count how often each value occurs.
+    - Use the most common value. On a tie, use the smallest one.
+  academic: >-
+    The mode of the local histogram. It suits nominal data such as class labels, where a mean or
+    median has no meaning. For two values it is a majority vote.
+  paramNotes:
+    size: Width of the square window.
+  tryThis:
+    - Posterize an image, add a little salt-and-pepper noise, then apply the mode filter.
+  pitfalls:
+    - Using it on a smooth photo. With many distinct values, ties decide the result and it looks noisy.
+  demos: [rank-stepper, line-profile]
+related: [median, rank-order, weighted-median]
+docsPage: filters/nonlinear/mode.md

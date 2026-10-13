@@ -1001,6 +1001,9 @@ try {
     );
   }
 
+  const { rankDocs } = await import("./filter-docs/rank.mjs");
+  rankDocs({ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic });
+
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
   for (const [file, text] of outputs) {

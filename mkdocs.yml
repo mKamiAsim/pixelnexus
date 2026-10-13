@@ -156,6 +156,16 @@ nav:
           - Unsharp mask: filters/linear/unsharp-mask.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
+          - Weighted median filter: filters/nonlinear/weighted-median.md
+          - Min filter: filters/nonlinear/min.md
+          - Max filter: filters/nonlinear/max.md
+          - Midpoint filter: filters/nonlinear/midpoint.md
+          - Rank-order filter: filters/nonlinear/rank-order.md
+          - Mode filter: filters/nonlinear/mode.md
+          - Alpha-trimmed mean filter: filters/nonlinear/alpha-trimmed-mean.md
+          - Geometric mean filter: filters/nonlinear/geometric-mean.md
+          - Harmonic mean filter: filters/nonlinear/harmonic-mean.md
+          - Contraharmonic mean filter: filters/nonlinear/contraharmonic-mean.md
       - Edges:
           - Sobel: filters/edges/sobel.md
       - Enhancement:

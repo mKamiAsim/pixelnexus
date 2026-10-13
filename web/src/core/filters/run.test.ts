@@ -68,6 +68,16 @@ const CASES: [string, Params][] = [
   ["laplacian-sharpen", { neighbors: "8", amount: 0.7, border: "constant" }],
   ["high-pass", { sigma: 1.5, outputMapping: "offset", channelScope: "luminance" }],
   ["high-boost", { sigma: 1.5, boost: 1.7, channelScope: "chroma" }],
+  ["min", { size: 5, border: "replicate" }],
+  ["max", { size: 3, channelScope: "luminance" }],
+  ["midpoint", { size: 5, border: "wrap" }],
+  ["rank-order", { size: 5, by: "percentile", percentile: 80 }],
+  ["mode", { size: 5, border: "reflect" }],
+  ["alpha-trimmed-mean", { size: 5, trim: 4, border: "constant" }],
+  ["geometric-mean", { size: 3, border: "constant" }],
+  ["harmonic-mean", { size: 5, channelScope: "luminance" }],
+  ["contraharmonic-mean", { size: 3, order: -1.5, border: "wrap" }],
+  ["weighted-median", { weights: "1 2 3 2 1", border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

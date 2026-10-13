@@ -1,7 +1,104 @@
 id: contraharmonic-mean
 name: Contraharmonic mean filter
 family: nonlinear
+tags: [purpose:denoise, noise:impulse]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
+
+summary: A ratio of power sums with order Q. Positive Q removes pepper noise and negative Q removes salt noise.
+purpose: Remove salt noise or pepper noise, one kind at a time.
+classification: {linearity: nonlinear, domain: spatial, operation: mean filter}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/means.ts, symbol: contraharmonicMeanFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately. With the brightness scope, only luma changes.
+  Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows smooth more.
+  - key: order
+    label: Order Q
+    type: number
+    min: -5
+    max: 5
+    step: 0.1
+    default: 1.5
+    description: The power Q. Positive values favor bright values, negative values favor dark ones.
+    effect: Q above 0 removes pepper noise, Q below 0 removes salt noise. Q = 0 is the plain mean and Q = -1 is the harmonic mean.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \frac{\displaystyle\sum_{(s,t) \in S_{xy}} I(s,t)^{Q+1}}{\displaystyle\sum_{(s,t) \in S_{xy}} I(s,t)^{Q}},
+  \qquad Q = {{order}}
+formulaExplanation: >-
+  Each value is weighted by its own power Q. With Q above 0 the bright values weigh more, so
+  black specks hardly count. With Q below 0 the dark values weigh more, so white specks hardly
+  count. When Q is below 0 and the window holds a 0, the output is 0, the limit of the formula.
+symbols:
+  - {symbol: 'S_{xy}', meaning: 'The window around pixel (x, y)'}
+  - {symbol: 'Q', meaning: The order of the filter}
+steps:
+  - Pad the image with the border mode.
+  - Compute v to the power Q + 1 and v to the power Q for every value v.
+  - Sum both over each window with running sums, and count the zeros when Q is below 0.
+  - Write the ratio of the two sums, or 0 when Q is below 0 and the window holds a 0.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost per pixel independent of the window size.
+useCases:
+  - Remove pepper noise with Q around 1.5.
+  - Remove salt noise with Q around -1.5.
+advantages:
+  - One filter with one parameter handles either kind of impulse noise.
+  - Fast, with a cost that does not grow with the window.
+limitations:
+  - The sign of Q must match the noise. The wrong sign makes the noise much worse.
+  - It cannot remove salt and pepper noise at the same time.
+artifacts:
+  - With the wrong sign of Q, specks grow into squares.
+  - Dark edges thin out with positive Q, and bright edges with negative Q.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, contraharmonic mean filter.
+implementation: {path: web/src/core/filters/nonlinear/means.ts, symbol: contraharmonicMeanFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: An average in which bright values or dark values get extra weight, set by Q.
+  howItWorks:
+    - Raise every window value to the power Q.
+    - Use those powers as weights for a weighted mean of the values.
+    - Q above 0 favors bright values, Q below 0 favors dark ones.
+  academic: >-
+    It is the weighted mean with weights I^Q. It includes the arithmetic mean (Q = 0) and the
+    harmonic mean (Q = -1). As Q grows toward plus or minus infinity, it approaches the max or
+    the min filter.
+  paramNotes:
+    order: The sign decides which noise it removes. Positive removes black specks, negative removes white ones.
+  tryThis:
+    - Add pepper noise only and try Q = 1.5. Then try Q = -1.5 on the same image.
+  pitfalls:
+    - Choosing the wrong sign of Q. The noise gets much worse.
+  demos: [rank-stepper, line-profile]
+related: [harmonic-mean, geometric-mean, min, max]
+docsPage: filters/nonlinear/contraharmonic-mean.md

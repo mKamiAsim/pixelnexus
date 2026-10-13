@@ -48,7 +48,22 @@ export type Representation =
       readonly size: number;
       /** 1-based rank of the chosen value in the sorted window. */
       readonly rank: number;
+      /** For a statistic of a run of ranks, such as a trimmed mean, the last rank it uses. */
+      readonly rankTo?: number;
       readonly count: number;
+      /** A sentence about how the chosen values become the output. */
+      readonly note?: string;
+    }
+  | {
+      /** A statistic of the window that is not a single rank, such as a mean or the mode. */
+      readonly kind: "window";
+      readonly size: number;
+      readonly count: number;
+      /** The statistic as LaTeX. */
+      readonly statistic: string;
+      readonly note: string;
+      /** Weight of each window cell, for weighted statistics. */
+      readonly weights?: readonly (readonly number[])[];
     }
   | {
       readonly kind: "curve";
