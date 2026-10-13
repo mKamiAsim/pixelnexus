@@ -128,4 +128,13 @@ describe("preview plan", () => {
       angle: 30,
     });
   });
+
+  it("scales frequencies up on the smaller copy, up to 0.5 cycles per pixel", () => {
+    expect(scaleParams(entry("gaussian-lowpass"), { cutoff: 0.05 }, 0.25).cutoff).toBe(0.2);
+    expect(scaleParams(entry("ideal-bandpass"), { center: 0.2, width: 0.05 }, 0.5)).toMatchObject({
+      center: 0.4,
+      width: 0.1,
+    });
+    expect(scaleParams(entry("ideal-lowpass"), { cutoff: 0.3 }, 0.5).cutoff).toBe(0.5);
+  });
 });

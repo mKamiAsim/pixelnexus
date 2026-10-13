@@ -1,7 +1,93 @@
 id: gaussian-lowpass
 name: Gaussian low-pass
+aliases: [Gaussian low pass filter, Gaussian LPF]
 family: frequency
+tags: [purpose:blur, purpose:smoothing]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
+
+summary: Keeps the low frequencies of the image and removes the high ones, which blurs it. The cutoff follows a Gaussian curve, so it does not ring.
+purpose: Smooth an image in the frequency domain, and see which frequencies a blur removes.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/passband.ts, symbol: passResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: cutoff
+    label: Cutoff
+    type: number
+    min: 0.005
+    max: 0.5
+    step: 0.005
+    default: 0.1
+    unit: cycles/px
+    description: The cutoff frequency D_0, in cycles per pixel. 0.5 is the finest detail a pixel grid can hold.
+    effect: Lower values keep only coarser detail, so the result is more blurred.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  H = e^{-D^2 / 2 D_0^2},\quad D = \sqrt{f_x^2 + f_y^2},\ D_0 = {{cutoff}}
+formulaExplanation: >-
+  D is the distance of a frequency from the center of the spectrum, in cycles per pixel, so the filter does the same thing on any image size. Gonzalez and Woods measure D in samples of the padded spectrum. Divide their value by the padded size to get the one here. This equals a Gaussian blur with sigma = 1 / (2 pi D_0) pixels. Ringing near edges comes from the impulse response of H, which is wider the sharper the cutoff.
+symbols:
+  - {symbol: 'D', meaning: The distance from the center of the spectrum in cycles per pixel}
+  - {symbol: 'f_x, f_y', meaning: The frequency along x and y in cycles per pixel}
+  - {symbol: 'D_0', meaning: The cutoff frequency}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Smoothing noise with a known frequency limit.
+  - Teaching how blur and frequency relate.
+advantages:
+  - It does not ring. The impulse response of the low-pass filter is a positive Gaussian.
+limitations:
+  - The change from pass to stop is gradual, so frequencies near the cutoff are only partly kept.
+  - Blurs edges as much as noise.
+artifacts:
+  - None from the cutoff. Very low cutoffs can show the border extension near the image edge.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/passband.ts, symbol: gaussianLowpassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Blur the image by keeping only the slow changes in brightness.
+  howItWorks:
+    - Split the image into waves of many frequencies with the FFT.
+    - Keep the slow waves near the center of the spectrum and drop the fast ones.
+    - Add the kept waves back together.
+  academic: >-
+    The Gaussian low-pass transfer function of Gonzalez and Woods. The transform of a Gaussian is a Gaussian, so the filter has no ringing. The low-pass filter equals a Gaussian blur with sigma = 1 / (2 pi D_0) pixels.
+  paramNotes:
+    cutoff: Where the filter switches from keeping to removing.
+  tryThis:
+    - Open the Frequency explorer and lower the cutoff. Only the bright center of the spectrum stays.
+  pitfalls:
+    - Comparing cutoffs with the other shapes. At D_0 the Gaussian low-pass keeps about 61 percent, the Butterworth half, and the ideal all.
+  demos: [frequency-explorer]
+related: [ideal-lowpass, butterworth-lowpass, gaussian-highpass, gaussian]
+docsPage: filters/frequency/gaussian-lowpass.md

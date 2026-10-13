@@ -38,6 +38,20 @@ import { firLowpassFilter } from "./linear/fir-lowpass";
 import { fastFilter, harrisFilter, moravecFilter, shiTomasiFilter } from "./features/corners";
 import { gaborBankFilter } from "./features/gabor-bank";
 import { matchedVesselFilter } from "./features/matched-vessel";
+import {
+  butterworthBandpassFilter,
+  butterworthBandrejectFilter,
+  butterworthHighpassFilter,
+  butterworthLowpassFilter,
+  gaussianBandpassFilter,
+  gaussianBandrejectFilter,
+  gaussianHighpassFilter,
+  gaussianLowpassFilter,
+  idealBandpassFilter,
+  idealBandrejectFilter,
+  idealHighpassFilter,
+  idealLowpassFilter,
+} from "./frequency/passband";
 import { gaborFilter } from "./linear/gabor";
 import {
   blackhatFilter,
@@ -163,6 +177,18 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   pruningFilter,
   convexHullFilter,
   cclFilter,
+  idealLowpassFilter,
+  idealHighpassFilter,
+  idealBandpassFilter,
+  idealBandrejectFilter,
+  butterworthLowpassFilter,
+  butterworthHighpassFilter,
+  butterworthBandpassFilter,
+  butterworthBandrejectFilter,
+  gaussianLowpassFilter,
+  gaussianHighpassFilter,
+  gaussianBandpassFilter,
+  gaussianBandrejectFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

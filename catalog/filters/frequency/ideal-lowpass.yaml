@@ -1,7 +1,93 @@
 id: ideal-lowpass
 name: Ideal low-pass
+aliases: [Ideal low pass filter, Ideal LPF]
 family: frequency
+tags: [purpose:blur, purpose:smoothing]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
+
+summary: Keeps the low frequencies of the image and removes the high ones, which blurs it. The cutoff is sharp.
+purpose: Smooth an image in the frequency domain, and see which frequencies a blur removes.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/passband.ts, symbol: passResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: cutoff
+    label: Cutoff
+    type: number
+    min: 0.005
+    max: 0.5
+    step: 0.005
+    default: 0.1
+    unit: cycles/px
+    description: The cutoff frequency D_0, in cycles per pixel. 0.5 is the finest detail a pixel grid can hold.
+    effect: Lower values keep only coarser detail, so the result is more blurred.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  H = \begin{cases} 1 & D \le D_0 \\ 0 & D > D_0 \end{cases},\quad D = \sqrt{f_x^2 + f_y^2},\ D_0 = {{cutoff}}
+formulaExplanation: >-
+  D is the distance of a frequency from the center of the spectrum, in cycles per pixel, so the filter does the same thing on any image size. Gonzalez and Woods measure D in samples of the padded spectrum. Divide their value by the padded size to get the one here. Ringing near edges comes from the impulse response of H, which is wider the sharper the cutoff.
+symbols:
+  - {symbol: 'D', meaning: The distance from the center of the spectrum in cycles per pixel}
+  - {symbol: 'f_x, f_y', meaning: The frequency along x and y in cycles per pixel}
+  - {symbol: 'D_0', meaning: The cutoff frequency}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Smoothing noise with a known frequency limit.
+  - Teaching how blur and frequency relate.
+advantages:
+  - The cutoff is exact. Every frequency is either kept or removed.
+limitations:
+  - The sharp cutoff makes strong ringing next to edges.
+  - Blurs edges as much as noise.
+artifacts:
+  - Ringing, ripples that run parallel to strong edges.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/passband.ts, symbol: idealLowpassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Blur the image by keeping only the slow changes in brightness.
+  howItWorks:
+    - Split the image into waves of many frequencies with the FFT.
+    - Keep the slow waves near the center of the spectrum and drop the fast ones.
+    - Add the kept waves back together.
+  academic: >-
+    The ideal low-pass transfer function of Gonzalez and Woods. Its impulse response is a sinc-like function with side lobes, the cause of ringing.
+  paramNotes:
+    cutoff: Where the filter switches from keeping to removing.
+  tryThis:
+    - Open the Frequency explorer and lower the cutoff. Only the bright center of the spectrum stays.
+  pitfalls:
+    - Expecting a clean result. The sharp cutoff rings next to edges.
+  demos: [frequency-explorer]
+related: [butterworth-lowpass, gaussian-lowpass, ideal-highpass, gaussian]
+docsPage: filters/frequency/ideal-lowpass.md

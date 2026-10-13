@@ -1067,6 +1067,20 @@ try {
   recDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
   const { binDocs } = await import("./filter-docs/bin.mjs");
   binDocs({ run, pic, figure, example, mdTable, planeAt });
+  const { freqDocs } = await import("./filter-docs/freq.mjs");
+  const { frequencyResponse } = await load("/src/core/filters/frequency/index.ts");
+  freqDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    createImage,
+    browserFilter,
+    frequencyResponse,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

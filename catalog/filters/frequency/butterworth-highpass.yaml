@@ -1,7 +1,106 @@
 id: butterworth-highpass
 name: Butterworth high-pass
+aliases: [Butterworth high pass filter, Butterworth HPF]
 family: frequency
+tags: [purpose:sharpening, purpose:edge]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
+
+summary: Removes the low frequencies of the image and keeps the high ones, which leaves edges and fine detail. The cutoff is smooth, and the order sets how sharp it is.
+purpose: Find edges and fine detail by removing slow changes in brightness.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/passband.ts, symbol: passResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: cutoff
+    label: Cutoff
+    type: number
+    min: 0.005
+    max: 0.5
+    step: 0.005
+    default: 0.1
+    unit: cycles/px
+    description: The cutoff frequency D_0, in cycles per pixel. 0.5 is the finest detail a pixel grid can hold.
+    effect: Higher values remove more of the coarse detail and keep only the finest.
+  - key: order
+    label: Order
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 2
+    description: The order n of the Butterworth filter.
+    effect: Higher orders make the change from pass to stop sharper, closer to the ideal filter, with more ringing.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  H = 1 - \frac{1}{1 + (D / D_0)^{2n}},\quad D = \sqrt{f_x^2 + f_y^2},\ D_0 = {{cutoff}},\ n = {{order}}
+formulaExplanation: >-
+  D is the distance of a frequency from the center of the spectrum, in cycles per pixel, so the filter does the same thing on any image size. Gonzalez and Woods measure D in samples of the padded spectrum. Divide their value by the padded size to get the one here. The high-pass filter is 1 minus the Butterworth low-pass filter. Ringing near edges comes from the impulse response of H, which is wider the sharper the cutoff.
+symbols:
+  - {symbol: 'D', meaning: The distance from the center of the spectrum in cycles per pixel}
+  - {symbol: 'f_x, f_y', meaning: The frequency along x and y in cycles per pixel}
+  - {symbol: 'D_0', meaning: The cutoff frequency}
+  - {symbol: 'n', meaning: The order}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Finding edges and fine texture.
+  - Removing slow changes in lighting.
+advantages:
+  - The order trades sharpness against ringing. Order 1 does not ring, and order 2 rings very little.
+limitations:
+  - High orders ring almost as much as the ideal filter.
+  - Amplifies noise, which lives at high frequencies.
+artifacts:
+  - Ringing next to strong edges at high orders.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/passband.ts, symbol: butterworthHighpassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Keep only the fast changes in brightness, such as edges and fine detail.
+  howItWorks:
+    - Split the image into waves of many frequencies with the FFT.
+    - Drop the slow waves near the center of the spectrum and keep the fast ones.
+    - Add the kept waves back together. Flat areas become 0.
+  academic: >-
+    The Butterworth high-pass transfer function of order n, as given by Gonzalez and Woods.
+  paramNotes:
+    cutoff: Where the filter switches from keeping to removing.
+    order: How sharp the switch is.
+  tryThis:
+    - Raise the cutoff and watch the edges get thinner in the result.
+  pitfalls:
+    - Very high orders. They ring like the ideal filter.
+  demos: [frequency-explorer]
+related: [ideal-highpass, gaussian-highpass, butterworth-lowpass]
+docsPage: filters/frequency/butterworth-highpass.md

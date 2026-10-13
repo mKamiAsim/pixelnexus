@@ -165,6 +165,18 @@ const CASES: [string, Params][] = [
   ["pruning", { length: 2 }],
   ["convex-hull", { connectivity: "4" }],
   ["ccl-filter", { connectivity: "8", minArea: 3, maxArea: 40 }],
+  ["ideal-lowpass", { cutoff: 0.2 }],
+  ["ideal-highpass", { cutoff: 0.1, border: "reflect101", outputMapping: "offset" }],
+  ["ideal-bandpass", { center: 0.2, width: 0.1, outputMapping: "offset" }],
+  ["ideal-bandreject", { center: 0.25, width: 0.1, border: "wrap" }],
+  ["butterworth-lowpass", { cutoff: 0.1, order: 2 }],
+  ["butterworth-highpass", { cutoff: 0.15, order: 3, outputMapping: "abs" }],
+  ["butterworth-bandpass", { center: 0.2, width: 0.1, order: 2, outputMapping: "offset" }],
+  ["butterworth-bandreject", { center: 0.3, width: 0.05, order: 1, border: "constant" }],
+  ["gaussian-lowpass", { cutoff: 0.08 }],
+  ["gaussian-highpass", { cutoff: 0.1, outputMapping: "offset" }],
+  ["gaussian-bandpass", { center: 0.2, width: 0.1, outputMapping: "offset" }],
+  ["gaussian-bandreject", { center: 0.2, width: 0.1, border: "replicate" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

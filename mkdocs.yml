@@ -243,6 +243,19 @@ nav:
           - Pruning: filters/morphology/pruning.md
           - Convex hull: filters/morphology/convex-hull.md
           - Connected-component filtering: filters/morphology/ccl-filter.md
+      - Frequency:
+          - Ideal low-pass: filters/frequency/ideal-lowpass.md
+          - Ideal high-pass: filters/frequency/ideal-highpass.md
+          - Ideal band-pass: filters/frequency/ideal-bandpass.md
+          - Ideal band-reject: filters/frequency/ideal-bandreject.md
+          - Butterworth low-pass: filters/frequency/butterworth-lowpass.md
+          - Butterworth high-pass: filters/frequency/butterworth-highpass.md
+          - Butterworth band-pass: filters/frequency/butterworth-bandpass.md
+          - Butterworth band-reject: filters/frequency/butterworth-bandreject.md
+          - Gaussian low-pass: filters/frequency/gaussian-lowpass.md
+          - Gaussian high-pass: filters/frequency/gaussian-highpass.md
+          - Gaussian band-pass: filters/frequency/gaussian-bandpass.md
+          - Gaussian band-reject: filters/frequency/gaussian-bandreject.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

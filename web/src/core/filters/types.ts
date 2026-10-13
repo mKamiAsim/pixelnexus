@@ -101,6 +101,19 @@ export type Representation =
       readonly note: string;
     }
   | {
+      /** A response H(fx, fy) that multiplies the spectrum. */
+      readonly kind: "frequency";
+      /** The response as LaTeX. */
+      readonly formula: string;
+      /** Grid size. The grid runs from -0.5 to 0.5 cycles per pixel in fx and in fy. */
+      readonly size: number;
+      /** H on the grid, row by row, with fy growing downward. */
+      readonly values: readonly number[];
+      /** H along the positive fx axis from 0 to 0.5 cycles per pixel. */
+      readonly profile: readonly number[];
+      readonly note: string;
+    }
+  | {
       readonly kind: "stages";
       /** The steps in order, each with a LaTeX formula. */
       readonly stages: readonly {

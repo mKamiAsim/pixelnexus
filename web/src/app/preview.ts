@@ -85,7 +85,10 @@ export function planPreview(
   };
 }
 
-/** Scale parameters measured in pixels to a smaller copy of the image. */
+/**
+ * Scale parameters measured in pixels to a smaller copy of the image. Frequencies in cycles per
+ * pixel grow by the same factor, since a detail spans fewer pixels on the copy.
+ */
 export function scaleParams(
   entry: Filter,
   values: Readonly<Record<string, ParamValue>>,
@@ -94,8 +97,9 @@ export function scaleParams(
   const out: Record<string, ParamValue> = { ...values };
   for (const param of entryParams(entry)) {
     const value = values[param.key];
-    if (param.unit !== "px" || typeof value !== "number") continue;
-    let scaled = value * scale;
+    if (typeof value !== "number") continue;
+    if (param.unit !== "px" && param.unit !== "cycles/px") continue;
+    let scaled = param.unit === "px" ? value * scale : value / scale;
     if (param.type === "integer") {
       scaled = Math.round(scaled);
       if (param.oddOnly && scaled % 2 === 0) scaled += 1;

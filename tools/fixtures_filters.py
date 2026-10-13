@@ -24,6 +24,7 @@ from fixtures_binary import add_binary_cases
 from fixtures_canny import add_canny_cases
 from fixtures_corners import add_corner_cases
 from fixtures_edge import add_edge_plane_cases
+from fixtures_frequency import add_frequency_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_morphology import add_morphology_cases, element_cases
@@ -468,6 +469,7 @@ def filter_cases() -> dict[str, Any]:
     add_corner_cases(plane, add)
     add_morphology_cases(plane, add)
     extra_inputs |= add_binary_cases(plane, add)
+    add_frequency_cases(plane, add)
 
     fir_taps = [
         {

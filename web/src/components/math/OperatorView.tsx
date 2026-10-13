@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import type { KernelInfo, Representation } from "@/core/filters/types";
 
 import { Formula } from "./Formula";
+import { FrequencyView } from "./FrequencyView";
 import { flipKernel } from "./kernels";
 import { KernelGrid } from "./KernelGrid";
 
@@ -330,6 +331,16 @@ export function OperatorView({
             <p className="text-text-secondary">{representation.note}</p>
           ) : null}
         </div>
+      );
+    case "frequency":
+      return (
+        <FrequencyView
+          formula={representation.formula}
+          size={representation.size}
+          values={representation.values}
+          profile={representation.profile}
+          note={representation.note}
+        />
       );
     case "stages":
       return (
