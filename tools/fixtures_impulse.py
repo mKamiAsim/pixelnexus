@@ -15,6 +15,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage, stats
 
+from fixtures_edge import add_edge_color_cases
 from fixtures_rank import PAD_MODES, SCIPY_MODES, flat_windows, windows
 
 FloatArray = NDArray[np.float64]
@@ -224,6 +225,7 @@ def color_cases() -> dict[str, Any]:
                 mad_outlier(image, size, t, output, border),
                 "NumPy windows, checked with scipy.stats.median_abs_deviation",
             )
+    add_edge_color_cases(image, add)
     return {
         "width": image.shape[1],
         "height": image.shape[0],

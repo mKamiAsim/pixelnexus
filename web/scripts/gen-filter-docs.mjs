@@ -1008,6 +1008,12 @@ try {
     ...{ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     browserFilter,
   });
+  const { edgeDocs } = await import("./filter-docs/edge.mjs");
+  const { kuwaharaRegions, nagaoRegions } = await load("/src/core/filters/nonlinear/subregions.ts");
+  edgeDocs({
+    ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
+    ...{ browserFilter, kuwaharaRegions, nagaoRegions },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

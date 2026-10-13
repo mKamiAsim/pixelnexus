@@ -268,6 +268,15 @@ export function OperatorView({
           </p>
         </div>
       );
+    case "iterative":
+      return (
+        <div className="flex flex-col gap-2 text-xs">
+          <Formula tex={representation.update} />
+          <p className="text-text-secondary">
+            The step runs {representation.iterations} times. {representation.note}
+          </p>
+        </div>
+      );
     case "generator":
       return <p className="text-xs text-text-secondary">{representation.description}</p>;
   }

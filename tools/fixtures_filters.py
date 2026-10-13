@@ -18,6 +18,7 @@ from numpy.typing import NDArray
 from scipy import integrate, ndimage, signal, special
 from skimage import exposure, filters
 
+from fixtures_edge import add_edge_plane_cases
 from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_rank import add_rank_cases
 
@@ -420,6 +421,7 @@ def filter_cases() -> dict[str, Any]:
             )
 
     extra_inputs = add_rank_cases(plane, add) | add_impulse_cases(plane, add)
+    add_edge_plane_cases(plane, add)
 
     fir_taps = [
         {

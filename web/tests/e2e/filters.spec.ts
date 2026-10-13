@@ -79,7 +79,7 @@ test("the Inspector shows the kernel that runs, and follows the parameters", asy
 
 test("planned filters are listed but cannot run", async ({ page }) => {
   await openTestImage(page, "Siemens star");
-  await chooseFilter(page, "bilateral", "Bilateral filter");
+  await chooseFilter(page, "dncnn", "DnCNN");
   await front(page, "Properties");
   await expect(page.getByText(/This filter is planned for Phase/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeDisabled();
@@ -166,5 +166,17 @@ test("window filters show their ranks in the Inspector and the Rank stepper", as
   await front(page, "Properties");
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await applied(page, "Contraharmonic mean filter");
+  expect(errors).toEqual([]);
+});
+
+test("the Weight viewer shows the bilateral weights at the probe pixel", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "bilateral", "Bilateral filter");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Weight viewer" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Product, normalized/ })).toBeVisible();
+  await expect(page.getByText(/of the total weight/)).toBeVisible();
   expect(errors).toEqual([]);
 });

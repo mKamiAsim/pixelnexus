@@ -12,12 +12,11 @@ import { hsvToRgb } from "@/core/color/convert";
 import { sobelGradients } from "@/core/filters/edges/sobel";
 import { createPlane } from "@/core/filters/planes";
 import { browserFilter } from "@/core/filters/registry";
-import { borderOf, processRegion, runFilter } from "@/core/filters/run";
+import { borderOf, runFilter } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
-import { hasTransparency } from "@/core/image/encode";
 import { createImage, type RgbaImage } from "@/core/image/types";
 
-import { channelOf, round, valueAt, windowAt, type Point } from "./common";
+import { channelOf, engineValueAt, round, valueAt, windowAt, type Point } from "./common";
 
 export interface WidgetProps {
   readonly filterId: string;
@@ -54,7 +53,7 @@ function PixelCanvas({ image, scale, label }: { image: RgbaImage; scale: number;
   );
 }
 
-function Stepper({
+export function Stepper({
   point,
   image,
   onMove,
@@ -120,20 +119,6 @@ function Grid({
       </tbody>
     </table>
   );
-}
-
-/** The value of the real filter at one pixel, before rounding. */
-function engineValueAt(filterId: string, values: Params, image: RgbaImage, point: Point): number {
-  const filter = browserFilter(filterId);
-  if (!filter) return Number.NaN;
-  const result = processRegion(
-    image,
-    filter,
-    values,
-    { x: point.x, y: point.y, width: 1, height: 1 },
-    hasTransparency(image),
-  );
-  return result.color[0].data[0] ?? Number.NaN;
 }
 
 export function NeighborhoodStepper({ filterId, values, image, point, onMove }: WidgetProps) {

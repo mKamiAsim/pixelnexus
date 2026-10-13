@@ -1,10 +1,127 @@
 id: bilateral
 name: Bilateral filter
-aliases:
-- Vector bilateral filter
+aliases: [Vector bilateral filter, Edge-preserving blur]
 family: nonlinear
+tags: [purpose:smoothing, purpose:denoise, noise:gaussian]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Vector bilateral filter is the color-distance mode of this entry.
+
+summary: A blur whose weights fall with distance and with difference in value, so it smooths flat areas and stops at edges.
+purpose: Remove noise and fine texture while keeping edges sharp.
+classification: {linearity: nonlinear, domain: spatial, operation: weighted mean with data-dependent weights}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/bilateral.ts, symbol: bilateralWeights}
+supportRadius: ceil(3 sigma_s)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  In the channel mode, each of red, green and blue gets its own weights from its own
+  differences. In the color mode, the difference is the distance between RGB colors, and all
+  three channels share the weights, the vector bilateral filter. The color mode does not mix
+  colors across a color edge. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigmaSpace
+    label: Spatial sigma
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 3
+    unit: px
+    description: The spread of the distance weight. The window is the disk of radius 3 sigma, rounded up.
+    effect: Larger values reach further and smooth more. The cost grows with its square.
+  - key: sigmaRange
+    label: Range sigma
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 30
+    description: The spread of the value weight, in 8-bit levels.
+    effect: Small values keep even weak edges. Large values smooth across edges, like a Gaussian blur.
+  - key: range
+    label: Difference
+    type: select
+    default: channel
+    options:
+      - {value: channel, label: Each channel}
+      - {value: color, label: Color distance}
+    description: Measure the difference in each channel on its own, or as the distance between colors.
+    effect: Color distance shares the weights over the channels, so no color fringes appear.
+  - ref: border
+
+formula: |
+  I_{\text{out}}(p) = \frac{\sum_{q \in \Omega_p} w(p,q)\, I(q)}{\sum_{q \in \Omega_p} w(p,q)},
+  \qquad
+  w(p,q) = e^{-\frac{\lVert p - q \rVert^2}{2\sigma_s^2}}\; e^{-\frac{d(I(p),\, I(q))^2}{2\sigma_r^2}}
+formulaExplanation: >-
+  The weight of a neighbor q is the product of two Gaussians. The first falls with the distance
+  between the pixels, the second with the difference d between their values. Neighbors across
+  an edge have a large d, so they get almost no weight, and the edge stays. Omega_p is the disk
+  of radius ceil(3 sigma_s) around p, the window of OpenCV's bilateralFilter.
+symbols:
+  - {symbol: '\sigma_s', meaning: The spatial sigma in pixels}
+  - {symbol: '\sigma_r', meaning: The range sigma in 8-bit levels}
+  - {symbol: 'd', meaning: 'The difference in one channel, or the distance between RGB colors'}
+  - {symbol: '\Omega_p', meaning: The disk-shaped window around p}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel, visit every neighbor in the disk of radius ceil(3 sigma_s).
+  - Multiply the distance weight by the value weight of the neighbor.
+  - Write the weighted mean of the neighbors, divided by the sum of the weights.
+complexity:
+  time: O(N\,\sigma_s^2)
+  memory: O(N)
+  notes: N is the number of pixels. The disk holds about 28 sigma_s squared pixels.
+useCases:
+  - Smooth skin and flat surfaces in photos while keeping edges.
+  - Remove noise before edge detection or segmentation.
+  - Flatten texture for a cartoon look, by running it several times.
+advantages:
+  - Keeps edges sharp, unlike Gaussian blur.
+  - The color mode treats colors as a whole and makes no color fringes.
+limitations:
+  - Costs much more than a Gaussian blur for large spatial sigmas.
+  - Noise with a spread like the edge contrast is kept as if it were an edge.
+artifacts:
+  - Staircase steps on smooth ramps, called gradient reversal, with small range sigmas.
+  - Halos are rare but appear when the range sigma is close to the edge contrast.
+references:
+  - kind: paper
+    text: Tomasi, C. and Manduchi, R. Bilateral filtering for gray and color images. Sixth International Conference on Computer Vision, 1998, pages 839 to 846.
+    doi: 10.1109/ICCV.1998.710815
+  - kind: library
+    text: OpenCV documentation, cv::bilateralFilter.
+    url: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html
+implementation: {path: web/src/core/filters/nonlinear/bilateral.ts, symbol: bilateralFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: A blur that only mixes a pixel with neighbors that look like it.
+  howItWorks:
+    - Give each neighbor a weight that falls with its distance, as in a Gaussian blur.
+    - Multiply by a second weight that falls with the difference in value.
+    - Average the neighbors with these weights.
+  academic: >-
+    The kernel changes from pixel to pixel, because the range weight depends on the data. The
+    filter is nonlinear and not separable. As sigma_r grows, the range weights approach 1 and
+    the filter becomes a Gaussian blur on a disk.
+  paramNotes:
+    sigmaSpace: How far the filter reaches, in pixels.
+    sigmaRange: How large a difference still counts as similar. Edges stronger than about twice this value stay.
+    range: Each channel on its own, or the distance between whole colors.
+  tryThis:
+    - Open the Weight viewer and step across an edge. Watch the weights on the far side vanish.
+    - Run the filter three times with range sigma 20 for a cartoon look.
+  pitfalls:
+    - Setting the range sigma larger than the contrast of the edges you want to keep.
+  demos: [weight-viewer, line-profile]
+related: [joint-bilateral, guided, anisotropic-diffusion, gaussian]
+docsPage: filters/nonlinear/bilateral.md

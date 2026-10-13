@@ -75,6 +75,14 @@ export type Representation =
       readonly weights: readonly { readonly name: string; readonly value: number }[];
       readonly space: "encoded" | "linear";
     }
+  | {
+      /** A filter that repeats an update step. */
+      readonly kind: "iterative";
+      readonly iterations: number;
+      /** The update step as LaTeX. */
+      readonly update: string;
+      readonly note: string;
+    }
   | { readonly kind: "generator"; readonly description: string };
 
 interface FilterBase {

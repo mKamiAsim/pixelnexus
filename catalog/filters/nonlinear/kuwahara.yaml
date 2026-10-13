@@ -1,7 +1,99 @@
 id: kuwahara
 name: Kuwahara filter
 family: nonlinear
+tags: [purpose:smoothing, purpose:denoise]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
+
+summary: Writes the mean of the window quadrant whose values vary the least, which smooths areas and keeps edges.
+purpose: Smooth noise and texture while keeping edges sharp, often for a painted look.
+classification: {linearity: nonlinear, domain: spatial, operation: adaptive local mean}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/subregions.ts, symbol: kuwaharaRegions}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  The variance is measured on luma, 0.2126 R + 0.7152 G + 0.0722 B. All three channels take
+  their means from the same quadrant, so colors do not mix across an edge. For a gray image
+  this is the classic filter. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width of the window. Each quadrant is half of it, plus the center row and column.
+    effect: Larger windows smooth more and give a stronger painted look.
+  - ref: border
+
+formula: |
+  I_{\text{out}}(x,y) = \mu_{k^*},
+  \qquad
+  k^* = \operatorname*{arg\,min}_{k \in \{1,2,3,4\}} \sigma_k^2
+formulaExplanation: >-
+  The window of side 2a + 1 is split into four squares of side a + 1, the top-left,
+  top-right, bottom-left and bottom-right quadrants. Each one holds the center pixel. mu_k
+  and sigma_k squared are the mean and variance of quadrant k. The output is the mean of the
+  quadrant with the smallest variance. On a tie, the first quadrant in that order wins.
+symbols:
+  - {symbol: '\mu_k', meaning: The mean of quadrant k}
+  - {symbol: '\sigma_k^2', meaning: The variance of the luma in quadrant k}
+  - {symbol: 'a', meaning: 'Half the window size, (size - 1) / 2'}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel, compute the mean and variance of the luma in each of the four quadrants.
+  - Pick the quadrant with the smallest variance.
+  - Write the mean of each color channel over that quadrant.
+complexity:
+  time: O(N\,a^2)
+  memory: O(N)
+  notes: N is the number of pixels and a is half the window size. Each pixel reads four quadrants of (a + 1) squared pixels.
+useCases:
+  - Smooth noise in flat areas while keeping strong edges.
+  - Give a photo a painted, flat-colored look.
+  - Smooth medical and microscope images before segmentation.
+advantages:
+  - Keeps edges sharp. A window on an edge always has a quadrant on one side of it.
+  - Simple and has a single parameter.
+limitations:
+  - Makes blocky artifacts in textured areas, because neighboring pixels pick different quadrants.
+  - Corners and thin lines are rounded off or removed.
+artifacts:
+  - Square, brush-like blocks of flat color, larger with larger windows.
+references:
+  - kind: paper
+    text: Kuwahara, M., Hachimura, K., Eiho, S. and Kinoshita, M. Processing of RI-angiocardiographic images. In Digital Processing of Biomedical Images, Plenum Press, 1976, pages 187 to 202.
+    doi: 10.1007/978-1-4684-0769-3_13
+implementation: {path: web/src/core/filters/nonlinear/subregions.ts, symbol: kuwaharaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel takes the mean of the calmest quarter of its window.
+  howItWorks:
+    - Split the window into four overlapping squares that all touch the center.
+    - Measure how much the values in each square vary.
+    - Use the mean of the square that varies the least.
+  academic: >-
+    An adaptive mean that picks its averaging region by the smallest local variance. Near an
+    edge, the quadrants that cross the edge have a large variance, so a quadrant on one side
+    wins, and the edge is not averaged away.
+  paramNotes:
+    size: Width of the whole window. Each quadrant is (size + 1) / 2 wide.
+  tryThis:
+    - Apply it with size 9 to a portrait. Compare with a box filter of the same size.
+  pitfalls:
+    - Expecting it to keep fine texture. It turns texture into flat blocks.
+  demos: [line-profile]
+related: [nagao-matsuyama, bilateral, median]
+docsPage: filters/nonlinear/kuwahara.md

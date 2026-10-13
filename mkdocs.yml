@@ -160,6 +160,12 @@ nav:
           - Adaptive median filter: filters/nonlinear/adaptive-median.md
           - Switching median filter: filters/nonlinear/switching-median.md
           - Vector median filter: filters/nonlinear/vector-median.md
+          - Kuwahara filter: filters/nonlinear/kuwahara.md
+          - Nagao-Matsuyama filter: filters/nonlinear/nagao-matsuyama.md
+          - Bilateral filter: filters/nonlinear/bilateral.md
+          - Guided filter: filters/nonlinear/guided.md
+          - Anisotropic diffusion: filters/nonlinear/anisotropic-diffusion.md
+          - Vector anisotropic diffusion: filters/nonlinear/vector-anisotropic-diffusion.md
           - Min filter: filters/nonlinear/min.md
           - Max filter: filters/nonlinear/max.md
           - Midpoint filter: filters/nonlinear/midpoint.md

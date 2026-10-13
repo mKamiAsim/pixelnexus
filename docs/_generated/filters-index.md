@@ -17,16 +17,22 @@
 | [Weighted average filter](linear/weighted-average.md) | Linear spatial filters | Filters with a kernel that you type, divided by its sum when you ask. | Implemented and tested |
 | [Adaptive median filter](nonlinear/adaptive-median.md) | Nonlinear spatial filters | A median filter whose window grows where the noise is dense, and that keeps pixels that are not noise. | Implemented and tested |
 | [Alpha-trimmed mean filter](nonlinear/alpha-trimmed-mean.md) | Nonlinear spatial filters | Drops the smallest and largest values of each window and averages the rest. | Implemented and tested |
+| [Anisotropic diffusion](nonlinear/anisotropic-diffusion.md) | Nonlinear spatial filters | Smooths by letting values flow between neighbors, with a flow that stops at edges. | Implemented and tested |
+| [Bilateral filter](nonlinear/bilateral.md) | Nonlinear spatial filters | A blur whose weights fall with distance and with difference in value, so it smooths flat areas and stops at edges. | Implemented and tested |
 | [Contraharmonic mean filter](nonlinear/contraharmonic-mean.md) | Nonlinear spatial filters | A ratio of power sums with order Q. Positive Q removes pepper noise and negative Q removes salt noise. | Implemented and tested |
 | [Geometric mean filter](nonlinear/geometric-mean.md) | Nonlinear spatial filters | Replaces each pixel with the geometric mean of its window, the root of the product of the values. | Implemented and tested |
+| [Guided filter](nonlinear/guided.md) | Nonlinear spatial filters | Fits a straight-line model of the guide in every window, so it smooths flat areas and keeps edges, at a cost that does not grow with the radius. | Implemented and tested |
 | [Harmonic mean filter](nonlinear/harmonic-mean.md) | Nonlinear spatial filters | Replaces each pixel with the harmonic mean of its window, n divided by the sum of the inverses. | Implemented and tested |
+| [Kuwahara filter](nonlinear/kuwahara.md) | Nonlinear spatial filters | Writes the mean of the window quadrant whose values vary the least, which smooths areas and keeps edges. | Implemented and tested |
 | [Max filter](nonlinear/max.md) | Nonlinear spatial filters | Replaces each pixel with the largest value of its window. | Implemented and tested |
 | [Median filter](nonlinear/median.md) | Nonlinear spatial filters | Replaces each pixel with the middle value of its window. | Implemented and tested |
 | [Midpoint filter](nonlinear/midpoint.md) | Nonlinear spatial filters | Replaces each pixel with the value halfway between the smallest and largest in its window. | Implemented and tested |
 | [Min filter](nonlinear/min.md) | Nonlinear spatial filters | Replaces each pixel with the smallest value of its window. | Implemented and tested |
 | [Mode filter](nonlinear/mode.md) | Nonlinear spatial filters | Replaces each pixel with the value that occurs most often in its window. | Implemented and tested |
+| [Nagao-Matsuyama filter](nonlinear/nagao-matsuyama.md) | Nonlinear spatial filters | Writes the mean of the calmest of nine subregions of a 5x5 window, with shapes that follow edges in eight directions. | Implemented and tested |
 | [Rank-order filter](nonlinear/rank-order.md) | Nonlinear spatial filters | Sorts each window and keeps the value at a chosen rank or percentile. | Implemented and tested |
 | [Switching median filter](nonlinear/switching-median.md) | Nonlinear spatial filters | Replaces a pixel by the window median only when it differs from that median by more than a threshold. | Implemented and tested |
+| [Vector anisotropic diffusion](nonlinear/vector-anisotropic-diffusion.md) | Nonlinear spatial filters | Anisotropic diffusion for color images, with one conduction for all channels from the color difference. | Implemented and tested |
 | [Vector median filter](nonlinear/vector-median.md) | Nonlinear spatial filters | Replaces each pixel with the window color that is closest, in total, to all the other window colors. | Implemented and tested |
 | [Weighted median filter](nonlinear/weighted-median.md) | Nonlinear spatial filters | A median in which each window position counts as many times as its weight. | Implemented and tested |
 | [Median absolute deviation thresholding](adaptive/mad-outlier.md) | Adaptive and statistical filters | Marks or repairs values that lie more than t times the robust scale S from the local median. | Implemented and tested |

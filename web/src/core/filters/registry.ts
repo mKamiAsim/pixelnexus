@@ -19,6 +19,12 @@ import { triangularFilter } from "./linear/triangular";
 import { unsharpMaskFilter } from "./linear/unsharp-mask";
 import { weightedAverageFilter } from "./linear/weighted-average";
 import { adaptiveMedianFilter } from "./nonlinear/adaptive-median";
+import { bilateralFilter } from "./nonlinear/bilateral";
+import {
+  anisotropicDiffusionFilter,
+  vectorAnisotropicDiffusionFilter,
+} from "./nonlinear/diffusion";
+import { guidedFilter } from "./nonlinear/guided";
 import {
   alphaTrimmedMeanFilter,
   contraharmonicMeanFilter,
@@ -29,6 +35,7 @@ import { medianFilter } from "./nonlinear/median";
 import { maxFilter, midpointFilter, minFilter } from "./nonlinear/min-max";
 import { modeFilter } from "./nonlinear/mode";
 import { rankOrderFilter } from "./nonlinear/rank-order";
+import { kuwaharaFilter, nagaoMatsuyamaFilter } from "./nonlinear/subregions";
 import { switchingMedianFilter } from "./nonlinear/switching-median";
 import { vectorMedianFilter } from "./nonlinear/vector-median";
 import { weightedMedianFilter } from "./nonlinear/weighted-median";
@@ -54,6 +61,12 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   vectorMedianFilter,
   deadPixelFilter,
   madOutlierFilter,
+  kuwaharaFilter,
+  nagaoMatsuyamaFilter,
+  bilateralFilter,
+  guidedFilter,
+  anisotropicDiffusionFilter,
+  vectorAnisotropicDiffusionFilter,
   minFilter,
   maxFilter,
   midpointFilter,

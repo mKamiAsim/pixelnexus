@@ -1,8 +1,10 @@
 /** Shared helpers for the Learn panel widgets. They read pixels exactly as the filters do. */
 import { luma709 } from "@/core/color/convert";
 import { borderIndex, type BorderMode } from "@/core/filters/planes";
-import { scopeOf } from "@/core/filters/run";
+import { browserFilter } from "@/core/filters/registry";
+import { processRegion, scopeOf } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
+import { hasTransparency } from "@/core/image/encode";
 import type { RgbaImage } from "@/core/image/types";
 
 export interface Point {
@@ -40,3 +42,22 @@ export function windowAt(
 }
 
 export const round = (v: number, digits = 1) => Number(v.toFixed(digits));
+
+/** The value of the real filter at one pixel, before rounding. */
+export function engineValueAt(
+  filterId: string,
+  values: Params,
+  image: RgbaImage,
+  point: Point,
+): number {
+  const filter = browserFilter(filterId);
+  if (!filter) return Number.NaN;
+  const result = processRegion(
+    image,
+    filter,
+    values,
+    { x: point.x, y: point.y, width: 1, height: 1 },
+    hasTransparency(image),
+  );
+  return result.color[0].data[0] ?? Number.NaN;
+}

@@ -99,7 +99,7 @@ describe("engine client", () => {
   });
 
   it("refuses filters that are only planned", async () => {
-    await expect(runJob({ filterId: "bilateral", values: {}, image })).rejects.toBeInstanceOf(
+    await expect(runJob({ filterId: "dncnn", values: {}, image })).rejects.toBeInstanceOf(
       EngineError,
     );
   });

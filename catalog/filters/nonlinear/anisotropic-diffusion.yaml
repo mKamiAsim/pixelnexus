@@ -1,10 +1,133 @@
 id: anisotropic-diffusion
 name: Anisotropic diffusion
-aliases:
-- Perona-Malik diffusion
+aliases: [Perona-Malik diffusion]
 family: nonlinear
+tags: [purpose:smoothing, purpose:denoise]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Perona-Malik.
+
+summary: Smooths by letting values flow between neighbors, with a flow that stops at edges.
+purpose: Remove noise in flat areas while keeping and even sharpening edges.
+classification: {linearity: nonlinear, domain: iterative, operation: nonlinear diffusion}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/diffusion.ts, symbol: conduction}
+supportRadius: iterations
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue diffuse separately, each with its own conduction. With the brightness
+  scope, only luma diffuses. The vector version shares one conduction over the channels.
+  Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect, the zero-flux boundary of the paper.
+  The image is extended once by one pixel per iteration. For the reflect modes and wrap this
+  equals applying the border rule at every step.
+
+params:
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 100
+    default: 15
+    description: How many update steps run.
+    effect: More steps smooth more. Edges stay, but low-contrast detail fades.
+  - key: kappa
+    label: Edge threshold K
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 20
+    description: The difference, in 8-bit levels, at which the conduction falls off.
+    effect: Differences well below K are smoothed. Differences well above K are kept as edges.
+  - key: lambda
+    label: Step size
+    type: number
+    min: 0.01
+    max: 0.25
+    step: 0.01
+    default: 0.2
+    description: How far each step moves a value toward its neighbors. At most 0.25 keeps the scheme stable.
+    effect: Larger steps smooth faster per iteration.
+  - key: conduction
+    label: Conduction
+    type: select
+    default: exponential
+    options:
+      - {value: exponential, label: 'Exponential, exp(-(d/K)^2)'}
+      - {value: quadratic, label: 'Rational, 1 / (1 + (d/K)^2)'}
+    description: The function g that turns a difference d into a conduction. Both come from Perona and Malik.
+    effect: The exponential favors high-contrast edges. The rational one favors wide regions over small ones.
+  - ref: border
+    default: reflect
+
+formula: |
+  I^{t+1} = I^{t} + \lambda \sum_{n \in \{N,S,E,W\}} g\bigl(|\nabla_n I^{t}|\bigr)\, \nabla_n I^{t},
+  \qquad
+  g(d) = e^{-(d/K)^2} \;\text{ or }\; \frac{1}{1 + (d/K)^2}
+formulaExplanation: >-
+  nabla_N I is the difference to the north neighbor, I(x, y - 1) - I(x, y), and the same for
+  south, east and west. Each step moves a value toward its neighbors by lambda times the
+  differences, weighted by the conduction g. Small differences have g near 1 and are smoothed.
+  Large differences, edges, have g near 0 and are kept.
+symbols:
+  - {symbol: '\nabla_n I', meaning: The difference to the neighbor in direction n}
+  - {symbol: 'g', meaning: The conduction function}
+  - {symbol: 'K', meaning: The edge threshold}
+  - {symbol: '\lambda', meaning: The step size}
+  - {symbol: 't', meaning: The step number}
+steps:
+  - Extend the image by one pixel per iteration with the border mode.
+  - For each pixel, compute the differences to its four neighbors.
+  - Add lambda times the sum of each difference times its conduction.
+  - Repeat for the given number of iterations, then cut the extension off.
+complexity:
+  time: O(N\,T)
+  memory: O(N)
+  notes: N is the number of pixels and T the number of iterations.
+useCases:
+  - Smooth noise in medical and microscope images while keeping boundaries.
+  - Prepare images for edge detection and segmentation.
+advantages:
+  - Keeps edges, and can even make them sharper.
+  - Gives control through the edge threshold and the number of steps.
+limitations:
+  - Noise spikes larger than K are kept as if they were edges.
+  - Many iterations are slow and flatten fine texture into patches.
+artifacts:
+  - Flat patches with sharp borders, a staircase look, after many iterations.
+references:
+  - kind: paper
+    text: Perona, P. and Malik, J. Scale-space and edge detection using anisotropic diffusion. IEEE Transactions on Pattern Analysis and Machine Intelligence 12(7), 629 to 639, 1990.
+    doi: 10.1109/34.56205
+implementation: {path: web/src/core/filters/nonlinear/diffusion.ts, symbol: anisotropicDiffusionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Values flow to their neighbors like heat, but the flow stops at edges.
+  howItWorks:
+    - Find the difference between each pixel and its four neighbors.
+    - Let small differences flow and even out, and block large ones.
+    - Repeat the step many times.
+  academic: >-
+    A discrete form of the diffusion equation with a conduction that falls with the gradient.
+    With a constant conduction it is the heat equation, which gives Gaussian blur. Perona and
+    Malik showed that the falling conduction keeps edges and can sharpen them.
+  paramNotes:
+    iterations: The number of steps. Each step reaches one pixel further.
+    kappa: Differences below about K are smoothed, larger ones are kept.
+    lambda: The step size. 0.25 is the largest stable value for four neighbors.
+    conduction: The shape of g. Both forms come from the paper.
+  tryThis:
+    - Add Gaussian noise with sigma 15. Run 20 iterations with K = 20, then with K = 60.
+  pitfalls:
+    - Setting K below the noise level. Then the noise counts as edges and stays.
+  demos: [line-profile, iteration-viewer]
+related: [vector-anisotropic-diffusion, srad, bilateral, gaussian]
+docsPage: filters/nonlinear/anisotropic-diffusion.md

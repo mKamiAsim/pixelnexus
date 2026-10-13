@@ -75,6 +75,35 @@ export function borderTable(n: number, pad: number, mode: BorderMode): Int32Arra
   return table;
 }
 
+/** The plane extended by r pixels on every side with the border rule. */
+export function padPlane(plane: Plane, r: number, border: BorderMode): Plane {
+  const width = plane.width + 2 * r;
+  const height = plane.height + 2 * r;
+  const xs = borderTable(plane.width, r, border);
+  const ys = borderTable(plane.height, r, border);
+  const out = createPlane(width, height);
+  for (let j = 0; j < height; j++) {
+    const sy = ys[j] ?? -1;
+    for (let i = 0; i < width; i++) {
+      const sx = xs[i] ?? -1;
+      out.data[j * width + i] = sx < 0 || sy < 0 ? 0 : (plane.data[sy * plane.width + sx] ?? 0);
+    }
+  }
+  return out;
+}
+
+/** The inner part of a padded plane, without its r-pixel frame. */
+export function cropPlane(plane: Plane, r: number): Plane {
+  const width = plane.width - 2 * r;
+  const height = plane.height - 2 * r;
+  const out = createPlane(width, height);
+  for (let y = 0; y < height; y++) {
+    const from = (y + r) * plane.width + r;
+    out.data.set(plane.data.subarray(from, from + width), y * width);
+  }
+  return out;
+}
+
 /** Split an RGBA image into four float planes. */
 export function toPlanes(image: RgbaImage): [Plane, Plane, Plane, Plane] {
   const { width, height, data } = image;

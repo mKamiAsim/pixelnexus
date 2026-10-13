@@ -83,6 +83,14 @@ const CASES: [string, Params][] = [
   ["vector-median", { size: 3, norm: "l1", border: "wrap" }],
   ["dead-pixel", { size: 5, threshold: 40, border: "constant" }],
   ["mad-outlier", { size: 5, t: 2.5, output: "mark" }],
+  ["kuwahara", { size: 7, border: "reflect" }],
+  ["nagao-matsuyama", { border: "constant" }],
+  ["bilateral", { sigmaSpace: 1.5, sigmaRange: 40, range: "channel" }],
+  ["bilateral", { sigmaSpace: 1, sigmaRange: 25, range: "color", border: "wrap" }],
+  ["guided", { radius: 3, eps: 0.01, border: "replicate" }],
+  ["guided", { radius: 2, eps: 0.001, channelScope: "luminance" }],
+  ["anisotropic-diffusion", { iterations: 6, kappa: 20, lambda: 0.2, border: "reflect" }],
+  ["vector-anisotropic-diffusion", { iterations: 5, kappa: 30, conduction: "quadratic" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
