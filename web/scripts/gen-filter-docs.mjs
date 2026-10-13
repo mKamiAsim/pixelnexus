@@ -1056,6 +1056,9 @@ try {
   });
   const { steerableDocs } = await import("./filter-docs/steerable.mjs");
   steerableDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
+  const { vesselDocs } = await import("./filter-docs/vessel.mjs");
+  const { vesselKernel } = await load("/src/core/filters/features/matched-vessel.ts");
+  vesselDocs({ run, pic, figure, example, mdTable, fix, vesselKernel });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

@@ -138,6 +138,7 @@ const CASES: [string, Params][] = [
     },
   ],
   ["steerable", { sigma: 1.5, order: "2", angle: 60, output: "steered", outputMapping: "offset" }],
+  ["matched-vessel", { sigma: 1, length: 5, output: "angle", outputMapping: "clip" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

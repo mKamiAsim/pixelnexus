@@ -181,10 +181,91 @@ def _check_steerable() -> None:
         _fail("The angle output of a ramp is not its direction")
 
 
+def vessel_kernel(sigma: float, length: float, angle: float, bright: bool) -> FloatArray:
+    """The zero-mean matched filter kernel of Chaudhuri et al. for one vessel direction."""
+    r = math.ceil(math.hypot(3 * sigma, length / 2))
+    t = angle * math.pi / 180
+    c, s = math.cos(t), math.sin(t)
+    k = np.zeros((2 * r + 1, 2 * r + 1))
+    inside = np.zeros_like(k, dtype=bool)
+    for j in range(2 * r + 1):
+        for i in range(2 * r + 1):
+            x, y = i - r, j - r
+            u = x * s + y * c
+            v = x * c - y * s
+            if abs(u) <= 3 * sigma and abs(v) <= length / 2:
+                k[j, i] = -math.exp(-(u * u) / (2 * sigma * sigma))
+                inside[j, i] = True
+    k[inside] -= k[inside].mean()
+    return -k if bright else k
+
+
+def matched_vessel(
+    plane: FloatArray,
+    sigma: float,
+    length: float,
+    orientations: int,
+    polarity: str,
+    output: str,
+    mode: str,
+) -> FloatArray:
+    angles = [k * 180 / orientations for k in range(orientations)]
+    stack = np.stack(
+        [
+            ndimage.correlate(
+                plane, vessel_kernel(sigma, length, a, polarity == "bright"), mode=mode
+            )
+            for a in angles
+        ]
+    )
+    largest = stack.max(axis=0)
+    if output == "response":
+        return np.asarray(largest, dtype=np.float64)
+    near = stack >= largest - 1e-9 * np.maximum(1.0, np.abs(largest))
+    return np.asarray(np.array(angles)[near.argmax(axis=0)], dtype=np.float64)
+
+
+def _check_vessel() -> None:
+    for sigma, length in ((1.0, 5.0), (2.0, 9.0)):
+        for angle in (0.0, 37.5):
+            if abs(vessel_kernel(sigma, length, angle, False).sum()) > 1e-9:
+                _fail("A matched vessel kernel does not add up to 0")
+    # A dark line with a Gaussian profile at 30 degrees, counterclockwise with y pointing down.
+    t = math.radians(30)
+    y, x = np.mgrid[0:41, 0:41].astype(np.float64)
+    across = (x - 20) * math.sin(t) + (y - 20) * math.cos(t)
+    line = 200 - 100 * np.exp(-(across**2) / (2 * 1.5**2))
+    response = matched_vessel(line, 1.5, 7, 12, "dark", "response", "nearest")
+    direction = matched_vessel(line, 1.5, 7, 12, "dark", "angle", "nearest")
+    on_line = (np.abs(across) < 0.5) & (np.abs(x - 20) < 8) & (np.abs(y - 20) < 8)
+    if not (response[20, 15:26].argmax() == 5 and (direction[on_line] == 30).all()):
+        _fail("The matched vessel filter does not find a line at 30 degrees")
+
+
 def add_oriented_cases(plane: FloatArray, add: Add) -> None:
     _check_gabor(plane)
     _check_bank(plane)
     _check_steerable()
+    _check_vessel()
+    for border, mode in SCIPY_MODES.items():
+        for sigma, length, orientations, polarity in (
+            (1.0, 5.0, 12, "dark"),
+            (1.5, 7.0, 8, "bright"),
+        ):
+            for output in ("response", "angle"):
+                add(
+                    "matched-vessel",
+                    {
+                        "sigma": sigma,
+                        "length": length,
+                        "orientations": orientations,
+                        "polarity": polarity,
+                        "output": output,
+                        "border": border,
+                    },
+                    matched_vessel(plane, sigma, length, orientations, polarity, output, mode),
+                    "scipy.ndimage.correlate with the kernels of the docs page",
+                )
     for border, mode in SCIPY_MODES.items():
         for sigma, order, angle in ((1.0, 1, 30.0), (1.5, 2, 120.0), (2.0, 1, 135.0)):
             for output in ("steered", "strongest", "angle"):

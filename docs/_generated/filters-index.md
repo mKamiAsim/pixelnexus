@@ -72,6 +72,7 @@
 | [Gabor filter bank](features/gabor-bank.md) | Texture, corners, blobs and features | Many Gabor filters at several scales and orientations, combined into one texture or orientation map. | Implemented and tested |
 | [Laws' texture energy filters](features/laws.md) | Texture, corners, blobs and features | Measures texture energy with 5x5 masks built from Laws' level, edge, spot, wave and ripple vectors. | Implemented and tested |
 | [Line detectors](features/line-detector.md) | Texture, corners, blobs and features | Finds thin bright lines with four 3x3 masks for horizontal, vertical and the two diagonal directions. | Implemented and tested |
+| [Matched vessel filter](features/matched-vessel.md) | Texture, corners, blobs and features | Finds thin dark or bright lines with a Gaussian profile, such as blood vessels, by matching kernels in many directions. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |

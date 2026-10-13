@@ -36,6 +36,7 @@ import { diskAverageFilter } from "./linear/disk-average";
 import { dogFilter, logFilter } from "./linear/dog-log";
 import { firLowpassFilter } from "./linear/fir-lowpass";
 import { gaborBankFilter } from "./features/gabor-bank";
+import { matchedVesselFilter } from "./features/matched-vessel";
 import { gaborFilter } from "./linear/gabor";
 import { steerableFilter } from "./linear/steerable";
 import { gaussianFilter } from "./linear/gaussian";
@@ -106,6 +107,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   gaborFilter,
   gaborBankFilter,
   steerableFilter,
+  matchedVesselFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,
