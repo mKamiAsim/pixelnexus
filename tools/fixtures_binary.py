@@ -71,6 +71,13 @@ def thin(img: BoolArray, method: str, limit: float = np.inf) -> BoolArray:
     return zhang_suen(img, limit)
 
 
+def thicken(img: BoolArray, method: str, n: int) -> BoolArray:
+    """Thin the complement with the outside counted as background of the image."""
+    frame = 2 * n + 2
+    background = np.pad(~img, frame, constant_values=True)
+    return np.asarray(~thin(background, method, n)[frame:-frame, frame:-frame], dtype=bool)
+
+
 def skeleton(img: BoolArray, spec: str) -> BoolArray:
     fp = element(spec).astype(bool)
     s = np.zeros_like(img, dtype=bool)
@@ -180,8 +187,8 @@ def add_binary_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
         add(
             "thickening",
             {"method": method, "iterations": 2, "border": "reflect101"},
-            out(~thin(~img, method, 2)),
-            "the complement thinned as above",
+            out(thicken(img, method, 2)),
+            "the complement thinned as above, with a frame of background around the image",
             input_name="blobs",
         )
     for spec in ("cross 1", "disk 1", "custom 1 1 0; 0 1 0; 0 0 0"):

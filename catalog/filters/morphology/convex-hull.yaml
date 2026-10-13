@@ -1,8 +1,90 @@
 id: convex-hull
 name: Convex hull
+aliases: [Convex hull per object]
 family: morphology
+tags: [purpose:morphology]
 tier: core
 engine: browser
 phase: 5d
-status: planned
-planNotes: Per object.
+status: implemented-tested
+
+summary: Replaces every white object with its convex hull, the smallest convex shape that contains it.
+purpose: Fill concavities and holes of each object, for shape measurements such as solidity.
+classification: {linearity: nonlinear, domain: spatial, operation: convex hull of each component}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: convexHullObjects}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background. The filter follows shapes across the whole image, so it always runs on the whole image.
+
+params:
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which foreground pixels count as one object.
+    effect: With 4 neighbors, pixels that touch only at a corner belong to different objects.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  \bigcup_i \operatorname{conv}(C_i)
+formulaExplanation: >-
+  C_i are the objects, the connected parts of the foreground. The hull of each is computed from the midpoints of the edges of its pixels, and every pixel whose center lies inside the hull or on its border becomes foreground. This matches skimage.morphology.convex_hull_object.
+symbols:
+  - {symbol: 'C_i', meaning: The objects}
+  - {symbol: '\\operatorname{conv}', meaning: The convex hull}
+steps:
+  - Make the image binary and label its objects.
+  - For each object, find the convex hull of its pixel edge midpoints.
+  - Fill every pixel whose center lies inside or on the hull.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The hull of an object of m pixels costs O(m log m).
+useCases:
+  - Fill concavities before measuring shape.
+  - Solidity, the ratio of object area to hull area.
+advantages:
+  - One hull per object, so separate objects stay separate.
+limitations:
+  - Hulls of nearby objects may overlap.
+artifacts:
+  - Overlapping hulls join objects in the result.
+references:
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.convex_hull_object.
+    url: https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.convex_hull_object
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: convexHullFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Wrap each white object in the tightest convex shape around it.
+  howItWorks:
+    - Find the separate objects.
+    - Stretch a band around each one.
+    - Fill everything inside the band.
+  academic: >-
+    The convex hull of each connected component, rasterized by pixel centers.
+  paramNotes:
+    connectivity: Which pixels form one object.
+  tryThis:
+    - Threshold the Disks image, add a cut into a disk with the brush, and take the convex hull.
+  pitfalls:
+    - Expecting hulls of nearby objects to stay apart. They can overlap.
+  demos: [line-profile]
+related: [ccl-filter, closing]
+docsPage: filters/morphology/convex-hull.md

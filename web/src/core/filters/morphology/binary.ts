@@ -27,12 +27,19 @@ function toPlane(bits: Uint8Array, width: number, height: number): Plane {
   return out;
 }
 
-/** The 8 neighbors of (x, y) as bits E, NE, N, NW, W, SW, S, SE, with 0 outside. */
-function neighborCode(bits: Uint8Array, width: number, height: number, x: number, y: number) {
+/** The 8 neighbors of (x, y) as bits E, NE, N, NW, W, SW, S, SE, with `outside` past the edge. */
+function neighborCode(
+  bits: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  outside = 0,
+) {
   const at = (dx: number, dy: number) => {
     const nx = x + dx;
     const ny = y + dy;
-    return nx >= 0 && ny >= 0 && nx < width && ny < height ? (bits[ny * width + nx] ?? 0) : 0;
+    return nx >= 0 && ny >= 0 && nx < width && ny < height ? (bits[ny * width + nx] ?? 0) : outside;
   };
   return (
     at(1, 0) |
@@ -94,7 +101,8 @@ export type ThinningMethod = keyof typeof TABLES;
 /**
  * Thinning by two sub-iterations per iteration. In each one, every foreground pixel whose
  * neighbors are marked in that sub-iteration's table is removed at once. It stops when an
- * iteration removes nothing, or after `limit` iterations.
+ * iteration removes nothing, or after `limit` iterations. Pixels past the edge count as
+ * `outside`: 0 for thinning, 1 when thickening thins the background.
  */
 export function thin(
   bits: Uint8Array,
@@ -102,6 +110,7 @@ export function thin(
   height: number,
   method: ThinningMethod,
   limit = Infinity,
+  outside = 0,
 ): Uint8Array {
   let current = Uint8Array.from(bits);
   for (let iteration = 0; iteration < limit; iteration++) {
@@ -111,7 +120,7 @@ export function thin(
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const i = y * width + x;
-          if (current[i] && table[neighborCode(current, width, height, x, y)]) {
+          if (current[i] && table[neighborCode(current, width, height, x, y, outside)]) {
             next[i] = 0;
             removed = true;
           }
@@ -182,7 +191,7 @@ export const thickeningFilter: PlaneFilter = {
     (bits, w, h, params) => {
       const background = bits.map((b) => 1 - b);
       const n = Math.max(1, Math.round(read.number(params, "iterations", 3)));
-      return thin(background, w, h, methodOf(params), n).map((b) => 1 - b);
+      return thin(background, w, h, methodOf(params), n, 1).map((b) => 1 - b);
     },
     (params) => [
       { name: "Complement", formula: "A^c" },

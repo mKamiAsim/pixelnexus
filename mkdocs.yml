@@ -236,6 +236,13 @@ nav:
           - Geodesic filtering: filters/morphology/geodesic.md
           - Alternating sequential filter: filters/morphology/asf.md
           - Morphological leveling: filters/morphology/leveling.md
+          - Hit-or-miss transform: filters/morphology/hit-or-miss.md
+          - Thinning: filters/morphology/thinning.md
+          - Thickening: filters/morphology/thickening.md
+          - Skeletonization: filters/morphology/skeleton.md
+          - Pruning: filters/morphology/pruning.md
+          - Convex hull: filters/morphology/convex-hull.md
+          - Connected-component filtering: filters/morphology/ccl-filter.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

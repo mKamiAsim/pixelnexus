@@ -60,16 +60,23 @@
 | [Black-hat](morphology/blackhat.md) | Morphological filters | The closing minus the image. It keeps dark details smaller than the element. | Implemented and tested |
 | [Closing](morphology/closing.md) | Morphological filters | Dilation followed by erosion. It fills dark details smaller than the element and keeps the rest. | Implemented and tested |
 | [Closing by reconstruction](morphology/closing-by-reconstruction.md) | Morphological filters | A dilation followed by reconstruction by erosion. It fills dark objects the element does not fit into and restores the others exactly. | Implemented and tested |
+| [Connected-component filtering](morphology/ccl-filter.md) | Morphological filters | Keeps the white objects whose area lies in a range and removes the others. | Implemented and tested |
+| [Convex hull](morphology/convex-hull.md) | Morphological filters | Replaces every white object with its convex hull, the smallest convex shape that contains it. | Implemented and tested |
 | [Dilation](morphology/dilation.md) | Morphological filters | Takes the largest value under the turned structuring element, so bright objects grow and dark details shrink. | Implemented and tested |
 | [Erosion](morphology/erosion.md) | Morphological filters | Takes the smallest value under the structuring element, so dark areas grow and bright objects shrink. | Implemented and tested |
 | [External gradient](morphology/external-gradient.md) | Morphological filters | The dilation minus the image. It marks the outer side of bright edges. | Implemented and tested |
 | [Geodesic filtering](morphology/geodesic.md) | Morphological filters | A fixed number of geodesic dilation or erosion steps. The marker grows under the image, or shrinks over it, one pixel per step. | Implemented and tested |
+| [Hit-or-miss transform](morphology/hit-or-miss.md) | Morphological filters | Marks the pixels where a small pattern of foreground and background pixels matches exactly. | Implemented and tested |
 | [Internal gradient](morphology/internal-gradient.md) | Morphological filters | The image minus its erosion. It marks the inner side of bright edges. | Implemented and tested |
 | [Morphological gradient](morphology/morph-gradient.md) | Morphological filters | Dilation minus erosion. It is bright on edges, with a width set by the element. | Implemented and tested |
 | [Morphological leveling](morphology/leveling.md) | Morphological filters | Moves the image toward a marker, such as a blurred copy, while keeping every edge sharp. Flat zones grow and merge, but their borders never move. | Implemented and tested |
 | [Morphological reconstruction](morphology/reconstruction.md) | Morphological filters | Grows a marker under the image until it stops, which restores every bright region the marker touches and flattens the rest. | Implemented and tested |
 | [Opening](morphology/opening.md) | Morphological filters | Erosion followed by dilation. It removes bright details smaller than the element and keeps the rest. | Implemented and tested |
 | [Opening by reconstruction](morphology/opening-by-reconstruction.md) | Morphological filters | An erosion followed by reconstruction by dilation. It removes bright objects the element does not fit into and restores the others exactly. | Implemented and tested |
+| [Pruning](morphology/pruning.md) | Morphological filters | Removes short branches, or spurs, from thinned lines while keeping the main lines at their full length. | Implemented and tested |
+| [Skeletonization](morphology/skeleton.md) | Morphological filters | The morphological skeleton. It joins, over all sizes, what an opening removes from the eroded shape. | Implemented and tested |
+| [Thickening](morphology/thickening.md) | Morphological filters | Grows white shapes by thinning the background, so shapes grow without merging. | Implemented and tested |
+| [Thinning](morphology/thinning.md) | Morphological filters | Removes boundary pixels of white shapes until lines one pixel thick remain, without breaking or joining shapes. | Implemented and tested |
 | [Top-hat](morphology/tophat.md) | Morphological filters | The image minus its opening. It keeps bright details smaller than the element and removes the background. | Implemented and tested |
 | [Canny](edges/canny.md) | Edge detection and boundary analysis | The classic edge detector. It smooths, finds the gradient, thins it to one-pixel lines and keeps edges with two thresholds. | Implemented and tested |
 | [Farid-Simoncelli derivative filter](edges/farid-simoncelli.md) | Edge detection and boundary analysis | Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives. | Implemented and tested |

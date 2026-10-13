@@ -1,8 +1,106 @@
 id: thinning
 name: Thinning
+aliases: [Zhang-Suen thinning, Guo-Hall thinning]
 family: morphology
+tags: [purpose:morphology]
 tier: core
 engine: browser
 phase: 5d
-status: planned
-planNotes: Zhang-Suen and Guo-Hall.
+status: implemented-tested
+
+summary: Removes boundary pixels of white shapes until lines one pixel thick remain, without breaking or joining shapes.
+purpose: Reduce shapes such as text or vessels to thin center lines for analysis.
+classification: {linearity: nonlinear, domain: spatial, operation: parallel thinning in two sub-iterations}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: thin}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background. The filter follows shapes across the whole image, so it always runs on the whole image.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: zhang-suen
+    options:
+      - {value: zhang-suen, label: Zhang-Suen}
+      - {value: guo-hall, label: Guo-Hall}
+    description: The thinning algorithm. Both remove pixels in two sub-iterations per iteration.
+    effect: Guo-Hall keeps diagonal lines a little thinner. Zhang-Suen is the classic choice.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 0
+    max: 100
+    step: 1
+    default: 0
+    description: The largest number of iterations. 0 runs until nothing changes.
+    effect: Few iterations only peel the outer layers.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  A_{k+1} = A'_k \setminus D_2(A'_k),\quad A'_k = A_k \setminus D_1(A_k)
+formulaExplanation: >-
+  D_1 and D_2 are the pixels that the first and the second sub-iteration may remove. Each is decided from the 8 neighbors of a pixel, so that removing it keeps shapes connected and line ends in place. All pixels marked in one sub-iteration go at once. Zhang-Suen follows the rules of the 1984 paper. The zhang method of skimage.morphology.skeletonize uses a modified table and gives other results. Guo-Hall follows the tables of skimage.morphology.thin and matches it.
+symbols:
+  - {symbol: 'A_k', meaning: The foreground after k iterations}
+  - {symbol: 'D_1, D_2', meaning: The pixels the two sub-iterations remove}
+steps:
+  - Make the image binary.
+  - In the first sub-iteration, remove at once every pixel the first rule allows.
+  - In the second, do the same with the second rule.
+  - Repeat until nothing changes, or for the chosen number of iterations.
+complexity:
+  time: O(N k)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the number of iterations, about half the thickness of the widest shape.
+useCases:
+  - Center lines of text, roads or vessels.
+  - Shape analysis by end points and junctions.
+advantages:
+  - Keeps the number of shapes and holes.
+  - Lines stay connected.
+limitations:
+  - Small bumps on the outline become short branches.
+  - Not rotation invariant.
+artifacts:
+  - Short spurs from bumps on the outline.
+references:
+  - kind: paper
+    text: Zhang, T. Y. and Suen, C. Y. A fast parallel algorithm for thinning digital patterns. Communications of the ACM 27(3), 236 to 239, 1984.
+    doi: 10.1145/357994.358023
+  - kind: paper
+    text: Guo, Z. and Hall, R. W. Parallel thinning with two-subiteration algorithms. Communications of the ACM 32(3), 359 to 373, 1989.
+    doi: 10.1145/62065.62074
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.thin.
+    url: https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.thin
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: thinningFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Peel white shapes layer by layer until only lines one pixel thick are left.
+  howItWorks:
+    - Look at each white pixel on the outline.
+    - Remove it if that keeps the shape in one piece and does not shorten a line.
+    - Repeat until nothing more can go.
+  academic: >-
+    Parallel thinning with two sub-iterations, which avoids removing both sides of a line two pixels thick at once. The result is a topology-preserving skeleton.
+  paramNotes:
+    method: The thinning rules.
+    iterations: How many layers to peel, 0 for all.
+  tryThis:
+    - Threshold a page of text, then thin it to see the strokes as lines.
+  pitfalls:
+    - Expecting a smooth center line. Bumps on the outline leave short branches. Use pruning.
+  demos: [line-profile]
+related: [thickening, skeleton, pruning, hit-or-miss]
+docsPage: filters/morphology/thinning.md

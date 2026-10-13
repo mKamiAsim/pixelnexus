@@ -1065,6 +1065,8 @@ try {
   morphDocs({ run, pic, figure, example, mdTable, synthetic, planeAt });
   const { recDocs } = await import("./filter-docs/rec.mjs");
   recDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
+  const { binDocs } = await import("./filter-docs/bin.mjs");
+  binDocs({ run, pic, figure, example, mdTable, planeAt });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
