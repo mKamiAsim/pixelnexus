@@ -197,6 +197,7 @@ nav:
           - Savitzky-Golay filter: filters/adaptive/savgol.md
       - Edges:
           - Sobel: filters/edges/sobel.md
+          - Sobel with non-maximum suppression: filters/edges/sobel-nms.md
           - Prewitt: filters/edges/prewitt.md
           - Scharr: filters/edges/scharr.md
           - Roberts Cross: filters/edges/roberts.md

@@ -116,7 +116,7 @@ test("filters run from the Filter menu and the command palette", async ({ page }
   await openTestImage(page, "Siemens star");
   await page.getByRole("menuitem", { name: "Filter" }).click();
   await page.getByRole("menuitem", { name: "Edge detection and boundary analysis" }).click();
-  await page.getByRole("menuitem", { name: "Sobel" }).click();
+  await page.getByRole("menuitem", { name: "Sobel", exact: true }).click();
   await front(page, "Properties");
   await expect(page.getByRole("heading", { name: "Sobel", exact: true })).toBeVisible();
   await page.keyboard.press("Control+k");

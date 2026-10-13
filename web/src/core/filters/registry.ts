@@ -24,6 +24,7 @@ import { sradFilter } from "./adaptive/srad";
 import { freiChenFilter, kirschFilter, lineDetectorFilter, robinsonFilter } from "./edges/compass";
 import { faridFilter, prewittFilter, robertsFilter, scharrFilter } from "./edges/gradients";
 import { lawsFilter } from "./edges/laws";
+import { sobelNmsFilter } from "./edges/nms";
 import { sobelFilter } from "./edges/sobel";
 import { marrHildrethFilter, zeroCrossingFilter } from "./edges/zero-crossing";
 import { gammaFilter } from "./enhancement/gamma";
@@ -95,6 +96,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   logFilter,
   zeroCrossingFilter,
   marrHildrethFilter,
+  sobelNmsFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

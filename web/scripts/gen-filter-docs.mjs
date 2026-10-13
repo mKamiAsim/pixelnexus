@@ -1043,6 +1043,8 @@ try {
   dogLogDocs({ run, pic, row, figure, example, fix, synthetic, mdTable, gaussianSecondDerivative });
   const { zeroCrossingDocs } = await import("./filter-docs/zc.mjs");
   zeroCrossingDocs({ run, pic, row, figure, example, mdTable, synthetic });
+  const { nmsDocs } = await import("./filter-docs/nms.mjs");
+  nmsDocs({ run, pic, row, figure, example, mdTable, synthetic });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

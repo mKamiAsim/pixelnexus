@@ -1,7 +1,95 @@
 id: sobel-nms
 name: Sobel with non-maximum suppression
+aliases: [Thinned Sobel, Non-maximum suppression]
 family: edges
+tags: [purpose:edge]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
+
+summary: Keeps the Sobel magnitude only where it peaks across the edge, which thins edges to one pixel.
+purpose: Turn the wide Sobel response into thin edge lines, the second stage of the Canny detector.
+classification: {linearity: nonlinear, domain: spatial, operation: gradient and non-maximum suppression}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/nms.ts, symbol: suppress}
+supportRadius: "2"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  thinned on its own.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by two pixels, so the neighbors'
+  Sobel values agree in strips and whole images.
+
+params:
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  N(p) =
+  \begin{cases}
+  M(p) & M(p) \ge M(p + d_{\theta}) \text{ and } M(p) \ge M(p - d_{\theta}) \\
+  0 & \text{otherwise}
+  \end{cases}
+formulaExplanation: >-
+  M is the Sobel magnitude and theta the gradient direction. The step d_theta goes to the
+  neighbor along the gradient, rounded to horizontal, vertical or one of the two diagonals. The
+  sector borders are at 22.5, 67.5, 112.5 and 157.5 degrees. A pixel survives
+  only if it is at least as strong as both neighbors across the edge, so each edge keeps its
+  ridge line. The greater-or-equal test keeps both pixels of a flat-topped ridge.
+symbols:
+  - {symbol: 'M', meaning: The Sobel magnitude}
+  - {symbol: 'd_{\theta}', meaning: The step to the neighbor along the rounded gradient direction}
+steps:
+  - Extend the image by two pixels with the border mode.
+  - Compute the Sobel derivatives, the magnitude and the direction.
+  - Round the direction to one of four sectors.
+  - Keep the magnitude where it is at least as large as both neighbors along that direction, and cut the extension off.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel.
+useCases:
+  - Thin edges before thresholding.
+  - Show the second stage of the Canny detector on its own.
+advantages:
+  - Edges become one pixel thick and keep their strength.
+  - Simple and fast.
+limitations:
+  - Rounding the direction to four sectors can leave small gaps or double pixels on curved edges.
+  - Noise still gives many small ridges. Thresholding, as in Canny, removes them.
+artifacts:
+  - Broken lines on diagonal and curved edges.
+references:
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, the Canny edge detector.
+implementation: {path: web/src/core/filters/edges/nms.ts, symbol: sobelNmsFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep only the strongest pixel across each edge, so wide edges become thin lines.
+  howItWorks:
+    - Compute the Sobel strength and direction.
+    - Look at the two neighbors along the direction, across the edge.
+    - Keep the pixel only if it is not weaker than either neighbor.
+  academic: >-
+    Non-maximum suppression along the gradient, with the direction quantized to four
+    sectors. It keeps the local maxima of the gradient magnitude in the gradient direction.
+  paramNotes: {}
+  tryThis:
+    - Compare Sobel and Sobel with non-maximum suppression on the Disks image.
+  pitfalls:
+    - Expecting clean edges on a noisy image. Noise ridges survive, too.
+  demos: [line-profile]
+related: [sobel, canny, hysteresis]
+docsPage: filters/edges/sobel-nms.md

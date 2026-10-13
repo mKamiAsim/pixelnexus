@@ -186,6 +186,26 @@ def marr_hildreth(plane: FloatArray, sigma: float, threshold: float, border: str
     return zero_crossings(response, threshold)[reach:-reach, reach:-reach]
 
 
+def sobel_nms(plane: FloatArray, border: str) -> FloatArray:
+    p = np.pad(plane, 2, mode=PAD_MODES[border])  # type: ignore[call-overload]
+    gx = ndimage.sobel(p, axis=1, mode="nearest")
+    gy = ndimage.sobel(p, axis=0, mode="nearest")
+    m = np.hypot(gx, gy)
+    a = np.degrees(np.arctan2(gy, gx)) % 180
+    sector = np.where(
+        (a < 22.5) | (a >= 157.5), 0, np.where(a < 67.5, 1, np.where(a < 112.5, 2, 3))
+    )
+    e = np.pad(m, 1, mode="edge")
+    h, w = m.shape
+    out = np.zeros_like(m)
+    for s, (dx, dy) in enumerate(((1, 0), (1, 1), (0, 1), (-1, 1))):
+        ahead = e[1 + dy : 1 + dy + h, 1 + dx : 1 + dx + w]
+        behind = e[1 - dy : 1 - dy + h, 1 - dx : 1 - dx + w]
+        keep = (sector == s) & (m >= ahead) & (m >= behind)
+        out = np.where(keep, m, out)
+    return np.asarray(out[2:-2, 2:-2], dtype=np.float64)
+
+
 def _check_dog_log(plane: FloatArray) -> None:
     step = np.tile(np.r_[np.full(6, 40.0), np.full(7, 200.0)], (10, 1))
     edges = marr_hildreth(step, 1.5, 0.0, "reflect")
@@ -275,6 +295,12 @@ def add_gradient_cases(plane: FloatArray, add: Add) -> None:
                 marr_hildreth(plane, sigma, threshold, border),
                 "scipy.ndimage.gaussian_laplace and the zero-crossing rule",
             )
+        add(
+            "sobel-nms",
+            {"border": border},
+            sobel_nms(plane, border),
+            "scipy.ndimage.sobel and the four-sector rule",
+        )
         for sigma in (1.0, 1.7):
             add(
                 "log",
