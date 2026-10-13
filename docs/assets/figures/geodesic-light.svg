@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="210.24pt" viewBox="0 0 360 210.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 210.24 
+L 360 210.24 
+L 360 0 
+L 0 0 
+L 0 210.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#p859f7c74b8)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAYAAAA5ZDbSAAABZUlEQVR4nO3RQQ6CMBRAwUK5/5U1LnCBqLCdvEkIJD+lhbeMMR7ruo79mnO+n4/Xv9myLKf3b+te823bLu23v+vKWX6tnRe+77jXnf9y55zH2d1znq39mI3QCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowrMK7AuALjCowr8LA9AU7kBOxVFqrIAAAAAElFTkSuQmCC" id="image0150df4505" width="120" height="120" transform="matrix(1.45 0 0 1.45 3.6 18.12)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="90.6" y="14.12" transform="rotate(-0 90.6 14.12)">Ramp</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p8a069b6197)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAYAAAA5ZDbSAAABYUlEQVR4nO3RywqCQABA0Rn1/3+5aFFQVBq4iMs5IDIM89A7xxiXsWNZlsezruvT+Je5Oefb96d1t/lt2w6dd9/ryF2WL2uPfN/rWb/8l717nu38HfkrAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJHCdwnMBxAscJPNqunloEOEeHiocAAAAASUVORK5CYII=" id="image73a034ff57" width="120" height="120" transform="matrix(1.45 0 0 1.45 182.4 18.12)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="269.4" y="14.12" transform="rotate(-0 269.4 14.12)">20 steps</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p859f7c74b8">
+   <rect x="3.6" y="18.12" width="174" height="174"/>
+  </clipPath>
+  <clipPath id="p8a069b6197">
+   <rect x="182.4" y="18.12" width="174" height="174"/>
+  </clipPath>
+ </defs>
+</svg>

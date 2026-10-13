@@ -1063,6 +1063,8 @@ try {
   cornerDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
   const { morphDocs } = await import("./filter-docs/morph.mjs");
   morphDocs({ run, pic, figure, example, mdTable, synthetic, planeAt });
+  const { recDocs } = await import("./filter-docs/rec.mjs");
+  recDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

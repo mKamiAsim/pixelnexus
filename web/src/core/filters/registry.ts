@@ -50,6 +50,14 @@ import {
   openingFilter,
   tophatFilter,
 } from "./morphology/gray";
+import {
+  asfFilter,
+  closingByReconstructionFilter,
+  geodesicFilter,
+  levelingFilter,
+  openingByReconstructionFilter,
+  reconstructionFilter,
+} from "./morphology/reconstruction";
 import { steerableFilter } from "./linear/steerable";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
@@ -133,6 +141,12 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   externalGradientFilter,
   tophatFilter,
   blackhatFilter,
+  reconstructionFilter,
+  openingByReconstructionFilter,
+  closingByReconstructionFilter,
+  geodesicFilter,
+  asfFilter,
+  levelingFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

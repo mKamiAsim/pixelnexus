@@ -230,6 +230,12 @@ nav:
           - External gradient: filters/morphology/external-gradient.md
           - Top-hat: filters/morphology/tophat.md
           - Black-hat: filters/morphology/blackhat.md
+          - Morphological reconstruction: filters/morphology/reconstruction.md
+          - Opening by reconstruction: filters/morphology/opening-by-reconstruction.md
+          - Closing by reconstruction: filters/morphology/closing-by-reconstruction.md
+          - Geodesic filtering: filters/morphology/geodesic.md
+          - Alternating sequential filter: filters/morphology/asf.md
+          - Morphological leveling: filters/morphology/leveling.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

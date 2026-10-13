@@ -152,6 +152,12 @@ const CASES: [string, Params][] = [
   ["external-gradient", { element: "ellipse 2 1", iterations: 1, border: "reflect101" }],
   ["tophat", { element: "disk 1", iterations: 2, border: "reflect101" }],
   ["blackhat", { element: "disk 1", iterations: 1, border: "wrap" }],
+  ["reconstruction", { method: "erosion", h: 30, connectivity: "4" }],
+  ["opening-by-reconstruction", { element: "disk 1", border: "reflect" }],
+  ["closing-by-reconstruction", { element: "rect 3 3", border: "wrap" }],
+  ["geodesic", { method: "dilation", h: 40, steps: 4 }],
+  ["asf", { shape: "diamond", size: 2, order: "close-open" }],
+  ["leveling", { sigma: 1, connectivity: "4" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

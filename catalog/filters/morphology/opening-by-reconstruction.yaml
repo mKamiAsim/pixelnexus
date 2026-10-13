@@ -1,7 +1,111 @@
 id: opening-by-reconstruction
 name: Opening by reconstruction
+aliases: [Reconstructive opening]
 family: morphology
+tags: [purpose:morphology]
 tier: core
 engine: browser
 phase: 5d
-status: planned
+status: implemented-tested
+
+summary: An erosion followed by reconstruction by dilation. It removes bright objects the element does not fit into and restores the others exactly.
+purpose: Remove small bright objects without changing the shape of the objects that remain.
+classification: {linearity: nonlinear, domain: spatial, operation: erosion and reconstruction by dilation}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: reconstruct}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  Set by the Border mode parameter for the first step. The reconstruction stays inside the image, and the filter always runs on the whole image.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: disk 1
+    description: The element of the first step. Bright or dark details it does not fit into are removed.
+    effect: Larger elements remove larger details.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 1
+    description: How many times the first step runs.
+    effect: More iterations act like a larger element.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined when the reconstruction spreads.
+    effect: With 4 neighbors, regions that touch only at a corner stay apart.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  \gamma_R(f) = R^{\delta}_f(f \ominus B)
+formulaExplanation: >-
+  The erosion removes every bright object the element does not fit into. Reconstruction by dilation under the image then brings back every object that kept at least one pixel, with its exact shape. A plain opening would round the corners of those objects instead.
+symbols:
+  - {symbol: 'B', meaning: The structuring element}
+  - {symbol: 'R^{\delta}_f', meaning: Reconstruction by dilation under f}
+steps:
+  - Extend the image with the border mode and erode it with the element, then cut the extension off.
+  - Reconstruct the erosion by dilation under the image.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the size of the element. The reconstruction adds O(N).
+useCases:
+  - Remove small bright specks while keeping object outlines.
+  - Keep only objects larger than the element.
+advantages:
+  - Remaining objects keep their exact shape.
+  - No rounding at corners.
+limitations:
+  - Objects joined to a large object by a thin bridge come back with it.
+artifacts:
+  - Thin bridges keep small objects alive.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.reconstruction.
+    url: https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.reconstruction
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: openingByReconstructionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Erode to find which bright objects are big enough, then bring those back exactly as they were.
+  howItWorks:
+    - Erode, so small bright objects vanish.
+    - Grow what is left back under the image.
+    - Big objects return with their exact shape.
+  academic: >-
+    An algebraic opening and a connected operator. It removes the connected components of the upper level sets that do not contain a translate of B.
+  paramNotes:
+    element: The smallest object size that survives.
+    iterations: How many erosions.
+    connectivity: Which pixels count as joined.
+  tryThis:
+    - Compare opening and opening by reconstruction on text. The letters keep their corners.
+  pitfalls:
+    - Expecting thin bridges to break. Reconstruction follows them.
+  demos: [line-profile]
+related: [opening, reconstruction, closing-by-reconstruction]
+docsPage: filters/morphology/opening-by-reconstruction.md
