@@ -1,11 +1,13 @@
 /** Shared helpers for the Learn panel widgets. They read pixels exactly as the filters do. */
+import { catalog } from "@/catalog";
+import { entryParams } from "@/catalog/params";
 import { luma709 } from "@/core/color/convert";
 import { borderIndex, type BorderMode } from "@/core/filters/planes";
 import { browserFilter } from "@/core/filters/registry";
 import { processRegion, scopeOf } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
 import { hasTransparency } from "@/core/image/encode";
-import type { RgbaImage } from "@/core/image/types";
+import { createImage, type RgbaImage } from "@/core/image/types";
 
 export interface Point {
   readonly x: number;
@@ -60,4 +62,35 @@ export function engineValueAt(
     hasTransparency(image),
   );
   return result.color[0].data[0] ?? Number.NaN;
+}
+
+/** The patch of the image around a point, at most size x size pixels. */
+export function patchAt(image: RgbaImage, x: number, y: number, size = 64): RgbaImage {
+  const width = Math.min(size, image.width);
+  const height = Math.min(size, image.height);
+  const x0 = Math.min(Math.max(0, x - (width >> 1)), image.width - width);
+  const y0 = Math.min(Math.max(0, y - (height >> 1)), image.height - height);
+  const out = createImage(width, height);
+  for (let row = 0; row < height; row++) {
+    const from = ((y0 + row) * image.width + x0) * 4;
+    out.data.set(image.data.subarray(from, from + width * 4), row * width * 4);
+  }
+  return out;
+}
+
+/**
+ * The stages of a multi-stage filter for the Stage viewer: the options of its "stage" parameter,
+ * or of its "output" parameter when it has no stages.
+ */
+export function stagesOf(filterId: string): {
+  key: string;
+  stages: { value: string; label: string }[];
+} {
+  const entry = catalog.filters.find((f) => f.id === filterId);
+  const params = entry ? entryParams(entry) : [];
+  const param = params.find((p) => p.key === "stage") ?? params.find((p) => p.key === "output");
+  return {
+    key: param?.key ?? "stage",
+    stages: (param?.options ?? []).map((o) => ({ value: String(o.value), label: o.label })),
+  };
 }

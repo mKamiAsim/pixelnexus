@@ -88,7 +88,17 @@ export type Representation =
       readonly update: string;
       readonly note: string;
     }
-  | { readonly kind: "generator"; readonly description: string };
+  | { readonly kind: "generator"; readonly description: string }
+  | {
+      readonly kind: "stages";
+      /** The steps in order, each with a LaTeX formula. */
+      readonly stages: readonly {
+        readonly name: string;
+        readonly formula: string;
+        readonly note?: string;
+      }[];
+      readonly note?: string;
+    };
 
 interface FilterBase {
   /** The catalog id. */
@@ -98,7 +108,8 @@ interface FilterBase {
   /**
    * True when a pixel can depend on pixels anywhere in the image, as in hysteresis, which
    * follows edges as far as they go. Such filters always run on the whole image in one tile,
-   * and the region is cut out of the result.
+   * and the region is cut out of the result. Their radius is 0: they get the image itself and
+   * extend it with the border mode where they need to.
    */
   readonly global?: boolean;
   /** The operator, for the Inspector. Built by the same code that the filter runs. */

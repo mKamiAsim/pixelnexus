@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { catalog, isRunnable } from "@/catalog";
 
+import { stagesOf } from "./common";
 import { LATER_DEMOS, WIDGETS } from "./registry";
 
 describe("Learn demos", () => {
@@ -19,5 +20,18 @@ describe("Learn demos", () => {
       .filter((f) => !(f.learn?.demos ?? []).some((d) => d in WIDGETS))
       .map((f) => f.id);
     expect(without).toEqual([]);
+  });
+
+  it("finds the stages of every filter that uses the Stage viewer", () => {
+    const users = catalog.filters.filter((f) => f.learn?.demos.includes("stage-viewer"));
+    expect(users.length).toBeGreaterThan(0);
+    for (const f of users) expect(stagesOf(f.id).stages.length).toBeGreaterThan(1);
+    expect(stagesOf("canny").stages.map((s) => s.value)).toEqual([
+      "smoothed",
+      "magnitude",
+      "suppressed",
+      "thresholds",
+      "edges",
+    ]);
   });
 });

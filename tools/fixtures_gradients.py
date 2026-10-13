@@ -190,7 +190,11 @@ def sobel_nms(plane: FloatArray, border: str) -> FloatArray:
     p = np.pad(plane, 2, mode=PAD_MODES[border])  # type: ignore[call-overload]
     gx = ndimage.sobel(p, axis=1, mode="nearest")
     gy = ndimage.sobel(p, axis=0, mode="nearest")
-    m = np.hypot(gx, gy)
+    return suppress(gx, gy, np.hypot(gx, gy))[2:-2, 2:-2]
+
+
+def suppress(gx: FloatArray, gy: FloatArray, m: FloatArray) -> FloatArray:
+    """Keep m where it is at least both neighbors along the gradient, in four sectors."""
     a = np.degrees(np.arctan2(gy, gx)) % 180
     sector = np.where(
         (a < 22.5) | (a >= 157.5), 0, np.where(a < 67.5, 1, np.where(a < 112.5, 2, 3))
@@ -203,7 +207,7 @@ def sobel_nms(plane: FloatArray, border: str) -> FloatArray:
         behind = e[1 - dy : 1 - dy + h, 1 - dx : 1 - dx + w]
         keep = (sector == s) & (m >= ahead) & (m >= behind)
         out = np.where(keep, m, out)
-    return np.asarray(out[2:-2, 2:-2], dtype=np.float64)
+    return np.asarray(out, dtype=np.float64)
 
 
 def _check_dog_log(plane: FloatArray) -> None:

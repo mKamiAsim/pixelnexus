@@ -12,10 +12,8 @@ import type { Params } from "@/core/filters/types";
 import { createImage, type RgbaImage } from "@/core/image/types";
 import { qualityMetrics } from "@/core/metrics/quality";
 
-import { round } from "./common";
+import { patchAt, round } from "./common";
 import { PixelCanvas, type WidgetProps } from "./widgets";
-
-const PATCH = 64;
 
 type Damage = "gaussian" | "salt-pepper" | "speckle" | "poisson" | "periodic" | "blur";
 
@@ -35,20 +33,6 @@ const DAMAGES: readonly { value: Damage; label: string; note: string }[] = [
   },
   { value: "blur", label: "Blur", note: "A known Gaussian blur with sigma 2." },
 ];
-
-/** The patch of the image around a point, at most 64 x 64 pixels. */
-function patchAt(image: RgbaImage, x: number, y: number): RgbaImage {
-  const width = Math.min(PATCH, image.width);
-  const height = Math.min(PATCH, image.height);
-  const x0 = Math.min(Math.max(0, x - (width >> 1)), image.width - width);
-  const y0 = Math.min(Math.max(0, y - (height >> 1)), image.height - height);
-  const out = createImage(width, height);
-  for (let row = 0; row < height; row++) {
-    const from = ((y0 + row) * image.width + x0) * 4;
-    out.data.set(image.data.subarray(from, from + width * 4), row * width * 4);
-  }
-  return out;
-}
 
 const run = (image: RgbaImage, id: string, params: Params) => {
   const filter = browserFilter(id);

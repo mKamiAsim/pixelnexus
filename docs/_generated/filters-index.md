@@ -54,8 +54,10 @@
 | [Sigma filter](adaptive/sigma.md) | Adaptive and statistical filters | Averages only the window values that lie within k sigma of the center value, and repairs isolated spots. | Implemented and tested |
 | [Speckle reducing anisotropic diffusion](adaptive/srad.md) | Adaptive and statistical filters | Diffusion whose coefficient comes from the local coefficient of variation, so speckle diffuses away and edges stay. | Implemented and tested |
 | [Standard deviation filter](adaptive/local-std.md) | Adaptive and statistical filters | Maps the standard deviation of the window around each pixel, a measure of local contrast in levels. | Implemented and tested |
+| [Canny](edges/canny.md) | Edge detection and boundary analysis | The classic edge detector. It smooths, finds the gradient, thins it to one-pixel lines and keeps edges with two thresholds. | Implemented and tested |
 | [Farid-Simoncelli derivative filter](edges/farid-simoncelli.md) | Edge detection and boundary analysis | Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives. | Implemented and tested |
 | [Frei-Chen](edges/frei-chen.md) | Edge detection and boundary analysis | Projects each 3x3 window onto nine orthonormal masks and reports how much of it looks like an edge or a line. | Implemented and tested |
+| [Hysteresis thresholding](edges/hysteresis.md) | Edge detection and boundary analysis | Keeps strong pixels, and weak pixels that are joined to strong ones, so broken edges stay whole without keeping noise. | Implemented and tested |
 | [Kirsch compass](edges/kirsch.md) | Edge detection and boundary analysis | Turns one 3x3 mask in eight steps of 45 degrees and keeps the strongest response at each pixel. | Implemented and tested |
 | [Marr-Hildreth](edges/marr-hildreth.md) | Edge detection and boundary analysis | Finds edges as the zero crossings of the Laplacian of Gaussian. | Implemented and tested |
 | [Prewitt](edges/prewitt.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels that average plainly along the edge. | Implemented and tested |

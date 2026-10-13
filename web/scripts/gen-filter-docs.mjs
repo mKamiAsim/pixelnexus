@@ -1045,6 +1045,8 @@ try {
   zeroCrossingDocs({ run, pic, row, figure, example, mdTable, synthetic });
   const { nmsDocs } = await import("./filter-docs/nms.mjs");
   nmsDocs({ run, pic, row, figure, example, mdTable, synthetic });
+  const { cannyDocs } = await import("./filter-docs/canny.mjs");
+  cannyDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

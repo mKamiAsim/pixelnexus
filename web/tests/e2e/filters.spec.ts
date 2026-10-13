@@ -77,6 +77,20 @@ test("the Inspector shows the kernel that runs, and follows the parameters", asy
   await expect(page.getByText("The formula shows the current parameter values.")).toBeVisible();
 });
 
+test("the Stage viewer shows every stage of Canny", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "canny", "Canny");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Stage viewer" })).toBeVisible();
+  for (const stage of [
+    "1. Smoothed image",
+    "3. After non-maximum suppression",
+    "5. Edges after hysteresis",
+  ]) {
+    await expect(page.getByRole("img", { name: `${stage}, patch around the probe` })).toBeVisible();
+  }
+});
+
 test("planned filters are listed but cannot run", async ({ page }) => {
   await openTestImage(page, "Siemens star");
   await chooseFilter(page, "dncnn", "DnCNN");

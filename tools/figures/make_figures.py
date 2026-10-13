@@ -90,7 +90,7 @@ def image_array(image: dict[str, Any]) -> Any:
 
 def panels_figure(spec: dict[str, Any]) -> Any:
     panels = spec["panels"]
-    columns = 2 if len(panels) == 4 else len(panels)
+    columns = {4: 2, 6: 3}.get(len(panels), len(panels))
     rows = (len(panels) + columns - 1) // columns
     width_in = WIDTH_PX / DPI
     first = image_array(panels[0]["image"])

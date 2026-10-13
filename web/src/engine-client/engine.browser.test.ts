@@ -70,6 +70,21 @@ describe("browser engine with workers", () => {
     expect(result.image.data).toEqual(direct("gaussian", { sigma: 3 }, region));
   });
 
+  it("runs a global filter on the whole image in one tile", async () => {
+    const region = { x: 40, y: 75, width: 130, height: 210 };
+    const params = { sigma: 1.5, low: 20, high: 60, outputMapping: "clip" };
+    const result = await engine.run({ filterId: "canny", params, image, region });
+    expect(result.timing.tiles).toBe(1);
+    expect(result.image.data).toEqual(direct("canny", params, region));
+    // The region is cut from the whole-image result, not computed on its own.
+    const whole = direct("canny", params);
+    const row = (data: Uint8ClampedArray, width: number, x: number, y: number) =>
+      data.subarray((y * width + x) * 4, (y * width + x + region.width) * 4);
+    expect(row(result.image.data, region.width, 0, 5)).toEqual(
+      row(whole, image.width, region.x, region.y + 5),
+    );
+  });
+
   it("reports progress up to 1", async () => {
     const seen: number[] = [];
     await engine.run(

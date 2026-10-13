@@ -1,8 +1,157 @@
 id: canny
 name: Canny
+aliases: [Canny edge detector]
 family: edges
+tags: [purpose:edge]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: All five stages visible. L1 and L2 norms.
+status: implemented-tested
+
+summary: The classic edge detector. It smooths, finds the gradient, thins it to one-pixel lines and keeps edges with two thresholds.
+purpose: Find thin, connected edges that hold up well under noise, and show each of the five stages.
+classification: {linearity: nonlinear, domain: spatial, operation: multi-stage edge detection}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/hysteresis.ts, symbol: cannyStage}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  processed on its own.
+boundary: >-
+  Set by the Border mode parameter for the first three stages. The image is extended by
+  floor(4 sigma + 0.5) + 2 pixels for them. The thresholds and hysteresis see only the image,
+  so edges never join through the extension. The filter always runs on the whole image.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1.5
+    unit: px
+    description: The size of the Gaussian blur in the first stage. The blur is cut at 4 sigma.
+    effect: Larger values remove more noise and fine detail, so fewer and smoother edges remain.
+  - key: low
+    label: Low threshold
+    type: number
+    min: 1
+    max: 1530
+    step: 1
+    default: 40
+    description: Thinned gradient values at or above this are weak edges, kept only when joined to a strong edge.
+    effect: Lower values let edges run further through faint parts.
+  - key: high
+    label: High threshold
+    type: number
+    min: 1
+    max: 1530
+    step: 1
+    default: 100
+    description: Thinned gradient values at or above this are strong edges. If it is below the low threshold, the low threshold is used.
+    effect: Higher values keep only the clearest edges.
+  - key: norm
+    label: Magnitude norm
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (square root of the sum of squares)}
+      - {value: l1, label: L1 (sum of absolute values)}
+    description: How Gx and Gy are combined into the gradient magnitude.
+    effect: L1 gives slightly larger values on diagonal edges, so they pass the thresholds sooner.
+  - key: stage
+    label: Stage
+    type: select
+    default: edges
+    options:
+      - {value: smoothed, label: 1. Smoothed image}
+      - {value: magnitude, label: 2. Gradient magnitude}
+      - {value: suppressed, label: 3. After non-maximum suppression}
+      - {value: thresholds, label: 4. Double threshold}
+      - {value: edges, label: 5. Edges after hysteresis}
+    description: Which stage to show. The double threshold shows strong pixels as 255 and weak ones as 128.
+    effect: Step through the stages to see how each one changes the result.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  E = \operatorname{hyst}_{T_L,\,T_H}\!\left(\operatorname{nms}\!\left(\left\| \nabla (G_{\sigma} * I) \right\|\right)\right)
+formulaExplanation: >-
+  G_sigma * I is the image smoothed with a Gaussian. The gradient comes from the Sobel kernels,
+  and its magnitude uses the L2 or L1 norm. The step nms keeps the magnitude only where it is at
+  least as large as both neighbors along the gradient, rounded to four directions. The step
+  hyst keeps the thinned values at or above T_H, plus those at or above T_L that are joined to them through
+  eight neighbors. The result is 255 on the edges and 0 elsewhere.
+symbols:
+  - {symbol: 'G_{\sigma}', meaning: The Gaussian with standard deviation sigma}
+  - {symbol: '\nabla', meaning: The gradient from the Sobel kernels}
+  - {symbol: '\operatorname{nms}', meaning: Non-maximum suppression along the gradient}
+  - {symbol: '\operatorname{hyst}', meaning: Hysteresis with the low and high thresholds}
+  - {symbol: 'T_L, T_H', meaning: The low and high thresholds}
+steps:
+  - Extend the image with the border mode and blur it with a Gaussian.
+  - Compute the Sobel derivatives, the magnitude and the direction.
+  - Keep the magnitude only where it peaks across the edge, and cut the extension off.
+  - Mark strong pixels at or above the high threshold and weak pixels at or above the low one.
+  - Keep strong pixels and the weak pixels joined to them through eight neighbors.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels per channel and r the radius of the Gaussian, which is separable.
+useCases:
+  - General edge detection on photos.
+  - The first step of line, contour and shape finding.
+  - Teaching, since each stage can be shown on its own.
+advantages:
+  - Thin, well placed edges that keep their connections.
+  - Copes well with noise, thanks to the blur and the two thresholds.
+limitations:
+  - The thresholds depend on the image contrast, so they often need tuning.
+  - Corners and junctions are often rounded or broken.
+  - A perfectly symmetric step gives an edge two pixels wide, because both pixels of the flat ridge survive suppression.
+artifacts:
+  - Small gaps at junctions and on sharp corners.
+  - Short spurs where noise touches an edge.
+references:
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, the Canny edge detector.
+implementation: {path: web/src/core/filters/edges/hysteresis.ts, symbol: cannyFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Blur, find the gradient, thin it to lines and keep edges with two thresholds.
+  howItWorks:
+    - Blur the image to remove noise.
+    - Find how fast the brightness changes and in which direction.
+    - Keep only the peak across each edge, so edges are thin.
+    - Mark strong and weak edge pixels with two thresholds.
+    - Keep weak pixels only when they touch strong ones.
+  academic: >-
+    Canny derived the derivative of a Gaussian as a good approximation to the optimal step edge
+    detector under criteria of detection, localization and a single response. Non-maximum
+    suppression and hysteresis complete the detector.
+  paramNotes:
+    sigma: How much to blur first.
+    low: Where weak edges stop.
+    high: Where edges start.
+    norm: How the two derivatives are combined.
+    stage: Which of the five stages to show.
+  tryThis:
+    - Open the Stage viewer and compare the five stages.
+    - Raise sigma on a noisy image and watch the small edges vanish.
+  pitfalls:
+    - Using thresholds meant for a 0 to 255 image. On 8-bit input the Sobel magnitude can reach about 1140 with the L2 norm and 1530 with L1.
+  demos: [stage-viewer]
+related: [sobel-nms, hysteresis, sobel, gaussian, marr-hildreth]
+docsPage: filters/edges/canny.md

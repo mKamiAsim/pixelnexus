@@ -14,7 +14,7 @@
 import { createPlane, cropPlane, padPlane, type Plane } from "@/core/filters/planes";
 import type { PlaneFilter } from "@/core/filters/types";
 
-import { sobelGradients } from "./sobel";
+import { sobelCombine, sobelGradients } from "./sobel";
 
 /** The neighbor offsets for each of the four sectors. */
 const SECTORS: readonly (readonly [number, number])[] = [
@@ -35,10 +35,17 @@ export function sector(gx: number, gy: number): number {
   return 3;
 }
 
-/** Thin a magnitude plane along the gradient. Positions past the edge repeat the edge. */
-export function suppress(gx: Plane, gy: Plane): Plane {
+/**
+ * Thin a magnitude plane along the gradient. The magnitude defaults to the L2 norm of Gx and Gy.
+ * Positions past the edge repeat the edge.
+ */
+export function suppress(
+  gx: Plane,
+  gy: Plane,
+  magnitudePlane: Plane = sobelCombine(gx, gy, "magnitude", "l2"),
+): Plane {
   const { width, height } = gx;
-  const magnitude = Float64Array.from(gx.data, (x, i) => Math.hypot(x, gy.data[i] ?? 0));
+  const magnitude = magnitudePlane.data;
   const at = (x: number, y: number) =>
     magnitude[Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))] ??
     0;

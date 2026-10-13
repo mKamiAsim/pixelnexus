@@ -20,6 +20,7 @@ from skimage import exposure, filters
 from skimage import metrics as skmetrics
 
 from fixtures_adaptive import add_adaptive_cases
+from fixtures_canny import add_canny_cases
 from fixtures_edge import add_edge_plane_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
@@ -458,6 +459,7 @@ def filter_cases() -> dict[str, Any]:
     add_adaptive_cases(plane, add)
     extra_inputs |= add_speckle_cases(plane, add)
     add_gradient_cases(plane, add)
+    add_canny_cases(plane, add)
 
     fir_taps = [
         {

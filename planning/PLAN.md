@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5c: hysteresis and then Canny with all five stages and the Stage viewer, both as global filters. Then Gabor, Gabor bank, steerable filters, matched vessel filter, Harris, Shi-Tomasi, Moravec, FAST, and Nevatia-Babu after its six masks are checked against the paper. Then Phase 5d to 5f. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Next action | Phase 5c: Gabor, Gabor bank, steerable filters, matched vessel filter, Harris, Shi-Tomasi, Moravec, FAST, and Nevatia-Babu after its six masks are checked against the paper. Then Phase 5d to 5f. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5c: global filters. A filter can set global, so it runs on the whole image in one tile and the region is cut out. The worker takes the tile origin. |
+| Last finished step | Phase 5c: hysteresis thresholding and Canny with all five stages, both global filters, and the Stage viewer. |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5c: hysteresis and then Canny with all five stages and the Stage viewer, both as global filters. Then Gabor, Gabor bank, steerable filters, matched vessel filter, Harris, Shi-Tomasi, Moravec, FAST, and Nevatia-Babu after its six masks are checked against the paper. Then Phase 5d to 5f. |
+| Next steps | Phase 5c: Gabor, Gabor bank, steerable filters, matched vessel filter, Harris, Shi-Tomasi, Moravec, FAST, and Nevatia-Babu after its six masks are checked against the paper. Then Phase 5d to 5f. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -856,3 +856,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5c | Zero-crossing detector and Marr-Hildreth. The rule marks a negative pixel with a positive 4-neighbor and a jump above a threshold, so lines are one pixel thick, and the docs state that other detectors choose the other side. Marr-Hildreth extends the plane once and runs the LoG and the rule. A sanity check confirms a step edge is marked on its bright side, where the LoG is negative. 89 catalog entries are implemented-tested. 1659 Vitest tests and 26 E2E tests pass. The session stopped here because the 5-hour usage window was near its limit. | Canny group. |
 | 2026-10-13 | 5c | Sobel with non-maximum suppression, the four-sector rule of Gonzalez and Woods, extended once by two pixels. The Filter menu E2E test now picks Sobel by its exact name. 90 catalog entries are implemented-tested. 1667 Vitest tests and 26 E2E tests pass. The session stopped here with the 5-hour usage window near its limit, so that the work is pushed and the PC can shut down as the owner asked. | Canny group. |
 | 2026-10-13 | 5c | Phase 5c: global filters. A filter that sets global runs on the whole image in one tile, in this thread and in workers, and the region is cut out of the result. A test checks a region against the whole image. | Hysteresis and Canny. |
+| 2026-10-13 | 5c | Hysteresis thresholding and Canny, both global filters. Hysteresis keeps pixels at or above the low threshold that are joined to a pixel at or above the high one, with 4 or 8 neighbors, checked against skimage apply_hysteresis_threshold. Canny runs a Gaussian cut at 4 sigma, Sobel with the L2 or L1 norm, the four-sector suppression, the double threshold and hysteresis with 8 neighbors, and a Stage parameter shows each stage. A new Inspector view lists stages with formulas. The Stage viewer Learn demo shows every stage (or every output, for Sobel) on the patch around the probe. 92 catalog entries are implemented-tested. 1714 Vitest tests and 27 E2E tests pass. | Gabor and the rest of 5c. |

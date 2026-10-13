@@ -198,6 +198,8 @@ nav:
       - Edges:
           - Sobel: filters/edges/sobel.md
           - Sobel with non-maximum suppression: filters/edges/sobel-nms.md
+          - Hysteresis thresholding: filters/edges/hysteresis.md
+          - Canny: filters/edges/canny.md
           - Prewitt: filters/edges/prewitt.md
           - Scharr: filters/edges/scharr.md
           - Roberts Cross: filters/edges/roberts.md

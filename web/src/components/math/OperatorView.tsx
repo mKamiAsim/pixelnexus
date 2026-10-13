@@ -279,5 +279,22 @@ export function OperatorView({
       );
     case "generator":
       return <p className="text-xs text-text-secondary">{representation.description}</p>;
+    case "stages":
+      return (
+        <div className="flex flex-col gap-2 text-xs">
+          <ol className="flex list-decimal flex-col gap-3 pl-5">
+            {representation.stages.map((stage) => (
+              <li key={stage.name}>
+                <span className="font-medium">{stage.name}</span>
+                <Formula tex={stage.formula} />
+                {stage.note ? <p className="text-text-secondary">{stage.note}</p> : null}
+              </li>
+            ))}
+          </ol>
+          {representation.note ? (
+            <p className="text-text-secondary">{representation.note}</p>
+          ) : null}
+        </div>
+      );
   }
 }

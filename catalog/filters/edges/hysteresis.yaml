@@ -1,8 +1,121 @@
 id: hysteresis
 name: Hysteresis thresholding
+aliases: [Double thresholding with edge tracking, Hysteresis threshold]
 family: edges
+tags: [purpose:edge, purpose:segmentation]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: Works on any response map.
+status: implemented-tested
+
+summary: Keeps strong pixels, and weak pixels that are joined to strong ones, so broken edges stay whole without keeping noise.
+purpose: Turn any response map, such as a gradient magnitude, into a clean mask with two thresholds instead of one.
+classification: {linearity: nonlinear, domain: spatial, operation: two thresholds and connectivity}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/hysteresis.ts, symbol: hysteresis}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray mask. With RGB scope, each channel gets
+  its own mask.
+boundary: >-
+  No border is needed. Paths stay inside the image, and the filter always runs on the whole
+  image, even when only a selection is shown.
+
+params:
+  - key: low
+    label: Low threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 50
+    description: Pixels at or above this value are weak. They are kept only when joined to a strong pixel.
+    effect: Lower values let edges run further through weak parts, and also let more noise join them.
+  - key: high
+    label: High threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 100
+    description: Pixels at or above this value are strong and always kept. If it is below the low threshold, the low threshold is used.
+    effect: Higher values start fewer edges, so faint edges and noise disappear.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors (diagonals join)}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined.
+    effect: With 4 neighbors, diagonal steps break a path, so thin diagonal edges can fall apart.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  E = \{\, p : v(p) \ge T_L \text{ and a path of pixels with } v \ge T_L \text{ joins } p \text{ to a pixel with } v \ge T_H \,\}
+formulaExplanation: >-
+  v is the input value, T_L the low threshold and T_H the high one. Each step of the path goes
+  to one of the 4 or 8 neighbors. Pixels in E become 255 and all others 0. The tests use
+  greater than or equal, as in Gonzalez and Woods. scikit-image uses greater than, which gives
+  the same result on whole numbers with thresholds lowered by one half.
+symbols:
+  - {symbol: 'v(p)', meaning: The input value at p}
+  - {symbol: 'T_L', meaning: The low threshold}
+  - {symbol: 'T_H', meaning: The high threshold}
+steps:
+  - Mark every pixel at or above the high threshold as an edge.
+  - From each edge pixel, step to neighbors at or above the low threshold and mark them too.
+  - Repeat until no new pixel is marked.
+  - Write 255 at marked pixels and 0 elsewhere.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each pixel is marked at most once.
+useCases:
+  - The last stage of the Canny detector.
+  - Clean up a gradient magnitude or any other response map.
+  - Segment bright objects that have faint parts.
+advantages:
+  - Keeps long edges whole where a single threshold would break them.
+  - Drops weak, isolated responses, which are often noise.
+limitations:
+  - A weak noise pixel that touches an edge is kept.
+  - It needs the whole image, so it cannot run on strips in parallel.
+artifacts:
+  - Short spurs where noise touches an edge.
+references:
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, the Canny edge detector.
+implementation: {path: web/src/core/filters/edges/hysteresis.ts, symbol: hysteresisFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep the strong pixels, and the weak pixels that touch them, so edges stay whole without keeping noise.
+  howItWorks:
+    - Pixels above the high threshold are sure edges.
+    - Pixels above the low threshold are maybe edges.
+    - A maybe edge is kept only when a chain of maybe edges leads it to a sure edge.
+  academic: >-
+    Two thresholds with connectivity. The result is the union of the connected components of
+    the low-threshold mask that contain at least one pixel of the high-threshold mask.
+  paramNotes:
+    low: Where weak edges stop.
+    high: Where edges start.
+    connectivity: Whether diagonal steps join pixels.
+  tryThis:
+    - Apply Sobel with the clip mapping, then hysteresis, and move the low threshold.
+  pitfalls:
+    - Setting the low threshold near 0. Then almost every pixel joins the nearest edge.
+  demos: [line-profile]
+related: [canny, sobel-nms, sobel]
+docsPage: filters/edges/hysteresis.md

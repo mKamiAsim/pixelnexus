@@ -123,6 +123,8 @@ const CASES: [string, Params][] = [
   ["zero-crossing", { level: 128, threshold: 10, outputMapping: "clip" }],
   ["marr-hildreth", { sigma: 1.5, threshold: 1, outputMapping: "clip", border: "replicate" }],
   ["sobel-nms", { outputMapping: "abs", channelScope: "luminance", border: "wrap" }],
+  ["hysteresis", { low: 100, high: 180, connectivity: "4", outputMapping: "clip" }],
+  ["canny", { sigma: 1, low: 30, high: 80, outputMapping: "clip", border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
