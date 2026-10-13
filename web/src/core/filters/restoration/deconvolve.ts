@@ -61,8 +61,19 @@ type Gain = (hr: number, hi: number, fx: number, fy: number) => readonly [number
 /** Multiply the spectrum of the extended plane by a gain built from H, and transform back. */
 export function deconvolve(input: Plane, border: BorderMode, kernel: Kernel2d, gain: Gain): Plane {
   const spectrum: Spectrum = spectrumOf(input, border);
+  const [hr, hi] = transferOf(kernel, spectrum.width, spectrum.height);
+  return withGain(input, spectrum, hr, hi, gain);
+}
+
+/** Multiply a spectrum by a gain built from H, and transform back to the size of the input. */
+function withGain(
+  input: Plane,
+  spectrum: Spectrum,
+  hr: Float64Array,
+  hi: Float64Array,
+  gain: Gain,
+): Plane {
   const { width, height, fx, fy } = spectrum;
-  const [hr, hi] = transferOf(kernel, width, height);
   const re = new Float64Array(spectrum.re);
   const im = new Float64Array(spectrum.im);
   for (let j = 0; j < height; j++) {
@@ -93,6 +104,80 @@ export function wienerGain(k: number): Gain {
     const denominator = hr * hr + hi * hi + k;
     return [hr / denominator, -hi / denominator];
   };
+}
+
+/**
+ * |L|^2 of a regularizing operator at a frequency. The gradient uses forward differences in x and
+ * y, |1 - e^(-2 pi i f)|^2 = 4 sin^2(pi f) each. The Laplacian is the 4-neighbor kernel
+ * [0 1 0; 1 -4 1; 0 1 0] of Gonzalez and Woods, with transform 2 cos(2 pi fx) + 2 cos(2 pi fy) - 4.
+ */
+export function operatorPower(
+  operator: "identity" | "gradient" | "laplacian",
+  fx: number,
+  fy: number,
+): number {
+  if (operator === "identity") return 1;
+  const sx = Math.sin(Math.PI * fx);
+  const sy = Math.sin(Math.PI * fy);
+  if (operator === "gradient") return 4 * (sx * sx + sy * sy);
+  const p = 2 * Math.cos(2 * Math.PI * fx) + 2 * Math.cos(2 * Math.PI * fy) - 4;
+  return p * p;
+}
+
+/** conj(H) / (|H|^2 + lambda |L|^2). */
+export function regularizedGain(
+  lambda: number,
+  operator: "identity" | "gradient" | "laplacian",
+): Gain {
+  return (hr, hi, fx, fy) => {
+    const denominator = hr * hr + hi * hi + lambda * operatorPower(operator, fx, fy);
+    return denominator > 0 ? [hr / denominator, -hi / denominator] : [0, 0];
+  };
+}
+
+/** Bisection steps on log10 gamma, from 1e-10 to 1e4. */
+const CLS_STEPS = 60;
+const CLS_LOW = -10;
+const CLS_HIGH = 4;
+
+/**
+ * The gamma of constrained least squares: the one whose residual g - h * f_hat has a mean square,
+ * per FFT sample, equal to sigma^2, found by bisection on log10 gamma. The residual grows with
+ * gamma, so the bisection converges. If no gamma in range fits, the nearest end is used.
+ */
+export function clsGamma(
+  spectrum: Spectrum,
+  hr: Float64Array,
+  hi: Float64Array,
+  sigma: number,
+): number {
+  const { width, height, fx, fy } = spectrum;
+  const n = width * height;
+  const target = sigma * sigma;
+  const residual = (gamma: number) => {
+    let sum = 0;
+    for (let j = 0; j < height; j++) {
+      for (let i = 0; i < width; i++) {
+        const k = j * width + i;
+        const h2 = (hr[k] ?? 0) ** 2 + (hi[k] ?? 0) ** 2;
+        const p2 = gamma * operatorPower("laplacian", fx[i] ?? 0, fy[j] ?? 0);
+        const share = h2 + p2 > 0 ? p2 / (h2 + p2) : 0;
+        sum += share * share * ((spectrum.re[k] ?? 0) ** 2 + (spectrum.im[k] ?? 0) ** 2);
+      }
+    }
+    // Parseval: the mean square of the residual is the sum of |R|^2 over n^2.
+    return sum / (n * n);
+  };
+  let low = CLS_LOW;
+  let high = CLS_HIGH;
+  if (residual(10 ** high) <= target) return 10 ** high;
+  if (residual(10 ** low) >= target) return 10 ** low;
+  for (let step = 0; step < CLS_STEPS; step++) {
+    const mid = (low + high) / 2;
+    if (residual(10 ** mid) < target) low = mid;
+    else high = mid;
+  }
+  return 10 ** ((low + high) / 2);
 }
 
 function psfDescription(params: Params): string {
@@ -181,6 +266,84 @@ export const wienerDeconvFilter: PlaneFilter = {
         name: "Wiener",
         formula: `\\hat{F}(f) = \\frac{\\overline{H(f)}}{|H(f)|^2 + K}\\, G(f),\\quad K = ${noiseRatioOf(params)}`,
         note: "K is the ratio of noise power to image power. Where |H|^2 is much larger than K this is the inverse filter, and where it is smaller the frequency is turned down.",
+      },
+      { name: "Result", formula: "\\hat{f} = \\operatorname{Re} \\mathcal{F}^{-1}\\{\\hat{F}\\}" },
+    ],
+    note: `The PSF is ${psfDescription(params)}.`,
+  }),
+};
+
+type Operator = "identity" | "gradient" | "laplacian";
+const OPERATOR_TEX: Record<Operator, string> = {
+  identity: "|L(f)|^2 = 1",
+  gradient: "|L(f)|^2 = 4 \\sin^2(\\pi f_x) + 4 \\sin^2(\\pi f_y)",
+  laplacian: "|L(f)|^2 = \\left(2 \\cos(2 \\pi f_x) + 2 \\cos(2 \\pi f_y) - 4\\right)^2",
+};
+const lambdaOf = (params: Params) => read.number(params, "lambda", 0.01);
+const operatorOf = (params: Params) => read.string<Operator>(params, "operator", "gradient");
+
+export const tikhonovFilter: PlaneFilter = {
+  id: "tikhonov",
+  kind: "smooth",
+  alphaWeighted: false,
+  global: true,
+  radius: () => 0,
+  plane: (input, params, { border }) =>
+    deconvolve(
+      input,
+      border,
+      psfKernel(params),
+      regularizedGain(lambdaOf(params), operatorOf(params)),
+    ),
+  representation: (params) => ({
+    kind: "stages",
+    stages: [
+      {
+        name: "Spectrum",
+        formula: "G = \\mathcal{F}\\{g_{\\text{ext}}\\},\\quad H = \\mathcal{F}\\{h\\}",
+      },
+      {
+        name: "Regularize",
+        formula: `\\hat{F}(f) = \\frac{\\overline{H(f)}}{|H(f)|^2 + \\lambda |L(f)|^2}\\, G(f),\\quad \\lambda = ${lambdaOf(params)},\\quad ${OPERATOR_TEX[operatorOf(params)]}`,
+        note: "The minimizer of |h * f - g|^2 + lambda |L f|^2, solved exactly in the frequency domain.",
+      },
+      { name: "Result", formula: "\\hat{f} = \\operatorname{Re} \\mathcal{F}^{-1}\\{\\hat{F}\\}" },
+    ],
+    note: `The PSF is ${psfDescription(params)}.`,
+  }),
+};
+
+const clsSigmaOf = (params: Params) => read.number(params, "noiseSigma", 5);
+
+export const clsFilter: PlaneFilter = {
+  id: "cls",
+  kind: "smooth",
+  alphaWeighted: false,
+  global: true,
+  radius: () => 0,
+  plane: (input, params, { border }) => {
+    const spectrum = spectrumOf(input, border);
+    const [hr, hi] = transferOf(psfKernel(params), spectrum.width, spectrum.height);
+    const gamma = clsGamma(spectrum, hr, hi, clsSigmaOf(params));
+    return withGain(input, spectrum, hr, hi, regularizedGain(gamma, "laplacian"));
+  },
+  representation: (params) => ({
+    kind: "stages",
+    stages: [
+      {
+        name: "Spectrum",
+        formula:
+          "G = \\mathcal{F}\\{g_{\\text{ext}}\\},\\quad H = \\mathcal{F}\\{h\\},\\quad P = \\mathcal{F}\\{p\\}",
+        note: "p is the Laplacian kernel [0 1 0; 1 -4 1; 0 1 0].",
+      },
+      {
+        name: "Choose gamma",
+        formula: `\\frac{1}{N} \\| g - h * \\hat{f} \\|^2 = \\sigma^2,\\quad \\sigma = ${clsSigmaOf(params)}`,
+        note: "Gamma is found by bisection on log10 gamma from -10 to 4, so the residual matches the noise.",
+      },
+      {
+        name: "Restore",
+        formula: "\\hat{F}(f) = \\frac{\\overline{H(f)}}{|H(f)|^2 + \\gamma |P(f)|^2}\\, G(f)",
       },
       { name: "Result", formula: "\\hat{f} = \\operatorname{Re} \\mathcal{F}^{-1}\\{\\hat{F}\\}" },
     ],

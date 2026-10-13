@@ -91,6 +91,56 @@ def wiener_gain(k: float) -> Gain:
     return gain
 
 
+def operator_power(operator: str, fx: FloatArray, fy: FloatArray) -> FloatArray:
+    """|L|^2 of the identity, the forward-difference gradient or the 4-neighbor Laplacian."""
+    if operator == "identity":
+        return np.ones(np.broadcast_shapes(fx.shape, fy.shape))
+    if operator == "gradient":
+        return np.asarray(4 * (np.sin(np.pi * fx) ** 2 + np.sin(np.pi * fy) ** 2))
+    return np.asarray((2 * np.cos(2 * np.pi * fx) + 2 * np.cos(2 * np.pi * fy) - 4) ** 2)
+
+
+def regularized_gain(lam: float, operator: str) -> Gain:
+    def gain(h: ComplexArray, fx: FloatArray, fy: FloatArray) -> ComplexArray:
+        d = h.real**2 + h.imag**2 + lam * operator_power(operator, fx, fy)
+        return np.where(d > 0, np.conj(h) / np.where(d > 0, d, 1), 0)
+
+    return gain
+
+
+def cls(plane: FloatArray, border: str, kernel: FloatArray, sigma: float) -> FloatArray:
+    """Constrained least squares with the Laplacian, gamma by bisection on log10 gamma."""
+
+    def build(spectrum: ComplexArray, fx: FloatArray, fy: FloatArray) -> ComplexArray:
+        h = transfer(kernel, spectrum.shape[1], spectrum.shape[0])
+        h2 = h.real**2 + h.imag**2
+        p = operator_power("laplacian", fx[None, :], fy[:, None])
+        g2 = spectrum.real**2 + spectrum.imag**2
+        n = spectrum.size
+
+        def residual(gamma: float) -> float:
+            p2 = gamma * p
+            share = np.where(h2 + p2 > 0, p2 / np.where(h2 + p2 > 0, h2 + p2, 1), 0)
+            return float((share * share * g2).sum() / (n * n))
+
+        low, high = -10.0, 4.0
+        if residual(10**high) <= sigma * sigma:
+            gamma = 10**high
+        elif residual(10**low) >= sigma * sigma:
+            gamma = 10**low
+        else:
+            for _ in range(60):
+                mid = (low + high) / 2
+                if residual(10**mid) < sigma * sigma:
+                    low = mid
+                else:
+                    high = mid
+            gamma = 10 ** ((low + high) / 2)
+        return regularized_gain(gamma, "laplacian")(h, fx[None, :], fy[:, None])
+
+    return spectral_filter(plane, border, build)  # type: ignore[arg-type]
+
+
 def blur(plane: FloatArray, kernel: FloatArray, border: str) -> FloatArray:
     return np.asarray(ndimage.correlate(plane, kernel, mode=SCIPY_MODES[border]), dtype=np.float64)
 
@@ -110,7 +160,7 @@ def _checks() -> None:
         _fail(f"Wiener deconvolution does not undo a known blur: {before:.3f} -> {after:.3f}")
 
 
-def add_restoration_cases(plane: FloatArray, add: Add) -> None:
+def add_restoration_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
     _checks()
     psfs: list[dict[str, Any]] = [
         {"psf": "gaussian", "sigma": 1.5},
@@ -140,3 +190,18 @@ def add_restoration_cases(plane: FloatArray, add: Add) -> None:
     ):
         output = deconvolve(plane, border, psf(params), wiener_gain(k))
         add("wiener-deconv", {**params, "noiseRatio": k, "border": border}, output, source)
+    for params, lam, operator, border in (
+        (psfs[0], 0.02, "gradient", "reflect"),
+        (psfs[1], 0.005, "laplacian", "reflect101"),
+        (psfs[2], 0.01, "identity", "wrap"),
+    ):
+        output = deconvolve(plane, border, psf(params), regularized_gain(lam, operator))
+        case = {**params, "lambda": lam, "operator": operator, "border": border}
+        add("tikhonov", case, output, source)
+    # The fixture stores inputs as whole numbers, so the reference uses the rounded blur too.
+    defocused = np.round(blur(plane, psf(psfs[2]), "reflect"))
+    for sigma, border in ((2.0, "reflect"), (8.0, "replicate")):
+        output = cls(defocused, border, psf(psfs[2]), sigma)
+        case = {**psfs[2], "noiseSigma": sigma, "border": border}
+        add("cls", case, output, source + ", with gamma by bisection", "defocused")
+    return {"defocused": defocused}

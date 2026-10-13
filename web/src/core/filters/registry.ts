@@ -126,7 +126,13 @@ import { switchingMedianFilter } from "./nonlinear/switching-median";
 import { vectorMedianFilter } from "./nonlinear/vector-median";
 import { weightedMedianFilter } from "./nonlinear/weighted-median";
 import { deadPixelFilter } from "./restoration/dead-pixel";
-import { degradeBlurFilter, inverseFilter, wienerDeconvFilter } from "./restoration/deconvolve";
+import {
+  clsFilter,
+  degradeBlurFilter,
+  inverseFilter,
+  tikhonovFilter,
+  wienerDeconvFilter,
+} from "./restoration/deconvolve";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -221,6 +227,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   deadPixelFilter,
   inverseFilter,
   wienerDeconvFilter,
+  tikhonovFilter,
+  clsFilter,
   madOutlierFilter,
   kuwaharaFilter,
   nagaoMatsuyamaFilter,

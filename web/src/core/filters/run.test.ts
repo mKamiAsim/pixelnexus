@@ -205,6 +205,8 @@ const CASES: [string, Params][] = [
   ["degrade-blur", { psf: "defocus", radius: 2.3 }],
   ["inverse-filter", { psf: "gaussian", sigma: 1.5, cutoff: 0.3, threshold: 0.05 }],
   ["wiener-deconv", { psf: "motion", length: 5, angle: 0, noiseRatio: 0.01 }],
+  ["tikhonov", { psf: "gaussian", sigma: 1.2, lambda: 0.02, operator: "gradient" }],
+  ["cls", { psf: "defocus", radius: 2, noiseSigma: 4 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
