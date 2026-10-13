@@ -122,8 +122,10 @@
 | [Shi-Tomasi](features/shi-tomasi.md) | Texture, corners, blobs and features | Finds corners by the smaller eigenvalue of the structure tensor, the measure behind Good features to track. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
+| [Constrained least squares](restoration/cls.md) | Restoration and reconstruction | Undoes a known blur with a smoothness penalty whose weight is set from the noise level, so the result fits the image as closely as the noise allows. | Implemented and tested |
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
 | [Inverse filtering](restoration/inverse-filter.md) | Restoration and reconstruction | Undoes a known blur by dividing the spectrum by the transform of the blur, only where the blur left enough of each frequency. | Implemented and tested |
+| [Tikhonov regularization](restoration/tikhonov.md) | Restoration and reconstruction | Undoes a known blur while keeping the result smooth, by adding a penalty on its size or its gradient. | Implemented and tested |
 | [Wiener deconvolution](restoration/wiener-deconv.md) | Restoration and reconstruction | Undoes a known blur while keeping noise in check, by dividing only as far as the noise allows. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |

@@ -272,6 +272,8 @@ nav:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md
           - Wiener deconvolution: filters/restoration/wiener-deconv.md
+          - Tikhonov regularization: filters/restoration/tikhonov.md
+          - Constrained least squares: filters/restoration/cls.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

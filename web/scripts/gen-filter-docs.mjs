@@ -1116,6 +1116,26 @@ try {
   const { deconvDocs } = await import("./filter-docs/deconv.mjs");
   const { psfKernel } = await load("/src/core/filters/restoration/deconvolve.ts");
   deconvDocs({ run, pic, figure, example, mdTable, fix, synthetic, psfKernel, qualityMetrics });
+  const { regularizeDocs } = await import("./filter-docs/regularize.mjs");
+  const { transferOf, clsGamma, operatorPower } = await load(
+    "/src/core/filters/restoration/deconvolve.ts",
+  );
+  const { spectrumOf } = await load("/src/core/filters/frequency/spectral.ts");
+  regularizeDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    qualityMetrics,
+    psfKernel,
+    transferOf,
+    clsGamma,
+    operatorPower,
+    spectrumOf,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
