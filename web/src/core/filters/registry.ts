@@ -52,6 +52,13 @@ import {
   idealHighpassFilter,
   idealLowpassFilter,
 } from "./frequency/passband";
+import {
+  combFilter,
+  noisePeriodicFilter,
+  notchPassFilter,
+  notchRejectFilter,
+  periodicNoiseFilter,
+} from "./frequency/notch";
 import { gaborFilter } from "./linear/gabor";
 import {
   blackhatFilter,
@@ -189,6 +196,10 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   gaussianHighpassFilter,
   gaussianBandpassFilter,
   gaussianBandrejectFilter,
+  notchRejectFilter,
+  notchPassFilter,
+  combFilter,
+  periodicNoiseFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,
@@ -237,6 +248,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   saltPepperNoiseFilter,
   speckleNoiseFilter,
   poissonNoiseFilter,
+  noisePeriodicFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

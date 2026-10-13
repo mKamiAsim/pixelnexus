@@ -12,6 +12,7 @@ import {
   Layers,
   Library,
   Map,
+  Radar,
   Sigma,
   SlidersHorizontal,
   X,
@@ -41,6 +42,7 @@ import { MetricsPanel } from "@/panels/MetricsPanel";
 import { ImagesPanel } from "@/panels/ImagesPanel";
 import { InfoPanel } from "@/panels/InfoPanel";
 import { NavigatorPanel } from "@/panels/NavigatorPanel";
+import { SpectrumPanel } from "@/panels/SpectrumPanel";
 import { useUi } from "@/state/ui";
 import "@/styles/dockview-theme.css";
 import { THEMES } from "@/styles/themes";
@@ -79,6 +81,7 @@ const PANEL_ICONS: Record<PanelId, LucideIcon> = {
   histogram: ChartColumn,
   masks: Layers,
   metrics: Gauge,
+  spectrum: Radar,
 };
 
 /** Each panel gets its own error boundary, so one failing panel cannot blank the studio. */
@@ -109,6 +112,7 @@ const COMPONENTS = {
   navigator: panel("Navigator", <NavigatorPanel />),
   info: panel("Info", <InfoPanel />),
   histogram: panel("Histogram", <HistogramPanel />),
+  spectrum: panel("Spectrum", <SpectrumPanel />),
   masks: panel("Masks", <MasksPanel />),
   metrics: panel("Metrics", <MetricsPanel />),
 };

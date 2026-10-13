@@ -256,6 +256,10 @@ nav:
           - Gaussian high-pass: filters/frequency/gaussian-highpass.md
           - Gaussian band-pass: filters/frequency/gaussian-bandpass.md
           - Gaussian band-reject: filters/frequency/gaussian-bandreject.md
+          - Notch-reject: filters/frequency/notch-reject.md
+          - Notch-pass: filters/frequency/notch-pass.md
+          - Comb filter: filters/frequency/comb.md
+          - Periodic-noise suppression: filters/frequency/periodic-noise.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md
@@ -263,6 +267,7 @@ nav:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
+          - Add periodic noise: filters/utility/noise-periodic.md
           - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md
           - Add speckle noise: filters/utility/noise-speckle.md
           - Add Poisson noise: filters/utility/noise-poisson.md

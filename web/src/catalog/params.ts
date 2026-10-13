@@ -1,4 +1,5 @@
 import { parseKernel } from "@/core/filters/linear/weighted-average";
+import { formatNotches, parseNotches } from "@/core/filters/frequency/notch";
 import { parseStructuringElement } from "@/core/filters/morphology/structuring";
 import { normalizeNumber } from "@/components/ui/number";
 import type { Param, ParamRef, ParamValue } from "@/generated/catalog-types";
@@ -104,6 +105,16 @@ export function validateParams(
           );
         }
         out[param.key] = parsed?.ok ? (raw as string) : param.default;
+        break;
+      }
+      case "points": {
+        const parsed = typeof raw === "string" ? parseNotches(raw) : null;
+        if (!parsed?.ok) {
+          warnings.push(
+            `${param.label}: ${parsed?.message ?? "The points must be text."} The default is used.`,
+          );
+        }
+        out[param.key] = parsed?.ok ? formatNotches(parsed.notches) : param.default;
         break;
       }
       default:

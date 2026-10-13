@@ -111,6 +111,35 @@ test("the structuring element editor shapes erosion, and the stepper shows it", 
   await expect(page.getByText("Erosion keeps the smallest.")).toBeVisible();
 });
 
+test("a click in the Spectrum panel places a notch for the notch-reject filter", async ({
+  page,
+}) => {
+  await openTestImage(page, "Disks and dots");
+  // Stripes every 8 pixels make a peak at fx = 0.125 cycles per pixel.
+  await chooseFilter(page, "periodic noise", "Add periodic noise");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Add periodic noise");
+  await chooseFilter(page, "notch", "Notch-reject");
+  await front(page, "Spectrum");
+  const spectrum = page.getByRole("img", {
+    name: /Log magnitude spectrum of the image, with 1 notch$/,
+  });
+  await expect(spectrum).toBeVisible();
+  const box = await spectrum.boundingBox();
+  if (!box) throw new Error("The spectrum has no size.");
+  // The 512 x 512 spectrum has frequency 0 at column and row 256, so column 320 is fx = 0.125.
+  // The click lands one step away from the peak and snaps to it.
+  await spectrum.click({
+    position: { x: (box.width * 321.5) / 512, y: (box.height * 257.5) / 512 },
+  });
+  await expect(
+    page.getByRole("img", { name: /Log magnitude spectrum of the image, with 2 notches$/ }),
+  ).toBeVisible();
+  await front(page, "Properties");
+  await expect(page.getByRole("textbox", { name: "Notches" })).toHaveValue("0.2 0.1\n0.125 0");
+});
+
 test("planned filters are listed but cannot run", async ({ page }) => {
   await openTestImage(page, "Siemens star");
   await chooseFilter(page, "dncnn", "DnCNN");

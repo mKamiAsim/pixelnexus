@@ -1081,6 +1081,23 @@ try {
     browserFilter,
     frequencyResponse,
   });
+  const { notchDocs } = await import("./filter-docs/notch.mjs");
+  const { spectrumView, spectrumPicture } = await load("/src/core/filters/frequency/display.ts");
+  const { periodicPeaks, notchCenters } = await load("/src/core/filters/frequency/notch.ts");
+  notchDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    frequencyResponse,
+    spectrumView,
+    spectrumPicture,
+    periodicPeaks,
+    notchCenters,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

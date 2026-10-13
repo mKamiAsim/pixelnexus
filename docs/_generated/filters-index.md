@@ -82,6 +82,7 @@
 | [Butterworth band-reject](frequency/butterworth-bandreject.md) | Frequency-domain filters | Removes a ring of frequencies and keeps the rest, which suppresses noise or patterns of one size. The cutoff is smooth, and the order sets how sharp it is. | Implemented and tested |
 | [Butterworth high-pass](frequency/butterworth-highpass.md) | Frequency-domain filters | Removes the low frequencies of the image and keeps the high ones, which leaves edges and fine detail. The cutoff is smooth, and the order sets how sharp it is. | Implemented and tested |
 | [Butterworth low-pass](frequency/butterworth-lowpass.md) | Frequency-domain filters | Keeps the low frequencies of the image and removes the high ones, which blurs it. The cutoff is smooth, and the order sets how sharp it is. | Implemented and tested |
+| [Comb filter](frequency/comb.md) | Frequency-domain filters | Removes a periodic pattern together with its harmonics, with notches at whole multiples of a base frequency. | Implemented and tested |
 | [Gaussian band-pass](frequency/gaussian-bandpass.md) | Frequency-domain filters | Keeps only a ring of frequencies, which leaves the detail of one size. The band edges follow a Gaussian curve, so they ring very little. | Implemented and tested |
 | [Gaussian band-reject](frequency/gaussian-bandreject.md) | Frequency-domain filters | Removes a ring of frequencies and keeps the rest, which suppresses noise or patterns of one size. The band edges follow a Gaussian curve, so they ring very little. | Implemented and tested |
 | [Gaussian high-pass](frequency/gaussian-highpass.md) | Frequency-domain filters | Removes the low frequencies of the image and keeps the high ones, which leaves edges and fine detail. The cutoff follows a Gaussian curve, so it does not ring. | Implemented and tested |
@@ -90,6 +91,9 @@
 | [Ideal band-reject](frequency/ideal-bandreject.md) | Frequency-domain filters | Removes a ring of frequencies and keeps the rest, which suppresses noise or patterns of one size. The cutoff is sharp. | Implemented and tested |
 | [Ideal high-pass](frequency/ideal-highpass.md) | Frequency-domain filters | Removes the low frequencies of the image and keeps the high ones, which leaves edges and fine detail. The cutoff is sharp. | Implemented and tested |
 | [Ideal low-pass](frequency/ideal-lowpass.md) | Frequency-domain filters | Keeps the low frequencies of the image and removes the high ones, which blurs it. The cutoff is sharp. | Implemented and tested |
+| [Notch-pass](frequency/notch-pass.md) | Frequency-domain filters | Keeps only small regions of the spectrum around chosen frequencies, which extracts a periodic pattern. | Implemented and tested |
+| [Notch-reject](frequency/notch-reject.md) | Frequency-domain filters | Removes small regions of the spectrum around chosen frequencies, which removes a periodic pattern. | Implemented and tested |
+| [Periodic-noise suppression](frequency/periodic-noise.md) | Frequency-domain filters | Finds the peaks of periodic noise in the spectrum on its own and removes them with notches. | Implemented and tested |
 | [Canny](edges/canny.md) | Edge detection and boundary analysis | The classic edge detector. It smooths, finds the gradient, thins it to one-pixel lines and keeps edges with two thresholds. | Implemented and tested |
 | [Farid-Simoncelli derivative filter](edges/farid-simoncelli.md) | Edge detection and boundary analysis | Estimates the gradient with 5-tap derivative and prefilter kernels optimized for accurate, rotation invariant derivatives. | Implemented and tested |
 | [Frei-Chen](edges/frei-chen.md) | Edge detection and boundary analysis | Projects each 3x3 window onto nine orthonormal masks and reports how much of it looks like an edge or a line. | Implemented and tested |
@@ -116,6 +120,7 @@
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |
+| [Add periodic noise](utility/noise-periodic.md) | Utilities | Adds a sine wave of one frequency and direction to every pixel, a model of periodic interference. | Implemented and tested |
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
 | [Add speckle noise](utility/noise-speckle.md) | Utilities | Multiplies every pixel by a random factor around 1, so bright areas get more noise than dark ones. | Implemented and tested |
 | [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |

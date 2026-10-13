@@ -20,6 +20,7 @@ export const PANELS = [
   { id: "navigator", title: "Navigator", side: "right" },
   { id: "info", title: "Info", side: "right" },
   { id: "histogram", title: "Histogram", side: "right" },
+  { id: "spectrum", title: "Spectrum", side: "right" },
   { id: "masks", title: "Masks", side: "right" },
   { id: "metrics", title: "Metrics", side: "right" },
 ] as const;
@@ -51,8 +52,8 @@ export const PRESETS = [
 
 export type PresetId = (typeof PRESETS)[number]["id"];
 
-// Version 3 adds the Masks panel. Older saved layouts are replaced once by the preset.
-const STORAGE_KEY = "pixelnexus.layout.v3";
+// Version 4 adds the Spectrum panel. Older saved layouts are replaced once by the preset.
+const STORAGE_KEY = "pixelnexus.layout.v4";
 const PRESET_KEY = "pixelnexus.preset.v1";
 
 let api: DockviewApi | null = null;
@@ -136,6 +137,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "navigator",
       "info",
       "histogram",
+      "spectrum",
       "masks",
       "metrics",
       "developer",
@@ -147,7 +149,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("learn", CANVAS_PANEL, "right");
     stack("learn", ["inspector", "properties"]);
     add("info", "learn", "below");
-    stack("info", ["histogram", "metrics", "navigator", "history", "masks"]);
+    stack("info", ["histogram", "spectrum", "metrics", "navigator", "history", "masks"]);
     widths.push(["library", 240], ["learn", 400]);
     heights.push(["info", 280]);
   } else if (id === "developer") {
@@ -156,7 +158,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("developer", CANVAS_PANEL, "right");
     stack("developer", ["inspector", "properties"]);
     add("history", "developer", "below");
-    stack("history", ["masks", "info", "histogram", "metrics", "navigator"]);
+    stack("history", ["masks", "info", "histogram", "spectrum", "metrics", "navigator"]);
     widths.push(["library", 240], ["developer", 400]);
     heights.push(["history", 260]);
   } else {
@@ -165,7 +167,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("properties", CANVAS_PANEL, "right");
     stack("properties", ["inspector", "learn", "developer"]);
     add("history", "properties", "below");
-    stack("history", ["masks", "navigator", "info", "histogram", "metrics"]);
+    stack("history", ["masks", "navigator", "info", "histogram", "spectrum", "metrics"]);
     widths.push(["library", 260], ["properties", 330]);
     heights.push(["history", 260]);
   }

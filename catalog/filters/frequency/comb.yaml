@@ -1,8 +1,153 @@
 id: comb
 name: Comb filter
+aliases: [Harmonic notch filter, Comb notch filter]
 family: frequency
+tags: [purpose:denoise]
 tier: core
 engine: browser
 phase: 5e
-status: planned
-planNotes: Notches at harmonics.
+status: implemented-tested
+
+summary: Removes a periodic pattern together with its harmonics, with notches at whole multiples of a base frequency.
+purpose: Remove a pattern that is periodic but not a pure wave, such as scan lines or a screen, which makes peaks at a base frequency and its multiples.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/notch.ts, symbol: harmonics}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side. With reflect and reflect 101, the extension mirrors a
+  pattern at (fx, fy) into one at (-fx, fy), so each notch also covers that point and its mirror.
+  The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: fx
+    label: Base frequency x
+    type: number
+    min: -0.5
+    max: 0.5
+    step: 0.001
+    default: 0.125
+    unit: cycles/px
+    description: The base frequency along x, in cycles per pixel. A pattern of vertical lines every 8 pixels has 0.125.
+    effect: Moves all the notches along the line through the center and the base frequency.
+  - key: fy
+    label: Base frequency y
+    type: number
+    min: -0.5
+    max: 0.5
+    step: 0.001
+    default: 0
+    unit: cycles/px
+    description: The base frequency along y, in cycles per pixel. A pattern of horizontal lines every 4 pixels has 0.25.
+    effect: Moves all the notches along the line through the center and the base frequency.
+  - key: harmonics
+    label: Harmonics
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 3
+    description: How many multiples of the base frequency get a notch. Multiples past 0.5 cycles per pixel are left out.
+    effect: More harmonics remove the sharp edges of the pattern too.
+  - key: shape
+    label: Notch shape
+    type: select
+    default: butterworth
+    options:
+      - {value: ideal, label: Ideal}
+      - {value: butterworth, label: Butterworth}
+      - {value: gaussian, label: Gaussian}
+    description: The shape of each notch, as for the low-pass and high-pass filters.
+    effect: Ideal notches have sharp edges and ring. Butterworth and Gaussian notches are smooth.
+  - key: radius
+    label: Notch radius
+    type: number
+    min: 0.002
+    max: 0.1
+    step: 0.001
+    default: 0.01
+    unit: cycles/px
+    description: The radius D_0 of each notch, in cycles per pixel.
+    effect: Larger notches remove more of the spectrum around each center.
+  - key: order
+    label: Order
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 2
+    description: The order n of Butterworth notches. Other shapes ignore it.
+    effect: Higher orders give notches with sharper edges.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  H = \prod_k H_k,\quad (u_k, v_k) = k\,(f_{x0}, f_{y0}),\ k = 1 \ldots {{harmonics}},\quad f_{x0} = {{fx}},\ f_{y0} = {{fy}}
+formulaExplanation: >-
+  The comb filter is a notch-reject filter whose notches sit at k times the base frequency, up
+  to the chosen count. Harmonics whose fx or fy passes 0.5 cycles per pixel are left out. Each
+  harmonic is notched at its mirror points too, as in the notch-reject filter. Gonzalez and Woods
+  build notch filters from high-pass factors. Placing them on harmonics is this filter's own
+  convenience.
+symbols:
+  - {symbol: '(f_{x0}, f_{y0})', meaning: The base frequency in cycles per pixel}
+  - {symbol: '(u_k, v_k)', meaning: The center of harmonic k}
+  - {symbol: 'H_k', meaning: The high-pass factor of the notch at harmonic k and its mirror points}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N + N K)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of notch centers.
+useCases:
+  - Removing scan lines and the line pattern of interlaced video.
+  - Removing the dot screen of a scanned print.
+advantages:
+  - One base frequency places all the notches of a pattern with harmonics.
+limitations:
+  - The base frequency must be known. Read it from the Spectrum panel.
+  - A pattern that does not fit the image a whole number of times leaks around its peaks, so some of it stays near the image edges.
+artifacts:
+  - Faint waves near the image edges where the pattern was cut off.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/notch.ts, symbol: combFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Remove a repeating pattern by cutting out its base frequency and every multiple of it.
+  howItWorks:
+    - A pattern that repeats every few pixels makes peaks at a base frequency and its multiples.
+    - The filter places a notch on each multiple.
+    - Transform back. The pattern is gone, with its sharp edges.
+  academic: >-
+    A notch-reject filter with notches at the harmonics of a fundamental frequency, the 2D
+    counterpart of a comb filter in signal processing.
+  paramNotes:
+    fx: The base frequency along x.
+    fy: The base frequency along y.
+    harmonics: How many multiples to notch.
+    shape: How sharp the notch edges are.
+    radius: How large each notch is.
+    order: How sharp Butterworth notches are.
+  tryThis:
+    - Make a stripe pattern with sharp edges, read its base frequency in the Spectrum panel, and raise the harmonics until the stripes are gone.
+  pitfalls:
+    - A base frequency of 0. It places no notches.
+  demos: [frequency-explorer, noise-lab]
+related: [notch-reject, periodic-noise, noise-periodic]
+docsPage: filters/frequency/comb.md

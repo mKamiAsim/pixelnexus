@@ -177,6 +177,11 @@ const CASES: [string, Params][] = [
   ["gaussian-highpass", { cutoff: 0.1, outputMapping: "offset" }],
   ["gaussian-bandpass", { center: 0.2, width: 0.1, outputMapping: "offset" }],
   ["gaussian-bandreject", { center: 0.2, width: 0.1, border: "replicate" }],
+  ["notch-reject", { notches: "0.2 0.1; -0.3 0.25", shape: "gaussian", radius: 0.03 }],
+  ["notch-pass", { notches: "0.25 0", shape: "ideal", radius: 0.05, outputMapping: "offset" }],
+  ["comb", { fx: 0.1, fy: 0.05, harmonics: 3, shape: "butterworth", radius: 0.02, order: 2 }],
+  ["periodic-noise", { minFrequency: 0.08, threshold: 1, maxPeaks: 4, radius: 0.03 }],
+  ["noise-periodic", { amplitude: 30, fx: 0.13, fy: -0.07, phase: 40 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

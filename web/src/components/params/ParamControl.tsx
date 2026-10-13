@@ -5,6 +5,7 @@ import { ScrubSlider } from "@/components/ui/ScrubSlider";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import type { Param } from "@/generated/catalog-types";
+import { formatNotches, parseNotches } from "@/core/filters/frequency/notch";
 import { parseKernel } from "@/core/filters/linear/weighted-average";
 import { parseStructuringElement } from "@/core/filters/morphology/structuring";
 import { useDocuments } from "@/state/documents";
@@ -86,6 +87,8 @@ export function ParamControl({
       return <ImageField param={param} value={String(value)} onChange={onChange} />;
     case "structuring-element":
       return <ElementField param={param} value={String(value)} onChange={onChange} />;
+    case "points":
+      return <PointsField param={param} value={String(value)} onChange={onChange} />;
     default:
       return (
         <p className="text-xs text-text-muted">
@@ -189,6 +192,55 @@ function KernelField({
       >
         {parsed.ok
           ? `${parsed.rows.length} by ${parsed.rows[0]?.length ?? 0}. One row per line, numbers separated by spaces.`
+          : parsed.message}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Frequency points, such as notch centers: one "fx fy" pair per line, in cycles per pixel. The
+ * value changes only when the text can be read. The Spectrum panel adds points by clicking.
+ */
+function PointsField({
+  param,
+  value,
+  onChange,
+}: {
+  param: Param;
+  value: string;
+  onChange: (value: ParamValue) => void;
+}) {
+  const id = useId();
+  const [draft, setDraft] = useState<{ text: string; for: string } | null>(null);
+  const text = draft && draft.for === value ? draft.text : value.replace(/;\s*/g, "\n");
+  const parsed = parseNotches(text);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-text-secondary">
+        {param.label}
+      </label>
+      <textarea
+        id={id}
+        value={text}
+        rows={Math.min(8, Math.max(2, text.split("\n").length))}
+        spellCheck={false}
+        aria-invalid={!parsed.ok}
+        aria-describedby={`${id}-help`}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft({ text: next, for: value });
+          const check = parseNotches(next);
+          if (check.ok) onChange(formatNotches(check.notches));
+        }}
+        className="tabular rounded-control border border-border-control bg-raised px-2 py-1 font-mono text-xs text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus aria-invalid:border-danger"
+      />
+      <p
+        id={`${id}-help`}
+        className={parsed.ok ? "text-2xs text-text-muted" : "text-2xs text-danger"}
+      >
+        {parsed.ok
+          ? `${parsed.notches.length} point${parsed.notches.length === 1 ? "" : "s"}. One per line: fx and fy in cycles per pixel. Click in the Spectrum panel to add one.`
           : parsed.message}
       </p>
     </div>

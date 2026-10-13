@@ -9,7 +9,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { browserFilter } from "@/core/filters/registry";
 import { runFilter } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
-import { createImage, type RgbaImage } from "@/core/image/types";
+import type { RgbaImage } from "@/core/image/types";
 import { qualityMetrics } from "@/core/metrics/quality";
 
 import { patchAt, round } from "./common";
@@ -51,15 +51,8 @@ function damage(image: RgbaImage, kind: Damage): RgbaImage {
       return run(image, "noise-poisson", { peak: 20, seed: 7 });
     case "blur":
       return run(image, "gaussian", { sigma: 2 });
-    case "periodic": {
-      const out = createImage(image.width, image.height);
-      for (let i = 0; i < image.width * image.height; i++) {
-        const stripe = 40 * Math.sin((2 * Math.PI * (i % image.width)) / 8);
-        for (let c = 0; c < 3; c++) out.data[i * 4 + c] = (image.data[i * 4 + c] ?? 0) + stripe;
-        out.data[i * 4 + 3] = image.data[i * 4 + 3] ?? 255;
-      }
-      return out;
-    }
+    case "periodic":
+      return run(image, "noise-periodic", { amplitude: 40, fx: 0.125, fy: 0, phase: 0 });
   }
 }
 

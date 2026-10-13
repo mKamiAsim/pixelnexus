@@ -469,7 +469,7 @@ def filter_cases() -> dict[str, Any]:
     add_corner_cases(plane, add)
     add_morphology_cases(plane, add)
     extra_inputs |= add_binary_cases(plane, add)
-    add_frequency_cases(plane, add)
+    extra_inputs |= add_frequency_cases(plane, add)
 
     fir_taps = [
         {

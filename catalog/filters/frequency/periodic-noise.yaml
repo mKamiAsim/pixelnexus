@@ -1,8 +1,136 @@
 id: periodic-noise
 name: Periodic-noise suppression
+aliases: [Automatic notch filter, Periodic noise removal]
 family: frequency
+tags: [purpose:denoise]
 tier: core
 engine: browser
 phase: 5e
-status: planned
-planNotes: Finds spectral peaks, then applies notches.
+status: implemented-tested
+
+summary: Finds the peaks of periodic noise in the spectrum on its own and removes them with notches.
+purpose: Remove stripes, moire and other periodic noise without placing notches by hand.
+classification: {linearity: nonlinear, domain: frequency, operation: peak detection and notch rejection}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/notch.ts, symbol: findPeaks}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, and each finds its
+  own peaks. With the brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side. With reflect and reflect 101, the extension mirrors a
+  pattern at (fx, fy) into one at (-fx, fy), so each notch also covers that point and its mirror.
+  The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 3
+    description: How far a peak must rise above the median of its ring, in natural log units. 3 means about 20 times stronger.
+    effect: Lower values find weaker patterns, but also take parts of the image for peaks.
+  - key: minFrequency
+    label: Lowest frequency
+    type: number
+    min: 0.01
+    max: 0.4
+    step: 0.005
+    default: 0.05
+    unit: cycles/px
+    description: Peaks closer than this to the center of the spectrum are left alone, since the center holds the main content of the image.
+    effect: Higher values protect more of the coarse detail.
+  - key: maxPeaks
+    label: Most peaks
+    type: integer
+    min: 1
+    max: 32
+    step: 1
+    default: 8
+    description: The most peaks to remove, the strongest first.
+    effect: More peaks remove patterns with more parts.
+  - key: radius
+    label: Notch radius
+    type: number
+    min: 0.002
+    max: 0.1
+    step: 0.001
+    default: 0.01
+    unit: cycles/px
+    description: The radius D_0 of the Gaussian notch at each peak, in cycles per pixel.
+    effect: Larger notches remove more of each peak and more of the image near it.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  L(f) = \ln\left(1 + \left|\mathcal{F}\{(I - \bar{I})\, w\}(f)\right|\right),\quad L(p) - \operatorname{median}_{|f| \approx |p|} L(f) \ge {{threshold}},\quad H = \prod_k \left(1 - e^{-D_k^2 / 2 D_0^2}\right)
+formulaExplanation: >-
+  This is PixelNexus's own rule. The peaks are found in the spectrum of the image itself, with
+  its mean removed and a 2D Hann window w applied. There, a periodic pattern makes a sharp peak.
+  A peak is a local maximum of L in its 5 x 5 window. It must rise above the median of L on its
+  ring, the frequencies at the same distance from the center, by at least the threshold. Only
+  peaks at least the lowest frequency away from the center count. Each peak then gets a Gaussian
+  notch, at its mirror points too, as in the notch-reject filter, and the image extended with the
+  border mode is filtered.
+symbols:
+  - {symbol: 'L', meaning: The log magnitude of the windowed spectrum}
+  - {symbol: 'w', meaning: A 2D Hann window}
+  - {symbol: 'p', meaning: A peak frequency}
+  - {symbol: 'D_k', meaning: The distance from notch center k in cycles per pixel}
+  - {symbol: 'D_0', meaning: The notch radius}
+steps:
+  - Remove the mean of the image and multiply it by a 2D Hann window.
+  - Take the FFT and the log magnitude L.
+  - Find the local maxima of L that rise above the median of their ring by the threshold.
+  - Keep the strongest, up to the most peaks.
+  - Reject them with Gaussian notches on the spectrum of the image extended with the border mode.
+complexity:
+  time: O(N log N + N K)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of notch centers.
+useCases:
+  - Removing stripes, moire and hum patterns.
+  - A first pass before placing notches by hand.
+advantages:
+  - Finds the peaks on its own.
+  - Ring medians adapt to the falling spectrum of natural images.
+limitations:
+  - Strong straight edges make streaks in the spectrum that can pass as peaks. Raise the threshold or the lowest frequency.
+  - A pattern that does not fit the image a whole number of times leaks around its peaks, so some of it stays near the image edges.
+artifacts:
+  - Faint waves near the image edges where the pattern was cut off.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, periodic noise and its reduction.
+implementation: {path: web/src/core/filters/frequency/notch.ts, symbol: periodicNoiseFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Find the bright peaks of a repeating pattern in the spectrum and cut them out.
+  howItWorks:
+    - Take the spectrum of the image with a window, so a pattern makes a sharp peak.
+    - Find the points that are much brighter than the rest of their ring.
+    - Cut those points out with notches and transform back.
+  academic: >-
+    Automatic notch filtering. Peaks are local maxima of the windowed log spectrum that exceed
+    the median of their annulus, and they are rejected with Gaussian notch filters.
+  paramNotes:
+    threshold: How strong a peak must be.
+    minFrequency: How close to the center a peak may be.
+    maxPeaks: How many peaks to remove.
+    radius: How large each notch is.
+  tryThis:
+    - Add periodic noise, then compare this filter with a notch you place by hand.
+  pitfalls:
+    - A low threshold on photos with strong straight edges. Their streaks become notches.
+  demos: [frequency-explorer, noise-lab]
+related: [notch-reject, comb, noise-periodic]
+docsPage: filters/frequency/periodic-noise.md

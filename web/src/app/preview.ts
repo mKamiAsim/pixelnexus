@@ -14,6 +14,7 @@
 import { isRunnable, type Filter } from "@/catalog";
 import { entryParams } from "@/catalog/params";
 import { screenToImage, type Size, type ViewState } from "@/canvas/viewport";
+import { formatNotches, parseNotches } from "@/core/filters/frequency/notch";
 import type { Rect } from "@/core/filters/run";
 import type { ParamValue } from "@/core/filters/types";
 import { resizeImage } from "@/core/image/resize";
@@ -97,6 +98,18 @@ export function scaleParams(
   const out: Record<string, ParamValue> = { ...values };
   for (const param of entryParams(entry)) {
     const value = values[param.key];
+    if (param.type === "points" && param.unit === "cycles/px" && typeof value === "string") {
+      // Points that move past the highest frequency of the copy cannot be seen there.
+      const parsed = parseNotches(value);
+      if (parsed.ok) {
+        out[param.key] = formatNotches(
+          parsed.notches
+            .map((n) => ({ fx: n.fx / scale, fy: n.fy / scale }))
+            .filter((n) => Math.abs(n.fx) <= 0.5 && Math.abs(n.fy) <= 0.5),
+        );
+      }
+      continue;
+    }
     if (typeof value !== "number") continue;
     if (param.unit !== "px" && param.unit !== "cycles/px") continue;
     let scaled = param.unit === "px" ? value * scale : value / scale;

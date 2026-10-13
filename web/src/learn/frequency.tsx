@@ -6,7 +6,7 @@
 import { useMemo } from "react";
 
 import { ProfilePlot } from "@/components/math/FrequencyView";
-import { frequencyResponse } from "@/core/filters/frequency";
+import { frequencyResponse, hasFrequencyResponse } from "@/core/filters/frequency";
 import { sampleResponse, spectrumOf } from "@/core/filters/frequency/spectral";
 import { createPlane } from "@/core/filters/planes";
 import { browserFilter } from "@/core/filters/registry";
@@ -33,8 +33,7 @@ function centered(values: Float64Array, width: number, height: number, top: numb
 export function FrequencyExplorer({ filterId, values, image, point }: WidgetProps) {
   const data = useMemo(() => {
     const filter = browserFilter(filterId);
-    const response = frequencyResponse(filterId, values);
-    if (!filter || !response) return null;
+    if (!filter || !hasFrequencyResponse(filterId)) return null;
     const patch = patchAt(image, point.x, point.y);
     const channel = channelOf(values);
     const plane = createPlane(patch.width, patch.height);
@@ -44,6 +43,8 @@ export function FrequencyExplorer({ filterId, values, image, point }: WidgetProp
       }
     }
     const spectrum = spectrumOf(plane, borderOf(values));
+    const response = frequencyResponse(filterId, values, plane);
+    if (!response) return null;
     const { width, height, fx, fy } = spectrum;
     const before = new Float64Array(width * height);
     const gain = new Float64Array(width * height);
