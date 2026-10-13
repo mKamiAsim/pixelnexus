@@ -122,6 +122,6 @@ learn:
     - Run the filter three times with range sigma 20 for a cartoon look.
   pitfalls:
     - Setting the range sigma larger than the contrast of the edges you want to keep.
-  demos: [weight-viewer, line-profile]
+  demos: [weight-viewer, line-profile, noise-lab]
 related: [joint-bilateral, guided, anisotropic-diffusion, gaussian]
 docsPage: filters/nonlinear/bilateral.md

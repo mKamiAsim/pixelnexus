@@ -100,6 +100,6 @@ learn:
     - Put the Rank stepper on a speck. The marked values are the ones that are averaged.
   pitfalls:
     - Setting a trim smaller than the number of specks in a window. The specks then pull the mean.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [median, box, midpoint, rank-order]
 docsPage: filters/nonlinear/alpha-trimmed-mean.md

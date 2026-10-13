@@ -28,7 +28,15 @@ export interface WidgetProps {
 }
 
 /** Draw an RGBA image into a canvas at a whole-number scale, with sharp pixels. */
-function PixelCanvas({ image, scale, label }: { image: RgbaImage; scale: number; label: string }) {
+export function PixelCanvas({
+  image,
+  scale,
+  label,
+}: {
+  image: RgbaImage;
+  scale: number;
+  label: string;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;

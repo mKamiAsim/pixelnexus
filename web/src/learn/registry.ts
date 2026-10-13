@@ -6,6 +6,7 @@ import {
   NeighborhoodStepper,
   RankStepper,
 } from "./widgets";
+import { NoiseLab } from "./noiselab";
 import { WeightViewer } from "./weights";
 
 export const WIDGETS = {
@@ -15,6 +16,7 @@ export const WIDGETS = {
   "gradient-explorer": { title: "Gradient explorer", component: GradientExplorer },
   "line-profile": { title: "Line profile", component: LineProfile },
   "weight-viewer": { title: "Weight viewer", component: WeightViewer },
+  "noise-lab": { title: "Noise lab", component: NoiseLab },
 } as const;
 
 /** The phase that brings each demo that is not built yet. */
@@ -24,5 +26,4 @@ export const LATER_DEMOS: Readonly<Record<string, string>> = {
   "morphology-stepper": "5d",
   "stage-viewer": "5c",
   "iteration-viewer": "5e",
-  "noise-lab": "5b",
 };

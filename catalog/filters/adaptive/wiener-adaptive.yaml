@@ -109,6 +109,6 @@ learn:
     - Add Gaussian noise with sigma 15. Apply the filter with noise 5, 15 and 30.
   pitfalls:
     - Setting the noise far above the true level. Then texture counts as noise and is blurred.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [adaptive-local-noise, lee, local-variance, gaussian]
 docsPage: filters/adaptive/wiener-adaptive.md

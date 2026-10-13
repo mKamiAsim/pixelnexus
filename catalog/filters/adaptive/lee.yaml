@@ -104,6 +104,6 @@ learn:
     - Add speckle noise with sigma 0.25 and apply the Lee filter with C_u = 0.25.
   pitfalls:
     - Using it on additive noise. Its statistics assume the noise grows with the brightness.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [enhanced-lee, kuan, frost, gamma-map, wiener-adaptive]
 docsPage: filters/adaptive/lee.md

@@ -128,6 +128,6 @@ learn:
     - Add Gaussian noise with sigma 15. Run 20 iterations with K = 20, then with K = 60.
   pitfalls:
     - Setting K below the noise level. Then the noise counts as edges and stays.
-  demos: [line-profile, iteration-viewer]
+  demos: [line-profile, iteration-viewer, noise-lab]
 related: [vector-anisotropic-diffusion, srad, bilateral, gaussian]
 docsPage: filters/nonlinear/anisotropic-diffusion.md

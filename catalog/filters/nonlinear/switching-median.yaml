@@ -107,6 +107,6 @@ learn:
     - Add 5 percent salt-and-pepper noise to an image with text. Compare the median filter with the switching median at thresholds 20 and 60.
   pitfalls:
     - Setting the threshold so low that real detail counts as noise.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [median, adaptive-median, dead-pixel, mad-outlier]
 docsPage: filters/nonlinear/switching-median.md

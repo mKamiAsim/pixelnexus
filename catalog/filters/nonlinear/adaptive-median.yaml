@@ -97,6 +97,6 @@ learn:
     - Add 25 percent salt-and-pepper noise. Compare a 3x3 median, a 7x7 median and the adaptive median with largest window 7.
   pitfalls:
     - Using it on Gaussian noise. It looks only for extreme values, so it changes very little.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [median, switching-median, weighted-median]
 docsPage: filters/nonlinear/adaptive-median.md

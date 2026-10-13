@@ -114,6 +114,6 @@ learn:
     - Compare it with the bilateral filter on a smooth sky gradient. Look for steps in the gradient.
   pitfalls:
     - Using a tiny eps. Then the slope stays near 1 and almost nothing changes.
-  demos: [line-profile]
+  demos: [line-profile, noise-lab]
 related: [bilateral, joint-bilateral, box]
 docsPage: filters/nonlinear/guided.md

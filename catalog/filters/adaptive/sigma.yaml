@@ -125,6 +125,6 @@ learn:
     - Add Gaussian noise with sigma 10 and a little salt-and-pepper noise. Compare the sigma filter with the bilateral filter.
   pitfalls:
     - Setting sigma much higher than the noise. Then edges fall into the range and are smoothed.
-  demos: [rank-stepper, line-profile]
+  demos: [rank-stepper, line-profile, noise-lab]
 related: [bilateral, wiener-adaptive, median]
 docsPage: filters/adaptive/sigma.md

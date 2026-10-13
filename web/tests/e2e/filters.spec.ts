@@ -94,6 +94,8 @@ test("the Learn panel runs its demos on the image", async ({ page }) => {
   await expect(sorted.getByRole("listitem")).toHaveCount(9);
   await page.getByRole("button", { name: "One pixel to the right" }).first().click();
   await expect(page.getByText("x 257, y 256").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Noise lab" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Noise lab metrics" })).toContainText("dB");
   await page.getByRole("radio", { name: "Academic" }).click();
   await expect(page.getByRole("button", { name: /Inspector/ })).toBeVisible();
 });
