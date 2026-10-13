@@ -156,8 +156,21 @@ def _cross_checks(plane: FloatArray) -> None:
         _fail("Laws L5L5 energy of a flat image is not 0")
 
 
+def dog(plane: FloatArray, sigma: float, ratio: float, mode: str) -> FloatArray:
+    narrow = ndimage.gaussian_filter(plane, sigma, truncate=3.0, mode=mode)
+    wide = ndimage.gaussian_filter(plane, sigma * ratio, truncate=3.0, mode=mode)
+    return np.asarray(narrow - wide, dtype=np.float64)
+
+
+def _check_dog_log(plane: FloatArray) -> None:
+    theirs = skfilters.difference_of_gaussians(plane, 1.5, 2.4, mode="reflect", truncate=3.0)  # type: ignore[no-untyped-call]
+    if not np.allclose(dog(plane, 1.5, 1.6, "reflect"), theirs):
+        _fail("DoG disagrees with skimage.filters.difference_of_gaussians")
+
+
 def add_gradient_cases(plane: FloatArray, add: Add) -> None:
     _cross_checks(plane)
+    _check_dog_log(plane)
     for border, mode in SCIPY_MODES.items():
         for name, (kx, ky) in PAIRS.items():
             gx = ndimage.correlate(plane, kx, mode=mode)
@@ -211,6 +224,20 @@ def add_gradient_cases(plane: FloatArray, add: Add) -> None:
             responses["falling"],
             "scipy.ndimage.correlate with the line mask",
         )
+        for sigma, ratio in ((1.0, 1.6), (1.5, 2.0)):
+            add(
+                "dog",
+                {"sigma": sigma, "ratio": ratio, "border": border},
+                dog(plane, sigma, ratio, mode),
+                "scipy.ndimage.gaussian_filter, checked with skimage difference_of_gaussians",
+            )
+        for sigma in (1.0, 1.7):
+            add(
+                "log",
+                {"sigma": sigma, "border": border},
+                ndimage.gaussian_laplace(plane, sigma, mode=mode),
+                "scipy.ndimage.gaussian_laplace",
+            )
         for vertical, horizontal, size, remove in (
             ("E5", "L5", 5, True),
             ("S5", "S5", 7, True),

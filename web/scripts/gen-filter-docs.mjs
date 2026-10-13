@@ -1038,6 +1038,9 @@ try {
     ...{ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     ...{ createImage, compassMasks, LAWS_VECTORS },
   });
+  const { dogLogDocs } = await import("./filter-docs/doglog.mjs");
+  const { gaussianSecondDerivative } = await load("/src/core/filters/linear/dog-log.ts");
+  dogLogDocs({ run, pic, row, figure, example, fix, synthetic, mdTable, gaussianSecondDerivative });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

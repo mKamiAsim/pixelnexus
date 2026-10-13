@@ -4,11 +4,13 @@
 |---|---|---|---|
 | [Binomial filter](linear/binomial.md) | Linear spatial filters | Blurs with weights from Pascal's triangle, a whole-number stand-in for a Gaussian. | Implemented and tested |
 | [Box filter](linear/box.md) | Linear spatial filters | Replaces each pixel with the plain average of a square window. | Implemented and tested |
+| [Difference of Gaussians](linear/dog.md) | Linear spatial filters | Subtracts a wide Gaussian blur from a narrow one, which keeps details of one size range and removes the rest. | Implemented and tested |
 | [Disk averaging filter](linear/disk-average.md) | Linear spatial filters | Averages a round window, the blur of an out-of-focus lens. | Implemented and tested |
 | [Gaussian filter](linear/gaussian.md) | Linear spatial filters | Blurs the image with a weighted average whose weights follow a Gaussian curve. | Implemented and tested |
 | [High-boost filter](linear/high-boost.md) | Linear spatial filters | Sharpens by taking A times the image minus a Gaussian blur of it. | Implemented and tested |
 | [High-pass filter](linear/high-pass.md) | Linear spatial filters | Keeps only the fine detail, by subtracting a Gaussian blur from the image. | Implemented and tested |
 | [Laplacian](linear/laplacian.md) | Linear spatial filters | Measures how much each pixel differs from the average of its neighbors. | Implemented and tested |
+| [Laplacian of Gaussian](linear/log.md) | Linear spatial filters | Smooths with a Gaussian and takes the Laplacian, the sum of the second derivatives, in one kernel. | Implemented and tested |
 | [Laplacian sharpening](linear/laplacian-sharpen.md) | Linear spatial filters | Sharpens by subtracting a multiple of the Laplacian, which steepens every edge. | Implemented and tested |
 | [Low-pass FIR filter](linear/fir-lowpass.md) | Linear spatial filters | Removes detail above a chosen frequency, with taps designed by the window method. | Implemented and tested |
 | [Motion blur](linear/motion-blur.md) | Linear spatial filters | Blurs the image along a straight line, like a camera that moved during the exposure. | Implemented and tested |

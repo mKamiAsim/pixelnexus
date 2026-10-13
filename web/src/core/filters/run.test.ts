@@ -118,6 +118,8 @@ const CASES: [string, Params][] = [
   ["frei-chen", { output: "edge", outputMapping: "clip", channelScope: "luminance" }],
   ["line-detector", { output: "max", outputMapping: "clip", border: "constant" }],
   ["laws", { vertical: "E5", horizontal: "L5", window: 5, outputMapping: "clip" }],
+  ["dog", { sigma: 1.2, ratio: 1.6, outputMapping: "offset", channelScope: "luminance" }],
+  ["log", { sigma: 1.5, outputMapping: "offset", border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

@@ -30,6 +30,7 @@ import { grayscaleFilter } from "./enhancement/grayscale";
 import { binomialFilter } from "./linear/binomial";
 import { boxFilter } from "./linear/box";
 import { diskAverageFilter } from "./linear/disk-average";
+import { dogFilter, logFilter } from "./linear/dog-log";
 import { firLowpassFilter } from "./linear/fir-lowpass";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
@@ -89,6 +90,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   lineDetectorFilter,
   lawsFilter,
   laplacianFilter,
+  dogFilter,
+  logFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

@@ -1,8 +1,105 @@
 id: log
 name: Laplacian of Gaussian
+aliases: [LoG, Mexican hat]
 family: linear
+alsoIn: [edges]
+tags: [purpose:edge, purpose:analysis]
 tier: core
 engine: browser
 phase: 5c
-status: planned
+status: implemented-tested
 planNotes: Cross-listed in edges.
+
+summary: Smooths with a Gaussian and takes the Laplacian, the sum of the second derivatives, in one kernel.
+purpose: Find edges as zero crossings and blobs as extrema, at a chosen scale and with little noise.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/dog-log.ts, symbol: gaussianSecondDerivative}
+supportRadius: floor(4 sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 20
+    step: 0.1
+    default: 1.5
+    unit: px
+    description: The sigma of the Gaussian. The kernel reaches 4 sigma.
+    effect: Larger values respond to larger structures and less to noise.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  \nabla^2 (G_{\sigma} * I) = \Bigl(\frac{\partial^2 G_{\sigma}}{\partial x^2} + \frac{\partial^2 G_{\sigma}}{\partial y^2}\Bigr) * I,
+  \qquad
+  \frac{d^2 g}{dx^2} = g(x)\Bigl(\frac{x^2}{\sigma^4} - \frac{1}{\sigma^2}\Bigr)
+formulaExplanation: >-
+  Smoothing and the Laplacian are both linear, so they combine into one kernel. Each second
+  derivative is separable: the second derivative of the 1D Gaussian g along one axis times g
+  along the other. Here g is the normalized discrete Gaussian, as in
+  scipy.ndimage.gaussian_laplace, truncated at 4 sigma. Edges are where the result crosses 0.
+symbols:
+  - {symbol: 'G_{\sigma}', meaning: The 2D Gaussian}
+  - {symbol: 'g', meaning: 'The 1D normalized Gaussian'}
+  - {symbol: '\nabla^2', meaning: 'The Laplacian, the sum of the second derivatives'}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with the second derivative kernel along x and the Gaussian along y.
+  - Correlate with the Gaussian along x and the second derivative along y.
+  - Add the two results and map the signed sum to 8 bits.
+complexity:
+  time: O(N\,\sigma)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Four 1D passes of about 8 sigma taps.
+useCases:
+  - Find edges as zero crossings, as in the Marr-Hildreth detector.
+  - Detect blobs of a size near sigma times the square root of 2.
+advantages:
+  - Smoothing and derivative in one separable kernel.
+  - Rotation invariant, unlike gradient kernels.
+limitations:
+  - The result is signed and needs an output mapping or a zero-crossing step.
+  - Corners are rounded off at large sigmas.
+artifacts:
+  - Double responses, a positive and a negative band, along each edge.
+references:
+  - kind: paper
+    text: Marr, D. and Hildreth, E. Theory of edge detection. Proceedings of the Royal Society of London, Series B 207(1167), 187 to 217, 1980.
+    doi: 10.1098/rspb.1980.0020
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.gaussian_laplace.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_laplace.html
+implementation: {path: web/src/core/filters/linear/dog-log.ts, symbol: logFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Smooth with a Gaussian, then measure how the brightness curves. Edges are where the curve changes sign.
+  howItWorks:
+    - Smooth the image with a Gaussian of the chosen sigma.
+    - Add the second derivatives along x and along y.
+    - Both steps run as one kernel, the Mexican hat.
+  academic: >-
+    The Laplacian of the Gaussian-smoothed image. Its zero crossings mark edges, and its
+    extrema mark blobs, with the scale set by sigma.
+  paramNotes:
+    sigma: The scale. Noise and details much smaller than sigma are ignored.
+  tryThis:
+    - Open the Impulse response demo to see the Mexican hat shape of the kernel.
+  pitfalls:
+    - Using a very small sigma. Then it behaves like the plain Laplacian and amplifies noise.
+  demos: [impulse-response, line-profile]
+related: [dog, laplacian, marr-hildreth]
+docsPage: filters/linear/log.md

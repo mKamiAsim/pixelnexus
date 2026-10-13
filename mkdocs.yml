@@ -154,6 +154,8 @@ nav:
           - High-pass filter: filters/linear/high-pass.md
           - High-boost filter: filters/linear/high-boost.md
           - Unsharp mask: filters/linear/unsharp-mask.md
+          - Difference of Gaussians: filters/linear/dog.md
+          - Laplacian of Gaussian: filters/linear/log.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
           - Weighted median filter: filters/nonlinear/weighted-median.md
