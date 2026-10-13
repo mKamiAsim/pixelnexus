@@ -1047,6 +1047,9 @@ try {
   nmsDocs({ run, pic, row, figure, example, mdTable, synthetic });
   const { cannyDocs } = await import("./filter-docs/canny.mjs");
   cannyDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
+  const { gaborDocs } = await import("./filter-docs/gabor.mjs");
+  const { gaborKernels } = await load("/src/core/filters/linear/gabor.ts");
+  gaborDocs({ run, pic, figure, example, mdTable, synthetic, fix, gaborKernels });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

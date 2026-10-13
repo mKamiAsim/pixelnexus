@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { createImage, type RgbaImage } from "@/core/image/types";
 import { invertMask } from "@/core/mask/mask";
+import { fft } from "@/core/math/fft";
 import { mulberry32 } from "@/core/math/random";
 
-import { fft, frequencyTuned, spectralResidual } from "./saliency";
+import { frequencyTuned, spectralResidual } from "./saliency";
 import { colorClusters, otsu, shrinkImage, subjectMask } from "./subject";
 
 /** A gray, slightly noisy background with a red, textured disk. */

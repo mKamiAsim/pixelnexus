@@ -35,6 +35,7 @@ import { boxFilter } from "./linear/box";
 import { diskAverageFilter } from "./linear/disk-average";
 import { dogFilter, logFilter } from "./linear/dog-log";
 import { firLowpassFilter } from "./linear/fir-lowpass";
+import { gaborFilter } from "./linear/gabor";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
 import { laplacianFilter } from "./linear/laplacian";
@@ -100,6 +101,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   sobelNmsFilter,
   hysteresisFilter,
   cannyFilter,
+  gaborFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

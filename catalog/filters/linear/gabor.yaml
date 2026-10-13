@@ -1,8 +1,150 @@
 id: gabor
 name: Gabor filter
+aliases: [Gabor kernel, Gabor wavelet]
 family: linear
+tags: [purpose:edge, purpose:texture]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: Real, imaginary and magnitude outputs. Cross-listed in edges and texture.
+status: implemented-tested
+
+summary: A wave under a Gaussian window. It responds to stripes and edges of one wavelength and one direction.
+purpose: Find texture, stripes and edges at a chosen scale and orientation.
+classification: {linearity: linear, domain: spatial, operation: complex correlation}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/gabor.ts, symbol: gaborKernels}
+supportRadius: ceil(3 max(sigma, sigma / aspect))
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  filtered on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: wavelength
+    label: Wavelength
+    type: number
+    min: 2
+    max: 64
+    step: 0.5
+    default: 8
+    unit: px
+    description: The distance from one stripe of the wave to the next.
+    effect: The filter responds most to stripes and edges of about this spacing.
+  - key: angle
+    label: Angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction in which the wave changes. 0 changes along x and finds vertical stripes. Angles turn counterclockwise.
+    effect: The filter responds to stripes and edges that run across this direction.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.1
+    default: 4
+    unit: px
+    description: The size of the Gaussian window along the wave. The window ends at 3 sigma.
+    effect: Larger values fit more stripes in the window, so the filter is more selective about wavelength and less precise about position.
+  - key: aspect
+    label: Aspect ratio
+    type: number
+    min: 0.2
+    max: 5
+    step: 0.05
+    default: 1
+    description: Sigma along the wave divided by sigma along the stripes. Below 1 the window is long along the stripes.
+    effect: Low values make the filter more selective about direction.
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: real, label: Real part (cosine)}
+      - {value: imaginary, label: Imaginary part (sine)}
+    description: Which part of the complex response to show.
+    effect: The real part finds lines, the imaginary part finds edges, and the magnitude finds both.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  g(x, y) = \frac{1}{2\pi \sigma_x \sigma_y} \exp\!\left(-\frac{1}{2}\left(\frac{x'^2}{\sigma_x^2} + \frac{y'^2}{\sigma_y^2}\right)\right) e^{\,i\,2\pi x' / \lambda}
+formulaExplanation: >-
+  Here x' = x cos theta - y sin theta and y' = x sin theta + y cos theta. The y axis points
+  down, so theta turns counterclockwise on screen. sigma_x is Sigma and sigma_y is Sigma
+  divided by the aspect ratio. The real part of g is a cosine wave and the imaginary part a sine
+  wave. The image is correlated with both, and the magnitude is the length of the complex
+  result. The kernel size and scale follow scikit-image, which convolves, so its imaginary part
+  has the opposite sign.
+symbols:
+  - {symbol: '\lambda', meaning: The wavelength in pixels}
+  - {symbol: '\theta', meaning: The angle}
+  - {symbol: '\sigma_x, \sigma_y', meaning: The Gaussian sizes along the wave and along the stripes}
+steps:
+  - Build the real and imaginary kernels for the wavelength, angle, sigma and aspect ratio.
+  - Correlate the image with both, through the FFT because the kernels are large.
+  - Return the real part, the imaginary part, or the magnitude.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels in a tile with its halo. The FFT makes the cost nearly independent of the kernel size.
+useCases:
+  - Texture analysis and segmentation.
+  - Finding stripes, fingerprint ridges and fabric patterns.
+  - Edge and line detection in one direction.
+advantages:
+  - Selective in both scale and direction.
+  - The complex response gives an edge and a line view at once.
+limitations:
+  - One filter sees one scale and one direction. Use a Gabor bank for more.
+  - The real part has a small response to flat areas, unless sigma is large compared to the wavelength.
+artifacts:
+  - Ringing next to strong edges, from the side lobes of the wave.
+references:
+  - kind: paper
+    text: Gabor, D. Theory of communication. Part 1, The analysis of information. Journal of the Institution of Electrical Engineers, Part III 93(26), 429 to 441, 1946.
+    doi: 10.1049/ji-3-2.1946.0074
+  - kind: paper
+    text: Daugman, J. G. Uncertainty relation for resolution in space, spatial frequency, and orientation optimized by two-dimensional visual cortical filters. Journal of the Optical Society of America A 2(7), 1160 to 1169, 1985.
+    doi: 10.1364/JOSAA.2.001160
+  - kind: library
+    text: scikit-image documentation, skimage.filters.gabor_kernel.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.gabor_kernel
+implementation: {path: web/src/core/filters/linear/gabor.ts, symbol: gaborFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/convolve.test.ts]
+learn:
+  oneSentence: Look for stripes of one size and one direction through a small Gaussian window.
+  howItWorks:
+    - Make a wave with the chosen wavelength and direction.
+    - Fade it out with a Gaussian window.
+    - Slide it over the image. Where the image has matching stripes, the response is strong.
+  academic: >-
+    A complex sinusoid modulated by a Gaussian. It reaches the lower bound of joint uncertainty
+    in space and spatial frequency, and models simple cells of the visual cortex.
+  paramNotes:
+    wavelength: The stripe spacing it looks for.
+    angle: The direction it looks in.
+    sigma: How big the window is.
+    aspect: How long the window is along the stripes.
+    output: Lines, edges or both.
+  tryThis:
+    - Open the Siemens star and turn the angle. The response moves around the star.
+    - Look at the kernel in the Inspector while you change the wavelength.
+  pitfalls:
+    - A wavelength below about 3 pixels. The wave can no longer be sampled well.
+  demos: [impulse-response, line-profile]
+related: [gabor-bank, log-gabor, steerable, motion-blur]
+docsPage: filters/linear/gabor.md

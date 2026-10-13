@@ -125,6 +125,7 @@ const CASES: [string, Params][] = [
   ["sobel-nms", { outputMapping: "abs", channelScope: "luminance", border: "wrap" }],
   ["hysteresis", { low: 100, high: 180, connectivity: "4", outputMapping: "clip" }],
   ["canny", { sigma: 1, low: 30, high: 80, outputMapping: "clip", border: "reflect" }],
+  ["gabor", { wavelength: 5, angle: 30, sigma: 1.5, output: "imaginary", outputMapping: "offset" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

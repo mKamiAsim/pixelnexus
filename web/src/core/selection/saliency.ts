@@ -16,6 +16,7 @@
 import { luma709 } from "@/core/color/convert";
 import { gaussianKernel1d } from "@/core/filters/linear/gaussian";
 import type { RgbaImage } from "@/core/image/types";
+import { fft2d } from "@/core/math/fft";
 
 import { imageCoords } from "./color";
 
@@ -103,62 +104,6 @@ export function frequencyTuned(image: RgbaImage): Field {
   return normalize(out);
 }
 
-/**
- * In-place radix-2 FFT of one complex sequence, length a power of 2. `inverse` runs the inverse
- * transform without the 1/n factor.
- */
-export function fft(re: Float64Array, im: Float64Array, inverse = false): void {
-  const n = re.length;
-  if (n & (n - 1)) throw new RangeError("The length must be a power of 2.");
-  for (let i = 1, j = 0; i < n; i++) {
-    let bit = n >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) {
-      [re[i], re[j]] = [re[j] ?? 0, re[i] ?? 0];
-      [im[i], im[j]] = [im[j] ?? 0, im[i] ?? 0];
-    }
-  }
-  for (let size = 2; size <= n; size <<= 1) {
-    const angle = ((inverse ? 2 : -2) * Math.PI) / size;
-    for (let start = 0; start < n; start += size) {
-      for (let k = 0; k < size / 2; k++) {
-        const wr = Math.cos(angle * k);
-        const wi = Math.sin(angle * k);
-        const a = start + k;
-        const b = a + size / 2;
-        const xr = (re[b] ?? 0) * wr - (im[b] ?? 0) * wi;
-        const xi = (re[b] ?? 0) * wi + (im[b] ?? 0) * wr;
-        re[b] = (re[a] ?? 0) - xr;
-        im[b] = (im[a] ?? 0) - xi;
-        re[a] = (re[a] ?? 0) + xr;
-        im[a] = (im[a] ?? 0) + xi;
-      }
-    }
-  }
-}
-
-/** 2D FFT of a square power-of-2 grid, rows then columns, in place. */
-function fft2(re: Float64Array, im: Float64Array, n: number, inverse: boolean): void {
-  const rr = new Float64Array(n);
-  const ri = new Float64Array(n);
-  for (const byRows of [true, false]) {
-    for (let a = 0; a < n; a++) {
-      for (let b = 0; b < n; b++) {
-        const i = byRows ? a * n + b : b * n + a;
-        rr[b] = re[i] ?? 0;
-        ri[b] = im[i] ?? 0;
-      }
-      fft(rr, ri, inverse);
-      for (let b = 0; b < n; b++) {
-        const i = byRows ? a * n + b : b * n + a;
-        re[i] = rr[b] ?? 0;
-        im[i] = ri[b] ?? 0;
-      }
-    }
-  }
-}
-
 /** The 64 x 64 gray copy the spectral residual works on, by area averaging. */
 const SR_SIZE = 64;
 
@@ -168,7 +113,7 @@ export function spectralResidual(image: RgbaImage): Field {
   const gray = areaResize(lumaField(image), n, n);
   const re = Float64Array.from(gray.data);
   const im = new Float64Array(n * n);
-  fft2(re, im, n, false);
+  fft2d(re, im, n, n, false);
   const amplitude = new Float64Array(n * n);
   const phase = new Float64Array(n * n);
   for (let i = 0; i < n * n; i++) {
@@ -190,7 +135,7 @@ export function spectralResidual(image: RgbaImage): Field {
       im[y * n + x] = e * Math.sin(phase[y * n + x] ?? 0);
     }
   }
-  fft2(re, im, n, true);
+  fft2d(re, im, n, n, true);
   const out = field(n, n);
   for (let i = 0; i < n * n; i++) out.data[i] = (re[i] ?? 0) ** 2 + (im[i] ?? 0) ** 2;
   return normalize(blurSeparable(out, gaussianKernel1d(2.5)));

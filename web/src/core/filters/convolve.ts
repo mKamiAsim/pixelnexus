@@ -5,7 +5,9 @@
  *
  * Sums run in float64 and are stored as float32.
  */
-import { borderTable, createPlane, type BorderMode, type Plane } from "./planes";
+import { fft2d, nextPow2 } from "@/core/math/fft";
+
+import { borderTable, createPlane, padPlane, type BorderMode, type Plane } from "./planes";
 
 /** A kernel with an anchor. Weight rows[j][i] multiplies the pixel at (x + i - ax, y + j - ay). */
 export interface Kernel2d {
@@ -174,4 +176,76 @@ function runningMeanColumns(input: Plane, radius: number, border: BorderMode): P
     }
   }
   return out;
+}
+
+/** The spectrum of a plane extended by a reach, for correlation with large kernels. */
+export interface PlaneSpectrum {
+  /**
+   * Correlate with the complex kernel re + i im, which must reach at most as far as the
+   * spectrum. Returns the real and imaginary results. They equal correlate2d with each part up
+   * to rounding.
+   */
+  correlate(re: Kernel2d, im?: Kernel2d): [Plane, Plane];
+}
+
+/**
+ * Take the FFT of a plane extended by `reach` pixels with the border mode. Correlating through
+ * it costs the same for any kernel size, which pays off for kernels wider than about 11 pixels.
+ * The FFT grid is at least as large as the extended plane, so the circular wrap of the FFT never
+ * reaches the pixels that are returned.
+ */
+export function planeSpectrum(input: Plane, reach: number, border: BorderMode): PlaneSpectrum {
+  const padded = padPlane(input, reach, border);
+  const rows = nextPow2(padded.height);
+  const cols = nextPow2(padded.width);
+  const pr = new Float64Array(rows * cols);
+  const pi = new Float64Array(rows * cols);
+  for (let y = 0; y < padded.height; y++) {
+    for (let x = 0; x < padded.width; x++) {
+      pr[y * cols + x] = padded.data[y * padded.width + x] ?? 0;
+    }
+  }
+  fft2d(pr, pi, rows, cols, false);
+  return {
+    correlate(re, im) {
+      const reachX = Math.max(re.anchorX, re.width - 1 - re.anchorX);
+      const reachY = Math.max(re.anchorY, re.height - 1 - re.anchorY);
+      if (reachX > reach || reachY > reach) {
+        throw new RangeError("The kernel reaches further than the spectrum.");
+      }
+      // Correlation with K is convolution with K mirrored, so each weight goes to minus its
+      // offset, wrapped around the grid.
+      const kr = new Float64Array(rows * cols);
+      const ki = new Float64Array(rows * cols);
+      for (let j = 0; j < re.height; j++) {
+        for (let i = 0; i < re.width; i++) {
+          const y = (rows - (j - re.anchorY)) % rows;
+          const x = (cols - (i - re.anchorX)) % cols;
+          kr[y * cols + x] = re.weights[j * re.width + i] ?? 0;
+          ki[y * cols + x] = im?.weights[j * re.width + i] ?? 0;
+        }
+      }
+      fft2d(kr, ki, rows, cols, false);
+      for (let k = 0; k < kr.length; k++) {
+        const a = pr[k] ?? 0;
+        const b = pi[k] ?? 0;
+        const c = kr[k] ?? 0;
+        const d = ki[k] ?? 0;
+        kr[k] = a * c - b * d;
+        ki[k] = a * d + b * c;
+      }
+      fft2d(kr, ki, rows, cols, true);
+      const scale = 1 / (rows * cols);
+      const outRe = createPlane(input.width, input.height);
+      const outIm = createPlane(input.width, input.height);
+      for (let y = 0; y < input.height; y++) {
+        for (let x = 0; x < input.width; x++) {
+          const k = (y + reach) * cols + x + reach;
+          outRe.data[y * input.width + x] = (kr[k] ?? 0) * scale;
+          outIm.data[y * input.width + x] = (ki[k] ?? 0) * scale;
+        }
+      }
+      return [outRe, outIm];
+    },
+  };
 }

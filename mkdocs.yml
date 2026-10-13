@@ -156,6 +156,7 @@ nav:
           - Unsharp mask: filters/linear/unsharp-mask.md
           - Difference of Gaussians: filters/linear/dog.md
           - Laplacian of Gaussian: filters/linear/log.md
+          - Gabor filter: filters/linear/gabor.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
           - Weighted median filter: filters/nonlinear/weighted-median.md

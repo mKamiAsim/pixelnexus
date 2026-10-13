@@ -24,6 +24,7 @@ from fixtures_canny import add_canny_cases
 from fixtures_edge import add_edge_plane_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
+from fixtures_oriented import add_oriented_cases
 from fixtures_rank import add_rank_cases
 from fixtures_speckle import add_speckle_cases
 
@@ -460,6 +461,7 @@ def filter_cases() -> dict[str, Any]:
     extra_inputs |= add_speckle_cases(plane, add)
     add_gradient_cases(plane, add)
     add_canny_cases(plane, add)
+    add_oriented_cases(plane, add)
 
     fir_taps = [
         {
