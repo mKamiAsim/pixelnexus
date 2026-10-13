@@ -21,6 +21,9 @@ import {
   leeFilter,
 } from "./adaptive/speckle";
 import { sradFilter } from "./adaptive/srad";
+import { freiChenFilter, kirschFilter, lineDetectorFilter, robinsonFilter } from "./edges/compass";
+import { faridFilter, prewittFilter, robertsFilter, scharrFilter } from "./edges/gradients";
+import { lawsFilter } from "./edges/laws";
 import { sobelFilter } from "./edges/sobel";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
@@ -76,6 +79,15 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   firLowpassFilter,
   motionBlurFilter,
   sobelFilter,
+  prewittFilter,
+  scharrFilter,
+  robertsFilter,
+  faridFilter,
+  kirschFilter,
+  robinsonFilter,
+  freiChenFilter,
+  lineDetectorFilter,
+  lawsFilter,
   laplacianFilter,
   medianFilter,
   weightedMedianFilter,

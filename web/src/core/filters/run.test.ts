@@ -109,6 +109,15 @@ const CASES: [string, Params][] = [
   ["noise-speckle", { sigma: 0.3, seed: 4 }],
   ["noise-poisson", { peak: 40, seed: 5 }],
   ["joint-bilateral", { sigmaSpace: 1.5, sigmaRange: 30, guideRange: "luma", border: "reflect" }],
+  ["prewitt", { output: "magnitude", outputMapping: "abs", channelScope: "luminance" }],
+  ["scharr", { output: "gx", outputMapping: "offset", border: "wrap" }],
+  ["roberts", { output: "magnitude", norm: "l1", outputMapping: "abs" }],
+  ["farid-simoncelli", { output: "gy", outputMapping: "offset", border: "reflect" }],
+  ["kirsch", { output: "magnitude", outputMapping: "clip" }],
+  ["robinson", { output: "direction", outputMapping: "offset", border: "replicate" }],
+  ["frei-chen", { output: "edge", outputMapping: "clip", channelScope: "luminance" }],
+  ["line-detector", { output: "max", outputMapping: "clip", border: "constant" }],
+  ["laws", { vertical: "E5", horizontal: "L5", window: 5, outputMapping: "clip" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
