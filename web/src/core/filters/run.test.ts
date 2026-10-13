@@ -182,6 +182,25 @@ const CASES: [string, Params][] = [
   ["comb", { fx: 0.1, fy: 0.05, harmonics: 3, shape: "butterworth", radius: 0.02, order: 2 }],
   ["periodic-noise", { minFrequency: 0.08, threshold: 1, maxPeaks: 4, radius: 0.03 }],
   ["noise-periodic", { amplitude: 30, fx: 0.13, fy: -0.07, phase: 40 }],
+  [
+    "homomorphic",
+    { gammaLow: 0.5, gammaHigh: 2, sharpness: 1, cutoff: 0.1, outputMapping: "offset" },
+  ],
+  ["phase-only", { outputMapping: "abs" }],
+  ["spectral-whitening", { strength: 0.7, outputMapping: "offset" }],
+  [
+    "log-gabor",
+    {
+      wavelength: 6,
+      sigmaOnf: 0.55,
+      angle: 30,
+      angularSigma: 25,
+      output: "real",
+      outputMapping: "offset",
+    },
+  ],
+  ["log-gabor", { wavelength: 5, oriented: false, outputMapping: "offset" }],
+  ["wiener-denoise", { noiseSigma: 20 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

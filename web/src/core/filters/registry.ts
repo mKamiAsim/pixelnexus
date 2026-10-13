@@ -59,6 +59,13 @@ import {
   notchRejectFilter,
   periodicNoiseFilter,
 } from "./frequency/notch";
+import {
+  homomorphicFilter,
+  logGaborFilter,
+  phaseOnlyFilter,
+  spectralWhiteningFilter,
+  wienerDenoiseFilter,
+} from "./frequency/shaping";
 import { gaborFilter } from "./linear/gabor";
 import {
   blackhatFilter,
@@ -200,6 +207,11 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   notchPassFilter,
   combFilter,
   periodicNoiseFilter,
+  homomorphicFilter,
+  phaseOnlyFilter,
+  spectralWhiteningFilter,
+  logGaborFilter,
+  wienerDenoiseFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

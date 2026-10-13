@@ -1,7 +1,105 @@
 id: spectral-whitening
 name: Spectral whitening
+aliases: [Whitening filter, Spectrum flattening]
 family: frequency
+tags: [purpose:analysis, purpose:sharpening]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
+
+summary: Evens out the falling spectrum of a natural image, so fine and coarse detail get the same average strength.
+purpose: Flatten the spectrum of natural images, which raises fine detail in a controlled way and is a common first step in texture analysis.
+classification: {linearity: nonlinear, domain: frequency, operation: spectrum equalization}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/shaping.ts, symbol: whiteningValues}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: strength
+    label: Strength
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 1
+    description: The power alpha of the correction. 0 keeps the image, 1 makes every ring of the spectrum equally strong.
+    effect: Higher values raise fine detail more.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  W(f) = F(f) \left(\frac{M}{A(|f|)}\right)^{\alpha},\quad A(r) = \operatorname{mean}_{|f| \approx r} |F(f)|,\quad \alpha = {{strength}}
+formulaExplanation: >-
+  The magnitude of the spectrum of a natural image falls roughly as 1 over the frequency, as
+  Field showed. A(r) is the mean magnitude on each ring of frequencies at the same distance r
+  from the center, and M the mean magnitude of the whole spectrum. Scaling each ring by M / A
+  makes the rings equally strong, a flat or white spectrum. Frequency 0, the mean brightness, is
+  kept. The strength alpha blends from no change at 0 to a flat spectrum at 1. Using the ring mean as the estimate of the magnitude is
+  this filter's own choice. A ring holds the frequencies whose distance from the center, in steps
+  of 1 over the larger side of the FFT grid, rounds to the same whole number.
+symbols:
+  - {symbol: 'F', meaning: The spectrum of the extended image}
+  - {symbol: 'A(r)', meaning: The mean magnitude on ring r}
+  - {symbol: 'M', meaning: The mean magnitude of the whole spectrum}
+  - {symbol: '\alpha', meaning: The strength}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Average the magnitude over each ring of frequencies.
+  - Multiply each frequency by M over its ring mean, raised to the strength.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Preparing images for texture and orientation analysis.
+  - Making the structure of a spectrum easier to see.
+advantages:
+  - Adapts to the image, since the correction comes from its own spectrum.
+  - Strength 0 keeps the image, so the effect can be blended in.
+limitations:
+  - Raises noise along with fine detail.
+  - The ring mean ignores direction, so a strongly oriented image is whitened as if it were not.
+artifacts:
+  - A grainy look at strength 1.
+references:
+  - kind: paper
+    text: Field, D. J. Relations between the statistics of natural images and the response properties of cortical cells. Journal of the Optical Society of America A 4(12), 2379 to 2394, 1987.
+    doi: 10.1364/JOSAA.4.002379
+implementation: {path: web/src/core/filters/frequency/shaping.ts, symbol: spectralWhiteningFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Make fine detail as strong as coarse detail, on average, by evening out the spectrum.
+  howItWorks:
+    - Measure how strong the spectrum is at each distance from its center.
+    - Turn weak distances up and strong ones down until all are equal.
+    - Transform back.
+  academic: >-
+    Radial spectral whitening. Natural images have a roughly 1/f amplitude spectrum, and
+    dividing by a ring-averaged amplitude estimate flattens it.
+  paramNotes:
+    strength: How far to flatten the spectrum.
+  tryThis:
+    - Compare strength 0.5 and 1 on a photo with the Frequency explorer open.
+  pitfalls:
+    - Using it on noisy images. The noise is raised with the detail.
+  demos: [frequency-explorer]
+related: [phase-only, gaussian-highpass]
+docsPage: filters/frequency/spectral-whitening.md

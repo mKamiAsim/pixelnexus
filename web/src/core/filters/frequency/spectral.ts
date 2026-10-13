@@ -144,6 +144,25 @@ export function frequencyFilter(
   return inverseOf(spectrum, re, im, input.width, input.height, part);
 }
 
+/**
+ * The ring of each FFT bin: its distance from the center in steps of 1 / max(width, height),
+ * rounded to a whole number. Returns the ring of each bin and the number of rings.
+ */
+export function ringsOf(spectrum: Spectrum): { ring: Int32Array; count: number } {
+  const { width, height, fx, fy } = spectrum;
+  const step = 1 / Math.max(width, height);
+  const ring = new Int32Array(width * height);
+  let count = 0;
+  for (let j = 0; j < height; j++) {
+    for (let i = 0; i < width; i++) {
+      const r = Math.floor(Math.hypot(fx[i] ?? 0, fy[j] ?? 0) / step + 0.5);
+      ring[j * width + i] = r;
+      count = Math.max(count, r + 1);
+    }
+  }
+  return { ring, count };
+}
+
 /** Samples of a response for the Inspector. */
 export interface ResponseSamples {
   /** Grid size. The grid runs from -0.5 to 0.5 cycles per pixel in fx and in fy. */

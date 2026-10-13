@@ -157,6 +157,7 @@ nav:
           - Difference of Gaussians: filters/linear/dog.md
           - Laplacian of Gaussian: filters/linear/log.md
           - Gabor filter: filters/linear/gabor.md
+          - Wiener filter (global): filters/linear/wiener-denoise.md
           - Steerable filters: filters/linear/steerable.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
@@ -260,6 +261,10 @@ nav:
           - Notch-pass: filters/frequency/notch-pass.md
           - Comb filter: filters/frequency/comb.md
           - Periodic-noise suppression: filters/frequency/periodic-noise.md
+          - Homomorphic filter: filters/frequency/homomorphic.md
+          - Phase-only filter: filters/frequency/phase-only.md
+          - Spectral whitening: filters/frequency/spectral-whitening.md
+          - Log-Gabor filter: filters/frequency/log-gabor.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

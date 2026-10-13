@@ -59,8 +59,8 @@ ComplexArray = NDArray[np.complex128]
 SpectrumResponse = Callable[[ComplexArray, FloatArray, FloatArray], FloatArray]
 
 
-def spectral_filter(plane: FloatArray, border: str, build: SpectrumResponse) -> FloatArray:
-    """Extend, transform, multiply by H, transform back and crop. Returns the real part."""
+def spectral_complex(plane: FloatArray, border: str, build: SpectrumResponse) -> ComplexArray:
+    """Extend, transform, multiply by H, transform back and crop. Returns the complex result."""
     h, w = plane.shape
     mx, my = margin(w), margin(h)
     width, height = next_fast(w + 2 * mx), next_fast(h + 2 * my)
@@ -68,7 +68,12 @@ def spectral_filter(plane: FloatArray, border: str, build: SpectrumResponse) -> 
     extended = np.pad(plane, pad, mode=cast(Any, PAD_MODES[border]))
     spectrum = np.fft.fft2(extended)
     result = np.fft.ifft2(spectrum * build(spectrum, np.fft.fftfreq(width), np.fft.fftfreq(height)))
-    return np.asarray(result.real[my : my + h, mx : mx + w], dtype=np.float64)
+    return np.asarray(result[my : my + h, mx : mx + w], dtype=np.complex128)
+
+
+def spectral_filter(plane: FloatArray, border: str, build: SpectrumResponse) -> FloatArray:
+    """The real part of spectral_complex."""
+    return np.asarray(spectral_complex(plane, border, build).real, dtype=np.float64)
 
 
 def frequency_filter(plane: FloatArray, border: str, response: Response) -> FloatArray:
@@ -348,8 +353,148 @@ def add_notch_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
     return {"periodic": periodic}
 
 
+def homomorphic(
+    plane: FloatArray, border: str, low: float, high: float, c: float, d0: float
+) -> FloatArray:
+    """exp(s) - 1 for s the high-emphasis filtering of ln(1 + f), Gonzalez and Woods."""
+
+    def response(fx: FloatArray, fy: FloatArray) -> FloatArray:
+        return (high - low) * (1 - np.exp(-c * (fx * fx + fy * fy) / (d0 * d0))) + low
+
+    logged = np.log1p(np.maximum(plane, 0))
+    return np.asarray(np.expm1(frequency_filter(logged, border, response)), dtype=np.float64)
+
+
+# Magnitudes below this share of the largest one count as 0, as in shaping.ts.
+ZERO = 1e-9
+
+
+def _magnitudes(spectrum: ComplexArray) -> tuple[FloatArray, float, float]:
+    m = np.abs(spectrum)
+    return m, float(m.mean()), ZERO * float(m.max())
+
+
+def phase_only_gain(spectrum: ComplexArray, _fx: FloatArray, _fy: FloatArray) -> FloatArray:
+    m, mean, floor = _magnitudes(spectrum)
+    return np.where(m > floor, mean / np.where(m > floor, m, 1), 0.0)
+
+
+def whitening_gain(strength: float) -> SpectrumResponse:
+    def build(spectrum: ComplexArray, fx: FloatArray, fy: FloatArray) -> FloatArray:
+        m, mean, floor = _magnitudes(spectrum)
+        step = 1 / max(len(fx), len(fy))
+        rings = np.floor(np.hypot(fx[None, :], fy[:, None]) / step + 0.5).astype(int)
+        sums = np.bincount(rings.ravel(), weights=m.ravel())
+        sizes = np.bincount(rings.ravel())
+        a = (sums / np.maximum(sizes, 1))[rings]
+        gain = np.where(a > floor, (mean / np.where(a > floor, a, 1)) ** strength, 0.0)
+        # Ring 0 is frequency 0, the mean brightness, which is kept.
+        return np.where(rings == 0, 1.0, gain)
+
+    return build
+
+
+def log_gabor_response(
+    wavelength: float, sigma_on_f: float, angle: float, angular_sigma: float, oriented: bool
+) -> Response:
+    """Field's radial log-Gabor function times Kovesi's angular Gaussian, y axis down."""
+    f0 = 1 / wavelength
+    a0, s0 = math.radians(angle), math.radians(angular_sigma)
+
+    def response(fx: FloatArray, fy: FloatArray) -> FloatArray:
+        f = np.sqrt(fx * fx + fy * fy)
+        with np.errstate(divide="ignore"):
+            radial = np.where(
+                f == 0,
+                0.0,
+                np.exp(
+                    -(np.log(np.where(f == 0, 1, f) / f0) ** 2) / (2 * math.log(sigma_on_f) ** 2)
+                ),
+            )
+        if not oriented:
+            return np.asarray(radial, dtype=np.float64)
+        theta = np.arctan2(-fy, fx)
+        ds = np.sin(theta) * math.cos(a0) - np.cos(theta) * math.sin(a0)
+        dc = np.cos(theta) * math.cos(a0) + np.sin(theta) * math.sin(a0)
+        d_theta = np.abs(np.arctan2(ds, dc))
+        return np.asarray(radial * np.exp(-(d_theta**2) / (2 * s0 * s0)), dtype=np.float64)
+
+    return response
+
+
+def wiener_gain(sigma: float) -> SpectrumResponse:
+    def build(spectrum: ComplexArray, _fx: FloatArray, _fy: FloatArray) -> FloatArray:
+        power = np.abs(spectrum) ** 2 / spectrum.size
+        mean = ndimage.uniform_filter(power, size=5, mode="wrap")
+        return np.where(
+            mean > 0, np.maximum(0, 1 - sigma * sigma / np.where(mean > 0, mean, 1)), 0.0
+        )
+
+    return build
+
+
+def _shaping_checks(plane: FloatArray) -> None:
+    for border in ("reflect", "wrap"):
+        if not np.allclose(homomorphic(plane, border, 1, 1, 1, 0.1), plane, atol=1e-6):
+            _fail("homomorphic filtering with both gammas 1 does not keep the image")
+        if not np.allclose(spectral_filter(plane, border, whitening_gain(0)), plane, atol=1e-6):
+            _fail("spectral whitening with strength 0 does not keep the image")
+        if not np.allclose(spectral_filter(plane, border, wiener_gain(0)), plane, atol=1e-6):
+            _fail("the Wiener filter with noise 0 does not keep the image")
+    gain = phase_only_gain(np.fft.fft2(plane), np.zeros(1), np.zeros(1))
+    if not np.allclose(np.abs(np.fft.fft2(plane) * gain), np.abs(np.fft.fft2(plane)).mean()):
+        _fail("the phase-only gain does not give every frequency the mean magnitude")
+
+
+def add_shaping_cases(plane: FloatArray, add: Add) -> None:
+    _shaping_checks(plane)
+    source = "numpy.fft on the plane extended with numpy.pad"
+    for low, high, c, d0, border in ((0.5, 2, 1, 0.1, "reflect"), (0.3, 1.5, 2, 0.05, "wrap")):
+        params = {
+            "gammaLow": low,
+            "gammaHigh": high,
+            "sharpness": c,
+            "cutoff": d0,
+            "border": border,
+        }
+        add("homomorphic", params, homomorphic(plane, border, low, high, c, d0), source)
+    for border in ("reflect", "reflect101"):
+        add(
+            "phase-only",
+            {"border": border},
+            spectral_filter(plane, border, phase_only_gain),
+            source,
+        )
+    for strength, border in ((1.0, "reflect"), (0.5, "replicate")):
+        output = spectral_filter(plane, border, whitening_gain(strength))
+        add("spectral-whitening", {"strength": strength, "border": border}, output, source)
+    oriented = log_gabor_response(6, 0.55, 30, 25, True)
+    result = spectral_complex(
+        plane, "reflect", lambda _s, fx, fy: oriented(fx[None, :], fy[:, None])
+    )
+    values = {"magnitude": np.abs(result), "real": result.real, "imaginary": result.imag}
+    for output_part in ("magnitude", "real", "imaginary"):
+        params = {
+            "wavelength": 6,
+            "sigmaOnf": 0.55,
+            "angle": 30,
+            "angularSigma": 25,
+            "oriented": True,
+            "output": output_part,
+            "border": "reflect",
+        }
+        add("log-gabor", params, np.asarray(values[output_part], dtype=np.float64), source)
+    params = {"wavelength": 5, "sigmaOnf": 0.65, "oriented": False, "border": "wrap"}
+    response = log_gabor_response(5, 0.65, 0, 25, False)
+    add("log-gabor", params, frequency_filter(plane, "wrap", response), source)
+    for sigma, border in ((10.0, "reflect"), (25.0, "wrap")):
+        output = spectral_filter(plane, border, wiener_gain(sigma))
+        add("wiener-denoise", {"noiseSigma": sigma, "border": border}, output, source)
+
+
 def add_frequency_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
     _checks()
+    add_shaping_cases(plane, add)
     source = "numpy.fft on the plane extended with numpy.pad"
     for shape in ("ideal", "butterworth", "gaussian"):
         orders = (2,) if shape == "butterworth" else (None,)

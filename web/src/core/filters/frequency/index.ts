@@ -7,11 +7,16 @@ import type { Params } from "@/core/filters/types";
 
 import { notchResponses } from "./notch";
 import { passResponses } from "./passband";
+import { shapingResponses } from "./shaping";
 import type { Response } from "./spectral";
 
 type Builder = (params: Params, plane?: Plane) => Response | undefined;
 
-const RESPONSES = new Map<string, Builder>([...passResponses, ...notchResponses]);
+const RESPONSES = new Map<string, Builder>([
+  ...passResponses,
+  ...notchResponses,
+  ...shapingResponses,
+]);
 
 /**
  * The response of a frequency filter for its parameters, or undefined for other filters. Filters

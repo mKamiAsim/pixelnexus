@@ -1,8 +1,141 @@
 id: homomorphic
 name: Homomorphic filter
+aliases: [Homomorphic filtering, Illumination correction]
 family: frequency
+alsoIn: [enhancement]
+tags: [purpose:contrast, purpose:brightness]
 tier: core
 engine: browser
 phase: 5e
-status: planned
-planNotes: Cross-listed in enhancement.
+status: implemented-tested
+
+summary: Evens out uneven lighting and raises local contrast, by treating the image as lighting times reflectance.
+purpose: Correct uneven lighting and bring out detail in dark and bright areas at once.
+classification: {linearity: nonlinear, domain: frequency, operation: frequency response on the log image}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/shaping.ts, symbol: homomorphicResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: gammaLow
+    label: Low gain
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: The gain gamma_L for the lowest frequencies, which carry the lighting.
+    effect: Lower values flatten the lighting more.
+  - key: gammaHigh
+    label: High gain
+    type: number
+    min: 1
+    max: 4
+    step: 0.1
+    default: 2
+    description: The gain gamma_H for the high frequencies, which carry the reflectance and detail.
+    effect: Higher values raise the contrast of detail.
+  - key: sharpness
+    label: Sharpness
+    type: number
+    min: 0.1
+    max: 5
+    step: 0.1
+    default: 1
+    description: The constant c that sets how fast the gain rises from gamma_L to gamma_H.
+    effect: Higher values make the change from low to high gain steeper.
+  - key: cutoff
+    label: Cutoff
+    type: number
+    min: 0.005
+    max: 0.5
+    step: 0.005
+    default: 0.05
+    unit: cycles/px
+    description: The frequency D_0 around which the gain rises, in cycles per pixel.
+    effect: Higher values treat more of the coarse detail as lighting.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  g = e^{\mathcal{F}^{-1}\{H\, \mathcal{F}\{\ln(1 + f)\}\}} - 1,\quad H = (\gamma_H - \gamma_L)\left(1 - e^{-c D^2 / D_0^2}\right) + \gamma_L,\quad \gamma_L = {{gammaLow}},\ \gamma_H = {{gammaHigh}},\ D_0 = {{cutoff}}
+formulaExplanation: >-
+  An image is lighting times reflectance. The logarithm turns the product into a sum, so a
+  linear filter can treat the two parts apart. Lighting changes slowly and sits at low
+  frequencies, where H is gamma_L. Reflectance holds the detail at high frequencies, where H is
+  gamma_H. With gamma_L below 1 and gamma_H above 1, the filter flattens the lighting and raises
+  the detail. The response and the steps follow Gonzalez and Woods. The filter uses ln(1 + f) so
+  that black pixels have a logarithm, and returns exp(s) - 1. D is the distance from the center
+  of the spectrum in cycles per pixel.
+symbols:
+  - {symbol: 'f, g', meaning: The input and output values}
+  - {symbol: '\gamma_L, \gamma_H', meaning: The low and high frequency gains}
+  - {symbol: 'c', meaning: The sharpness}
+  - {symbol: 'D, D_0', meaning: The distance from the center of the spectrum and the cutoff in cycles per pixel}
+steps:
+  - Take ln(1 + f) of every value.
+  - Extend the result with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT and multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+  - Return exp of the result minus 1, stretched to the full range by default.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Correcting uneven lighting in photos and scans.
+  - Showing detail in shadows and highlights at the same time.
+advantages:
+  - Treats lighting and detail apart, which a plain high-pass filter cannot.
+limitations:
+  - The result has a new range of values, so it needs the output mapping.
+  - Lighting with sharp edges, such as hard shadows, is not slow and is not removed.
+artifacts:
+  - Halos along strong edges between bright and dark areas.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+  - kind: paper
+    text: Oppenheim, A. V., Schafer, R. W. and Stockham, T. G. Nonlinear filtering of multiplied and convolved signals. Proceedings of the IEEE 56(8), 1264 to 1291, 1968.
+    doi: 10.1109/PROC.1968.6570
+  - kind: paper
+    text: Stockham, T. G. Image processing in the context of a visual model. Proceedings of the IEEE 60(7), 828 to 842, 1972.
+    doi: 10.1109/PROC.1972.8782
+implementation: {path: web/src/core/filters/frequency/shaping.ts, symbol: homomorphicFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Take the logarithm, so the lighting can be turned down and the detail turned up, then undo the logarithm.
+  howItWorks:
+    - Take the logarithm of the image. Lighting times detail becomes lighting plus detail.
+    - Turn the low frequencies, the lighting, down and the high frequencies, the detail, up.
+    - Undo the logarithm.
+  academic: >-
+    Homomorphic filtering of the illumination-reflectance model with a Gaussian high-emphasis
+    transfer function, as in Gonzalez and Woods.
+  paramNotes:
+    gammaLow: How much of the lighting stays.
+    gammaHigh: How strong the detail becomes.
+    sharpness: How quickly the gain changes.
+    cutoff: Where lighting ends and detail starts.
+  tryThis:
+    - Open a photo with a dark corner and set the low gain to 0.3. The corner comes out of the dark.
+  pitfalls:
+    - A cutoff that is too high. Coarse detail is then treated as lighting and flattened.
+  demos: [frequency-explorer]
+related: [gaussian-highpass, high-boost, msrcr]
+docsPage: filters/frequency/homomorphic.md

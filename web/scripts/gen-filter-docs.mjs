@@ -1098,6 +1098,21 @@ try {
     periodicPeaks,
     notchCenters,
   });
+  const { shapeDocs } = await import("./filter-docs/shape.mjs");
+  const { qualityMetrics } = await load("/src/core/metrics/quality.ts");
+  shapeDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    browserFilter,
+    createImage,
+    frequencyResponse,
+    qualityMetrics,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
