@@ -207,6 +207,9 @@ const CASES: [string, Params][] = [
   ["wiener-deconv", { psf: "motion", length: 5, angle: 0, noiseRatio: 0.01 }],
   ["tikhonov", { psf: "gaussian", sigma: 1.2, lambda: 0.02, operator: "gradient" }],
   ["cls", { psf: "defocus", radius: 2, noiseSigma: 4 }],
+  ["richardson-lucy", { psf: "gaussian", sigma: 1.2, iterations: 5 }],
+  ["landweber", { psf: "motion", length: 5, angle: 45, iterations: 4, tau: 1.5 }],
+  ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

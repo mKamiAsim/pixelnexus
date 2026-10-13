@@ -133,6 +133,7 @@ import {
   tikhonovFilter,
   wienerDeconvFilter,
 } from "./restoration/deconvolve";
+import { landweberFilter, nnlsDeconvFilter, richardsonLucyFilter } from "./restoration/iterative";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -229,6 +230,9 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   wienerDeconvFilter,
   tikhonovFilter,
   clsFilter,
+  richardsonLucyFilter,
+  landweberFilter,
+  nnlsDeconvFilter,
   madOutlierFilter,
   kuwaharaFilter,
   nagaoMatsuyamaFilter,

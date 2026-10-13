@@ -141,6 +141,38 @@ def cls(plane: FloatArray, border: str, kernel: FloatArray, sigma: float) -> Flo
     return spectral_filter(plane, border, build)  # type: ignore[arg-type]
 
 
+RL_EPSILON = 1e-12
+
+
+def iterate(
+    plane: FloatArray, border: str, kernel: FloatArray, method: str, iterations: int, tau: float
+) -> FloatArray:
+    """Richardson-Lucy, Landweber or projected Landweber on the extended plane, from f_0 = g."""
+    from fixtures_frequency import PAD_MODES, margin, next_fast
+
+    h, w = plane.shape
+    mx, my = margin(w), margin(h)
+    width, height = next_fast(w + 2 * mx), next_fast(h + 2 * my)
+    pad = ((my, height - h - my), (mx, width - w - mx))
+    g = np.pad(plane, pad, mode=PAD_MODES[border]).astype(np.float64)  # type: ignore[call-overload]
+    otf = transfer(kernel, width, height)
+
+    def convolve(values: FloatArray, adjoint: bool) -> FloatArray:
+        factor = np.conj(otf) if adjoint else otf
+        return np.asarray(np.fft.ifft2(np.fft.fft2(values) * factor).real, dtype=np.float64)
+
+    f = np.maximum(g, 0) if method == "richardson-lucy" else g.copy()
+    for _ in range(iterations):
+        blurred = convolve(f, False)
+        if method == "richardson-lucy":
+            f = f * convolve(g / np.maximum(blurred, RL_EPSILON), True)
+        else:
+            f = f + tau * convolve(g - blurred, True)
+            if method == "projected-landweber":
+                f = np.maximum(0, f)
+    return np.asarray(f[my : my + h, mx : mx + w], dtype=np.float64)
+
+
 def blur(plane: FloatArray, kernel: FloatArray, border: str) -> FloatArray:
     return np.asarray(ndimage.correlate(plane, kernel, mode=SCIPY_MODES[border]), dtype=np.float64)
 
@@ -158,6 +190,12 @@ def _checks() -> None:
     after = np.sqrt(((restored - plane)[center] ** 2).mean())
     if not after < 0.5 * before:
         _fail(f"Wiener deconvolution does not undo a known blur: {before:.3f} -> {after:.3f}")
+    # Richardson-Lucy and Landweber also bring the center closer to the original.
+    for method, tau in (("richardson-lucy", 1.0), ("landweber", 1.5)):
+        result = iterate(blurred, "reflect", kernel, method, 30, tau)
+        error = np.sqrt(((result - plane)[center] ** 2).mean())
+        if not error < 0.7 * before:
+            _fail(f"{method} does not undo a known blur: {before:.3f} -> {error:.3f}")
 
 
 def add_restoration_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
@@ -204,4 +242,16 @@ def add_restoration_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
         output = cls(defocused, border, psf(psfs[2]), sigma)
         case = {**psfs[2], "noiseSigma": sigma, "border": border}
         add("cls", case, output, source + ", with gamma by bisection", "defocused")
+    source = "numpy.fft convolutions on the plane extended with numpy.pad, iterated"
+    for filter_id, method, params, iterations, tau, border in (
+        ("richardson-lucy", "richardson-lucy", psfs[0], 10, 1.0, "reflect"),
+        ("richardson-lucy", "richardson-lucy", psfs[1], 5, 1.0, "wrap"),
+        ("landweber", "landweber", psfs[0], 5, 1.5, "reflect101"),
+        ("nnls-deconv", "projected-landweber", psfs[2], 6, 1.0, "reflect"),
+    ):
+        output = iterate(plane, border, psf(params), method, iterations, tau)
+        case = {**params, "iterations": iterations, "border": border}
+        if filter_id != "richardson-lucy":
+            case["tau"] = tau
+        add(filter_id, case, output, source)
     return {"defocused": defocused}
