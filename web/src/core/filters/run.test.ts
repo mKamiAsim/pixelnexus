@@ -210,6 +210,8 @@ const CASES: [string, Params][] = [
   ["richardson-lucy", { psf: "gaussian", sigma: 1.2, iterations: 5 }],
   ["regularized-rl", { psf: "gaussian", sigma: 1.2, iterations: 4, lambda: 0.01 }],
   ["landweber", { psf: "motion", length: 5, angle: 45, iterations: 4, tau: 1.5 }],
+  ["gaussian-pyramid", { levels: 2 }],
+  ["laplacian-pyramid", { levels: 3, gain1: 2, gain2: 1.5, gain3: 0.5, gain4: 1 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

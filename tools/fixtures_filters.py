@@ -28,6 +28,7 @@ from fixtures_frequency import add_frequency_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_morphology import add_morphology_cases, element_cases
+from fixtures_multiscale import add_multiscale_cases
 from fixtures_oriented import add_oriented_cases
 from fixtures_rank import add_rank_cases
 from fixtures_restoration import add_restoration_cases
@@ -472,6 +473,7 @@ def filter_cases() -> dict[str, Any]:
     extra_inputs |= add_binary_cases(plane, add)
     extra_inputs |= add_frequency_cases(plane, add)
     extra_inputs |= add_restoration_cases(plane, add)
+    add_multiscale_cases(plane, add)
 
     fir_taps = [
         {

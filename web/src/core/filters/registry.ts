@@ -67,6 +67,7 @@ import {
   wienerDenoiseFilter,
 } from "./frequency/shaping";
 import { gaborFilter } from "./linear/gabor";
+import { gaussianPyramidFilter, laplacianPyramidFilter } from "./multiscale/pyramid";
 import {
   blackhatFilter,
   closingFilter,
@@ -225,6 +226,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   spectralWhiteningFilter,
   logGaborFilter,
   wienerDenoiseFilter,
+  gaussianPyramidFilter,
+  laplacianPyramidFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,
