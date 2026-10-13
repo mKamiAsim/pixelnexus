@@ -12,6 +12,8 @@ export interface TileRequest {
   readonly width: number;
   readonly height: number;
   readonly buffer: ArrayBuffer;
+  /** A guide image padded like the tile, for filters that use one. */
+  readonly guideBuffer?: ArrayBuffer;
   readonly halo: number;
   /** The tile without its halo, in image coordinates. */
   readonly core: Rect;

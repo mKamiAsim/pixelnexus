@@ -30,6 +30,15 @@ scope.onmessage = (event: MessageEvent<TileRequest>) => {
       originX: request.core.x - request.halo,
       originY: request.core.y - request.halo,
       transparent: request.transparent,
+      ...(request.guideBuffer
+        ? {
+            guide: {
+              width: request.width,
+              height: request.height,
+              data: new Uint8ClampedArray(request.guideBuffer),
+            },
+          }
+        : {}),
     });
     const core =
       request.halo === 0

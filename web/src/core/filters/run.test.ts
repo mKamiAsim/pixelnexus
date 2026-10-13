@@ -108,6 +108,7 @@ const CASES: [string, Params][] = [
   ["srad", { iterations: 5, dt: 0.15, q0: 0.3, rho: 0.2 }],
   ["noise-speckle", { sigma: 0.3, seed: 4 }],
   ["noise-poisson", { peak: 40, seed: 5 }],
+  ["joint-bilateral", { sigmaSpace: 1.5, sigmaRange: 30, guideRange: "luma", border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
@@ -129,6 +130,17 @@ describe("a region gives the same pixels as the whole image", () => {
       }
     },
   );
+
+  it("gives the same pixels with a guide image", () => {
+    const guide = randomImage(23, 17, 2);
+    const params = { sigmaSpace: 1, sigmaRange: 30, guideRange: "color" };
+    const whole = runFilter(image, get("joint-bilateral"), params, undefined, guide).image;
+    for (const region of regions) {
+      expect(runFilter(image, get("joint-bilateral"), params, region, guide).image.data).toEqual(
+        crop(whole, region).data,
+      );
+    }
+  });
 
   it("covers every registered filter", () => {
     const tested = new Set(CASES.map(([id]) => id));

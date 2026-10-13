@@ -152,3 +152,55 @@ export const bilateralFilter: ColorFilter = {
     };
   },
 };
+
+/** The luma plane 0.2126 R + 0.7152 G + 0.0722 B of three color planes. */
+export function lumaPlane(planes: readonly [Plane, Plane, Plane]): Plane {
+  const [r, g, b] = planes;
+  const out = createPlane(r.width, r.height);
+  for (let i = 0; i < out.data.length; i++) {
+    out.data[i] = 0.2126 * (r.data[i] ?? 0) + 0.7152 * (g.data[i] ?? 0) + 0.0722 * (b.data[i] ?? 0);
+  }
+  return out;
+}
+
+type GuideRange = "luma" | "color";
+const guideRangeOf = (params: Params) => read.string<GuideRange>(params, "guideRange", "luma");
+
+/**
+ * Joint (cross) bilateral filter (Petschnigg and others, 2004; Eisemann and Durand, 2004).
+ * Catalog entry: catalog/filters/nonlinear/joint-bilateral.yaml.
+ *
+ * The range weights come from a guide instead of the image: another open image of the same
+ * size, or the luma of the image itself. All three channels share the weights.
+ */
+export const jointBilateralFilter: ColorFilter = {
+  id: "joint-bilateral",
+  kind: "color",
+  radius: (params) => bilateralRadius(sigmaSpaceOf(params)),
+  color: (planes, params, { border, guide }) => {
+    const source = guide ?? planes;
+    const guidePlanes = guideRangeOf(params) === "color" ? source : [lumaPlane(source)];
+    return bilateralPlanes(
+      planes,
+      guidePlanes,
+      "color",
+      sigmaSpaceOf(params),
+      sigmaRangeOf(params),
+      border,
+    );
+  },
+  representation: (params) => {
+    const s = sigmaSpaceOf(params);
+    const r = bilateralRadius(s);
+    return {
+      kind: "window",
+      size: 2 * r + 1,
+      count: spatialTaps(s).length,
+      statistic: `\\frac{\\sum_q w_{pq} I_q}{\\sum_q w_{pq}},\\; w_{pq} = e^{-\\frac{\\lVert p - q \\rVert^2}{2 \\cdot ${s}^2}}\\, e^{-\\frac{d(G_p, G_q)^2}{2 \\cdot ${sigmaRangeOf(params)}^2}}`,
+      note:
+        guideRangeOf(params) === "color"
+          ? "G is the guide image. d is the distance between its RGB colors. All channels share the weights."
+          : "G is the luma of the guide image, or of this image when no guide is chosen. All channels share the weights.",
+    };
+  },
+};

@@ -50,6 +50,19 @@ describe("browser engine with workers", () => {
     expect(result.image.data).toEqual(direct(id, params));
   });
 
+  it("sends a guide image with every strip", async () => {
+    const guide = randomImage(300, 420, 9);
+    const params = { sigmaSpace: 1.5, sigmaRange: 25, guideRange: "color" };
+    const result = await engine.run({ filterId: "joint-bilateral", params, image, guide });
+    expect(result.timing.tiles).toBeGreaterThan(1);
+    const filter = browserFilter("joint-bilateral");
+    if (!filter) throw new Error("joint-bilateral");
+    const whole = runFilter(image, filter, params, undefined, guide).image.data;
+    expect(result.image.data).toEqual(whole);
+    // The guide changes the result.
+    expect(result.image.data).not.toEqual(direct("joint-bilateral", params));
+  });
+
   it("runs a region", async () => {
     const region = { x: 40, y: 75, width: 130, height: 210 };
     const result = await engine.run({ filterId: "gaussian", params: { sigma: 3 }, image, region });

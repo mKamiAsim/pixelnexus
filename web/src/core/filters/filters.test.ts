@@ -36,7 +36,13 @@ const fixtures = JSON.parse(
   motionKernels: { length: number; angle: number; rows: number[][] }[];
   firTaps: { taps: number; cutoff: number; window: FirWindow; beta: number; output: number[] }[];
   diskKernels: { radius: number; rows: number[][] }[];
-  color: { width: number; height: number; input: number[]; cases: FilterCase[] };
+  color: {
+    width: number;
+    height: number;
+    input: number[];
+    guide: number[];
+    cases: (FilterCase & { guide?: boolean })[];
+  };
 };
 
 const input: Plane = {
@@ -89,12 +95,15 @@ describe("browser filters against SciPy and scikit-image", () => {
 });
 
 describe("color filters against NumPy and SciPy", () => {
-  const { width, height, input: rgb, cases } = fixtures.color;
-  const planes = [0, 1, 2].map((c) => ({
-    width,
-    height,
-    data: Float32Array.from({ length: width * height }, (_, i) => rgb[i * 3 + c] ?? 0),
-  })) as [Plane, Plane, Plane];
+  const { width, height, input: rgb, guide: guideRgb, cases } = fixtures.color;
+  const split = (values: number[]) =>
+    [0, 1, 2].map((c) => ({
+      width,
+      height,
+      data: Float32Array.from({ length: width * height }, (_, i) => values[i * 3 + c] ?? 0),
+    })) as [Plane, Plane, Plane];
+  const planes = split(rgb);
+  const guide = split(guideRgb);
   it.each(cases.map((c) => [describeCase(c), c] as const))("%s", (_name, c) => {
     const filter = browserFilter(c.filter) as ColorFilter;
     expect(filter.kind).toBe("color");
@@ -103,6 +112,7 @@ describe("color filters against NumPy and SciPy", () => {
       originX: 0,
       originY: 0,
       channel: 0,
+      ...(c.guide ? { guide } : {}),
     });
     let worst = 0;
     for (let i = 0; i < width * height; i++) {

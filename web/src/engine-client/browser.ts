@@ -116,7 +116,7 @@ export class BrowserEngine implements EngineClient {
 
     // Without workers (for example in a test environment), run in this thread.
     if (!workerPool) {
-      const output = runFilter(image, filter, params, region);
+      const output = runFilter(image, filter, params, region, job.guide);
       const totalMs = performance.now() - started;
       options.onProgress?.(1);
       return {
@@ -138,6 +138,7 @@ export class BrowserEngine implements EngineClient {
     const tasks = (statsOnly: boolean, range?: ValueRange): TileTask[] =>
       strips.map((strip) => () => {
         const padded = padRegion(image, strip, halo, border);
+        const guide = job.guide ? padRegion(job.guide, strip, halo, border) : null;
         return {
           type: "tile",
           filterId: filter.id,
@@ -145,6 +146,7 @@ export class BrowserEngine implements EngineClient {
           width: padded.width,
           height: padded.height,
           buffer: padded.data.buffer,
+          ...(guide ? { guideBuffer: guide.data.buffer } : {}),
           halo,
           core: strip,
           transparent,

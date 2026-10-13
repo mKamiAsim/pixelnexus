@@ -24,6 +24,7 @@ import { NO_PREVIEW, useFilters, type PreviewState } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 import { filterById, filterValues } from "./filterActions";
+import { guideImageFor } from "./guide";
 
 export const FULL_PREVIEW_PIXELS = 4_000_000;
 const REGION_MARGIN = 64;
@@ -137,6 +138,18 @@ function remember(image: RgbaImage, key: string, preview: PreviewState): void {
   while (byKey.size > CACHE_PER_IMAGE) byKey.delete(byKey.keys().next().value as string);
 }
 
+/** A number per guide image, so the preview cache notices when the guide changes. */
+const tokens = new WeakMap<RgbaImage, number>();
+let nextToken = 1;
+function imageToken(image: RgbaImage): number {
+  let token = tokens.get(image);
+  if (token === undefined) {
+    token = nextToken++;
+    tokens.set(image, token);
+  }
+  return token;
+}
+
 let timer: ReturnType<typeof setTimeout> | null = null;
 let controller: AbortController | null = null;
 let lastKey = "";
@@ -167,7 +180,15 @@ async function update(): Promise<void> {
   const { values } = filterValues(entry);
   const normalizes = values.outputMapping === "normalize";
   const plan = planPreview(doc.current, doc.view, useUi.getState().viewportSize, normalizes);
-  const key = JSON.stringify([doc.id, entry.id, values, plan.region, plan.scale]);
+  const guide = guideImageFor(entry, values, doc);
+  const key = JSON.stringify([
+    doc.id,
+    entry.id,
+    values,
+    plan.region,
+    plan.scale,
+    guide ? imageToken(guide) : 0,
+  ]);
   if (key === lastKey) return;
   lastKey = key;
   const cached = cache.get(doc.current)?.get(key);
@@ -188,8 +209,17 @@ async function update(): Promise<void> {
         : doc.current;
     if (mine.signal.aborted) return;
     const jobValues = plan.scale < 1 ? scaleParams(entry, values, plan.scale) : values;
+    const jobGuide =
+      guide && plan.scale < 1 ? await proxyOf(guide, plan.region.width, plan.region.height) : guide;
+    if (mine.signal.aborted) return;
     const result = await runJob(
-      { filterId: entry.id, values: jobValues, image: source, region: plan.region },
+      {
+        filterId: entry.id,
+        values: jobValues,
+        image: source,
+        region: plan.region,
+        ...(jobGuide ? { guide: jobGuide } : {}),
+      },
       { signal: mine.signal },
     );
     if (mine.signal.aborted) return;

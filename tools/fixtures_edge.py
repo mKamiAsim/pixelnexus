@@ -135,6 +135,50 @@ def _check_bilateral(image: FloatArray) -> None:
             _fail("bilateral filter disagrees with cv2.bilateralFilter")
 
 
+def joint_bilateral(
+    image: FloatArray, guide: FloatArray, sigma_s: float, sigma_r: float, mode: str, border: str
+) -> FloatArray:
+    """Range weights from the guide luma or the guide colors, shared by all channels."""
+    r = max(1, math.ceil(3 * sigma_s))
+    size = 2 * r + 1
+    win = np.stack([windows(image[..., c], size, size, border) for c in range(3)], axis=-1)
+    g = (guide @ LUMA)[..., None] if mode == "luma" else guide
+    gw = np.stack([windows(g[..., c], size, size, border) for c in range(g.shape[-1])], axis=-1)
+    dy, dx = np.mgrid[-r : r + 1, -r : r + 1]
+    spatial = np.where(dx**2 + dy**2 <= r * r, np.exp(-(dx**2 + dy**2) / (2 * sigma_s**2)), 0.0)
+    d2 = ((gw - g[:, :, None, None, :]) ** 2).sum(-1, keepdims=True)
+    weights = spatial[None, None, :, :, None] * np.exp(-d2 / (2 * sigma_r**2))
+    return np.asarray((weights * win).sum(axis=(2, 3)) / weights.sum(axis=(2, 3)), dtype=np.float64)
+
+
+def guide_input(image: FloatArray) -> FloatArray:
+    """A second image of the same size: the colors in reverse order with a little noise."""
+    rng = np.random.default_rng(5)
+    return np.asarray(np.clip(image[..., ::-1] + rng.normal(0, 5, image.shape), 0, 255).round())
+
+
+def _check_joint_bilateral(image: FloatArray, guide: FloatArray) -> None:
+    gray_guide = np.repeat(guide[..., 1:2], 3, axis=-1)
+    src = np.repeat(image[..., :1], 3, axis=-1)
+    for sigma_s, sigma_r in ((1.0, 30.0), (1.5, 50.0)):
+        r = max(1, math.ceil(3 * sigma_s))
+        theirs = cv2.ximgproc.jointBilateralFilter(
+            guide[..., 1].astype(np.float32),
+            image[..., 0].astype(np.float32),
+            2 * r + 1,
+            sigma_r,
+            sigma_s,
+            borderType=cv2.BORDER_REFLECT_101,
+        )
+        ours = joint_bilateral(src, gray_guide, sigma_s, sigma_r, "luma", "reflect101")[..., 0]
+        if not np.allclose(ours, theirs, atol=1e-3):
+            _fail("joint bilateral disagrees with cv2.ximgproc.jointBilateralFilter")
+    # Without a separate guide, the color mode is the color bilateral filter.
+    same = joint_bilateral(image, image, 1.0, 40.0, "color", "reflect101")
+    if not np.allclose(same, bilateral(image, 1.0, 40.0, "color", "reflect101")):
+        _fail("joint bilateral guided by the image itself is not the bilateral filter")
+
+
 # Guided filter --------------------------------------------------------------------------------
 
 
@@ -256,9 +300,12 @@ def add_edge_plane_cases(plane: FloatArray, add: Add) -> None:
             )
 
 
-def add_edge_color_cases(image: FloatArray, add: Add) -> None:
+def add_edge_color_cases(image: FloatArray, add: Add) -> FloatArray:
+    """Add the color cases. Returns the guide image that the joint bilateral cases use."""
+    guide = guide_input(image)
     _check_subregions(image)
     _check_bilateral(image)
+    _check_joint_bilateral(image, guide)
     for border in PAD_MODES:
         for size in (3, 5, 7):
             a = (size - 1) // 2
@@ -285,6 +332,26 @@ def add_edge_color_cases(image: FloatArray, add: Add) -> None:
                 bilateral(image, sigma_s, sigma_r, mode, border),
                 "NumPy windows, checked with cv2.bilateralFilter",
             )
+        for sigma_s, sigma_r, mode in ((1.0, 30.0, "luma"), (1.5, 40.0, "color")):
+            params = {
+                "sigmaSpace": sigma_s,
+                "sigmaRange": sigma_r,
+                "guideRange": mode,
+                "border": border,
+            }
+            add(
+                "joint-bilateral",
+                params,
+                joint_bilateral(image, guide, sigma_s, sigma_r, mode, border),
+                "NumPy windows, checked with cv2.ximgproc.jointBilateralFilter",
+                True,
+            )
+        add(
+            "joint-bilateral",
+            {"sigmaSpace": 1.0, "sigmaRange": 30.0, "guideRange": "luma", "border": border},
+            joint_bilateral(image, image, 1.0, 30.0, "luma", border),
+            "NumPy windows, guided by the luma of the image itself",
+        )
         planes = [image[..., c] for c in range(3)]
         add(
             "vector-anisotropic-diffusion",
@@ -298,3 +365,4 @@ def add_edge_color_cases(image: FloatArray, add: Add) -> None:
             np.stack(diffusion(planes, 4, 30, 0.2, "exponential", True, border), axis=-1),
             "NumPy, checked against scalar diffusion on a gray image",
         )
+    return guide

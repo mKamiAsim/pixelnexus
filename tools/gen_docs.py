@@ -122,6 +122,8 @@ def value_rule(param: dict[str, Any]) -> str:
         return ", ".join(str(option["label"]) for option in param["options"])
     if param["type"] == "kernel":
         return "Rows of numbers, odd sides up to 15"
+    if param["type"] == "image":
+        return "This image, or another open image of the same size"
     return "On or off" if param["type"] == "boolean" else str(param["type"])
 
 

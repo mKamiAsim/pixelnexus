@@ -23,6 +23,7 @@
 | [Geometric mean filter](nonlinear/geometric-mean.md) | Nonlinear spatial filters | Replaces each pixel with the geometric mean of its window, the root of the product of the values. | Implemented and tested |
 | [Guided filter](nonlinear/guided.md) | Nonlinear spatial filters | Fits a straight-line model of the guide in every window, so it smooths flat areas and keeps edges, at a cost that does not grow with the radius. | Implemented and tested |
 | [Harmonic mean filter](nonlinear/harmonic-mean.md) | Nonlinear spatial filters | Replaces each pixel with the harmonic mean of its window, n divided by the sum of the inverses. | Implemented and tested |
+| [Joint bilateral filter](nonlinear/joint-bilateral.md) | Nonlinear spatial filters | A bilateral filter that takes its edges from a guide image, so it smooths one image along the edges of another. | Implemented and tested |
 | [Kuwahara filter](nonlinear/kuwahara.md) | Nonlinear spatial filters | Writes the mean of the window quadrant whose values vary the least, which smooths areas and keeps edges. | Implemented and tested |
 | [Max filter](nonlinear/max.md) | Nonlinear spatial filters | Replaces each pixel with the largest value of its window. | Implemented and tested |
 | [Median filter](nonlinear/median.md) | Nonlinear spatial filters | Replaces each pixel with the middle value of its window. | Implemented and tested |

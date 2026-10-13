@@ -23,6 +23,11 @@ export interface PlaneContext {
   readonly originY: number;
   /** Channel number: 0 red, 1 green, 2 blue, or 0 for a brightness plane. */
   readonly channel: number;
+  /**
+   * The red, green and blue planes of a guide image, padded like the input, for filters that
+   * take their weights from another image, such as the joint bilateral filter.
+   */
+  readonly guide?: readonly [Plane, Plane, Plane];
 }
 
 /** One kernel as the Inspector shows it. It comes from the same function the filter runs. */

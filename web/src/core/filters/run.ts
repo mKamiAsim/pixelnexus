@@ -191,6 +191,8 @@ export interface ProcessOptions {
    * the whole image, so every tile treats alpha the same way.
    */
   readonly transparent: boolean;
+  /** A guide image of the same size as the input, padded the same way. */
+  readonly guide?: RgbaImage;
 }
 
 /** Run a filter on a whole (padded) image and return float planes. */
@@ -209,7 +211,14 @@ export function processImage(
       return { color, alpha: a, derived: filter.kind === "derived", warnings };
     }
     case "color": {
-      const context = { border: borderOf(params), originX, originY, channel: 0 };
+      const guide = options.guide ? toPlanes(options.guide) : null;
+      const context = {
+        border: borderOf(params),
+        originX,
+        originY,
+        channel: 0,
+        ...(guide ? { guide: [guide[0], guide[1], guide[2]] as const } : {}),
+      };
       const color = filter.color([r, g, b], params, context);
       return { color, alpha: a, derived: false, warnings: [] };
     }
@@ -328,14 +337,18 @@ export interface FilterOutput {
   readonly warnings: readonly string[];
 }
 
-/** Run a filter on a region, or on the whole image, in this thread. */
+/**
+ * Run a filter on a region, or on the whole image, in this thread. `guide` is an image of the
+ * same size for filters that use one.
+ */
 export function runFilter(
   image: RgbaImage,
   filter: BrowserFilter,
   params: Params,
   region: Rect = fullRect(image),
+  guide?: RgbaImage,
 ): FilterOutput {
-  const processed = processRegion(image, filter, params, region, hasTransparency(image));
+  const processed = processRegion(image, filter, params, region, hasTransparency(image), guide);
   const mapping = mappingOf(params);
   const range = processed.derived && mapping === "normalize" ? valueRange(processed) : undefined;
   return { image: toBytes(processed, mapping, range), warnings: processed.warnings };
@@ -348,6 +361,7 @@ export function processRegion(
   params: Params,
   region: Rect,
   transparent: boolean,
+  guide?: RgbaImage,
 ): Processed {
   const halo = filter.radius(params);
   const padded = padRegion(image, region, halo, borderOf(params));
@@ -355,6 +369,7 @@ export function processRegion(
     originX: region.x - halo,
     originY: region.y - halo,
     transparent,
+    ...(guide ? { guide: padRegion(guide, region, halo, borderOf(params)) } : {}),
   });
   return halo === 0
     ? processed

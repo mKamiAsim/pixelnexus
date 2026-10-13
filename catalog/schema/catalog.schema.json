@@ -281,7 +281,8 @@
             "angle",
             "kernel",
             "structuring-element",
-            "points"
+            "points",
+            "image"
           ]
         },
         "default": {

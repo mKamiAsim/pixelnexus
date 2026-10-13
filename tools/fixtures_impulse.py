@@ -198,10 +198,22 @@ def color_cases() -> dict[str, Any]:
     _check_color_filters(image)
     cases: list[dict[str, Any]] = []
 
-    def add(filter_id: str, params: dict[str, Any], output: FloatArray, source: str) -> None:
-        cases.append(
-            {"filter": filter_id, "params": params, "source": source, "output": _rgb_values(output)}
-        )
+    def add(
+        filter_id: str,
+        params: dict[str, Any],
+        output: FloatArray,
+        source: str,
+        guided: bool = False,
+    ) -> None:
+        case: dict[str, Any] = {
+            "filter": filter_id,
+            "params": params,
+            "source": source,
+            "output": _rgb_values(output),
+        }
+        if guided:
+            case["guide"] = True
+        cases.append(case)
 
     for border in PAD_MODES:
         for size, norm in ((3, "l2"), (3, "l1"), (5, "l2")):
@@ -225,8 +237,9 @@ def color_cases() -> dict[str, Any]:
                 mad_outlier(image, size, t, output, border),
                 "NumPy windows, checked with scipy.stats.median_abs_deviation",
             )
-    add_edge_color_cases(image, add)
+    guide = add_edge_color_cases(image, add)
     return {
+        "guide": guide.astype(int).reshape(-1).tolist(),
         "width": image.shape[1],
         "height": image.shape[0],
         "input": image.astype(int).reshape(-1).tolist(),

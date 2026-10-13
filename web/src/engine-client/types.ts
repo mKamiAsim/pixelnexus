@@ -16,6 +16,8 @@ export interface FilterJob {
   readonly region?: Rect;
   /** Selection mask, from Phase 4. The compositor applies it after the engine runs. */
   readonly mask?: Mask | null;
+  /** A guide image of the same size as `image`, for filters with an image parameter. */
+  readonly guide?: RgbaImage;
 }
 
 export interface JobOptions {

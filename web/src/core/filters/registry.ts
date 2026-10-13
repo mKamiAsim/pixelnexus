@@ -37,7 +37,7 @@ import { triangularFilter } from "./linear/triangular";
 import { unsharpMaskFilter } from "./linear/unsharp-mask";
 import { weightedAverageFilter } from "./linear/weighted-average";
 import { adaptiveMedianFilter } from "./nonlinear/adaptive-median";
-import { bilateralFilter } from "./nonlinear/bilateral";
+import { bilateralFilter, jointBilateralFilter } from "./nonlinear/bilateral";
 import {
   anisotropicDiffusionFilter,
   vectorAnisotropicDiffusionFilter,
@@ -87,6 +87,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   kuwaharaFilter,
   nagaoMatsuyamaFilter,
   bilateralFilter,
+  jointBilateralFilter,
   guidedFilter,
   anisotropicDiffusionFilter,
   vectorAnisotropicDiffusionFilter,

@@ -163,6 +163,7 @@ nav:
           - Kuwahara filter: filters/nonlinear/kuwahara.md
           - Nagao-Matsuyama filter: filters/nonlinear/nagao-matsuyama.md
           - Bilateral filter: filters/nonlinear/bilateral.md
+          - Joint bilateral filter: filters/nonlinear/joint-bilateral.md
           - Guided filter: filters/nonlinear/guided.md
           - Anisotropic diffusion: filters/nonlinear/anisotropic-diffusion.md
           - Vector anisotropic diffusion: filters/nonlinear/vector-anisotropic-diffusion.md

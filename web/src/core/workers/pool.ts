@@ -167,7 +167,10 @@ export class WorkerPool {
         return;
       }
       slot.job = job.id;
-      slot.worker.postMessage(request, [request.buffer]);
+      const transfer = request.guideBuffer
+        ? [request.buffer, request.guideBuffer]
+        : [request.buffer];
+      slot.worker.postMessage(request, transfer);
     }
   }
 

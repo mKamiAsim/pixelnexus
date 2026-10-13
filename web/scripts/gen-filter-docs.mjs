@@ -1026,6 +1026,11 @@ try {
     ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     ...{ cMax: speckle.cMax, leeWeight: speckle.leeWeight, kuanWeight: speckle.kuanWeight },
   });
+  const { jointDocs } = await import("./filter-docs/joint.mjs");
+  jointDocs({
+    ...{ run, pic, figure, example, matrix, block, mdTable, fix, synthetic },
+    ...{ browserFilter, runFilter },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

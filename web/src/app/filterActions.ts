@@ -20,6 +20,7 @@ import { announce, notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
 
 import { runEntryCommand } from "./geometryActions";
+import { guideImageFor } from "./guide";
 import { showPanel, workspaceApi } from "./layout";
 
 export function filterById(id: string | null): Filter | null {
@@ -147,8 +148,9 @@ export async function applySelected(): Promise<void> {
   beginWork(`Applying ${entry.name}`);
   announce(`Applying ${entry.name}.`);
   try {
+    const guide = guideImageFor(entry, values, doc);
     const result = await runJob(
-      { filterId: entry.id, values, image: source, region },
+      { filterId: entry.id, values, image: source, region, ...(guide ? { guide } : {}) },
       {
         signal: controller.signal,
         onProgress: (fraction) => useFilters.getState().setProgress(fraction),

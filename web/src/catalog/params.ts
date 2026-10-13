@@ -81,6 +81,10 @@ export function validateParams(
       case "boolean":
         out[param.key] = typeof raw === "boolean" ? raw : param.default;
         break;
+      case "image":
+        // The id of an open image. The studio checks that it exists and has the right size.
+        out[param.key] = typeof raw === "string" ? raw : param.default;
+        break;
       case "kernel": {
         const parsed = typeof raw === "string" ? parseKernel(raw) : null;
         if (!parsed?.ok) {
