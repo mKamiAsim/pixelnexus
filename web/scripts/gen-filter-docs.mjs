@@ -1054,6 +1054,8 @@ try {
     ...{ run, pic, figure, example, mdTable, synthetic, fix, gaborKernels },
     ...{ gaborBank, sigmaPerWavelength },
   });
+  const { steerableDocs } = await import("./filter-docs/steerable.mjs");
+  steerableDocs({ run, pic, figure, example, mdTable, synthetic, planeAt, fix });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

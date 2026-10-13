@@ -15,6 +15,7 @@
 | [Laplacian sharpening](linear/laplacian-sharpen.md) | Linear spatial filters | Sharpens by subtracting a multiple of the Laplacian, which steepens every edge. | Implemented and tested |
 | [Low-pass FIR filter](linear/fir-lowpass.md) | Linear spatial filters | Removes detail above a chosen frequency, with taps designed by the window method. | Implemented and tested |
 | [Motion blur](linear/motion-blur.md) | Linear spatial filters | Blurs the image along a straight line, like a camera that moved during the exposure. | Implemented and tested |
+| [Steerable filters](linear/steerable.md) | Linear spatial filters | The first or second derivative of a Gaussian, turned to any angle by mixing two or three basis filters. | Implemented and tested |
 | [Triangular filter](linear/triangular.md) | Linear spatial filters | Blurs with weights that rise in equal steps to the center and fall again. | Implemented and tested |
 | [Unsharp mask](linear/unsharp-mask.md) | Linear spatial filters | Sharpens by adding back the detail that a Gaussian blur removes. | Implemented and tested |
 | [Weighted average filter](linear/weighted-average.md) | Linear spatial filters | Filters with a kernel that you type, divided by its sum when you ask. | Implemented and tested |

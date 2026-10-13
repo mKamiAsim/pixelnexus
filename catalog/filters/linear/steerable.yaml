@@ -1,8 +1,139 @@
 id: steerable
 name: Steerable filters
+aliases: [Steerable Gaussian derivatives, Oriented derivative of Gaussian]
 family: linear
+tags: [purpose:edge, purpose:gradient]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: First and second derivative of Gaussian bases (Freeman and Adelson).
+status: implemented-tested
+
+summary: The first or second derivative of a Gaussian, turned to any angle by mixing two or three basis filters.
+purpose: Measure edges and lines in any direction, or find the direction where they are strongest, from a few fixed filters.
+classification: {linearity: linear, domain: spatial, operation: steered derivative of Gaussian}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/steerable.ts, symbol: steerableBasis}
+supportRadius: floor(4 sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  filtered on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The size of the Gaussian. The kernels end at 4 sigma.
+    effect: Larger values find wider edges and lines and ignore fine detail and noise.
+  - key: order
+    label: Derivative
+    type: select
+    default: "1"
+    options:
+      - {value: "1", label: First derivative (edges)}
+      - {value: "2", label: Second derivative (lines)}
+    description: Which derivative of the Gaussian to steer.
+    effect: The first derivative responds to edges. The second responds to thin lines and ridges.
+  - key: angle
+    label: Angle
+    type: angle
+    min: 0
+    max: 360
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the derivative. 0 points along x. Angles turn counterclockwise.
+    effect: The steered output responds to edges or lines that run across this direction.
+  - key: output
+    label: Output
+    type: select
+    default: steered
+    options:
+      - {value: steered, label: Steered to the angle}
+      - {value: strongest, label: Strongest over all angles}
+      - {value: angle, label: Angle of the strongest response}
+    description: The response at the chosen angle, the largest response over all angles, or the angle where it is reached.
+    effect: Strongest and angle do not use the Angle parameter.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  D_{\theta}^{(1)} = \cos\theta\, G_x - \sin\theta\, G_y,\qquad D_{\theta}^{(2)} = \cos^2\theta\, G_{xx} - 2\cos\theta\sin\theta\, G_{xy} + \sin^2\theta\, G_{yy}
+formulaExplanation: >-
+  G_x, G_y, G_xx, G_xy and G_yy are the responses to the derivatives of a Gaussian, built as in
+  scipy.ndimage.gaussian_filter. The y axis points down, so the direction (cos theta, -sin
+  theta) turns counterclockwise on screen. The basis for the second derivative spans the same
+  filters as the three rotated copies of Freeman and Adelson. The strongest output is the
+  gradient magnitude for the first derivative, and the Hessian eigenvalue with the largest size
+  for the second. The angle output is where that maximum is reached. It lies above -180 and up
+  to 180 degrees for the first derivative, and from 0 up to 180 for the second. Where the
+  gradient or the spread of the eigenvalues is below 1e-6, the angle is undefined and set to 0.
+symbols:
+  - {symbol: '\theta', meaning: The angle}
+  - {symbol: 'G_x, G_y', meaning: First derivatives of the Gaussian along x and y}
+  - {symbol: 'G_{xx}, G_{xy}, G_{yy}', meaning: Second derivatives of the Gaussian}
+steps:
+  - Correlate the image with the two or three separable basis kernels.
+  - For the steered output, mix the basis responses with the weights for the angle.
+  - For the strongest output and its angle, find the maximum over all angles in closed form.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels per channel and r the kernel radius. Each basis kernel is separable.
+useCases:
+  - Edge and line detection in a chosen direction.
+  - Local orientation maps.
+  - Teaching how a few filters can stand in for a filter at every angle.
+advantages:
+  - Any angle costs the same as two or three fixed filters.
+  - The strongest response and its angle come in closed form, with no search over angles.
+limitations:
+  - The derivative of a Gaussian is broad in direction, so it separates nearby angles poorly.
+  - The angle output means little in flat areas.
+artifacts:
+  - Thick responses for large sigma.
+references:
+  - kind: paper
+    text: Freeman, W. T. and Adelson, E. H. The design and use of steerable filters. IEEE Transactions on Pattern Analysis and Machine Intelligence 13(9), 891 to 906, 1991.
+    doi: 10.1109/34.93808
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.gaussian_filter with the order argument.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
+implementation: {path: web/src/core/filters/linear/steerable.ts, symbol: steerableFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Make a derivative filter for any direction by mixing two or three fixed ones.
+  howItWorks:
+    - Filter the image with a few derivative-of-Gaussian kernels along x and y.
+    - Mix the results with weights that depend on the angle.
+    - The mix equals the same filter turned to that angle.
+  academic: >-
+    A function is steerable when its rotated copies lie in the span of a few basis functions.
+    Derivatives of a Gaussian of order n need n + 1 basis filters, with trigonometric
+    interpolation weights.
+  paramNotes:
+    sigma: The scale.
+    order: Edges or lines.
+    angle: The direction.
+    output: One angle, the best angle, or where the best angle is.
+  tryThis:
+    - Turn the angle on the Siemens star and watch which spokes respond.
+    - Show the angle output with the second derivative on a fingerprint or fabric.
+  pitfalls:
+    - Expecting a sharp choice of direction. The response falls off slowly with angle.
+  demos: [impulse-response, line-profile]
+related: [gabor, sobel, log, gaussian]
+docsPage: filters/linear/steerable.md

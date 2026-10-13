@@ -12,6 +12,7 @@ export function gaborDocs(h) {
         angle,
         sigma: 4,
         output: "magnitude",
+        outputMapping: "normalize",
         channelScope: "luminance",
       }),
     );
@@ -45,7 +46,8 @@ export function gaborDocs(h) {
       `\nThe middle row of the kernels for wavelength 4, angle 0, sigma 1 and aspect ratio 1. The kernels are ${re.width} x ${re.height}, because the window ends at 3 sigma. On this row y = 0, so x' = x and y' = 0. Each weight is the envelope exp(-x^2 / 2) / (2 pi) times the cosine or the sine. The real kernel is even and finds thin lines. The imaginary kernel is odd and finds edges.\n`,
   );
 
-  const bankOf = (output) => pic(run(star, "gabor-bank", { output, channelScope: "luminance" }));
+  const bankOf = (output) =>
+    pic(run(star, "gabor-bank", { output, outputMapping: "normalize", channelScope: "luminance" }));
   figure("gabor-bank", {
     message:
       "A bank of 3 scales and 4 orientations on a Siemens star. The largest magnitude shows texture strength at every radius. The angle of the strongest filter gives each spoke direction its own gray level.",

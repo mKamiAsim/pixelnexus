@@ -20,6 +20,8 @@ FloatArray = NDArray[np.float64]
 Add = Callable[..., None]
 
 N_STDS = 3
+# Below this gradient or Hessian spread, the steerable angle is undefined and set to 0.
+FLAT = 1e-6
 
 
 def _fail(message: str) -> None:
@@ -127,9 +129,77 @@ def _check_bank(plane: FloatArray) -> None:
             _fail("The Gabor bank sigma disagrees with skimage.filters.gabor and its bandwidth")
 
 
+def steerable(
+    plane: FloatArray, sigma: float, order: int, angle: float, output: str, mode: str
+) -> FloatArray:
+    """Gaussian derivatives steered to an angle that turns counterclockwise, y pointing down."""
+
+    def d(oy: int, ox: int) -> FloatArray:
+        return np.asarray(
+            ndimage.gaussian_filter(plane, sigma, order=(oy, ox), mode=mode, truncate=4.0),
+            dtype=np.float64,
+        )
+
+    t = math.radians(angle)
+    c, s = math.cos(t), math.sin(t)
+    if order == 1:
+        gx, gy = d(0, 1), d(1, 0)
+        if output == "steered":
+            return c * gx - s * gy
+        if output == "strongest":
+            return np.asarray(np.hypot(gx, gy), dtype=np.float64)
+        a1 = np.degrees(np.arctan2(-gy, gx))
+        a1 = np.where(a1 <= -180 + 1e-9, 180.0, a1)
+        angle_1 = np.where(np.hypot(gx, gy) < FLAT, 0.0, a1)
+        return np.asarray(angle_1, dtype=np.float64)
+    xx, xy, yy = d(0, 2), d(1, 1), d(2, 0)
+    if output == "steered":
+        return c * c * xx - 2 * c * s * xy + s * s * yy
+    mean = (xx + yy) / 2
+    spread = np.hypot((xx - yy) / 2, xy)
+    if output == "strongest":
+        return np.asarray(np.abs(mean) + spread, dtype=np.float64)
+    phi = 0.5 * np.degrees(np.arctan2(2 * xy, xx - yy)) + np.where(mean >= 0, 0.0, 90.0)
+    a2 = np.mod(-phi, 180.0)
+    a2 = np.where(a2 >= 180 - 1e-9, 0.0, a2)
+    return np.asarray(np.where(spread < FLAT, 0.0, a2), dtype=np.float64)
+
+
+def _check_steerable() -> None:
+    # A ramp that rises along the angle 30 degrees, counterclockwise with y pointing down.
+    t = math.radians(30)
+    y, x = np.mgrid[0:24, 0:24].astype(np.float64)
+    ramp = 3 * (x * math.cos(t) - y * math.sin(t))
+    inner = np.s_[9:-9, 9:-9]
+    along = steerable(ramp, 1.5, 1, 30, "steered", "nearest")[inner]
+    across = steerable(ramp, 1.5, 1, 120, "steered", "nearest")[inner]
+    # Cutting the Gaussian at 4 sigma drops a little of its tails, so the slope comes out about
+    # 0.02 percent low.
+    if not (np.allclose(along, 3, rtol=1e-3) and np.allclose(across, 0, atol=1e-9)):
+        _fail("The steered first derivative of a ramp is not its slope along and 0 across")
+    if not np.allclose(steerable(ramp, 1.5, 1, 0, "angle", "nearest")[inner], 30):
+        _fail("The angle output of a ramp is not its direction")
+
+
 def add_oriented_cases(plane: FloatArray, add: Add) -> None:
     _check_gabor(plane)
     _check_bank(plane)
+    _check_steerable()
+    for border, mode in SCIPY_MODES.items():
+        for sigma, order, angle in ((1.0, 1, 30.0), (1.5, 2, 120.0), (2.0, 1, 135.0)):
+            for output in ("steered", "strongest", "angle"):
+                add(
+                    "steerable",
+                    {
+                        "sigma": sigma,
+                        "order": str(order),
+                        "angle": angle,
+                        "output": output,
+                        "border": border,
+                    },
+                    steerable(plane, sigma, order, angle, output, mode),
+                    "scipy.ndimage.gaussian_filter with derivative orders, steered with NumPy",
+                )
     for border, mode in SCIPY_MODES.items():
         for wavelength, scales, factor, orientations, bandwidth, aspect in (
             (2.5, 2, 1.5, 4, 1.0, 1.0),

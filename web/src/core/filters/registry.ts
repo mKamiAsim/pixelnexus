@@ -37,6 +37,7 @@ import { dogFilter, logFilter } from "./linear/dog-log";
 import { firLowpassFilter } from "./linear/fir-lowpass";
 import { gaborBankFilter } from "./features/gabor-bank";
 import { gaborFilter } from "./linear/gabor";
+import { steerableFilter } from "./linear/steerable";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
 import { laplacianFilter } from "./linear/laplacian";
@@ -104,6 +105,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   cannyFilter,
   gaborFilter,
   gaborBankFilter,
+  steerableFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

@@ -137,6 +137,7 @@ const CASES: [string, Params][] = [
       outputMapping: "clip",
     },
   ],
+  ["steerable", { sigma: 1.5, order: "2", angle: 60, output: "steered", outputMapping: "offset" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
