@@ -61,4 +61,5 @@
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
 | [Add speckle noise](utility/noise-speckle.md) | Utilities | Multiplies every pixel by a random factor around 1, so bright areas get more noise than dark ones. | Implemented and tested |
 | [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |
+| [Quality metrics](utility/metrics.md) | Utilities | Compares the active image with a reference and reports PSNR, SSIM, MSE and MAE. | Implemented and tested |
 | [Resize](utility/resize.md) | Utilities | Changes the size of the image in pixels, with a choice of resampling kernel. | Implemented and tested |

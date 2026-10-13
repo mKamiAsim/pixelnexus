@@ -17,6 +17,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import integrate, ndimage, signal, special
 from skimage import exposure, filters
+from skimage import metrics as skmetrics
 
 from fixtures_adaptive import add_adaptive_cases
 from fixtures_edge import add_edge_plane_cases
@@ -249,6 +250,35 @@ def _srgb_to_linear(v: FloatArray) -> FloatArray:
 def _linear_to_srgb(v: FloatArray) -> FloatArray:
     c = np.where(v <= 0.0031308, v * 12.92, 1.055 * np.power(v, 1 / 2.4) - 0.055)
     return np.asarray(c * 255)
+
+
+def metrics_case() -> dict[str, Any]:
+    """Quality metrics of a smooth image and a noisy copy, from scikit-image."""
+    rng = np.random.default_rng(77)
+    yy, xx = np.mgrid[0:20, 0:24]
+    base = np.stack([60 + 6 * xx, 200 - 5 * yy, 100 + 3 * (xx + yy)], axis=-1).astype(np.float64)
+    a = np.clip(base, 0, 255).round().astype(np.uint8)
+    b = np.clip(a + rng.normal(0, 12, a.shape), 0, 255).round().astype(np.uint8)
+    af, bf = a.astype(np.float64), b.astype(np.float64)
+    ssim = skmetrics.structural_similarity(  # type: ignore[no-untyped-call]
+        b,
+        a,
+        channel_axis=-1,
+        gaussian_weights=True,
+        sigma=1.5,
+        use_sample_covariance=False,
+        data_range=255,
+    )
+    return {
+        "width": 24,
+        "height": 20,
+        "reference": a.astype(int).reshape(-1).tolist(),
+        "image": b.astype(int).reshape(-1).tolist(),
+        "mse": float(skmetrics.mean_squared_error(af, bf)),
+        "mae": float(np.mean(np.abs(af - bf))),
+        "psnr": float(skmetrics.peak_signal_noise_ratio(a, b, data_range=255)),  # type: ignore[no-untyped-call]
+        "ssim": float(ssim),
+    }
 
 
 def filter_cases() -> dict[str, Any]:
@@ -492,6 +522,7 @@ def filter_cases() -> dict[str, Any]:
         "inputs": {name: p.astype(int).reshape(-1).tolist() for name, p in extra_inputs.items()},
         "cases": cases,
         "color": color_cases(),
+        "metrics": metrics_case(),
         "gamma": gamma_cases,
         "grayscale": grayscale,
         "borders": {"pad": 7, "constant": -1, "tables": borders},

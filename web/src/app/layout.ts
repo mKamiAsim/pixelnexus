@@ -21,6 +21,7 @@ export const PANELS = [
   { id: "info", title: "Info", side: "right" },
   { id: "histogram", title: "Histogram", side: "right" },
   { id: "masks", title: "Masks", side: "right" },
+  { id: "metrics", title: "Metrics", side: "right" },
 ] as const;
 
 export type PanelId = (typeof PANELS)[number]["id"];
@@ -136,6 +137,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "info",
       "histogram",
       "masks",
+      "metrics",
       "developer",
     ]);
     widths.push(["properties", 300]);
@@ -145,7 +147,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("learn", CANVAS_PANEL, "right");
     stack("learn", ["inspector", "properties"]);
     add("info", "learn", "below");
-    stack("info", ["histogram", "navigator", "history", "masks"]);
+    stack("info", ["histogram", "metrics", "navigator", "history", "masks"]);
     widths.push(["library", 240], ["learn", 400]);
     heights.push(["info", 280]);
   } else if (id === "developer") {
@@ -154,7 +156,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("developer", CANVAS_PANEL, "right");
     stack("developer", ["inspector", "properties"]);
     add("history", "developer", "below");
-    stack("history", ["masks", "info", "histogram", "navigator"]);
+    stack("history", ["masks", "info", "histogram", "metrics", "navigator"]);
     widths.push(["library", 240], ["developer", 400]);
     heights.push(["history", 260]);
   } else {
@@ -163,7 +165,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     add("properties", CANVAS_PANEL, "right");
     stack("properties", ["inspector", "learn", "developer"]);
     add("history", "properties", "below");
-    stack("history", ["masks", "navigator", "info", "histogram"]);
+    stack("history", ["masks", "navigator", "info", "histogram", "metrics"]);
     widths.push(["library", 260], ["properties", 330]);
     heights.push(["history", 260]);
   }

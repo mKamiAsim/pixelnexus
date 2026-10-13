@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5b: the Metrics panel (PSNR, SSIM, MSE, MAE against another open image) with its catalog entry, and the Noise lab demo. Then the 5b exit checks and Phase 5c. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Next action | Phase 5b: the Noise lab demo in the Learn panel (the last 5b item), then tick 5b and start Phase 5c (edges, Canny, stage viewer). Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5b: joint bilateral filter with a guide image, after all other 5b filters. A new image parameter type, guide images through the engine, workers and preview |
+| Last finished step | Phase 5b: the Metrics panel and quality metrics (PSNR, SSIM, MSE, MAE) against the original or another open image, after all 5b filters |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5b: the Metrics panel (PSNR, SSIM, MSE, MAE against another open image) with its catalog entry, and the Noise lab demo. Then the 5b exit checks and Phase 5c. |
+| Next steps | Phase 5b: the Noise lab demo in the Learn panel (the last 5b item), then tick 5b and start Phase 5c (edges, Canny, stage viewer). |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -848,3 +848,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5b | Nine adaptive filters and statistics maps. Local statistics are feature maps through the output mapping, with float64 running sums. Savitzky-Golay weights come from the normal equations and match the classic -3, 12, 17, 12, -3 over 35. The adaptive Wiener filter and the Gonzalez and Woods adaptive local noise filter share one estimator, with the noise level as a parameter so strips agree. Sigma filter with the spot rule, and adaptive smoothing extended once by two pixels per step. References checked against scipy.signal.wiener, scipy.signal.savgol_filter, skimage.filters.rank.entropy and generic_filter. 1316 Vitest tests and 26 E2E tests pass. | Speckle filters. |
 | 2026-10-13 | 5b | Six speckle filters and two noise generators. The speckle filters share the local coefficient of variation and follow Lopes, Touzi and Nezry (Lee, Kuan, enhanced Lee), Frost and others, the Gamma-MAP root of Lopes and others, and the SRAD discretization of Yu and Acton with a decaying speckle scale. No library implements them, so the references are checked against limits and identities: Lee at C_u = 0, Kuan as Lee over 1 + C_u^2, the Gamma-MAP quadratic, Frost at K = 0 and SRAD as linear diffusion for a huge speckle scale. Speckle noise follows skimage. Poisson noise uses Knuth below a mean of 10 and Hörmann's PTRS above, from position-based uniforms, with a Lanczos log-gamma. 1405 Vitest tests and 26 E2E tests pass. | Joint bilateral, Noise lab and Metrics. |
 | 2026-10-13 | 5b | Joint bilateral filter. Filters can now take a second image: a new catalog parameter type image lists the open images of the same size in Properties, the studio resolves it to pixels for Apply and the preview (scaled with the preview proxy), the browser engine pads the guide like the image for each strip and sends it to the worker, and color filters get the guide planes in their context. References checked against cv2.ximgproc.jointBilateralFilter. Engine tests check strips, regions and workers with a guide. 1425 Vitest tests and 26 E2E tests pass. | Metrics and Noise lab. |
+| 2026-10-13 | 5b | Quality metrics in web/src/core/metrics/quality.ts, matched to skimage.metrics (SSIM with Gaussian weights within 1e-5). A new Metrics panel compares the active image with its original or another open image of the same size. The catalog entry runs the command filter.metrics, which opens the panel. 76 catalog entries are implemented-tested. 1430 Vitest tests and 26 E2E tests pass. | Noise lab. |

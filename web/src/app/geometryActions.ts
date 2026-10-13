@@ -16,6 +16,8 @@ import { activeDocument, useDocuments } from "@/state/documents";
 import { announce } from "@/state/notifications";
 import { useUi, type DialogId } from "@/state/ui";
 
+import { showPanel } from "./layout";
+
 /** The dialog behind each command that a catalog entry can name. */
 const COMMAND_DIALOGS: Readonly<Record<string, DialogId>> = {
   "image.resize": "image-resize",
@@ -24,6 +26,10 @@ const COMMAND_DIALOGS: Readonly<Record<string, DialogId>> = {
 
 /** Run the studio command a catalog entry names. Returns false for an unknown command. */
 export function runEntryCommand(command: string): boolean {
+  if (command === "filter.metrics") {
+    showPanel("metrics");
+    return true;
+  }
   const dialog = COMMAND_DIALOGS[command];
   if (!dialog) return false;
   useUi.getState().setDialog(dialog);

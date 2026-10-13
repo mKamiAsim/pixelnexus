@@ -205,5 +205,6 @@ nav:
           - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md
           - Add speckle noise: filters/utility/noise-speckle.md
           - Add Poisson noise: filters/utility/noise-poisson.md
+          - Quality metrics: filters/utility/metrics.md
           - Resize: filters/utility/resize.md
           - Free rotation: filters/utility/rotate-free.md

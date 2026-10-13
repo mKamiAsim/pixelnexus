@@ -528,6 +528,14 @@ export function buildCommands(): Command[] {
       run: () => useFilters.getState().setPreviewOn(!useFilters.getState().previewOn),
     },
     {
+      id: "filter.metrics",
+      label: "Quality metrics",
+      menu: "filter",
+      section: "apply",
+      keywords: "psnr ssim mse mae compare reference noise",
+      run: () => showPanel("metrics"),
+    },
+    {
       id: "filter.library",
       label: "Browse all filters",
       menu: "filter",
