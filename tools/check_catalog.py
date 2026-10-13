@@ -142,6 +142,8 @@ def _code_issues(entry: dict[str, Any], where: str, section: str) -> Iterator[Is
         yield Issue("error", where, f"implementation file '{missing}' is missing")
     elif implementation.get("symbol", "") not in source.read_text(encoding="utf-8"):
         yield Issue("error", where, f"symbol '{implementation.get('symbol')}' is not in its file")
+    elif section == "filters" and entry.get("command"):
+        yield from _command_issues(entry, where)
     elif section == "filters":
         yield from _registration_issues(entry, source.read_text(encoding="utf-8"), where)
     for test in entry.get("tests", []) or []:
@@ -153,6 +155,15 @@ def _code_issues(entry: dict[str, Any], where: str, section: str) -> Iterator[Is
 
 
 BROWSER_REGISTRY = ROOT / "web" / "src" / "core" / "filters" / "registry.ts"
+COMMANDS = ROOT / "web" / "src" / "app" / "commands.ts"
+
+
+def _command_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
+    """An entry that runs through a studio command names a command that exists."""
+    command = entry.get("command", "")
+    source = COMMANDS.read_text(encoding="utf-8") if COMMANDS.is_file() else ""
+    if f'id: "{command}"' not in source:
+        yield Issue("error", where, f"command '{command}' is not in {_rel(COMMANDS)}")
 
 
 def _registration_issues(entry: dict[str, Any], source: str, where: str) -> Iterator[Issue]:

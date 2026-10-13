@@ -22,6 +22,7 @@ import { RangeSelectDialogs } from "./RangeSelectDialog";
 import { RefineDialog } from "./RefineDialog";
 import { SaveSelectionDialog } from "./SaveSelectionDialog";
 import { SnapDialog } from "./SnapDialog";
+import { GeometryDialogs } from "./GeometryDialogs";
 import { ShortcutSheet } from "./ShortcutSheet";
 import { displayShortcut } from "./shortcuts";
 import { StatusBar } from "./StatusBar";
@@ -228,6 +229,7 @@ export function App() {
       <RangeSelectDialogs />
       <SaveSelectionDialog />
       <SnapDialog />
+      <GeometryDialogs />
     </TooltipProvider>
   );
 }

@@ -164,3 +164,5 @@ nav:
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md
+          - Resize: filters/utility/resize.md
+          - Free rotation: filters/utility/rotate-free.md

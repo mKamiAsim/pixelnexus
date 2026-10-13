@@ -158,7 +158,8 @@ async function update(): Promise<void> {
     !entry ||
     !doc ||
     !isRunnable(entry) ||
-    entry.engine !== "browser"
+    entry.engine !== "browser" ||
+    entry.command !== undefined
   ) {
     clear();
     return;

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { isRunnable, type Filter } from "@/catalog";
 import { entryParams } from "@/catalog/params";
 import { applySelected, cancelApply, filterById, stepLabel } from "@/app/filterActions";
+import { runEntryCommand } from "@/app/geometryActions";
 import { showPanel } from "@/app/layout";
 import { GlossaryText } from "@/components/GlossaryText";
 import { ParamControl } from "@/components/params/ParamControl";
@@ -55,15 +56,7 @@ export function PropertiesPanel() {
 }
 
 function FilterProperties({ entry }: { entry: Filter }) {
-  const { values, warnings } = useFilterValues(entry);
-  const setValue = useFilters((s) => s.setValue);
-  const resetValues = useFilters((s) => s.resetValues);
-  const doc = useDocuments((s) => activeDocument(s));
   const runnable = isRunnable(entry);
-  const params = entryParams(entry);
-  const basic = params.filter((p) => !p.advanced);
-  const advanced = params.filter((p) => p.advanced);
-
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-1.5 border-b border-border-subtle px-3 py-2.5">
@@ -87,6 +80,36 @@ function FilterProperties({ entry }: { entry: Filter }) {
         </div>
       </div>
 
+      {entry.command && runnable ? (
+        <div className="m-3 flex flex-col items-start gap-2 rounded-control border border-border bg-raised p-2.5 text-xs text-text-secondary">
+          <p className="flex gap-2">
+            <Info size={14} className="mt-px shrink-0 text-accent-fg" aria-hidden />
+            <span>
+              This changes the size of the image, so it runs from a dialog in the Image menu. The
+              dialog has the parameters.
+            </span>
+          </p>
+          <Button size="sm" variant="primary" onClick={() => runEntryCommand(entry.command ?? "")}>
+            Open {entry.name}
+          </Button>
+        </div>
+      ) : null}
+
+      {entry.command ? null : <FilterBody entry={entry} runnable={runnable} />}
+    </div>
+  );
+}
+
+function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
+  const { values, warnings } = useFilterValues(entry);
+  const setValue = useFilters((s) => s.setValue);
+  const resetValues = useFilters((s) => s.resetValues);
+  const doc = useDocuments((s) => activeDocument(s));
+  const params = entryParams(entry);
+  const basic = params.filter((p) => !p.advanced);
+  const advanced = params.filter((p) => p.advanced);
+  return (
+    <>
       {!runnable ? (
         <p className="m-3 flex gap-2 rounded-control border border-border bg-raised p-2.5 text-xs text-text-secondary">
           <Info size={14} className="mt-px shrink-0 text-accent-fg" aria-hidden />
@@ -157,7 +180,7 @@ function FilterProperties({ entry }: { entry: Filter }) {
 
       <ApplyRow entry={entry} disabled={!runnable || !doc} onReset={() => resetValues(entry.id)} />
       {params.length > 0 ? <PresetRow entry={entry} values={values} /> : null}
-    </div>
+    </>
   );
 }
 

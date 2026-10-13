@@ -1,8 +1,141 @@
 id: rotate-free
 name: Free rotation
+aliases:
+- Rotate by angle
+- Arbitrary rotation
 family: utility
+tags: [purpose:geometry]
 tier: core
 engine: browser
 phase: 5a
-status: planned
+status: implemented-tested
 planNotes: Any angle, with interpolation choice.
+
+summary: Turns the image by any angle around its center, with a choice of interpolation.
+purpose: Straighten a tilted photo or turn an image by an exact angle.
+classification: {linearity: linear, domain: geometric, operation: inverse mapping with interpolation}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/image/resample.ts, symbol: rotateImage}
+supportRadius: the whole image
+supportsMask: false
+preview: none
+colorHandling: >-
+  Colors are multiplied by alpha before they are mixed and divided again after, so the new
+  transparent corners do not darken the edge. All four channels are interpolated.
+boundary: Pixels outside the image count as transparent black. The fill color is laid under the result.
+
+params:
+  - key: angle
+    label: Angle
+    type: angle
+    min: -180
+    max: 180
+    step: 0.1
+    default: 15
+    unit: deg
+    description: The turn in degrees. Positive turns counterclockwise.
+    effect: Small angles straighten a tilted horizon.
+  - key: interpolation
+    label: Interpolation
+    type: select
+    default: bicubic
+    options:
+      - {value: nearest, label: Nearest neighbor}
+      - {value: bilinear, label: Bilinear}
+      - {value: bicubic, label: Bicubic}
+    description: How a value is read between source pixels.
+    effect: Nearest keeps hard, jagged pixels. Bilinear is soft. Bicubic is sharper.
+  - key: canvas
+    label: Canvas
+    type: select
+    default: expand
+    options:
+      - {value: expand, label: Grow to fit}
+      - {value: keep, label: Keep the size}
+    description: Whether the image grows to hold the whole rotated picture.
+    effect: Keep the size crops the corners. Grow to fit adds new corners.
+  - key: fill
+    label: New corners
+    type: select
+    default: transparent
+    options:
+      - {value: transparent, label: Transparent}
+      - {value: white, label: White}
+      - {value: black, label: Black}
+    description: The color of the area that the rotated image does not cover.
+    effect: Transparent keeps the corners empty for later editing.
+
+formula: |
+  \begin{pmatrix} u \\ v \end{pmatrix}
+  =
+  \begin{pmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{pmatrix}
+  \begin{pmatrix} x + \tfrac{1}{2} - \tfrac{W'}{2} \\ y + \tfrac{1}{2} - \tfrac{H'}{2} \end{pmatrix}
+  +
+  \begin{pmatrix} \tfrac{W}{2} - \tfrac{1}{2} \\ \tfrac{H}{2} - \tfrac{1}{2} \end{pmatrix},
+  \qquad
+  \theta = {{angle}}^{\circ}
+formulaExplanation: >-
+  For each output pixel, the center is turned back by the angle into the source image. The
+  value at that source position (u, v) is read by the chosen interpolation. Turning back, not
+  forward, gives every output pixel exactly one value and leaves no holes. With y growing
+  downward, this matrix turns the picture counterclockwise on screen.
+symbols:
+  - {symbol: '(x, y)', meaning: 'Output pixel index'}
+  - {symbol: '(u, v)', meaning: 'Source position in pixel-center units'}
+  - {symbol: '\theta', meaning: 'Rotation angle, counterclockwise'}
+  - {symbol: 'W, H', meaning: 'Source width and height'}
+  - {symbol: "W', H'", meaning: 'Output width and height'}
+steps:
+  - Multiply the colors by alpha.
+  - Find the output size, grown to fit the turned corners or kept.
+  - For every output pixel, turn its center back by the angle into the source.
+  - Read the value there, with nearest, bilinear or bicubic interpolation. Outside the source the value is 0.
+  - Lay the fill color under the result, divide the colors by alpha and round to 8 bits.
+complexity:
+  time: O(W'\,H'\,t)
+  memory: O(W\,H + W'\,H')
+  notes: t is the number of source pixels read per output pixel. 1 for nearest, 4 for bilinear and 16 for bicubic.
+useCases:
+  - Straighten a photo with a tilted horizon.
+  - Turn a scan that went in at an angle.
+advantages:
+  - Inverse mapping leaves no holes and needs no second pass.
+  - Premultiplied alpha keeps the edges of the turned image clean against the transparent corners.
+limitations:
+  - Every turn that is not a multiple of 90 degrees softens the image a little, because values are read between pixels.
+  - Turning several times in a row adds up the softening. Turn once by the total angle instead.
+artifacts:
+  - Jagged edges with nearest neighbor.
+  - Slight softening with bilinear, and thin halos at sharp edges with bicubic.
+references:
+  - kind: paper
+    text: Keys, R. Cubic Convolution Interpolation for Digital Image Processing. IEEE Transactions on Acoustics, Speech, and Signal Processing 29(6), 1153 to 1160, 1981.
+    doi: 10.1109/TASSP.1981.1163711
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.map_coordinates, used to check the bilinear and nearest results.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.map_coordinates.html
+implementation: {path: web/src/core/image/resample.ts, symbol: rotateImage}
+tests: [web/src/core/image/resample.test.ts]
+learn:
+  oneSentence: Each new pixel looks back to where it came from in the old image and reads the value there.
+  howItWorks:
+    - For a new pixel, turn its position back by the angle.
+    - That spot usually falls between old pixels.
+    - Read a value there by mixing the nearby old pixels.
+  academic: >-
+    Rotation by inverse mapping. Each output center is mapped through the inverse rotation and
+    sampled with nearest, bilinear or Keys cubic interpolation (a = -0.5) on premultiplied alpha.
+  paramNotes:
+    angle: How far to turn. Positive is counterclockwise.
+    interpolation: How values between pixels are read.
+    canvas: Whether the image grows to keep the corners.
+  tryThis:
+    - Turn the Checkerboard test image by 30 degrees with nearest neighbor, then with bicubic. Look at the edges.
+  pitfalls:
+    - Turning by many small steps. Each step softens the image. Turn once by the total angle.
+  demos: []
+related: [resize]
+docsPage: filters/utility/rotate-free.md
+command: image.rotate-free

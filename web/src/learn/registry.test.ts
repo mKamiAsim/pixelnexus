@@ -12,8 +12,10 @@ describe("Learn demos", () => {
   });
 
   it("gives every runnable filter at least one demo that is built", () => {
+    // Entries that run through a command, such as Resize, change the image size. The demos
+    // run filters on a patch, so these entries teach with text only.
     const without = catalog.filters
-      .filter((f) => isRunnable(f) && f.learn)
+      .filter((f) => isRunnable(f) && f.learn && !f.command)
       .filter((f) => !(f.learn?.demos ?? []).some((d) => d in WIDGETS))
       .map((f) => f.id);
     expect(without).toEqual([]);

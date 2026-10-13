@@ -15,6 +15,7 @@ A unit test compares this table with the command list in the studio, so the two 
 | Export... | File | `Ctrl+S` | `Cmd+S` |
 | Undo | Edit | `Ctrl+Z` | `Cmd+Z` |
 | Redo | Edit | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
+| Resize... | Image | `Ctrl+Alt+I` | `Cmd+Alt+I` |
 | Select all | Select | `Ctrl+A` | `Cmd+A` |
 | Deselect | Select | `Ctrl+D` | `Cmd+D` |
 | Reselect | Select | `Ctrl+Shift+D` | `Cmd+Shift+D` |

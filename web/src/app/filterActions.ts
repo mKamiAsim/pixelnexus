@@ -19,6 +19,7 @@ import { useFilters } from "@/state/filters";
 import { announce, notify } from "@/state/notifications";
 import { useUi } from "@/state/ui";
 
+import { runEntryCommand } from "./geometryActions";
 import { showPanel, workspaceApi } from "./layout";
 
 export function filterById(id: string | null): Filter | null {
@@ -115,6 +116,11 @@ export async function applySelected(): Promise<void> {
   const entry = filterById(filters.selectedId);
   const doc = activeDocument();
   if (!entry || !doc || filters.applying) return;
+  if (entry.command) {
+    // Resize and rotation change the image size, so their dialogs run them.
+    runEntryCommand(entry.command);
+    return;
+  }
   if (!isRunnable(entry)) {
     notify("info", `${entry.name} cannot run yet.`);
     return;

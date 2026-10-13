@@ -18,6 +18,8 @@ export type DialogId =
   | "select-hsv"
   | "select-save"
   | "select-snap"
+  | "image-resize"
+  | "image-rotate"
   | null;
 
 export interface PixelPoint {

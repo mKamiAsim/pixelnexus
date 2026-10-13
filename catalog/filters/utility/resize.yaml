@@ -1,8 +1,139 @@
 id: resize
 name: Resize
+aliases:
+- Image size
+- Resample
 family: utility
+tags: [purpose:geometry]
 tier: core
 engine: browser
 phase: 5a
-status: planned
+status: implemented-tested
 planNotes: Nearest, bilinear, bicubic and Lanczos.
+
+summary: Changes the size of the image in pixels, with a choice of resampling kernel.
+purpose: Make an image smaller or larger, with control over sharpness and aliasing.
+classification: {linearity: linear, domain: geometric, operation: separable resampling}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/image/resample.ts, symbol: resampleKernel}
+supportRadius: the whole image
+supportsMask: false
+preview: none
+colorHandling: >-
+  Colors are multiplied by alpha before they are mixed and divided again after, so transparent
+  pixels add no color. All four channels are resampled.
+boundary: Pixels outside the image are left out, and the weights of the rest are renormalized.
+
+params:
+  - key: width
+    label: Width
+    type: integer
+    min: 1
+    max: 32768
+    default: 512
+    unit: px
+    description: The new width. The dialog starts with the current width.
+    effect: Larger than now enlarges, smaller shrinks.
+  - key: height
+    label: Height
+    type: integer
+    min: 1
+    max: 32768
+    default: 512
+    unit: px
+    description: The new height. The dialog starts with the current height.
+    effect: Larger than now enlarges, smaller shrinks.
+  - key: keepRatio
+    label: Keep proportions
+    type: boolean
+    default: true
+    description: Change the other side to keep the shape of the image.
+    effect: Turn it off to stretch or squash the image.
+  - key: method
+    label: Method
+    type: select
+    default: bicubic
+    options:
+      - {value: nearest, label: Nearest neighbor}
+      - {value: bilinear, label: Bilinear}
+      - {value: bicubic, label: Bicubic}
+      - {value: lanczos, label: Lanczos}
+    description: The kernel that mixes source pixels into each new pixel.
+    effect: Nearest keeps hard pixels. Bilinear is soft. Bicubic and Lanczos are sharper, with slight halos.
+
+formula: |
+  I_{\text{out}}(x) = \frac{\sum_{i} k\!\left(\frac{i - u}{f}\right) I(i)}{\sum_{i} k\!\left(\frac{i - u}{f}\right)},
+  \qquad
+  u = \left(x + \tfrac{1}{2}\right) s - \tfrac{1}{2},
+  \qquad
+  f = \max(s, 1)
+formulaExplanation: >-
+  Pixel i covers the interval from i to i + 1, so its center is i + 1/2. The center of output
+  pixel x falls at the source position u. The kernel k weights the source pixels near u, and
+  dividing by the sum makes the weights add up to 1. When shrinking, the kernel is f times wider,
+  so each new pixel also averages the pixels it covers. That prevents aliasing. The same step
+  runs along rows, then along columns.
+symbols:
+  - {symbol: 'I', meaning: 'Source value, premultiplied by alpha'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output value, before it is divided by alpha'}
+  - {symbol: 'x', meaning: 'Output pixel index'}
+  - {symbol: 'i', meaning: 'Source pixel index'}
+  - {symbol: 'u', meaning: 'Source position of the center of output pixel x, in pixel-center units'}
+  - {symbol: 's', meaning: 'Source size divided by output size'}
+  - {symbol: 'f', meaning: 'Kernel stretch, 1 when enlarging and s when shrinking'}
+  - {symbol: 'k', meaning: 'The kernel of the chosen method'}
+steps:
+  - Multiply the colors by alpha.
+  - For every output column, find the source position of its center and the normalized kernel weights.
+  - Mix the source pixels of each row with those weights.
+  - Do the same for every output row, on the result of the first pass.
+  - Divide the colors by alpha and round once to 8 bits.
+complexity:
+  time: O(W_o\,H_i\,k_x + W_o\,H_o\,k_y)
+  memory: O(W_o\,H_i)
+  notes: W and H are widths and heights, i for input and o for output. k_x and k_y are the kernel widths in pixels, which grow when shrinking.
+useCases:
+  - Make an image smaller for the web or for faster work.
+  - Enlarge an image for printing or for a closer look at pixels with nearest neighbor.
+advantages:
+  - Shrinking averages the covered pixels, so fine patterns do not turn into false coarse ones.
+  - The kernels match Pillow, so results can be compared with it directly.
+limitations:
+  - Enlarging cannot add detail. The image gets bigger, not sharper.
+  - Bicubic and Lanczos have negative weights, so they make thin halos at sharp edges.
+artifacts:
+  - Halos and slight ringing with bicubic and Lanczos.
+  - Blocky pixels with nearest neighbor.
+  - Soft results with bilinear.
+references:
+  - kind: paper
+    text: Keys, R. Cubic Convolution Interpolation for Digital Image Processing. IEEE Transactions on Acoustics, Speech, and Signal Processing 29(6), 1153 to 1160, 1981.
+    doi: 10.1109/TASSP.1981.1163711
+  - kind: library
+    text: Pillow documentation, Image.resize and the resampling filters.
+    url: https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.resize
+implementation: {path: web/src/core/image/resample.ts, symbol: resizeImageTo}
+tests: [web/src/core/image/resample.test.ts]
+learn:
+  oneSentence: Each new pixel is a weighted mix of the old pixels near the spot it lands on.
+  howItWorks:
+    - Find where the center of each new pixel falls in the old image.
+    - Mix the old pixels near that spot, with weights from the chosen kernel.
+    - When shrinking, mix more pixels, so the result does not flicker or show false patterns.
+  academic: >-
+    Separable resampling with a reconstruction kernel, widened by the decimation factor when
+    shrinking. Bicubic is Keys' cubic convolution with a = -0.5. Lanczos uses the windowed sinc
+    sinc(x) sinc(x/3).
+  paramNotes:
+    method: The kernel. Nearest copies pixels, the others mix them.
+    keepRatio: Keeps the shape of the image when you change one side.
+  tryThis:
+    - Shrink the Zone plate test image to a quarter with nearest neighbor, then with Lanczos. Compare the rings.
+  pitfalls:
+    - Enlarging and expecting more detail. Resizing only spreads the detail that is there.
+  demos: []
+related: [rotate-free, gaussian]
+docsPage: filters/utility/resize.md
+command: image.resize

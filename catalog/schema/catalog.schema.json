@@ -825,6 +825,11 @@
         "docsPage": {
           "type": "string",
           "pattern": "^filters/.+\\.md$"
+        },
+        "command": {
+          "description": "A studio command id, such as image.resize, that runs this entry instead of the filter engine. For operations that change the image size, which the tiled filter engine cannot run.",
+          "type": "string",
+          "pattern": "^[a-z]+(\\.[a-z-]+)+$"
         }
       },
       "allOf": [

@@ -117,7 +117,9 @@ def profile_figure(spec: dict[str, Any]) -> Any:
     lines = profile["lines"]
     width_in = WIDTH_PX / DPI
     styles = ["-", "--", "-.", ":"]
-    drawstyle = "default" if profile.get("square") else "steps-mid"
+    # Pixel values are drawn as steps. Continuous curves, such as kernels, ask for "smooth".
+    smooth = profile.get("square") or profile.get("smooth")
+    drawstyle = "default" if smooth else "steps-mid"
     if profile.get("split"):
         # One panel per line, when the lines have very different value ranges.
         fig, axes = plt.subplots(
@@ -148,6 +150,8 @@ def profile_figure(spec: dict[str, Any]) -> Any:
         )
     ax.set_xlabel(profile["xlabel"])
     ax.set_ylabel(profile["ylabel"])
+    if profile.get("smooth"):
+        ax.axhline(0, color=plt.rcParams["grid.color"], linewidth=1, zorder=0)
     if profile.get("square"):
         ax.set_xlim(0, 255)
         ax.set_ylim(0, 255)

@@ -14,8 +14,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5a: resize (nearest, bilinear, bicubic, Lanczos) and free rotation, as Image menu commands with catalog entries, references, docs and tests. Then the 5a exit checks. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
-| Last updated | 2026-10-12 |
+| Next action | Phase 5b: nonlinear, rank and adaptive statistical filters, dead-pixel repair, weight viewer, Noise lab and Metrics panel. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Last updated | 2026-10-13 |
 
 ## Handoff
 
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5a: eight linear filters (weighted average with a typed kernel, binomial, triangular, disk average, low-pass FIR, Laplacian sharpening, high-pass, high-boost) with catalog entries, SciPy fixtures, docs pages, kernels, worked examples and figures |
+| Last finished step | Phase 5a complete: resize (nearest, bilinear, bicubic, Lanczos) and free rotation as Image menu commands with catalog entries, fixtures checked against Pillow and SciPy, docs pages and E2E tests |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5a: resize (nearest, bilinear, bicubic, Lanczos) and free rotation, as Image menu commands with catalog entries, references, docs and tests. Then the 5a exit checks. |
+| Next steps | Phase 5b: rank filters (median family, min, max, midpoint, means, rank-order, mode), edge-preserving filters (Kuwahara, Nagao-Matsuyama, bilateral, joint bilateral, guided, anisotropic diffusion), adaptive and speckle filters, local statistics maps, Savitzky-Golay, dead-pixel repair, Noise lab additions and the Metrics panel. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -577,7 +577,7 @@ Exit: unit tests for every tool on synthetic images. A test proves that pixels w
 
 Six sub-phases. The entries for each are listed in CATALOG.md. Each sub-phase ends with its docs pages and fixture tests.
 
-- [ ] **5a** Linear filters and sharpening. Channel-scope option on all of them.
+- [x] **5a** Linear filters and sharpening. Channel-scope option on all of them.
 - [ ] **5b** Nonlinear, rank and adaptive statistical filters. Dead-pixel repair. Weight viewer, Noise lab and Metrics panel.
 - [ ] **5c** Edges, lines, corners and texture kernels. Canny with every stage visible. Stage viewer.
 - [ ] **5d** Morphology with a structuring-element editor (rectangle, ellipse, cross, diamond, line with angle, custom). Morphology stepper.
@@ -841,3 +841,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-12 | 4 | Subject and background without AI: frequency-tuned saliency (Achanta et al. 2009) and spectral residual (Hou and Zhang 2007, with a small radix-2 FFT at 64 x 64), plus PixelNexus's own center prior, edge density, k-means color clusters scored against the image border, Otsu's threshold, connected parts with filled holes, a bilinear scale-up and Snap to edges. Runs in a worker on a copy of at most 512 px, about 1 s at 512 x 512. On a synthetic red disk the result overlaps the disk by more than 90%. Citations checked online; the Mortensen and Barrett DOI could not be confirmed, so it is left out. 562 unit tests and 22 E2E tests pass. | Learn entries, catalog entries and docs. |
 | 2026-10-12 | 4 | Phase 4 done. Catalog entries for all 15 selection tools are complete and `implemented-tested`, with summary, steps, code, tests, Learn lessons, docs pages and references. The catalog checker no longer asks tools for a filter registry entry. `gen_docs.py` writes facts, parameters, steps, tests and references for tools, and a tools index. Docs: a Selections section with nine tool pages, a selection and masking architecture page, and combining, distances, feather and smooth on the masks maths page. The Learn panel shows a lesson for the active selection tool. The prose lint keeps the words of cited titles. All CI checks pass on this PC: 620 Vitest tests, 22 E2E tests, pytest, ruff, mypy, catalog, prose, fixtures, generated docs and the strict docs build. | Phase 5a. |
 | 2026-10-12 | 5a | Eight linear filters: weighted average (kernel typed as text, new kernel parameter type with a text box that explains read errors), binomial, triangular, disk average (exact disk areas per cell from a closed-form integral), low-pass FIR (window method, Hamming, Hann, Blackman, Kaiser, taps equal to scipy.signal.firwin), Laplacian sharpening, high-pass and high-boost. Fixtures from SciPy with cross-checks: binomial against repeated averaging, tent against two boxes, disk against numerical integration and point sampling, sharpening against scipy.ndimage.laplace, a Sobel-shaped typed kernel against scipy.ndimage.sobel. The fixtures found a disk-area bug at radius 1.5, now fixed. Docs pages with generated kernels, worked examples and light and dark figures. Inline code in Learn text. 787 Vitest tests pass. | Resize and free rotation. |
+| 2026-10-13 | 5a | Phase 5a done. Resize (nearest, bilinear, bicubic with Keys a = -0.5, Lanczos 3) and free rotation (inverse mapping, nearest, bilinear or bicubic, grow or keep the canvas, transparent, white or black corners). Both are Image menu commands. A new catalog field `command` names the studio command for entries that change the image size, so the Library and Properties open the dialog. The selection is resized and turned with the image. Fixtures from a NumPy reference checked against Pillow resize and `scipy.ndimage.map_coordinates`. Docs pages with kernel tables, worked examples and figures. All CI checks pass: 818 Vitest tests, 24 E2E tests, pytest, ruff, mypy, catalog, prose, fixtures, generated docs and the strict docs build. | Phase 5b. |

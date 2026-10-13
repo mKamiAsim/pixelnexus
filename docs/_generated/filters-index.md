@@ -21,3 +21,5 @@
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
+| [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |
+| [Resize](utility/resize.md) | Utilities | Changes the size of the image in pixels, with a choice of resampling kernel. | Implemented and tested |

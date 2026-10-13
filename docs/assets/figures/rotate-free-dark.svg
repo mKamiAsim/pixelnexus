@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="150.24pt" viewBox="0 0 360 150.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 150.24 
+L 360 150.24 
+L 360 0 
+L 0 0 
+L 0 150.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#pc03f398108)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABAklEQVR4nO3auxGEMBAE0VaXkiAO8g+BNEjjzj45Kkp8RM09D6x1dtiVKMuyfBiwbdvP87quPKmtp0fCSTgJV9/e86MknISTcKU3Bxz9rs6WCb36JZyEk3Bl3/ehXWD2DOhlgoSTcBKunJ0Bs2VCb3eRcBJOwpWrM+DqTDi6q7QknISTcJWXGe35loSTcBKu3D0H9OaCs3u8R8JJOAlX03q+JeEknIQrs90L/OeAm0k4CVfffu4/SsJJOAlX2n+EZvsP8Oq5QMJJOAlX2l3g6Z7v+d8LnEzCSbjavphtDhjVq1/CSTgJV46eCc6WCaOZJeEknISrvMzZc4qEk3A+XcDTvtSTVDghYYc3AAAAAElFTkSuQmCC" id="image1904be99e9" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 3.6 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="60.8" y="13.92" transform="rotate(-0 60.8 13.92)">Nearest</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p53cb4bb9ee)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACNklEQVR4nOXbr+9BURgG8Oc+7mbTxFtETSHYNMEm+DFBsNkIxr/gT9BEYwKbJhgTbIKqUDRRIGqafb/5vOHYnYvwftpj51ynvMe55xyO53l/8CGfzxu5UqkYeTgcGvl4POKTYrGYkReLha/+hHKEcoRy7qsGnucZOZ1OG3k6nX615qXL5WLk8Xhs5FarZe1PKEcoRyjnyHWArJl2u23kUChk5NPpZORms4lfkuNbLpfWOY1QjlCOUM7Z7/d/trW1X71ez8jz+Ry/VCqVrOsYQjlCOUI553q9+toPeOV+v1tr8PF44JMSiYR1HSPfXQjlCOUI5dygHxiNRo3c6XSM3O/3P/r8arVq7R8Oh41MKEcoRyjnBL0OeKVWqxn5fD5b29frdWvNRyKRt8ZDKEcoRyjnfHsO2O12Rl6v19Yaj8fjHx0PoRyhHKGc++kvkL/zsuYLhcJXa14ilCOUI5Rz332A3OOTd4Rms5m1//V6NXI2m8U3EcoRyhHKuYfDwfgglUpZO8izPlnz8lzA7zpBzhlyPyBohHKEcoRyTrFYNPYDGo2G0WA0GlnvBAVN7vGtVivrucC7COUI5QjlXHnff7vdfrXm/b5bdLvdQO8WE8oRyhHKOfJc4Ha7GQ3K5bKRn88nfmkymVjvBMnxyXWM/D8BoRyhHKGc8+psUNbMYDDAL2UyGSPncjlrzcs5TSKUI5QjlHP83g+Q7w5ybR20ZDJpvT8g/yu82Wx8PZ9QjlCOvx7Ar/0Dxhazli88FfwAAAAASUVORK5CYII=" id="image3c162f01b7" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 122.8 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="180" y="13.92" transform="rotate(-0 180 13.92)">Bilinear</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#p280aee43df)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAADQklEQVR4nOWbPyi9fxTH389xkf+F/B3ZDMqCogwkJVZFLEoGBpkli0iURcpCKdnI4t+mZFHXTFnc0KX8/+/+5vcZzu3pd/Udzmt71ec+93mGc55zzufzBOXl5QkY3N/fk3d1dZGPjo6ST0xMkJ+cnJBnZ2eTp6enIwyfn5/klZWV5Lu7u+bvEwl+XIFzBM4ROCeiY+Lx8ZG8qqqKvLOzk3xqaor86OiIvLi4GKkkIyOD/Pz8nHxlZYV8bGyM/OHhgVzgHIFzBM4JysrKKAkMDg7SguHhYfLS0lLy4+Nj8u7ubvLMzEz8Jb+/v+RpaWnk+/v7Zk4TOEfgHIFzgmg0SjmgurqaFjw9PZkxV1BQQD4+Pk6+trZGnp+fj7/k9vaWvLe316xjBM4ROEfgnCAejyesfjsZkUjErLVbW1vJ397ezPd2Mr6/v8lfXl7I6+rqzPmE7l0EzhE4R+CcSNiYTxaTFRUV5CMjI2ZM6joi2XxCX39ycpK8p6eHPC8vz8w5AucInCNwThCLxRIpvWAQmHVCR0cH+dnZmdkrDAwMmDmlqKjI7F00OucInCNwjsA5QapzgEbH6N7eHvny8rJZJ9TU1JA/Pz+T//z8hLofvRcpcI7AOQLnRHRMfH19hbqArq1zc3PJo9GoGfNDQ0PktbW15Hd3d0gl+vkEzhE4R+CciD6zo2d6Gt1f6xidnZ0lX11dNfv76+tr8oaGBrO30POC/4vAOQLnCJwTHB4eUlA1Nzeb/fXGxgb5wsICeSwWM/t7HdM65+i5vT6fkCxHhUXgHIFzBM4JmpqaEmH20k5PT8lzcnLMGWAydD+flZVFfnBwYM709L5E2HOGAucInCNwTrC5uUk5YGdnhxasr6+Tl5SU/OkN6V6hv7+ffG5uzj77K2L2LvpsscA5AucInBO8v79TDri4uKAFbW1t5ntbx1yq+fj4IN/a2iJvbGwkv7m5IV9aWjK/JxA4R+AcgXMCvTeoa+35+Xny6elpWOtTTTweJ29paSHv6+sjn5mZIb+8vDTnEwLnCJwjcE6gc4Ce2Wna29vJr66uzH477F7d6+sreX19vTmfWFxcJN/e3iYvLCw0/1/gHIFz5F/fwL/mPxqgHnPwtjcmAAAAAElFTkSuQmCC" id="imageaa4652bf9b" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 242 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="299.2" y="13.92" transform="rotate(-0 299.2 13.92)">Bicubic</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc03f398108">
+   <rect x="3.6" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p53cb4bb9ee">
+   <rect x="122.8" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p280aee43df">
+   <rect x="242" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+ </defs>
+</svg>

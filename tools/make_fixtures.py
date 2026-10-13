@@ -8,6 +8,7 @@ What it writes:
     synthetic.json   Small synthetic images shared by browser and engine tests.
     color.json       Color conversions computed with scikit-image.
     gaussian.json    Gaussian kernels computed with SciPy.
+    geometry.json    Resize and rotation references, made by tools/fixtures_geometry.py.
     filters.json     Reference results of the browser filters, made by tools/fixtures_filters.py
                      with SciPy, NumPy and scikit-image, and cross-checked with OpenCV.
     formats/         Small image files in every supported format, encoded by Pillow, and
@@ -34,6 +35,7 @@ from scipy import ndimage
 from skimage import color as skcolor
 
 from fixtures_filters import filter_cases
+from fixtures_geometry import geometry_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "web" / "tests" / "fixtures"
@@ -338,6 +340,7 @@ def build() -> dict[str, str]:
         "formats/manifest.json": json.dumps(manifest, indent=1) + "\n",
         # One line, because the file holds thousands of numbers.
         "filters.json": json.dumps(filter_cases(), separators=(",", ":")) + "\n",
+        "geometry.json": json.dumps(geometry_cases(), separators=(",", ":")) + "\n",
     }
 
 

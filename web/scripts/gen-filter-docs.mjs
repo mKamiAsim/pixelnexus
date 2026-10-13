@@ -905,6 +905,102 @@ try {
     }
   }
 
+  // Phase 5a resize and rotation ---------------------------------------------------------------
+
+  {
+    const { resampleKernel, resizeImageTo, rotateImage } = await load(
+      "/src/core/image/resample.ts",
+    );
+    const methods = ["bilinear", "bicubic", "lanczos"];
+    const xs = [0, 0.5, 1, 1.5, 2, 2.5];
+    write(
+      "docs/_generated/kernels/resize.md",
+      header("resize") +
+        mdTable(
+          ["x", ...xs.map(String)],
+          methods.map((m) => [
+            m === "lanczos" ? "Lanczos" : m[0].toUpperCase() + m.slice(1),
+            ...xs.map((x) => fix(resampleKernel(m).weight(x), 4)),
+          ]),
+        ) +
+        "\nThe kernels are symmetric, so k(-x) = k(x). Bicubic and Lanczos are negative between 1 and 2, which sharpens and makes thin halos.\n",
+    );
+
+    const grid = Array.from({ length: 121 }, (_, i) => -3 + i * 0.05);
+    figure("resize", {
+      message: "The three kernels. Bicubic and Lanczos dip below 0, which keeps edges sharper.",
+      profile: {
+        x: grid.map((x) => Number(x.toFixed(2))),
+        xlabel: "Distance in source pixels",
+        ylabel: "Weight",
+        smooth: true,
+        lines: methods.map((m) => ({
+          label: m === "lanczos" ? "Lanczos" : m[0].toUpperCase() + m.slice(1),
+          values: grid.map((x) => resampleKernel(m).weight(x)),
+        })),
+      },
+    });
+
+    const board = synthetic.checkerboard(32, 32, 8);
+    const crop = (image, x0, y0, size, zoomBy) => {
+      const out = createImage(size * zoomBy, size * zoomBy);
+      for (let y = 0; y < size * zoomBy; y++) {
+        for (let x = 0; x < size * zoomBy; x++) {
+          const from =
+            ((y0 + Math.floor(y / zoomBy)) * image.width + x0 + Math.floor(x / zoomBy)) * 4;
+          out.data.set(image.data.subarray(from, from + 4), (y * out.width + x) * 4);
+        }
+      }
+      return out;
+    };
+    figure("rotate-free", {
+      message:
+        "Nearest neighbor leaves jagged edges. Bilinear and bicubic read between pixels and smooth them.",
+      panels: ["nearest", "bilinear", "bicubic"].map((interpolation) => {
+        const turned = rotateImage(board, 30, {
+          interpolation,
+          expand: false,
+          fill: [128, 128, 128, 255],
+        });
+        return {
+          title: interpolation[0].toUpperCase() + interpolation.slice(1),
+          image: pic(crop(turned, 8, 8, 16, 4)),
+        };
+      }),
+    });
+
+    const row8 = [0, 0, 255, 255];
+    const up = resizeImageTo(
+      { width: 4, height: 1, data: Uint8ClampedArray.from(row8.flatMap((v) => [v, v, v, 255])) },
+      8,
+      1,
+      "bilinear",
+    );
+    const centers = Array.from({ length: 8 }, (_, x) => (x + 0.5) * 0.5 - 0.5);
+    example(
+      "resize",
+      mdTable(
+        ["Output x", ...centers.map((_, x) => String(x))],
+        [
+          ["Source position u", ...centers.map((u) => fix(u, 2))],
+          ["Value", ...centers.map((_, x) => String(up.data[x * 4]))],
+        ],
+      ) +
+        `\nThe row 0, 0, 255, 255 enlarged to twice its width with bilinear weights. Output pixel 3 lands at u = 1.25, between source pixels 1 (value 0) and 2 (value 255). Its weights are 0.75 and 0.25, so the value is 0.25 x 255 = 63.75, which rounds to ${up.data[3 * 4]}. At the ends, u falls outside the image and the nearest pixel takes the full weight.\n`,
+    );
+
+    const theta = (30 * Math.PI) / 180;
+    const [px, py, W, H] = [5, 2, 8, 8];
+    const dx = px + 0.5 - W / 2;
+    const dy = py + 0.5 - H / 2;
+    const u = dx * Math.cos(theta) - dy * Math.sin(theta) + W / 2 - 0.5;
+    const v = dx * Math.sin(theta) + dy * Math.cos(theta) + H / 2 - 0.5;
+    example(
+      "rotate-free",
+      `For an 8 x 8 image turned by 30 degrees with the size kept, output pixel (5, 2) has its center at (5.5, 2.5). Relative to the image center (4, 4) that is (${fix(dx, 1)}, ${fix(dy, 1)}). Turned back by 30 degrees and moved to pixel-center units, it lands at u = ${fix(u, 3)}, v = ${fix(v, 3)} in the source. Bilinear interpolation then mixes source pixels (${Math.floor(u)}, ${Math.floor(v)}) to (${Math.floor(u) + 1}, ${Math.floor(v) + 1}) with weights from the fractions ${fix(u - Math.floor(u), 3)} and ${fix(v - Math.floor(v), 3)}.\n`,
+    );
+  }
+
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
   for (const [file, text] of outputs) {
