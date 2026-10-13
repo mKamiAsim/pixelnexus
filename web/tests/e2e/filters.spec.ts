@@ -148,6 +148,15 @@ test("planned filters are listed but cannot run", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeDisabled();
 });
 
+test("the Iteration viewer shows how anisotropic diffusion settles", async ({ page }) => {
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "anisotropic", "Anisotropic diffusion");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Iteration viewer" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Convergence over 15 iterations/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 15" })).toBeVisible();
+});
+
 test("the Learn panel runs its demos on the image", async ({ page }) => {
   await openTestImage(page, "Noise patches");
   await chooseFilter(page, "median", "Median filter");

@@ -7,6 +7,7 @@ import {
   RankStepper,
 } from "./widgets";
 import { FrequencyExplorer } from "./frequency";
+import { IterationViewer } from "./iterations";
 import { MorphologyStepper } from "./morphology";
 import { NoiseLab } from "./noiselab";
 import { StageViewer } from "./stages";
@@ -23,10 +24,10 @@ export const WIDGETS = {
   "stage-viewer": { title: "Stage viewer", component: StageViewer },
   "morphology-stepper": { title: "Morphology stepper", component: MorphologyStepper },
   "frequency-explorer": { title: "Frequency explorer", component: FrequencyExplorer },
+  "iteration-viewer": { title: "Iteration viewer", component: IterationViewer },
 } as const;
 
 /** The phase that brings each demo that is not built yet. */
 export const LATER_DEMOS: Readonly<Record<string, string>> = {
   "point-op-curve": "5f",
-  "iteration-viewer": "5e",
 };

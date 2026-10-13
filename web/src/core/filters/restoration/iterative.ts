@@ -150,6 +150,13 @@ function iterativeFilter(id: string, method: Method): PlaneFilter {
   };
 }
 
+/** The method of each iterative filter, by catalog id, for the Iteration viewer. */
+export const ITERATIVE_METHODS: Readonly<Record<string, Method>> = {
+  "richardson-lucy": "richardson-lucy",
+  landweber: "landweber",
+  "nnls-deconv": "projected-landweber",
+};
+
 export const richardsonLucyFilter: PlaneFilter = {
   ...iterativeFilter("richardson-lucy", "richardson-lucy"),
   id: "richardson-lucy",
