@@ -201,6 +201,10 @@ const CASES: [string, Params][] = [
   ],
   ["log-gabor", { wavelength: 5, oriented: false, outputMapping: "offset" }],
   ["wiener-denoise", { noiseSigma: 20 }],
+  ["degrade-blur", { psf: "motion", length: 7, angle: 30, border: "reflect" }],
+  ["degrade-blur", { psf: "defocus", radius: 2.3 }],
+  ["inverse-filter", { psf: "gaussian", sigma: 1.5, cutoff: 0.3, threshold: 0.05 }],
+  ["wiener-deconv", { psf: "motion", length: 5, angle: 0, noiseRatio: 0.01 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

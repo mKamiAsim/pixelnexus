@@ -126,6 +126,7 @@ import { switchingMedianFilter } from "./nonlinear/switching-median";
 import { vectorMedianFilter } from "./nonlinear/vector-median";
 import { weightedMedianFilter } from "./nonlinear/weighted-median";
 import { deadPixelFilter } from "./restoration/dead-pixel";
+import { degradeBlurFilter, inverseFilter, wienerDeconvFilter } from "./restoration/deconvolve";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -218,6 +219,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   switchingMedianFilter,
   vectorMedianFilter,
   deadPixelFilter,
+  inverseFilter,
+  wienerDeconvFilter,
   madOutlierFilter,
   kuwaharaFilter,
   nagaoMatsuyamaFilter,
@@ -261,6 +264,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   speckleNoiseFilter,
   poissonNoiseFilter,
   noisePeriodicFilter,
+  degradeBlurFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));
