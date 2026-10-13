@@ -20,6 +20,7 @@ from skimage import exposure, filters
 from skimage import metrics as skmetrics
 
 from fixtures_adaptive import add_adaptive_cases
+from fixtures_binary import add_binary_cases
 from fixtures_canny import add_canny_cases
 from fixtures_corners import add_corner_cases
 from fixtures_edge import add_edge_plane_cases
@@ -466,6 +467,7 @@ def filter_cases() -> dict[str, Any]:
     add_oriented_cases(plane, add)
     add_corner_cases(plane, add)
     add_morphology_cases(plane, add)
+    extra_inputs |= add_binary_cases(plane, add)
 
     fir_taps = [
         {

@@ -58,6 +58,15 @@ import {
   openingByReconstructionFilter,
   reconstructionFilter,
 } from "./morphology/reconstruction";
+import {
+  cclFilter,
+  convexHullFilter,
+  hitOrMissFilter,
+  pruningFilter,
+  skeletonFilter,
+  thickeningFilter,
+  thinningFilter,
+} from "./morphology/binary";
 import { steerableFilter } from "./linear/steerable";
 import { gaussianFilter } from "./linear/gaussian";
 import { highBoostFilter, highPassFilter } from "./linear/high-pass";
@@ -147,6 +156,13 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   geodesicFilter,
   asfFilter,
   levelingFilter,
+  hitOrMissFilter,
+  thinningFilter,
+  thickeningFilter,
+  skeletonFilter,
+  pruningFilter,
+  convexHullFilter,
+  cclFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

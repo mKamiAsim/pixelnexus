@@ -158,6 +158,13 @@ const CASES: [string, Params][] = [
   ["geodesic", { method: "dilation", h: 40, steps: 4 }],
   ["asf", { shape: "diamond", size: 2, order: "close-open" }],
   ["leveling", { sigma: 1, connectivity: "4" }],
+  ["hit-or-miss", { pattern: "0 -1 -1; 1 1 -1; 0 1 0", border: "reflect" }],
+  ["thinning", { method: "guo-hall" }],
+  ["thickening", { method: "zhang-suen", iterations: 2 }],
+  ["skeleton", { element: "disk 1" }],
+  ["pruning", { length: 2 }],
+  ["convex-hull", { connectivity: "4" }],
+  ["ccl-filter", { connectivity: "8", minArea: 3, maxArea: 40 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

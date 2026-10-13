@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5d: the binary operations: hit-or-miss with its element pair, thinning (Zhang-Suen and Guo-Hall), thickening, skeleton, pruning, convex hull per object and connected-component filtering. Then Phase 5e and 5f. Later, in 5e: a faster FFT. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
+| Next action | Phase 5d: catalog entries, docs pages, figures and worked examples for the seven binary filters, then mark them implemented-tested and tick 5d. Then Phase 5e and 5f. Later, in 5e: a faster FFT. Checkpoint 3 (Inspector, Learn and panel layout review) is open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5d part 2: reconstruction, opening and closing by reconstruction, geodesic filtering, the alternating sequential filter and leveling. |
+| Last finished step | Phase 5d part 3a: binary morphology code and fixtures (hit-or-miss, thinning, thickening, skeleton, pruning, convex hull, component filtering). Their catalog entries are still planned. |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5d: the binary operations: hit-or-miss with its element pair, thinning (Zhang-Suen and Guo-Hall), thickening, skeleton, pruning, convex hull per object and connected-component filtering. Then Phase 5e and 5f. Later, in 5e: a faster FFT. |
+| Next steps | Phase 5d: catalog entries, docs pages, figures and worked examples for the seven binary filters, then mark them implemented-tested and tick 5d. Then Phase 5e and 5f. Later, in 5e: a faster FFT. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -866,3 +866,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5d | Phase 5c complete. Nevatia-Babu removed by the owner's decision: its six masks could not be checked against the paper, and it sees little use today. The catalog now has 337 entries, 100 implemented-tested. 2051 Vitest tests and 27 E2E tests pass. | Phase 5d, morphology. |
 | 2026-10-13 | 5d | Phase 5d part 1. Structuring elements are a text spec (disk, rect, ellipse, cross, diamond, line with angle, custom) with an editor in Properties and a grid in the Inspector; disk, diamond and ellipse match skimage.morphology. Erosion, dilation (with the turned element), opening, closing, morphological, internal and external gradients, top-hat and black-hat match scipy.ndimage grey_erosion and grey_dilation, also for an element that is not symmetric. The Morphology stepper shows the values under the element. The Python tests now count 337 entries after the Nevatia-Babu removal. 109 catalog entries are implemented-tested. 2240 Vitest tests and 28 E2E tests pass. | Reconstruction family. |
 | 2026-10-13 | 5d | Phase 5d part 2. Reconstruction by dilation and erosion with Vincent's hybrid algorithm, matching skimage.morphology.reconstruction with 4 and 8 neighbors; the marker is the image moved by h. Opening and closing by reconstruction, geodesic steps, the ASF with disk, square or diamond elements, and Meyer's leveling with a Gaussian marker, checked to equal reconstruction for markers below and above the image. These are global filters except the ASF. 115 catalog entries are implemented-tested. 2297 Vitest tests pass. | Binary morphology. |
+| 2026-10-13 | 5d | Phase 5d part 3a. Binary morphology code with fixtures: hit-or-miss with a pattern of 1, -1 and 0, thinning by Zhang-Suen (the paper's rules; skimage's zhang table differs) and Guo-Hall (matches skimage.morphology.thin), thickening as thinning of the complement, Lantuejoul's skeleton, pruning in the four steps of Gonzalez and Woods with this filter's own end point rule, convex hull per object (matches skimage convex_hull_object), and component filtering by area. The catalog entries stay planned until their docs are written. 2338 Vitest tests pass. | Binary catalog entries and docs. |

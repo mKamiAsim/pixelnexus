@@ -130,5 +130,6 @@ describe("filter scope and region processing", () => {
         }
       }
     }
-  });
+    // Every registered filter runs four times here, so the test needs more than the default 5 s.
+  }, 30_000);
 });
