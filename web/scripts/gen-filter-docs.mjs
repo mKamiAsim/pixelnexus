@@ -1136,6 +1136,8 @@ try {
     operatorPower,
     spectrumOf,
   });
+  const { iterativeDocs } = await import("./filter-docs/iterative.mjs");
+  iterativeDocs({ run, pic, figure, example, mdTable, fix, synthetic, qualityMetrics });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

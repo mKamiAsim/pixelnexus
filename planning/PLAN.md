@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5e: catalog entries, docs pages and figures for richardson-lucy, landweber and nnls-deconv (code, fixtures and the Iteration viewer are done); regularized Richardson-Lucy (TV, Dey et al.); then Gaussian and Laplacian pyramids and scale space. Then Phase 5f (60 entries). Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
+| Next action | Phase 5e: regularized Richardson-Lucy (TV, Dey et al.), then Gaussian and Laplacian pyramids and scale space. Then Phase 5f (60 entries). Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5e part 7b: the Iteration viewer demo, for the iterative deconvolution filters and for the diffusion and adaptive smoothing filters that already listed it. |
+| Last finished step | Phase 5e part 7: Richardson-Lucy, Landweber and projected Landweber, with catalog entries, docs pages, figures and worked examples, and the Iteration viewer. |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5e: catalog entries, docs pages and figures for richardson-lucy, landweber and nnls-deconv (code, fixtures and the Iteration viewer are done); regularized Richardson-Lucy (TV, Dey et al.); then Gaussian and Laplacian pyramids and scale space. Then Phase 5f (60 entries). Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
+| Next steps | Phase 5e: regularized Richardson-Lucy (TV, Dey et al.), then Gaussian and Laplacian pyramids and scale space. Then Phase 5f (60 entries). Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -878,3 +878,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5e | Phase 5e part 6. Catalog entries, docs pages, figures and worked examples for Tikhonov regularization and constrained least squares. On the docs figure (defocus of radius 3 plus noise of sigma 4) the PSNR against the clean disks is 25.75 dB, 27.91 dB after constrained least squares with sigma 4 and 27.52 dB after Tikhonov with the gradient and lambda 0.01. 149 catalog entries are implemented-tested. 2599 Vitest tests pass. | Iterative restoration with the Iteration viewer. |
 | 2026-10-13 | 5e | Phase 5e part 7a. Richardson-Lucy, Landweber and projected Landweber iterate on the image extended with the border mode, with convolutions through the FFT of the extended grid, from f_0 = g. Richardson-Lucy treats denominators below 1e-12 as 1e-12. Projected Landweber sets negative values to 0 (non-negative least squares). iterate() reports each estimate and the residual for the coming Iteration viewer. NumPy references match; self-checks confirm that 30 iterations bring a blurred plane closer to the original, and a unit test confirms the Landweber residual never grows. 2612 Vitest tests pass. | The Iteration viewer, then entries and docs for the three. |
 | 2026-10-13 | 5e | Phase 5e part 7b. The Iteration viewer runs the selected filter on the 64x64 patch around the probe and shows the estimate after the first, last and two middle iterations. For the deconvolution filters it calls iterate() and plots the residual at every iteration. For anisotropic diffusion, vector anisotropic diffusion, SRAD and adaptive smoothing, which listed the viewer since Phase 5b, it runs the real filter with growing iteration counts (at most 30 of them) and plots the mean change per iteration. New E2E test. 2612 Vitest tests pass. | Entries and docs for the three iterative deconvolution filters. |
+| 2026-10-13 | 5e | Phase 5e part 7. Catalog entries, docs pages, figures and worked examples for Richardson-Lucy, Landweber and projected Landweber (nnls-deconv), with Crossref-checked DOIs for Richardson, Lucy and Landweber. Their preview runs on request. The worked examples show PSNR by iteration count; Landweber peaks near 50 iterations and then falls (semi-convergence). 152 catalog entries are implemented-tested. 2618 Vitest tests pass. | Regularized Richardson-Lucy, then pyramids and scale space. |

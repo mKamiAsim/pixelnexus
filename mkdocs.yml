@@ -274,6 +274,9 @@ nav:
           - Wiener deconvolution: filters/restoration/wiener-deconv.md
           - Tikhonov regularization: filters/restoration/tikhonov.md
           - Constrained least squares: filters/restoration/cls.md
+          - Richardson-Lucy: filters/restoration/richardson-lucy.md
+          - Landweber iteration: filters/restoration/landweber.md
+          - Non-negative least-squares deconvolution: filters/restoration/nnls-deconv.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

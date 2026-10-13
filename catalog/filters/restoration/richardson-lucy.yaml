@@ -1,11 +1,162 @@
 id: richardson-lucy
 name: Richardson-Lucy
-aliases:
-- Lucy-Richardson deconvolution
-- Non-blind deconvolution
+aliases: [Lucy-Richardson deconvolution, Richardson-Lucy deconvolution, RL deconvolution]
 family: restoration
+tags: [purpose:sharpening]
 tier: core
 engine: browser
 phase: 5e
-status: planned
-planNotes: Lucy-Richardson deconvolution. Non-blind deconvolution overview links here.
+status: implemented-tested
+
+summary: Undoes a known blur step by step, with an update that keeps every value positive and the total brightness the same.
+purpose: Deblur images with photon noise, such as astronomy and microscopy images, where values must stay positive.
+classification: {linearity: nonlinear, domain: iterative, operation: multiplicative iterative deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/iterative.ts, symbol: iterate}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: How many update steps to run.
+    effect: More iterations restore more detail, and after a point also raise the noise.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  f_{k+1} = f_k \cdot \left( h' \circledast \frac{g}{h \circledast f_k} \right),\quad k = 0 \ldots {{iterations}}
+formulaExplanation: >-
+  Each step blurs the estimate f_k with the PSF h and compares it with the image g as a ratio.
+  It blurs the ratio with h', the PSF turned by a half turn, and multiplies the estimate by the
+  result. Richardson and Lucy derived the update from Bayes' rule. It is the maximum likelihood
+  estimate for Poisson noise when it converges. Values stay positive, and with a normalized PSF
+  the total brightness stays the same. Values of h * f_k below 1e-12 count as 1e-12, so the ratio
+  stays finite. The first estimate is the image itself. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with the estimate f equal to the extended image g.
+  - Blur f with h through the FFT and divide g by the result.
+  - Blur the ratio with h' and multiply f by it.
+  - Repeat for the chosen number of iterations.
+  - Crop the last estimate to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations. Each iteration takes four FFTs.
+useCases:
+  - Astronomy and fluorescence microscopy, where noise follows the Poisson law.
+  - Deblurring when the result must stay positive.
+advantages:
+  - Values stay positive and the total brightness is kept.
+  - Small errors in the PSF do little harm.
+limitations:
+  - Slow, since it needs many iterations.
+  - Too many iterations raise the noise. Stopping early acts as regularization.
+artifacts:
+  - Ringing near strong edges after many iterations.
+  - Speckles in flat areas when the image is noisy.
+references:
+  - kind: paper
+    text: Richardson, W. H. Bayesian-based iterative method of image restoration. Journal of the Optical Society of America 62(1), 55 to 59, 1972.
+    doi: 10.1364/JOSA.62.000055
+  - kind: paper
+    text: Lucy, L. B. An iterative technique for the rectification of observed distributions. The Astronomical Journal 79, 745, 1974.
+    doi: 10.1086/111605
+implementation: {path: web/src/core/filters/restoration/iterative.ts, symbol: richardsonLucyFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/restoration/restoration.test.ts]
+learn:
+  oneSentence: Guess the sharp image, blur the guess, and correct it where it differs from the photo, again and again.
+  howItWorks:
+    - Blur the current guess with the known blur.
+    - Divide the photo by it. Where the ratio is above 1, the guess is too dark there.
+    - Spread the ratio back with the blur and multiply the guess by it.
+    - Repeat.
+  academic: >-
+    Richardson-Lucy deconvolution, the expectation maximization algorithm for the Poisson
+    likelihood of a linear blur.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    iterations: How long to refine the guess.
+  tryThis:
+    - Open the Iteration viewer and raise the iterations from 5 to 100. Watch the detail return, then the noise.
+  pitfalls:
+    - Hundreds of iterations on a noisy image. The noise grows into speckles.
+  demos: [iteration-viewer, noise-lab]
+related: [landweber, nnls-deconv, wiener-deconv, regularized-rl]
+docsPage: filters/restoration/richardson-lucy.md
