@@ -270,9 +270,12 @@ nav:
           - Grayscale conversion: filters/enhancement/grayscale.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
+          - Inverse filtering: filters/restoration/inverse-filter.md
+          - Wiener deconvolution: filters/restoration/wiener-deconv.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md
+          - Apply a known blur: filters/utility/degrade-blur.md
           - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md
           - Add speckle noise: filters/utility/noise-speckle.md
           - Add Poisson noise: filters/utility/noise-poisson.md

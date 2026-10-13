@@ -1113,6 +1113,9 @@ try {
     frequencyResponse,
     qualityMetrics,
   });
+  const { deconvDocs } = await import("./filter-docs/deconv.mjs");
+  const { psfKernel } = await load("/src/core/filters/restoration/deconvolve.ts");
+  deconvDocs({ run, pic, figure, example, mdTable, fix, synthetic, psfKernel, qualityMetrics });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

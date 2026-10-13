@@ -123,11 +123,14 @@
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
+| [Inverse filtering](restoration/inverse-filter.md) | Restoration and reconstruction | Undoes a known blur by dividing the spectrum by the transform of the blur, only where the blur left enough of each frequency. | Implemented and tested |
+| [Wiener deconvolution](restoration/wiener-deconv.md) | Restoration and reconstruction | Undoes a known blur while keeping noise in check, by dividing only as far as the noise allows. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |
 | [Add periodic noise](utility/noise-periodic.md) | Utilities | Adds a sine wave of one frequency and direction to every pixel, a model of periodic interference. | Implemented and tested |
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
 | [Add speckle noise](utility/noise-speckle.md) | Utilities | Multiplies every pixel by a random factor around 1, so bright areas get more noise than dark ones. | Implemented and tested |
+| [Apply a known blur](utility/degrade-blur.md) | Utilities | Blurs the image with a Gaussian, motion or defocus point spread function, the known blur that the deconvolution filters undo. | Implemented and tested |
 | [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |
 | [Quality metrics](utility/metrics.md) | Utilities | Compares the active image with a reference and reports PSNR, SSIM, MSE and MAE. | Implemented and tested |
 | [Resize](utility/resize.md) | Utilities | Changes the size of the image in pixels, with a choice of resampling kernel. | Implemented and tested |

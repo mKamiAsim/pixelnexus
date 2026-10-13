@@ -1,15 +1,156 @@
 id: wiener-deconv
 name: Wiener deconvolution
-aliases:
-- Wiener restoration
-- Wiener frequency filter
-- Motion deblurring
-- Linear motion deblurring
-- Defocus deblurring
-- Defocus deconvolution
+aliases: [Wiener restoration, Wiener frequency filter, Motion deblurring, Linear motion deblurring, Defocus deblurring, Defocus deconvolution]
 family: restoration
+tags: [purpose:sharpening, purpose:denoise]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
 planNotes: 'Wiener restoration, Wiener frequency filter. Presets: motion deblurring, defocus deblurring.'
+
+summary: Undoes a known blur while keeping noise in check, by dividing only as far as the noise allows.
+purpose: Remove a known motion, defocus or Gaussian blur from an image that also has noise.
+classification: {linearity: linear, domain: frequency, operation: Wiener deconvolution}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: wienerGain}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: noiseRatio
+    label: Noise to signal ratio
+    type: number
+    min: 0.0001
+    max: 0.5
+    step: 0.0001
+    default: 0.01
+    description: The constant K, the power of the noise over the power of the image.
+    effect: Higher values keep more noise out but restore less detail.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{F}(f) = \frac{\overline{H(f)}}{|H(f)|^2 + K}\, G(f),\quad K = {{noiseRatio}}
+formulaExplanation: >-
+  This is the Wiener filter with a constant noise to signal ratio K, as in Gonzalez and Woods.
+  Where |H|^2 is much larger than K, it divides by H like the inverse filter. Where |H|^2 is
+  smaller than K, the blur left less of the image than the noise, and the frequency is turned
+  down instead of raised. With K = 0 it is the inverse filter. H is the FFT of the PSF h placed
+  with its center at the origin of the grid. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'G, H, F', meaning: 'The spectra of the blurred image, the PSF and the estimate'}
+  - {symbol: '\overline{H}', meaning: The complex conjugate of H}
+  - {symbol: 'K', meaning: The noise to signal ratio}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT of the image and of the PSF placed at the grid origin.
+  - Multiply each frequency by conj(H) / (|H|^2 + K).
+  - Take the inverse FFT, keep the real part and crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image.
+useCases:
+  - Motion deblurring with a known motion.
+  - Defocus deblurring with a known disk.
+advantages:
+  - Stable with noise, unlike the inverse filter.
+  - One parameter trades sharpness against noise.
+limitations:
+  - Needs the blur. A wrong PSF gives ringing.
+  - K is the same at every frequency, while real noise to signal ratios change with frequency.
+artifacts:
+  - Ringing near strong edges and the image border.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, image restoration and reconstruction.
+  - kind: book
+    text: Wiener, N. Extrapolation, Interpolation, and Smoothing of Stationary Time Series. MIT Press, 1949.
+implementation: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: wienerDeconvFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Undo a blur as far as the noise allows, and no further.
+  howItWorks:
+    - A blur weakens each frequency of the image by a known factor H.
+    - Where H is strong, divide by it, as the inverse filter does.
+    - Where H is weaker than the noise, turn the frequency down instead.
+  academic: >-
+    Parametric Wiener deconvolution with a constant noise to signal power ratio K, the
+    minimum mean square error linear estimate under a white noise model.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    noiseRatio: How much noise to expect.
+  tryThis:
+    - In the Noise lab, choose the blur damage and compare with the inverse filter.
+  pitfalls:
+    - A K far too small on a noisy image. The result looks like the noisy inverse filter.
+  demos: [noise-lab]
+related: [inverse-filter, degrade-blur, wiener-denoise, richardson-lucy]
+docsPage: filters/restoration/wiener-deconv.md

@@ -127,7 +127,7 @@ export const degradeBlurFilter: PlaneFilter = {
   }),
 };
 
-const cutoffOf = (params: Params) => read.number(params, "cutoff", 0.5);
+const cutoffOf = (params: Params) => read.number(params, "cutoff", 0.71);
 const thresholdOf = (params: Params) => read.number(params, "threshold", 0.05);
 const noiseRatioOf = (params: Params) => read.number(params, "noiseRatio", 0.01);
 
