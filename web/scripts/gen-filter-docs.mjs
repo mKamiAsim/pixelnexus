@@ -1014,6 +1014,12 @@ try {
     ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     ...{ browserFilter, kuwaharaRegions, nagaoRegions },
   });
+  const { adaptiveDocs } = await import("./filter-docs/adaptive.mjs");
+  const { savgolCoefficients } = await load("/src/core/filters/adaptive/savgol.ts");
+  adaptiveDocs({
+    ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
+    ...{ createImage, savgolCoefficients },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

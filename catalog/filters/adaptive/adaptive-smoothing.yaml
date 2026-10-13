@@ -1,8 +1,108 @@
 id: adaptive-smoothing
 name: Adaptive smoothing
 family: adaptive
+tags: [purpose:smoothing, purpose:denoise]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Saint-Marc, Chen and Medioni.
+
+summary: Repeats a 3x3 weighted mean in which pixels with a large gradient get little weight, so edges are not smoothed across.
+purpose: Smooth noise and texture while keeping edges, with a simple iterative rule.
+classification: {linearity: nonlinear, domain: iterative, operation: gradient-weighted averaging}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/adaptive-smoothing.ts, symbol: adaptiveSmoothingStep}
+supportRadius: 2 iterations
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are smoothed separately, each with weights from its own gradient. With the
+  brightness scope, only luma is smoothed. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by two pixels per iteration,
+  because each step reads one pixel for the gradient and one for the mean.
+
+params:
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 50
+    default: 10
+    description: How many times the step runs.
+    effect: More steps smooth more. Edges stay.
+  - key: k
+    label: Edge scale k
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    description: The gradient size, in levels per pixel, at which the weight falls off.
+    effect: Gradients well below k are smoothed. Gradients well above k are kept as edges.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I^{t+1}(x,y) = \frac{\sum_{i,j=-1}^{1} I^{t}(x+i,y+j)\, w^{t}(x+i,y+j)}{\sum_{i,j=-1}^{1} w^{t}(x+i,y+j)},
+  \qquad
+  w^{t} = e^{-\frac{|G^{t}|^2}{2k^2}}
+formulaExplanation: >-
+  G is the gradient from central differences, G_x = (I(x + 1, y) - I(x - 1, y)) / 2 and the
+  same for y. Each pixel of the 3x3 window is weighted by its own gradient. Pixels on an edge
+  have a large gradient and almost no weight, so the mean on each side of an edge uses only
+  pixels from that side. Repeating the step spreads the smoothing within regions.
+symbols:
+  - {symbol: 'G', meaning: The gradient from central differences}
+  - {symbol: 'w', meaning: The weight of a pixel}
+  - {symbol: 'k', meaning: The edge scale}
+  - {symbol: 't', meaning: The step number}
+steps:
+  - Extend the image by two pixels per iteration with the border mode.
+  - Compute the gradient of every pixel and its weight.
+  - Replace each pixel by the weighted mean of its 3x3 window.
+  - Repeat, then cut the extension off.
+complexity:
+  time: O(N\,T)
+  memory: O(N)
+  notes: N is the number of pixels per channel and T the number of iterations.
+useCases:
+  - Smooth images before edge detection and segmentation.
+  - Remove noise while keeping region boundaries.
+advantages:
+  - Simple and keeps edges.
+  - Converges to flat regions with sharp boundaries, a piecewise constant image.
+limitations:
+  - Many iterations are slow.
+  - Noise with large gradients is kept like an edge.
+artifacts:
+  - Flat patches with sharp borders after many iterations.
+references:
+  - kind: paper
+    text: Saint-Marc, P., Chen, J.-S. and Medioni, G. Adaptive smoothing, a general tool for early vision. IEEE Transactions on Pattern Analysis and Machine Intelligence 13(6), 514 to 529, 1991.
+    doi: 10.1109/34.87339
+implementation: {path: web/src/core/filters/adaptive/adaptive-smoothing.ts, symbol: adaptiveSmoothingFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Repeat a small average in which pixels on edges hardly count.
+  howItWorks:
+    - Measure the gradient at every pixel.
+    - Give pixels with a large gradient a small weight.
+    - Replace each pixel by the weighted mean of its 3x3 window, and repeat.
+  academic: >-
+    An iterative weighted averaging that Saint-Marc, Chen and Medioni relate to anisotropic
+    diffusion. The weight is a Gaussian function of the gradient magnitude.
+  paramNotes:
+    iterations: The number of steps.
+    k: Gradients below about k are smoothed, larger ones are kept.
+  tryThis:
+    - Compare 10 iterations of adaptive smoothing with 10 iterations of anisotropic diffusion.
+  pitfalls:
+    - Setting k below the noise gradients. Then the noise is kept.
+  demos: [line-profile, iteration-viewer]
+related: [anisotropic-diffusion, bilateral, kuwahara]
+docsPage: filters/adaptive/adaptive-smoothing.md

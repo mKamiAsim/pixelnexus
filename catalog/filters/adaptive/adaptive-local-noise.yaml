@@ -3,8 +3,110 @@ name: Adaptive local noise reduction
 aliases:
 - Adaptive mean filter
 family: adaptive
+tags: [purpose:denoise, noise:gaussian]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Adaptive mean filter. Gonzalez and Woods form.
+
+summary: Subtracts a share of the difference between each pixel and its local mean, set by the noise variance over the local variance.
+purpose: Remove additive noise of a known level while keeping edges, in the textbook form of Gonzalez and Woods.
+classification: {linearity: nonlinear, domain: statistical, operation: local linear estimator}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-noise.ts, symbol: localNoisePlane}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue each use their own local mean and variance. With the brightness scope,
+  only luma is filtered. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the window S_xy for the local mean and variance.
+    effect: Larger windows give steadier statistics but blur edges more.
+  - key: noise
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 10
+    description: The standard deviation of the noise, sigma_eta, in 8-bit levels.
+    effect: Higher values smooth more. Set it near the true noise level.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{f}(x,y) = g(x,y) - \min\Bigl(1,\, \frac{\sigma_\eta^2}{\sigma_L^2}\Bigr)\bigl[g(x,y) - m_L\bigr]
+formulaExplanation: >-
+  g is the noisy image, m_L and sigma_L squared are the mean and variance of the window, and
+  sigma_eta squared is the noise variance. If the local variance is near the noise variance,
+  the ratio is near 1 and the output is the local mean. If the local variance is much larger,
+  the ratio is small and the pixel is kept. Gonzalez and Woods limit the ratio to 1 when the
+  noise variance is larger. That makes this the same estimator as the adaptive Wiener filter of
+  Lee, written in another form.
+symbols:
+  - {symbol: 'g', meaning: The noisy image}
+  - {symbol: 'm_L', meaning: The local mean}
+  - {symbol: '\sigma_L^2', meaning: The local variance}
+  - {symbol: '\sigma_\eta^2', meaning: The noise variance}
+steps:
+  - Pad the image with the border mode.
+  - Compute the local mean and variance with running sums in float64.
+  - Compute the ratio of the noise variance to the local variance, limited to 1.
+  - Subtract the ratio times the difference between the pixel and the local mean.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Remove Gaussian noise of a known level, as in the textbook examples.
+  - Compare with the arithmetic and geometric mean filters on the same noise.
+advantages:
+  - Keeps edges much better than a mean filter of the same size.
+  - Fast for any window size.
+limitations:
+  - Needs the noise variance.
+  - Assumes the noise is additive and the same everywhere.
+artifacts:
+  - Noisy halos next to edges, where the local variance is high.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, adaptive, local noise reduction filter.
+  - kind: paper
+    text: Lee, J.-S. Digital image enhancement and noise filtering by use of local statistics. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-2(2), 165 to 168, 1980.
+    doi: 10.1109/TPAMI.1980.4766994
+implementation: {path: web/src/core/filters/adaptive/local-noise.ts, symbol: adaptiveLocalNoiseFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Pull each pixel toward the local mean, harder where the area looks like pure noise.
+  howItWorks:
+    - Find the mean and variance of the window.
+    - Divide the noise variance by the local variance, at most 1.
+    - Move the pixel toward the mean by that share.
+  academic: >-
+    The Gonzalez and Woods form of the local linear minimum mean-square error estimate. With
+    the ratio limited to 1, it equals the adaptive Wiener filter.
+  paramNotes:
+    noise: The noise standard deviation in levels.
+  tryThis:
+    - Add Gaussian noise with sigma 20 and compare with a 7x7 box filter.
+  pitfalls:
+    - Setting the noise far above the true level, which blurs texture.
+  demos: [rank-stepper, line-profile]
+related: [wiener-adaptive, box, geometric-mean]
+docsPage: filters/adaptive/adaptive-local-noise.md

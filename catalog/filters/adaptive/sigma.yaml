@@ -1,10 +1,130 @@
 id: sigma
 name: Sigma filter
-aliases:
-- Lee sigma filter
+aliases: [Lee sigma filter]
 family: adaptive
+tags: [purpose:denoise, noise:gaussian, noise:impulse]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Lee sigma filter.
+
+summary: Averages only the window values that lie within k sigma of the center value, and repairs isolated spots.
+purpose: Remove Gaussian noise without averaging across edges, and remove isolated noise spots.
+classification: {linearity: nonlinear, domain: statistical, operation: selective local mean}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/sigma.ts, symbol: sigmaValue}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own range. With the brightness
+  scope, only luma is filtered. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the window.
+    effect: Larger windows average more values and smooth more.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0.5
+    max: 100
+    step: 0.5
+    default: 10
+    description: The standard deviation of the noise, in 8-bit levels.
+    effect: Higher values let more of the window into the average.
+  - key: k
+    label: Range factor k
+    type: number
+    min: 0.5
+    max: 4
+    step: 0.1
+    default: 2
+    description: Values within k times sigma of the center are averaged. Lee uses 2, which holds about 95 percent of Gaussian noise.
+    effect: Larger k smooths more and lets weak edges into the average.
+  - key: minCount
+    label: Minimum count
+    type: integer
+    min: 1
+    max: 25
+    default: 3
+    description: When fewer values than this are in range, counting the center, the center is a spot of noise.
+    effect: Higher counts repair more isolated pixels, and also more fine detail.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}} =
+  \begin{cases}
+  \operatorname{mean}\,\{\, w \in W : |w - z| \le k\sigma \,\} & \text{if at least } K \text{ values are in range} \\
+  \operatorname{mean}\,(N_8) & \text{otherwise}
+  \end{cases}
+formulaExplanation: >-
+  z is the center value and W the window. Only values within k sigma of z take part in the
+  mean. Values across an edge differ from z by more than that, so they are left out, and the
+  edge stays. If fewer than K values, the minimum count, are in range, z is an isolated spot
+  of noise, and the output is the mean of its eight neighbors N_8.
+symbols:
+  - {symbol: 'z', meaning: The center value}
+  - {symbol: 'k\sigma', meaning: The half-width of the accepted range}
+  - {symbol: 'K', meaning: The minimum count}
+  - {symbol: 'N_8', meaning: The eight neighbors of the center}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel, find the window values within k sigma of the center.
+  - If at least K are in range, write their mean.
+  - Otherwise write the mean of the eight neighbors.
+complexity:
+  time: O(N\,k^2)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the window width.
+useCases:
+  - Remove Gaussian noise of a known level while keeping edges.
+  - Remove isolated bright or dark spots at the same time.
+advantages:
+  - Simple rule with a clear meaning in terms of the noise level.
+  - Keeps edges whose contrast is larger than k sigma.
+limitations:
+  - Needs the noise level.
+  - Edges weaker than k sigma are smoothed.
+artifacts:
+  - Slight posterization in smooth ramps, because values outside the range are skipped.
+references:
+  - kind: paper
+    text: Lee, J.-S. Digital image smoothing and the sigma filter. Computer Vision, Graphics, and Image Processing 24(2), 255 to 269, 1983.
+    doi: 10.1016/0734-189X(83)90047-6
+implementation: {path: web/src/core/filters/adaptive/sigma.ts, symbol: sigmaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Average only the neighbors that are close in value to the pixel.
+  howItWorks:
+    - Find the neighbors within k sigma of the pixel value.
+    - Average them.
+    - If too few are close, the pixel is a noise spot. Use the mean of its eight neighbors instead.
+  academic: >-
+    A selective mean based on the two-sigma probability of Gaussian noise. It is related to the
+    bilateral filter, with a box-shaped range weight instead of a Gaussian one.
+  paramNotes:
+    sigma: The noise standard deviation in levels.
+    k: The range in units of sigma. 2 covers about 95 percent of Gaussian noise.
+    minCount: Fewer values in range than this marks a noise spot.
+  tryThis:
+    - Add Gaussian noise with sigma 10 and a little salt-and-pepper noise. Compare the sigma filter with the bilateral filter.
+  pitfalls:
+    - Setting sigma much higher than the noise. Then edges fall into the range and are smoothed.
+  demos: [rank-stepper, line-profile]
+related: [bilateral, wiener-adaptive, median]
+docsPage: filters/adaptive/sigma.md

@@ -1,8 +1,97 @@
 id: local-std
 name: Standard deviation filter
+aliases: [Local standard deviation]
 family: adaptive
+tags: [purpose:analysis]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Feature map output.
+
+summary: Maps the standard deviation of the window around each pixel, a measure of local contrast in levels.
+purpose: Show local contrast and texture in the same unit as the image.
+classification: {linearity: nonlinear, domain: statistical, operation: local second moment}
+output: features
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localStdFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each of red, green and blue gets its own map. With the brightness scope, the map is computed
+  on luma and shown in gray. Alpha is kept. The standard deviation of 8-bit values is at most 127.5, so the default mapping clips.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows give smoother maps with wider responses at edges.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \sigma(x,y) = \sqrt{\frac{1}{n} \sum_{w \in W_{xy}} w^2 - \Bigl(\frac{1}{n} \sum_{w \in W_{xy}} w\Bigr)^2}
+formulaExplanation: >-
+  The square root of the population variance of the window. It has the same unit as the image, so a value of 20 means the neighbors spread about 20 levels around their mean.
+symbols:
+  - {symbol: 'W_{xy}', meaning: 'The window around (x, y)'}
+  - {symbol: 'n', meaning: Number of values in the window}
+steps:
+  - Pad the image with the border mode.
+  - Sum the values and their squares over each window with running sums in float64.
+  - Compute the variance and take its square root.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Estimate the noise level in a flat region.
+  - Find textured regions for segmentation.
+  - Build a contrast map for local contrast normalization.
+advantages:
+  - Fast for any window size.
+  - Values are in levels, the same unit as the image.
+limitations:
+  - Edges and texture both give high values.
+  - A window that holds an edge reports the edge contrast, not the noise.
+artifacts:
+  - Bright bands along edges, as wide as the window.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 3.3, local histogram statistics.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.generic_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.generic_filter.html
+implementation: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localStdFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel shows how far its neighbors typically are from their mean, in levels.
+  howItWorks:
+    - Take the window around the pixel.
+    - Find the variance of the values.
+    - Take its square root.
+  academic: >-
+    The local standard deviation, the square root of the second central moment. In a flat region with additive noise, it estimates the noise standard deviation.
+  paramNotes:
+    size: Width of the window. Larger windows average the statistic over more pixels.
+  tryThis:
+    - Add Gaussian noise with sigma 20 to a flat gray image and read the value in a flat area. It is close to 20.
+  pitfalls:
+    - Measuring noise with a window that crosses an edge. The edge dominates.
+  demos: [rank-stepper, line-profile]
+related: [local-variance, local-range, local-entropy]
+docsPage: filters/adaptive/local-std.md

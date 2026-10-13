@@ -91,6 +91,15 @@ const CASES: [string, Params][] = [
   ["guided", { radius: 2, eps: 0.001, channelScope: "luminance" }],
   ["anisotropic-diffusion", { iterations: 6, kappa: 20, lambda: 0.2, border: "reflect" }],
   ["vector-anisotropic-diffusion", { iterations: 5, kappa: 30, conduction: "quadratic" }],
+  ["local-variance", { size: 5, outputMapping: "clip" }],
+  ["local-std", { size: 3, channelScope: "luminance", border: "wrap" }],
+  ["local-range", { size: 5, border: "constant" }],
+  ["local-entropy", { size: 5, outputMapping: "abs" }],
+  ["savgol", { size: 7, order: 3, border: "reflect" }],
+  ["wiener-adaptive", { size: 5, noise: 15 }],
+  ["adaptive-local-noise", { size: 3, noise: 20, border: "replicate" }],
+  ["sigma", { size: 5, sigma: 15, k: 2, minCount: 3 }],
+  ["adaptive-smoothing", { iterations: 3, k: 12, border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

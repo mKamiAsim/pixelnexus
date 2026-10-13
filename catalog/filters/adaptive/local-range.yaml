@@ -1,8 +1,95 @@
 id: local-range
 name: Range filter
+aliases: [Local range, Max minus min]
 family: adaptive
+tags: [purpose:analysis]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Feature map output.
+
+summary: Maps the difference between the largest and smallest value in the window around each pixel.
+purpose: Find edges and texture with a simple, fast contrast measure.
+classification: {linearity: nonlinear, domain: statistical, operation: order statistic difference}
+output: features
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localRangeFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each of red, green and blue gets its own map. With the brightness scope, the map is computed
+  on luma and shown in gray. Alpha is kept. The range of 8-bit values is at most 255, so the default mapping clips.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows give smoother maps with wider responses at edges.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  R(x,y) = \max_{w \in W_{xy}} w - \min_{w \in W_{xy}} w
+formulaExplanation: >-
+  The largest minus the smallest value of the window. It is the max filter minus the min filter, the morphological gradient with a flat square. A single outlier in the window sets it.
+symbols:
+  - {symbol: 'W_{xy}', meaning: 'The window around (x, y)'}
+steps:
+  - Pad the image with the border mode.
+  - Find the min and max of every window with separable row and column passes.
+  - Subtract the min from the max.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the window width, from the separable min and max passes.
+useCases:
+  - Find edges with a quick contrast measure.
+  - Detect texture and flat regions.
+advantages:
+  - It reads directly as the spread of values in levels.
+  - The same as the morphological gradient with a flat square.
+limitations:
+  - Very sensitive to noise, because one extreme value sets the result.
+  - Thick responses on edges, as wide as the window.
+artifacts:
+  - Square blobs around isolated noise pixels.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 9.6, morphological gradient.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.maximum_filter and scipy.ndimage.minimum_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.maximum_filter.html
+implementation: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localRangeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel shows the gap between the brightest and darkest neighbor.
+  howItWorks:
+    - Take the window around the pixel.
+    - Find its largest and smallest values.
+    - Show the difference.
+  academic: >-
+    The difference of the last and first order statistics. With a flat square structuring element it equals the morphological gradient, dilation minus erosion.
+  paramNotes:
+    size: Width of the window. Larger windows average the statistic over more pixels.
+  tryThis:
+    - Compare the range filter and the standard deviation filter on Noise patches. The range reacts much more to salt and pepper.
+  pitfalls:
+    - Using it on noisy images. Single noisy pixels make large squares.
+  demos: [rank-stepper, line-profile]
+related: [local-std, local-variance, min, max]
+docsPage: filters/adaptive/local-range.md

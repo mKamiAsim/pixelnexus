@@ -2,7 +2,17 @@
  * Every browser filter, by catalog id. tools/check_catalog.py checks that each catalog entry
  * with engine "browser" and an implemented status is listed here.
  */
+import { adaptiveSmoothingFilter } from "./adaptive/adaptive-smoothing";
+import {
+  localEntropyFilter,
+  localRangeFilter,
+  localStdFilter,
+  localVarianceFilter,
+} from "./adaptive/local-stats";
+import { adaptiveLocalNoiseFilter, wienerAdaptiveFilter } from "./adaptive/local-noise";
 import { madOutlierFilter } from "./adaptive/mad-outlier";
+import { savgolFilter } from "./adaptive/savgol";
+import { sigmaFilter } from "./adaptive/sigma";
 import { sobelFilter } from "./edges/sobel";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
@@ -67,6 +77,15 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   guidedFilter,
   anisotropicDiffusionFilter,
   vectorAnisotropicDiffusionFilter,
+  localVarianceFilter,
+  localStdFilter,
+  localRangeFilter,
+  localEntropyFilter,
+  savgolFilter,
+  wienerAdaptiveFilter,
+  adaptiveLocalNoiseFilter,
+  sigmaFilter,
+  adaptiveSmoothingFilter,
   minFilter,
   maxFilter,
   midpointFilter,

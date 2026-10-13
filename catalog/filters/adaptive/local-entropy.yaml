@@ -1,8 +1,95 @@
 id: local-entropy
 name: Entropy filter
+aliases: [Local entropy]
 family: adaptive
+tags: [purpose:analysis]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Feature map output.
+
+summary: Maps the entropy of the values in the window around each pixel, a measure of how varied they are.
+purpose: Find textured regions and separate them from flat ones and clean edges.
+classification: {linearity: nonlinear, domain: statistical, operation: local histogram statistic}
+output: features
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localEntropyFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each of red, green and blue gets its own map. With the brightness scope, the map is computed
+  on luma and shown in gray. Alpha is kept. Entropy is at most log2 n bits, a small number, so the default mapping stretches the result to the full range.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows give smoother maps with wider responses at edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  H(x,y) = -\sum_{v=0}^{255} p_{xy}(v) \log_2 p_{xy}(v)
+formulaExplanation: >-
+  p_xy(v) is the share of the window with the whole value v. Terms with p = 0 count as 0. A flat window has entropy 0. A window whose n values are all different has the largest entropy, log2 n bits. The measure counts how many different values occur and how evenly, not where they are.
+symbols:
+  - {symbol: 'p_{xy}(v)', meaning: Share of the window with value v}
+steps:
+  - Round the values to whole numbers and pad the image with the border mode.
+  - Keep a 256-bin histogram of the window as it slides along each row.
+  - Add up -p log2 p over the bins that are not empty.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N\,(k + 256))
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the window width. Each step updates one column of the histogram and scans its 256 bins.
+useCases:
+  - Segment textured regions, such as grass or fabric, from smooth ones.
+  - Find regions with fine detail for focus or quality checks.
+advantages:
+  - Responds to the variety of values, not their spread, so it separates texture types that the variance mixes.
+  - Insensitive to the order of the values.
+limitations:
+  - Gaussian noise raises the entropy everywhere.
+  - Small windows hold few values, so the entropy is coarse.
+artifacts:
+  - Blocky responses at region borders, as wide as the window.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.filters.rank.entropy.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.rank.html#skimage.filters.rank.entropy
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 11.3, statistical texture descriptors.
+implementation: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localEntropyFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel shows how many different values its neighbors have, and how evenly they occur.
+  howItWorks:
+    - Count how often each value occurs in the window.
+    - Turn the counts into shares.
+    - Add up minus share times log2 of share.
+  academic: >-
+    The Shannon entropy of the local histogram, in bits. It is a first-order texture measure: it ignores where values are and only uses how often they occur.
+  paramNotes:
+    size: Width of the window. Larger windows average the statistic over more pixels.
+  tryThis:
+    - Compare the entropy and the variance of a checkerboard. The checkerboard has a large variance but a low entropy, because it has only two values.
+  pitfalls:
+    - Expecting it to find edges. A clean edge has only two values, so its entropy is low.
+  demos: [rank-stepper, line-profile]
+related: [local-variance, local-std, local-range, mode]
+docsPage: filters/adaptive/local-entropy.md

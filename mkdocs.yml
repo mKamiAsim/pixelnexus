@@ -176,7 +176,16 @@ nav:
           - Harmonic mean filter: filters/nonlinear/harmonic-mean.md
           - Contraharmonic mean filter: filters/nonlinear/contraharmonic-mean.md
       - Adaptive:
+          - Adaptive Wiener filter: filters/adaptive/wiener-adaptive.md
+          - Adaptive local noise reduction: filters/adaptive/adaptive-local-noise.md
+          - Sigma filter: filters/adaptive/sigma.md
+          - Adaptive smoothing: filters/adaptive/adaptive-smoothing.md
+          - Local variance filter: filters/adaptive/local-variance.md
+          - Standard deviation filter: filters/adaptive/local-std.md
+          - Range filter: filters/adaptive/local-range.md
+          - Entropy filter: filters/adaptive/local-entropy.md
           - MAD thresholding: filters/adaptive/mad-outlier.md
+          - Savitzky-Golay filter: filters/adaptive/savgol.md
       - Edges:
           - Sobel: filters/edges/sobel.md
       - Enhancement:
