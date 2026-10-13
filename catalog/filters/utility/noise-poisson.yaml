@@ -1,8 +1,109 @@
 id: noise-poisson
 name: Add Poisson noise
+aliases: [Photon noise, Shot noise]
 family: utility
+tags: [purpose:simulation, noise:poisson]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Noise lab.
+
+summary: Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness.
+purpose: Make realistic low-light test images, where noise depends on the brightness.
+classification: {linearity: nonlinear, domain: statistical, operation: Poisson sampling}
+output: image
+representation: random-process
+representationLabel: exact
+representationSource: {path: web/src/core/math/poisson.ts, symbol: poissonSample}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  Each channel of each pixel gets its own count. Alpha is kept. Results are clipped to 0 to 255.
+boundary: Not needed. Each pixel depends only on its own value and position.
+
+params:
+  - key: peak
+    label: Photons at white
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 50
+    description: The mean photon count of a white pixel. A value v has the mean v times peak / 255.
+    effect: Fewer photons give stronger noise. 1000 is almost clean, 5 is very noisy.
+  - key: seed
+    label: Seed
+    type: integer
+    min: 0
+    max: 999999
+    step: 1
+    default: 1
+    description: The starting number of the random generator.
+    effect: The same seed always gives the same noise.
+
+formula: |
+  k \sim \operatorname{Poisson}\Bigl(\frac{I\, P}{255}\Bigr),
+  \qquad
+  I_{\text{out}} = \frac{255\, k}{P}
+formulaExplanation: >-
+  P is the photon count at white. The value I is turned into a mean photon count, a random
+  count k is drawn with that mean, and k is scaled back to 0 to 255. A Poisson count with mean
+  lambda has variance lambda, so the noise standard deviation in levels is the square root of
+  255 I / P. Bright areas get more noise in levels, but less relative to their value.
+symbols:
+  - {symbol: 'P', meaning: The photon count at white}
+  - {symbol: 'k', meaning: The random photon count}
+steps:
+  - For each pixel and channel, compute the mean count I P / 255.
+  - Draw a Poisson count from uniform numbers that depend only on the seed, the position and the channel.
+  - Means below 10 use the multiplication method of Knuth. Larger means use the PTRS method of Hörmann.
+  - Scale the count back by 255 / P, clip to 0 to 255 and round.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each draw uses about lambda + 1 uniform numbers below a mean of 10, and about two above.
+useCases:
+  - Simulate low-light and astronomy images.
+  - Test denoising filters on noise that depends on the brightness.
+advantages:
+  - The noise model of real photon counting.
+  - The same seed always gives the same noise.
+limitations:
+  - Real cameras add read noise and other effects on top of photon noise.
+  - The output has only peak + 1 distinct levels before clipping.
+artifacts:
+  - Visible steps between levels when the photon count is small.
+references:
+  - kind: paper
+    text: Hörmann, W. The transformed rejection method for generating Poisson random variables. Insurance, Mathematics and Economics 12(1), 39 to 45, 1993.
+    doi: 10.1016/0167-6687(93)90997-4
+  - kind: book
+    text: Knuth, D. E. The Art of Computer Programming, Volume 2, Seminumerical Algorithms, 3rd edition. Addison-Wesley, 1997. Section 3.4.1.
+  - kind: library
+    text: NumPy documentation, numpy.random.Generator.poisson.
+    url: https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.poisson.html
+implementation: {path: web/src/core/filters/utility/noise.ts, symbol: poissonNoiseFilter}
+tests: [web/src/core/filters/run.test.ts, web/src/core/math/poisson.test.ts]
+learn:
+  oneSentence: Light arrives as photons, and counting them gives noise that grows with the brightness.
+  howItWorks:
+    - Turn the value into an average number of photons.
+    - Draw a random count with that average.
+    - Turn the count back into a value.
+  academic: >-
+    Shot noise of photon counting. The count is Poisson with mean proportional to the
+    intensity, so the variance equals the mean, and the signal-to-noise ratio grows with the
+    square root of the photon count.
+  paramNotes:
+    peak: The photon count of white. Lower counts mean darker scenes and more noise.
+    seed: Which random numbers to use.
+  tryThis:
+    - Add Poisson noise with 10 photons to the Gray ramp. Look at the Line profile. The noise is largest on the bright side.
+  pitfalls:
+    - Expecting the same noise everywhere. Black stays black, and bright areas are noisiest in levels.
+  demos: [line-profile]
+related: [noise-gaussian, noise-speckle, noise-salt-pepper]
+docsPage: filters/utility/noise-poisson.md

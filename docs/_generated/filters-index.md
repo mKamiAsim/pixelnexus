@@ -38,18 +38,26 @@
 | [Adaptive Wiener filter](adaptive/wiener-adaptive.md) | Adaptive and statistical filters | Moves each pixel toward its local mean by an amount set by how the local variance compares with the noise variance. | Implemented and tested |
 | [Adaptive local noise reduction](adaptive/adaptive-local-noise.md) | Adaptive and statistical filters | Subtracts a share of the difference between each pixel and its local mean, set by the noise variance over the local variance. | Implemented and tested |
 | [Adaptive smoothing](adaptive/adaptive-smoothing.md) | Adaptive and statistical filters | Repeats a 3x3 weighted mean in which pixels with a large gradient get little weight, so edges are not smoothed across. | Implemented and tested |
+| [Enhanced Lee filter](adaptive/enhanced-lee.md) | Adaptive and statistical filters | A Lee filter with three classes. Flat areas get the mean, strong targets stay unchanged, and areas between are blended. | Implemented and tested |
 | [Entropy filter](adaptive/local-entropy.md) | Adaptive and statistical filters | Maps the entropy of the values in the window around each pixel, a measure of how varied they are. | Implemented and tested |
+| [Frost filter](adaptive/frost.md) | Adaptive and statistical filters | A weighted mean whose weights fall exponentially with distance, faster where the local variation is high. | Implemented and tested |
+| [Gamma-MAP filter](adaptive/gamma-map.md) | Adaptive and statistical filters | The maximum a posteriori estimate for gamma-distributed scene and speckle, with the classes of the enhanced Lee filter. | Implemented and tested |
+| [Kuan filter](adaptive/kuan.md) | Adaptive and statistical filters | A speckle filter like the Lee filter, with a weight derived without the approximation Lee made. | Implemented and tested |
+| [Lee filter](adaptive/lee.md) | Adaptive and statistical filters | Moves each pixel toward its local mean by a share set by how its local variation compares with the speckle variation. | Implemented and tested |
 | [Local variance filter](adaptive/local-variance.md) | Adaptive and statistical filters | Maps the variance of the window around each pixel, a measure of local contrast and texture. | Implemented and tested |
 | [Median absolute deviation thresholding](adaptive/mad-outlier.md) | Adaptive and statistical filters | Marks or repairs values that lie more than t times the robust scale S from the local median. | Implemented and tested |
 | [Range filter](adaptive/local-range.md) | Adaptive and statistical filters | Maps the difference between the largest and smallest value in the window around each pixel. | Implemented and tested |
 | [Savitzky-Golay filter](adaptive/savgol.md) | Adaptive and statistical filters | Fits a polynomial to each window by least squares and takes its value at the center, a smoothing that keeps peaks. | Implemented and tested |
 | [Sigma filter](adaptive/sigma.md) | Adaptive and statistical filters | Averages only the window values that lie within k sigma of the center value, and repairs isolated spots. | Implemented and tested |
+| [Speckle reducing anisotropic diffusion](adaptive/srad.md) | Adaptive and statistical filters | Diffusion whose coefficient comes from the local coefficient of variation, so speckle diffuses away and edges stay. | Implemented and tested |
 | [Standard deviation filter](adaptive/local-std.md) | Adaptive and statistical filters | Maps the standard deviation of the window around each pixel, a measure of local contrast in levels. | Implemented and tested |
 | [Sobel](edges/sobel.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
+| [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
+| [Add speckle noise](utility/noise-speckle.md) | Utilities | Multiplies every pixel by a random factor around 1, so bright areas get more noise than dark ones. | Implemented and tested |
 | [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |
 | [Resize](utility/resize.md) | Utilities | Changes the size of the image in pixels, with a choice of resampling kernel. | Implemented and tested |

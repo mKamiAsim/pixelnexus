@@ -1,8 +1,109 @@
 id: lee
 name: Lee filter
+aliases: [Lee speckle filter]
 family: adaptive
+tags: [purpose:denoise, noise:speckle]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Speckle.
+
+summary: Moves each pixel toward its local mean by a share set by how its local variation compares with the speckle variation.
+purpose: Reduce speckle in radar, ultrasound and laser images while keeping edges.
+classification: {linearity: nonlinear, domain: statistical, operation: local linear estimator for multiplicative noise}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/speckle.ts, symbol: leeWeight}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own statistics. With the
+  brightness scope, only luma is filtered. Alpha is kept. The filter is meant for intensity
+  images, where values are 0 or more.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: Width and height of the window for the local statistics.
+    effect: Larger windows give steadier statistics and smooth more.
+  - key: cu
+    label: Speckle variation C_u
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.25
+    description: The coefficient of variation of the speckle, its standard deviation over its mean. For an L-look intensity image it is 1 over the square root of L.
+    effect: Larger values treat more of the image as speckle and smooth more.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{R} = m + W\,(z - m),
+  \qquad
+  W = \max\Bigl(0,\; 1 - \frac{C_u^2}{C_I^2}\Bigr)
+formulaExplanation: >-
+  m is the window mean and C_I its coefficient of variation, the standard deviation over the mean. C_u is the coefficient of variation of the speckle. In a flat area, the window varies only by the speckle, C_I is close to C_u, and W is near 0, so the output is the mean. On an edge, C_I is much larger, W is near 1, and the pixel is kept. This is the Lee filter in the form of Lopes, Touzi and Nezry, with W limited to 0.
+symbols:
+  - {symbol: 'm', meaning: The window mean}
+  - {symbol: 'C_I', meaning: The coefficient of variation of the window}
+  - {symbol: 'C_u', meaning: The coefficient of variation of the speckle}
+  - {symbol: 'W', meaning: The weight of the pixel}
+steps:
+  - Pad the image with the border mode.
+  - Compute the mean and variance of each window with running sums.
+  - Compute C_I and the weight W.
+  - Write the mean plus W times the difference between the pixel and the mean.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Reduce speckle in radar and sonar images.
+  - Reduce speckle in ultrasound images.
+advantages:
+  - Simple and fast for any window size.
+  - Keeps edges where the local variation is much larger than the speckle.
+limitations:
+  - Leaves speckle next to edges, where the window variation is high.
+  - Needs the speckle variation C_u.
+artifacts:
+  - Noisy halos along edges, as wide as the window.
+references:
+  - kind: paper
+    text: Lee, J.-S. Digital image enhancement and noise filtering by use of local statistics. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-2(2), 165 to 168, 1980.
+    doi: 10.1109/TPAMI.1980.4766994
+  - kind: paper
+    text: Lopes, A., Touzi, R. and Nezry, E. Adaptive speckle filters and scene heterogeneity. IEEE Transactions on Geoscience and Remote Sensing 28(6), 992 to 1000, 1990.
+    doi: 10.1109/36.62623
+implementation: {path: web/src/core/filters/adaptive/speckle.ts, symbol: leeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Smooth where the image varies only by speckle, and keep pixels where it varies more.
+  howItWorks:
+    - Find the mean and the variation of the window.
+    - Compare the variation with the variation of the speckle.
+    - Move the pixel toward the mean where the two are close.
+  academic: >-
+    The linear minimum mean-square error estimate for multiplicative noise, with the signal statistics estimated in the window. The weight depends on the ratio of the speckle and local coefficients of variation.
+  paramNotes:
+    cu: The speckle variation. For an image made with Add speckle noise, it is the sigma of that noise.
+  tryThis:
+    - Add speckle noise with sigma 0.25 and apply the Lee filter with C_u = 0.25.
+  pitfalls:
+    - Using it on additive noise. Its statistics assume the noise grows with the brightness.
+  demos: [rank-stepper, line-profile]
+related: [enhanced-lee, kuan, frost, gamma-map, wiener-adaptive]
+docsPage: filters/adaptive/lee.md

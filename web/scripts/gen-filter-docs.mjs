@@ -1020,6 +1020,12 @@ try {
     ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     ...{ createImage, savgolCoefficients },
   });
+  const { speckleDocs } = await import("./filter-docs/speckle.mjs");
+  const speckle = await load("/src/core/filters/adaptive/speckle.ts");
+  speckleDocs({
+    ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
+    ...{ cMax: speckle.cMax, leeWeight: speckle.leeWeight, kuanWeight: speckle.kuanWeight },
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

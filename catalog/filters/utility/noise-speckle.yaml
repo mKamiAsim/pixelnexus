@@ -1,8 +1,112 @@
 id: noise-speckle
 name: Add speckle noise
+aliases: [Multiplicative noise]
 family: utility
+tags: [purpose:simulation, noise:speckle]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Noise lab.
+
+summary: Multiplies every pixel by a random factor around 1, so bright areas get more noise than dark ones.
+purpose: Make test images with multiplicative noise for the speckle filters.
+classification: {linearity: nonlinear, domain: statistical, operation: multiplicative random noise}
+output: image
+representation: random-process
+representationLabel: exact
+representationSource: {path: web/src/core/math/random.ts, symbol: positionNormal}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  Each channel gets its own noise, unless Monochrome is on. Then the same factor goes to all
+  three channels. Alpha is kept. Results are clipped to 0 to 255.
+boundary: Not needed. Each pixel depends only on its own value and position.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.2
+    description: The standard deviation of the random factor. It is the coefficient of variation C_u of the noise.
+    effect: Larger values give stronger noise. 0.2 changes a value of 100 by about 20.
+  - key: monochrome
+    label: Monochrome
+    type: boolean
+    default: false
+    description: Use the same random factor for red, green and blue.
+    effect: The noise looks gray instead of colored.
+  - key: seed
+    label: Seed
+    type: integer
+    min: 0
+    max: 999999
+    step: 1
+    default: 1
+    description: The starting number of the random generator.
+    effect: The same seed always gives the same noise.
+
+formula: |
+  I_{\text{out}}(x,y,c) = I(x,y,c)\,\bigl(1 + \sigma\, n(x,y,c)\bigr),
+  \qquad
+  n \sim \mathcal{N}(0,\,1)
+formulaExplanation: >-
+  Each value is multiplied by a random factor with mean 1 and standard deviation sigma. This is
+  the "speckle" mode of skimage.util.random_noise, written with a standard deviation instead of
+  a variance. Black stays black, and the noise grows with the brightness. The normal numbers
+  come from the same position-based generator as Add Gaussian noise.
+symbols:
+  - {symbol: 'n', meaning: A standard normal random number}
+  - {symbol: '\sigma', meaning: The standard deviation of the factor}
+steps:
+  - For each pixel and channel, make a standard normal number from the seed, the position and the channel.
+  - Multiply the value by 1 plus sigma times that number.
+  - Clip to 0 to 255 and round. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Test images for the Lee, Kuan, Frost, Gamma-MAP and SRAD filters.
+  - Show why additive-noise filters do not suit multiplicative noise.
+advantages:
+  - The speckle variation is known, so it can be given to the speckle filters as C_u.
+  - The same seed always gives the same noise.
+limitations:
+  - Real speckle in radar images follows a gamma or exponential distribution, not a normal one.
+  - Clipping at 255 changes the distribution in bright areas.
+artifacts:
+  - Strong colored grain in bright areas, unless Monochrome is on.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.util.random_noise, mode speckle.
+    url: https://scikit-image.org/docs/stable/api/skimage.util.html#skimage.util.random_noise
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5.
+implementation: {path: web/src/core/filters/utility/noise.ts, symbol: speckleNoiseFilter}
+tests: [web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Every pixel is multiplied by a random number near 1, so bright pixels get more noise.
+  howItWorks:
+    - Pick a random factor near 1 for the pixel.
+    - Multiply the pixel value by it.
+    - Keep the result between 0 and 255.
+  academic: >-
+    Multiplicative noise with mean 1 and standard deviation sigma. Its standard deviation in
+    levels is sigma times the value, so the coefficient of variation is constant.
+  paramNotes:
+    sigma: The coefficient of variation of the noise.
+    monochrome: Whether all three channels get the same factor.
+    seed: Which random numbers to use.
+  tryThis:
+    - Add speckle to the Gray ramp and look at the Line profile. The noise grows from left to right.
+  pitfalls:
+    - Using the same sigma as for Gaussian noise. Here sigma is a fraction of the value, not a number of levels.
+  demos: [line-profile]
+related: [noise-gaussian, noise-poisson, lee, srad]
+docsPage: filters/utility/noise-speckle.md

@@ -1,10 +1,134 @@
 id: srad
 name: Speckle reducing anisotropic diffusion
-aliases:
-- SRAD
+aliases: [SRAD]
 family: adaptive
+tags: [purpose:denoise, noise:speckle]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: SRAD (Yu and Acton).
+
+summary: Diffusion whose coefficient comes from the local coefficient of variation, so speckle diffuses away and edges stay.
+purpose: Reduce speckle in ultrasound and radar images while keeping and sharpening edges.
+classification: {linearity: nonlinear, domain: iterative, operation: nonlinear diffusion for multiplicative noise}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/srad.ts, symbol: sradStep}
+supportRadius: iterations
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue diffuse separately. With the brightness scope, only luma diffuses. Alpha
+  is kept. The filter is meant for intensity images, where values are 0 or more.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by one pixel per iteration, as
+  for anisotropic diffusion.
+
+params:
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    default: 30
+    description: How many diffusion steps run.
+    effect: More steps remove more speckle.
+  - key: dt
+    label: Time step
+    type: number
+    min: 0.01
+    max: 0.5
+    step: 0.01
+    default: 0.1
+    description: The time step of each update. The coefficient is limited to 1, so steps up to 1 stay stable.
+    effect: Larger steps diffuse faster per iteration.
+  - key: q0
+    label: Speckle scale q0
+    type: number
+    min: 0.01
+    max: 2
+    step: 0.01
+    default: 0.25
+    description: The coefficient of variation of the speckle at the start. It plays the role of C_u in the Lee filter.
+    effect: Larger values treat more variation as speckle and smooth more.
+  - key: rho
+    label: Scale decay
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.17
+    description: q0 falls with time as q0 exp(-rho t), with t the number of steps times the time step.
+    effect: Larger values make the diffusion stop sooner.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  q^2 = \frac{\tfrac{1}{2}\bigl(|\nabla I| / I\bigr)^2 - \tfrac{1}{16}\bigl(\nabla^2 I / I\bigr)^2}{\bigl(1 + \tfrac{1}{4}\, \nabla^2 I / I\bigr)^2},
+  \qquad
+  c = \frac{1}{1 + \frac{q^2 - q_0^2}{q_0^2 (1 + q_0^2)}},
+  \qquad
+  I \leftarrow I + \frac{\Delta t}{4} \operatorname{div}(c\, \nabla I)
+formulaExplanation: >-
+  q is the instantaneous coefficient of variation of Yu and Acton, from the differences to the
+  four neighbors. Its square is the sum of the four squared differences, divided by I squared,
+  combined with the sum of the differences, the Laplacian. In speckle, q is close to the speckle
+  scale q0 and the coefficient c is near 1, so the image diffuses. On edges q is large and c is
+  near 0. The divergence uses c at the pixel for the north and west differences, and at the
+  south and east neighbors for the other two. Here c is limited to 0 to 1.
+symbols:
+  - {symbol: 'q', meaning: The instantaneous coefficient of variation}
+  - {symbol: 'q_0', meaning: The speckle scale}
+  - {symbol: 'c', meaning: The diffusion coefficient}
+  - {symbol: '\Delta t', meaning: The time step}
+steps:
+  - Extend the image by one pixel per iteration with the border mode.
+  - For each pixel, compute the four neighbor differences, q squared and c.
+  - Add dt / 4 times the divergence of c times the differences.
+  - Lower q0 by its decay, repeat, then cut the extension off.
+complexity:
+  time: O(N\,T)
+  memory: O(N)
+  notes: N is the number of pixels per channel and T the number of iterations.
+useCases:
+  - Reduce speckle in ultrasound images while keeping organ borders.
+  - Reduce speckle in radar images.
+advantages:
+  - Keeps and sharpens edges, like anisotropic diffusion.
+  - Its edge measure is built for multiplicative noise, so it works the same in dark and bright areas.
+limitations:
+  - Many iterations are slow.
+  - Black pixels make q undefined. A tiny constant avoids the division by 0.
+artifacts:
+  - Flat patches after many iterations.
+references:
+  - kind: paper
+    text: Yu, Y. and Acton, S. T. Speckle reducing anisotropic diffusion. IEEE Transactions on Image Processing 11(11), 1260 to 1270, 2002.
+    doi: 10.1109/TIP.2002.804276
+implementation: {path: web/src/core/filters/adaptive/srad.ts, symbol: sradFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Diffusion that measures edges relative to the brightness, made for speckle.
+  howItWorks:
+    - Measure how much each pixel varies relative to its brightness, from its four neighbors.
+    - Where that matches the speckle scale, let values flow to the neighbors.
+    - Where it is larger, there is an edge, so block the flow. Repeat.
+  academic: >-
+    The diffusion form of the Lee and Frost filters. Yu and Acton derive the coefficient from
+    the Lee filter and use the instantaneous coefficient of variation as an edge detector that
+    works under multiplicative noise.
+  paramNotes:
+    iterations: The number of steps.
+    dt: The time step.
+    q0: The speckle variation at the start, like C_u.
+    rho: How fast the speckle scale shrinks.
+  tryThis:
+    - Add speckle noise with sigma 0.3 and compare 30 iterations of SRAD with anisotropic diffusion.
+  pitfalls:
+    - Running it on images with many black pixels. The variation is undefined there.
+  demos: [line-profile, iteration-viewer]
+related: [anisotropic-diffusion, lee, frost]
+docsPage: filters/adaptive/srad.md

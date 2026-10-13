@@ -13,6 +13,14 @@ import { adaptiveLocalNoiseFilter, wienerAdaptiveFilter } from "./adaptive/local
 import { madOutlierFilter } from "./adaptive/mad-outlier";
 import { savgolFilter } from "./adaptive/savgol";
 import { sigmaFilter } from "./adaptive/sigma";
+import {
+  enhancedLeeFilter,
+  frostFilter,
+  gammaMapFilter,
+  kuanFilter,
+  leeFilter,
+} from "./adaptive/speckle";
+import { sradFilter } from "./adaptive/srad";
 import { sobelFilter } from "./edges/sobel";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
@@ -51,7 +59,12 @@ import { vectorMedianFilter } from "./nonlinear/vector-median";
 import { weightedMedianFilter } from "./nonlinear/weighted-median";
 import { deadPixelFilter } from "./restoration/dead-pixel";
 import type { BrowserFilter } from "./types";
-import { gaussianNoiseFilter, saltPepperNoiseFilter } from "./utility/noise";
+import {
+  gaussianNoiseFilter,
+  poissonNoiseFilter,
+  saltPepperNoiseFilter,
+  speckleNoiseFilter,
+} from "./utility/noise";
 
 export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   boxFilter,
@@ -86,6 +99,12 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   adaptiveLocalNoiseFilter,
   sigmaFilter,
   adaptiveSmoothingFilter,
+  leeFilter,
+  enhancedLeeFilter,
+  kuanFilter,
+  frostFilter,
+  gammaMapFilter,
+  sradFilter,
   minFilter,
   maxFilter,
   midpointFilter,
@@ -103,6 +122,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   grayscaleFilter,
   gaussianNoiseFilter,
   saltPepperNoiseFilter,
+  speckleNoiseFilter,
+  poissonNoiseFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

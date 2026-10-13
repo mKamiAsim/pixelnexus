@@ -1,8 +1,110 @@
 id: gamma-map
 name: Gamma-MAP filter
+aliases: [Gamma maximum a posteriori filter]
 family: adaptive
+tags: [purpose:denoise, noise:speckle]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Speckle.
+
+summary: The maximum a posteriori estimate for gamma-distributed scene and speckle, with the classes of the enhanced Lee filter.
+purpose: Reduce speckle with an estimate built on a statistical model of radar scenes.
+classification: {linearity: nonlinear, domain: statistical, operation: maximum a posteriori estimator}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/speckle.ts, symbol: gammaMapValue}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own statistics. With the
+  brightness scope, only luma is filtered. Alpha is kept. The filter is meant for intensity
+  images, where values are 0 or more.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: Width and height of the window for the local statistics.
+    effect: Larger windows give steadier statistics and smooth more.
+  - key: cu
+    label: Speckle variation C_u
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.25
+    description: The coefficient of variation of the speckle, its standard deviation over its mean. For an L-look intensity image it is 1 over the square root of L.
+    effect: Larger values treat more of the image as speckle and smooth more.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{R} = \frac{(\alpha - L - 1)\, m + \sqrt{m^2 (\alpha - L - 1)^2 + 4 \alpha L\, z\, m}}{2\alpha},
+  \qquad
+  \alpha = \frac{1 + C_u^2}{C_I^2 - C_u^2},
+  \quad
+  L = \frac{1}{C_u^2}
+formulaExplanation: >-
+  The formula is the larger root of the quadratic that the maximum a posteriori estimate solves when both the scene and the speckle follow gamma distributions. It applies where C_u < C_I < C_max. Below C_u the output is the mean m, above C_max = sqrt(1 + 2 C_u^2) the pixel z is kept, as in the enhanced Lee filter. L is the number of looks that matches C_u.
+symbols:
+  - {symbol: 'm', meaning: The window mean}
+  - {symbol: 'z', meaning: The pixel value}
+  - {symbol: '\alpha', meaning: The shape parameter of the scene distribution}
+  - {symbol: 'L', meaning: The number of looks}
+steps:
+  - Pad the image with the border mode.
+  - Compute the mean and variance of each window with running sums.
+  - Find the class of C_I.
+  - Write the mean, the pixel, or the MAP estimate.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel.
+useCases:
+  - Reduce speckle in radar images with textured scenes.
+advantages:
+  - Based on a model of both the scene and the speckle.
+  - Keeps texture better than the Lee filter in many radar scenes.
+limitations:
+  - The gamma model fits radar scenes, not general photos.
+  - Needs C_u.
+artifacts:
+  - Class borders can show as a change in texture.
+references:
+  - kind: paper
+    text: Lopes, A., Nezry, E., Touzi, R. and Laur, H. Maximum a posteriori speckle filtering and first order texture models in SAR images. 10th Annual International Symposium on Geoscience and Remote Sensing (IGARSS), 1990, pages 2409 to 2412.
+    doi: 10.1109/IGARSS.1990.689026
+  - kind: paper
+    text: Lopes, A., Touzi, R. and Nezry, E. Adaptive speckle filters and scene heterogeneity. IEEE Transactions on Geoscience and Remote Sensing 28(6), 992 to 1000, 1990.
+    doi: 10.1109/36.62623
+implementation: {path: web/src/core/filters/adaptive/speckle.ts, symbol: gammaMapFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: The most likely clean value, assuming the scene and the speckle both follow gamma distributions.
+  howItWorks:
+    - Measure the mean and variation of the window.
+    - Use the mean in flat areas and keep the pixel on strong targets.
+    - In between, solve a quadratic for the most likely value.
+  academic: >-
+    A maximum a posteriori estimate with a gamma prior on the reflectivity and gamma-distributed speckle. The prior shape comes from the local statistics.
+  paramNotes:
+    cu: The speckle variation. The number of looks is 1 / C_u squared.
+  tryThis:
+    - Compare it with the Lee and enhanced Lee filters on the same speckled image.
+  pitfalls:
+    - Expecting the model to fit photos. It is built for radar scenes.
+  demos: [rank-stepper, line-profile]
+related: [enhanced-lee, lee, kuan, frost]
+docsPage: filters/adaptive/gamma-map.md

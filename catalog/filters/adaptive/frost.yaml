@@ -1,8 +1,105 @@
 id: frost
 name: Frost filter
+aliases: [Frost speckle filter]
 family: adaptive
+tags: [purpose:denoise, noise:speckle]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Speckle.
+
+summary: A weighted mean whose weights fall exponentially with distance, faster where the local variation is high.
+purpose: Reduce speckle with a smoothing window that shrinks near edges.
+classification: {linearity: nonlinear, domain: statistical, operation: adaptive exponential kernel}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/speckle.ts, symbol: frostFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own statistics. With the
+  brightness scope, only luma is filtered. Alpha is kept. The filter is meant for intensity
+  images, where values are 0 or more.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: Width and height of the window for the local statistics.
+    effect: Larger windows give steadier statistics and smooth more.
+  - key: damping
+    label: Damping K
+    type: number
+    min: 0
+    max: 10
+    step: 0.1
+    default: 1
+    description: K, how fast the weights fall with distance for a given local variation.
+    effect: Larger values keep more detail. 0 gives the box mean.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{R} = \frac{\sum_{q \in W} e^{-K C_I^2 d_q}\, I_q}{\sum_{q \in W} e^{-K C_I^2 d_q}}
+formulaExplanation: >-
+  d_q is the distance of window pixel q from the center, and C_I the coefficient of variation of the window. In flat areas C_I is small, the weights are nearly equal, and the output is close to the window mean. Near edges C_I is large, the weights fall off fast, and the output stays close to the pixel. This is the exponential weighting of Frost and others, with the damping K, as it is usually implemented.
+symbols:
+  - {symbol: 'd_q', meaning: The distance of pixel q from the center}
+  - {symbol: 'C_I', meaning: The coefficient of variation of the window}
+  - {symbol: 'K', meaning: The damping}
+steps:
+  - Pad the image with the border mode.
+  - Compute C_I of each window with running sums.
+  - Weight each window pixel by exp(-K C_I^2 d).
+  - Write the weighted mean.
+complexity:
+  time: O(N\,k^2)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the window width.
+useCases:
+  - Reduce speckle in radar and ultrasound images.
+advantages:
+  - The smoothing shrinks smoothly near edges, with no class borders.
+  - Needs no speckle variation, only the damping.
+limitations:
+  - The damping must be tuned to the image.
+  - Slower than the Lee filter for large windows.
+artifacts:
+  - Some speckle left along edges.
+references:
+  - kind: paper
+    text: Frost, V. S., Stiles, J. A., Shanmugan, K. S. and Holtzman, J. C. A model for radar images and its application to adaptive digital filtering of multiplicative noise. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-4(2), 157 to 166, 1982.
+    doi: 10.1109/TPAMI.1982.4767223
+  - kind: paper
+    text: Lopes, A., Touzi, R. and Nezry, E. Adaptive speckle filters and scene heterogeneity. IEEE Transactions on Geoscience and Remote Sensing 28(6), 992 to 1000, 1990.
+    doi: 10.1109/36.62623
+implementation: {path: web/src/core/filters/adaptive/speckle.ts, symbol: frostFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: A blur whose reach shrinks where the image varies a lot.
+  howItWorks:
+    - Measure the variation of the window.
+    - Give each neighbor a weight that falls with distance, faster when the variation is high.
+    - Write the weighted mean.
+  academic: >-
+    An adaptive kernel derived from a model of radar images with exponentially correlated reflectivity. The decay rate is proportional to the squared local coefficient of variation.
+  paramNotes:
+    damping: How fast the weights fall. 0 gives the plain mean.
+  tryThis:
+    - Compare damping 0.5 and 3 on a speckled image with the Line profile.
+  pitfalls:
+    - Using damping 0. Then it is a plain box filter.
+  demos: [rank-stepper, line-profile]
+related: [lee, enhanced-lee, kuan, gamma-map]
+docsPage: filters/adaptive/frost.md

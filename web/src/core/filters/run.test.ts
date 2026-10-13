@@ -100,6 +100,14 @@ const CASES: [string, Params][] = [
   ["adaptive-local-noise", { size: 3, noise: 20, border: "replicate" }],
   ["sigma", { size: 5, sigma: 15, k: 2, minCount: 3 }],
   ["adaptive-smoothing", { iterations: 3, k: 12, border: "reflect" }],
+  ["lee", { size: 5, cu: 0.25 }],
+  ["enhanced-lee", { size: 7, cu: 0.2, damping: 1.5, border: "replicate" }],
+  ["kuan", { size: 5, cu: 0.3, channelScope: "luminance" }],
+  ["frost", { size: 5, damping: 2, border: "wrap" }],
+  ["gamma-map", { size: 7, cu: 0.25, border: "reflect" }],
+  ["srad", { iterations: 5, dt: 0.15, q0: 0.3, rho: 0.2 }],
+  ["noise-speckle", { sigma: 0.3, seed: 4 }],
+  ["noise-poisson", { peak: 40, seed: 5 }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {
@@ -232,6 +240,30 @@ describe("output mapping", () => {
 describe("noise", () => {
   const flat = createImage(256, 256);
   for (let i = 0; i < flat.data.length; i += 4) flat.data.set([128, 128, 128, 255], i);
+
+  const stats = (image: RgbaImage) => {
+    const values = Array.from(image.data.filter((_, i) => i % 4 === 0));
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+    return { mean, sd: Math.sqrt(variance) };
+  };
+
+  it("scales speckle with the brightness", () => {
+    const { mean, sd } = stats(
+      runFilter(flat, get("noise-speckle"), { sigma: 0.1, seed: 7 }).image,
+    );
+    expect(mean).toBeCloseTo(128, 0);
+    // Standard deviation 128 x 0.1, plus a little from rounding.
+    expect(Math.abs(sd - 12.8)).toBeLessThan(0.3);
+  });
+
+  it("gives Poisson noise whose variance matches the photon count", () => {
+    // Mean 128 x 40 / 255 = 20.08 photons. The value is k x 255 / 40, so its standard deviation
+    // is sqrt(20.08) x 255 / 40 = 28.57 levels.
+    const { mean, sd } = stats(runFilter(flat, get("noise-poisson"), { peak: 40, seed: 8 }).image);
+    expect(Math.abs(mean - 128)).toBeLessThan(0.6);
+    expect(Math.abs(sd - 28.57)).toBeLessThan(0.6);
+  });
 
   it("has the requested standard deviation", () => {
     const out = runFilter(flat, get("noise-gaussian"), { sigma: 10, seed: 1 }).image;
