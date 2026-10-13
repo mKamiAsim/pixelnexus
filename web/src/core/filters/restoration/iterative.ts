@@ -8,6 +8,9 @@
  *
  * - Richardson-Lucy: f <- f * (h' (x) (g / (h (x) f))), with h' the PSF turned by a half turn.
  *   Values of h (x) f below 1e-12 count as 1e-12, so the ratio stays finite.
+ * - Regularized Richardson-Lucy (Dey et al.): the Richardson-Lucy step divided by
+ *   1 - lambda div(grad f / |grad f|), a total variation term. With lambda at most 0.1 the
+ *   divisor stays above 0.6, since the divergence of unit vectors lies between -4 and 4.
  * - Landweber: f <- f + tau h' (x) (g - h (x) f).
  * - Projected Landweber: the Landweber step, then negative values are set to 0. This solves
  *   non-negative least squares.
@@ -22,7 +25,7 @@ import { psfKernel, transferOf } from "./deconvolve";
 /** Denominators of Richardson-Lucy below this count as this. */
 export const RL_EPSILON = 1e-12;
 
-export type Method = "richardson-lucy" | "landweber" | "projected-landweber";
+export type Method = "richardson-lucy" | "regularized-rl" | "landweber" | "projected-landweber";
 
 /** The extended plane, the transfer function and helpers to convolve on the FFT grid. */
 function setup(input: Plane, border: BorderMode, params: Params) {
@@ -58,6 +61,42 @@ function setup(input: Plane, border: BorderMode, params: Params) {
   return { spectrum, g, convolve, n };
 }
 
+/** The smoothing term of |grad f|, in gray levels, so flat areas have a direction of 0. */
+export const TV_EPSILON = 0.01;
+
+/**
+ * div(grad f / |grad f|) on the FFT grid, with forward differences for the gradient, backward
+ * differences for the divergence, wrap-around at the grid edges, and |grad f| computed as
+ * sqrt(fx^2 + fy^2 + 0.01^2).
+ */
+export function tvCurvature(f: Float64Array, width: number, height: number): Float64Array {
+  const nx = new Float64Array(f.length);
+  const ny = new Float64Array(f.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const k = y * width + x;
+      const v = f[k] ?? 0;
+      const gx = (f[y * width + ((x + 1) % width)] ?? 0) - v;
+      const gy = (f[((y + 1) % height) * width + x] ?? 0) - v;
+      const norm = Math.sqrt(gx * gx + gy * gy + TV_EPSILON * TV_EPSILON);
+      nx[k] = gx / norm;
+      ny[k] = gy / norm;
+    }
+  }
+  const out = new Float64Array(f.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const k = y * width + x;
+      out[k] =
+        (nx[k] ?? 0) -
+        (nx[y * width + ((x - 1 + width) % width)] ?? 0) +
+        (ny[k] ?? 0) -
+        (ny[((y - 1 + height) % height) * width + x] ?? 0);
+    }
+  }
+  return out;
+}
+
 /** One step of a method, in place on the estimate f. */
 function step(
   method: Method,
@@ -65,12 +104,19 @@ function step(
   g: Float64Array,
   convolve: (values: Float64Array, adjoint: boolean) => Float64Array,
   tau: number,
+  width: number,
 ): void {
+  const curvature =
+    method === "regularized-rl" ? tvCurvature(f, width, f.length / width) : undefined;
   const blurred = convolve(f, false);
-  if (method === "richardson-lucy") {
+  if (method === "richardson-lucy" || curvature) {
     const ratio = g.map((v, k) => v / Math.max(blurred[k] ?? 0, RL_EPSILON));
     const correction = convolve(ratio, true);
-    for (let k = 0; k < f.length; k++) f[k] = (f[k] ?? 0) * (correction[k] ?? 0);
+    for (let k = 0; k < f.length; k++) {
+      // tau is the weight lambda of the total variation term here.
+      const damping = curvature ? 1 - tau * (curvature[k] ?? 0) : 1;
+      f[k] = ((f[k] ?? 0) * (correction[k] ?? 0)) / damping;
+    }
     return;
   }
   const residual = g.map((v, k) => v - (blurred[k] ?? 0));
@@ -95,9 +141,14 @@ export function iterate(
 ): Plane {
   const { spectrum, g, convolve, n } = setup(input, border, params);
   const iterations = read.number(params, "iterations", 20);
-  const tau = read.number(params, "tau", 1);
+  const tau =
+    method === "regularized-rl"
+      ? read.number(params, "lambda", 0.002)
+      : read.number(params, "tau", 1);
   const f = new Float64Array(g);
-  if (method === "richardson-lucy") for (let k = 0; k < n; k++) f[k] = Math.max(0, f[k] ?? 0);
+  if (method === "richardson-lucy" || method === "regularized-rl") {
+    for (let k = 0; k < n; k++) f[k] = Math.max(0, f[k] ?? 0);
+  }
   const crop = (values: Float64Array): Plane => {
     const out = createPlane(input.width, input.height);
     for (let y = 0; y < input.height; y++) {
@@ -113,10 +164,10 @@ export function iterate(
       const blurred = convolve(f, false);
       let sum = 0;
       for (let k = 0; k < n; k++) sum += ((g[k] ?? 0) - (blurred[k] ?? 0)) ** 2;
-      step(method, f, g, convolve, tau);
+      step(method, f, g, convolve, tau, spectrum.width);
       onIteration(i, crop(f), Math.sqrt(sum / n));
     } else {
-      step(method, f, g, convolve, tau);
+      step(method, f, g, convolve, tau, spectrum.width);
     }
   }
   return crop(f);
@@ -125,6 +176,8 @@ export function iterate(
 const UPDATE: Record<Method, string> = {
   "richardson-lucy":
     "f_{k+1} = f_k \\cdot \\left( h' \\circledast \\frac{g}{h \\circledast f_k} \\right)",
+  "regularized-rl":
+    "f_{k+1} = \\frac{f_k}{1 - \\lambda \\operatorname{div}\\left(\\frac{\\nabla f_k}{|\\nabla f_k|}\\right)} \\cdot \\left( h' \\circledast \\frac{g}{h \\circledast f_k} \\right)",
   landweber: "f_{k+1} = f_k + \\tau\\, h' \\circledast (g - h \\circledast f_k)",
   "projected-landweber":
     "f_{k+1} = \\max\\left(0,\\ f_k + \\tau\\, h' \\circledast (g - h \\circledast f_k)\\right)",
@@ -144,7 +197,9 @@ function iterativeFilter(id: string, method: Method): PlaneFilter {
       update:
         method === "richardson-lucy"
           ? UPDATE[method]
-          : `${UPDATE[method]},\\quad \\tau = ${read.number(params, "tau", 1)}`,
+          : method === "regularized-rl"
+            ? `${UPDATE[method]},\\quad \\lambda = ${read.number(params, "lambda", 0.002)}`
+            : `${UPDATE[method]},\\quad \\tau = ${read.number(params, "tau", 1)}`,
       note: "h' is the PSF turned by a half turn, and the convolutions run through the FFT of the extended image. The first estimate f_0 is the blurred image g.",
     }),
   };
@@ -153,6 +208,7 @@ function iterativeFilter(id: string, method: Method): PlaneFilter {
 /** The method of each iterative filter, by catalog id, for the Iteration viewer. */
 export const ITERATIVE_METHODS: Readonly<Record<string, Method>> = {
   "richardson-lucy": "richardson-lucy",
+  "regularized-rl": "regularized-rl",
   landweber: "landweber",
   "nnls-deconv": "projected-landweber",
 };
@@ -160,6 +216,10 @@ export const ITERATIVE_METHODS: Readonly<Record<string, Method>> = {
 export const richardsonLucyFilter: PlaneFilter = {
   ...iterativeFilter("richardson-lucy", "richardson-lucy"),
   id: "richardson-lucy",
+};
+export const regularizedRlFilter: PlaneFilter = {
+  ...iterativeFilter("regularized-rl", "regularized-rl"),
+  id: "regularized-rl",
 };
 export const landweberFilter: PlaneFilter = {
   ...iterativeFilter("landweber", "landweber"),

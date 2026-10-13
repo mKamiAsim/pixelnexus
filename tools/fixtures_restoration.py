@@ -142,6 +142,16 @@ def cls(plane: FloatArray, border: str, kernel: FloatArray, sigma: float) -> Flo
 
 
 RL_EPSILON = 1e-12
+TV_EPSILON = 0.01
+
+
+def tv_curvature(f: FloatArray) -> FloatArray:
+    """div(grad f / |grad f|): forward differences, then backward differences, wrapping around."""
+    gx = np.roll(f, -1, axis=1) - f
+    gy = np.roll(f, -1, axis=0) - f
+    norm = np.sqrt(gx * gx + gy * gy + TV_EPSILON * TV_EPSILON)
+    nx, ny = gx / norm, gy / norm
+    return np.asarray(nx - np.roll(nx, 1, axis=1) + ny - np.roll(ny, 1, axis=0), dtype=np.float64)
 
 
 def iterate(
@@ -161,11 +171,13 @@ def iterate(
         factor = np.conj(otf) if adjoint else otf
         return np.asarray(np.fft.ifft2(np.fft.fft2(values) * factor).real, dtype=np.float64)
 
-    f = np.maximum(g, 0) if method == "richardson-lucy" else g.copy()
+    rl = method in ("richardson-lucy", "regularized-rl")
+    f = np.maximum(g, 0) if rl else g.copy()
     for _ in range(iterations):
+        damping = 1 - tau * tv_curvature(f) if method == "regularized-rl" else 1.0
         blurred = convolve(f, False)
-        if method == "richardson-lucy":
-            f = f * convolve(g / np.maximum(blurred, RL_EPSILON), True)
+        if rl:
+            f = f * convolve(g / np.maximum(blurred, RL_EPSILON), True) / damping
         else:
             f = f + tau * convolve(g - blurred, True)
             if method == "projected-landweber":
@@ -246,12 +258,16 @@ def add_restoration_cases(plane: FloatArray, add: Add) -> dict[str, FloatArray]:
     for filter_id, method, params, iterations, tau, border in (
         ("richardson-lucy", "richardson-lucy", psfs[0], 10, 1.0, "reflect"),
         ("richardson-lucy", "richardson-lucy", psfs[1], 5, 1.0, "wrap"),
+        ("regularized-rl", "regularized-rl", psfs[0], 8, 0.01, "reflect"),
+        ("regularized-rl", "regularized-rl", psfs[1], 5, 0.002, "wrap"),
         ("landweber", "landweber", psfs[0], 5, 1.5, "reflect101"),
         ("nnls-deconv", "projected-landweber", psfs[2], 6, 1.0, "reflect"),
     ):
         output = iterate(plane, border, psf(params), method, iterations, tau)
         case = {**params, "iterations": iterations, "border": border}
-        if filter_id != "richardson-lucy":
+        if filter_id == "regularized-rl":
+            case["lambda"] = tau
+        elif filter_id != "richardson-lucy":
             case["tau"] = tau
         add(filter_id, case, output, source)
     return {"defocused": defocused}
