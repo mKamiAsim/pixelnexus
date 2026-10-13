@@ -50,4 +50,91 @@ export function cornerDocs(h) {
       `${table}\nA 21 x 21 image, 50 everywhere except a bright quadrant of 200 from x = 10 and y = 10, with sigma 1${id === "harris" ? " and k = 0.05" : ""}. The image is read on a 0 to 1 scale. ${text}\n`,
     );
   }
+
+  // Bright shapes with corners on a dark background: two rectangles and a triangle.
+  const size = 96;
+  const shapes = new Uint8ClampedArray(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const inside =
+        (x >= 10 && x < 40 && y >= 12 && y < 36) ||
+        (x >= 56 && x < 84 && y >= 20 && y < 44) ||
+        (y >= 56 && y < 86 && Math.abs(x - 48) <= (y - 56) * 0.9);
+      const v = inside ? 210 : 40;
+      shapes.set([v, v, v, 255], (y * size + x) * 4);
+    }
+  }
+  const shapesImage = { width: size, height: size, data: shapes };
+  for (const id of ["moravec", "fast"]) {
+    figure(id, {
+      message:
+        id === "fast"
+          ? "FAST on bright shapes. The score is high at the corners, and the corner points mark them."
+          : "Moravec on bright shapes. The response is high at the corners and also along the slanted edges of the triangle, which fall between the four tested directions.",
+      panels: [
+        { title: "Shapes", image: pic(shapesImage) },
+        {
+          title: id === "fast" ? "Score" : "Response",
+          image: pic(run(shapesImage, id, { ...lum })),
+        },
+        {
+          title: "Corner points",
+          image: pic(run(shapesImage, id, { ...lum, output: "corners", distance: 3 })),
+        },
+      ],
+    });
+  }
+
+  const moravecTable = mdTable(
+    ["Pixel", "x", "y", "Response"],
+    points.map(([name, x, y]) => [
+      name,
+      String(x),
+      String(y),
+      fix(planeAt("moravec", rows, {}, x, y), 4),
+    ]),
+  );
+  example(
+    "moravec",
+    `${moravecTable}
+The same 21 x 21 image as for Harris, with a 3 x 3 window. Values are on a 0 to 1 scale. In the flat area no shift changes the window. On the vertical edge the shift (0, 1) moves the window along the edge and changes nothing, so the smallest change is 0. At the corner every shift changes the window, so the response is positive.
+`,
+  );
+
+  // A dark pixel at the inside corner of a bright L: the ring has a long bright run.
+  const ringRows = Array.from({ length: 7 }, (_, y) =>
+    Array.from({ length: 7 }, (_, x) => (x >= 4 || y >= 4 ? 200 : 40)),
+  );
+  const ring = [
+    [0, -3],
+    [1, -3],
+    [2, -2],
+    [3, -1],
+    [3, 0],
+    [3, 1],
+    [2, 2],
+    [1, 3],
+    [0, 3],
+    [-1, 3],
+    [-2, 2],
+    [-3, 1],
+    [-3, 0],
+    [-3, -1],
+    [-2, -2],
+    [-1, -3],
+  ];
+  const values = ring.map(([dx, dy]) => ringRows[3 + dy][3 + dx]);
+  const brighter = values.filter((v) => v / 255 > 40 / 255 + 0.15).length;
+  const score9 = planeAt("fast", ringRows, { n: 9, threshold: 0.15, border: "replicate" }, 3, 3);
+  const score12 = planeAt("fast", ringRows, { n: 12, threshold: 0.15, border: "replicate" }, 3, 3);
+  example(
+    "fast",
+    mdTable(
+      ["Circle pixel", ...ring.map((_, k) => String(k + 1))],
+      [["Value", ...values.map(String)]],
+    ) +
+      `
+The center of a 7 x 7 patch has the value 40. The patch is 200 where x or y is 4 or more, so the center sits at the inside corner of a bright L. ${brighter} circle pixels in a row are brighter than 40 / 255 + 0.15, and none are darker. With n = 9 the segment test passes, and the score is ${brighter} x (200 / 255 - 40 / 255 - 0.15) = ${fix(score9, 4)}. With n = 12 the run is too short, so the score is ${fix(score12, 4)}.
+`,
+  );
 }

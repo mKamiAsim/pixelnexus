@@ -35,7 +35,7 @@ import { boxFilter } from "./linear/box";
 import { diskAverageFilter } from "./linear/disk-average";
 import { dogFilter, logFilter } from "./linear/dog-log";
 import { firLowpassFilter } from "./linear/fir-lowpass";
-import { harrisFilter, shiTomasiFilter } from "./features/corners";
+import { fastFilter, harrisFilter, moravecFilter, shiTomasiFilter } from "./features/corners";
 import { gaborBankFilter } from "./features/gabor-bank";
 import { matchedVesselFilter } from "./features/matched-vessel";
 import { gaborFilter } from "./linear/gabor";
@@ -111,6 +111,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   matchedVesselFilter,
   harrisFilter,
   shiTomasiFilter,
+  moravecFilter,
+  fastFilter,
   medianFilter,
   weightedMedianFilter,
   adaptiveMedianFilter,

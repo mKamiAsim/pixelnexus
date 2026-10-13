@@ -218,6 +218,8 @@ nav:
           - Matched vessel filter: filters/features/matched-vessel.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
+          - Moravec corner detector: filters/features/moravec.md
+          - FAST corner detector: filters/features/fast.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

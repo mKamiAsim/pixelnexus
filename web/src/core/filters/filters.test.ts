@@ -238,3 +238,18 @@ describe("registry", () => {
     }
   });
 });
+
+describe("Inspector representations", () => {
+  // A LaTeX command such as \text or \nabla written with one backslash in a JavaScript string
+  // becomes a tab or a newline. No text in a representation should hold a control character.
+  const strings = (value: unknown): string[] =>
+    typeof value === "string"
+      ? [value]
+      : value && typeof value === "object"
+        ? Object.values(value).flatMap(strings)
+        : [];
+  it.each(BROWSER_FILTERS.map((f) => f.id))("%s has no control characters", (id) => {
+    const texts = strings(browserFilter(id)?.representation({}));
+    expect(texts.filter((s) => [...s].some((c) => c.charCodeAt(0) < 32))).toEqual([]);
+  });
+});

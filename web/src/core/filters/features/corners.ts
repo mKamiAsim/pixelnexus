@@ -1,6 +1,6 @@
 /**
- * Harris and Shi-Tomasi corner detectors. Catalog entries: catalog/filters/features/harris.yaml
- * and shi-tomasi.yaml.
+ * Corner detectors: Harris, Shi-Tomasi, Moravec and FAST. Catalog entries in
+ * catalog/filters/features/: harris.yaml, shi-tomasi.yaml, moravec.yaml and fast.yaml.
  *
  * Both read the image on a 0 to 1 scale and build the structure tensor as
  * skimage.feature.structure_tensor does: Sobel derivatives Ix and Iy, then a Gaussian of sigma,
@@ -14,7 +14,7 @@
  * agree. scikit-image applies its border rule at every stage instead, so the two agree away
  * from the border.
  */
-import { correlateSeparable } from "@/core/filters/convolve";
+import { boxMean, correlateSeparable } from "@/core/filters/convolve";
 import { SOBEL_DIFFERENCE, SOBEL_SMOOTHING } from "@/core/filters/edges/sobel";
 import { gaussianPlane, gaussianRadius } from "@/core/filters/linear/gaussian";
 import { extremePlane } from "@/core/filters/nonlinear/window";
@@ -131,3 +131,185 @@ function cornerFilter(measure: CornerMeasure): PlaneFilter {
 
 export const harrisFilter: PlaneFilter = { ...cornerFilter("harris"), id: "harris" };
 export const shiTomasiFilter: PlaneFilter = { ...cornerFilter("shi-tomasi"), id: "shi-tomasi" };
+
+/** Moravec compares a window with the window moved one pixel in these four directions. */
+const MORAVEC_SHIFTS = [
+  [1, 0],
+  [1, 1],
+  [0, 1],
+  [-1, 1],
+] as const;
+
+/**
+ * The Moravec response on a 0 to 1 scale: the smallest sum of squared differences between the
+ * window around a pixel and the window moved by one of the four shifts. Positions past the edge
+ * repeat the edge.
+ */
+export function moravecResponse(input: Plane, half: number): Plane {
+  const { width, height } = input;
+  const at = (x: number, y: number) =>
+    (input.data[
+      Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))
+    ] ?? 0) / 255;
+  const size = 2 * half + 1;
+  const out = createPlane(width, height, Infinity);
+  for (const [dx, dy] of MORAVEC_SHIFTS) {
+    const squared = createPlane(width, height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        squared.data[y * width + x] = (at(x, y) - at(x + dx, y + dy)) ** 2;
+      }
+    }
+    const sums = boxMean(squared, size, "replicate");
+    for (let i = 0; i < out.data.length; i++) {
+      out.data[i] = Math.min(out.data[i] ?? 0, (sums.data[i] ?? 0) * size * size);
+    }
+  }
+  return out;
+}
+
+/** The FAST circle of 16 pixels at radius 3, in order around it. */
+export const FAST_CIRCLE = [
+  [0, -3],
+  [1, -3],
+  [2, -2],
+  [3, -1],
+  [3, 0],
+  [3, 1],
+  [2, 2],
+  [1, 3],
+  [0, 3],
+  [-1, 3],
+  [-2, 2],
+  [-3, 1],
+  [-3, 0],
+  [-3, -1],
+  [-2, -2],
+  [-1, -3],
+] as const;
+
+/** True when at least n flags in a row are set, going around the circle. */
+function hasRun(flags: readonly boolean[], n: number): boolean {
+  let run = 0;
+  for (let k = 0; k < 2 * flags.length; k++) {
+    run = flags[k % flags.length] ? run + 1 : 0;
+    if (run >= n) return true;
+  }
+  return false;
+}
+
+/**
+ * The FAST score on a 0 to 1 scale. A pixel p is a corner when at least n circle pixels in a
+ * row are all brighter than I_p + t or all darker than I_p - t. Its score is the larger of the
+ * sums of |I - I_p| - t over the brighter and over the darker circle pixels. Other pixels score
+ * 0. Positions past the edge repeat the edge.
+ */
+export function fastScore(input: Plane, n: number, t: number): Plane {
+  const { width, height } = input;
+  const at = (x: number, y: number) =>
+    (input.data[
+      Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))
+    ] ?? 0) / 255;
+  const out = createPlane(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = at(x, y);
+      const ring = FAST_CIRCLE.map(([dx, dy]) => at(x + dx, y + dy));
+      const bright = ring.map((v) => v > p + t);
+      const dark = ring.map((v) => v < p - t);
+      if (!hasRun(bright, n) && !hasRun(dark, n)) continue;
+      let up = 0;
+      let down = 0;
+      ring.forEach((v, k) => {
+        if (bright[k]) up += v - p - t;
+        if (dark[k]) down += p - v - t;
+      });
+      out.data[y * width + x] = Math.max(up, down);
+    }
+  }
+  return out;
+}
+
+function pointFilter(
+  measure: "moravec" | "fast",
+  reach: (params: Params) => number,
+  score: (input: Plane, params: Params) => Plane,
+  stages: (params: Params) => { name: string; formula: string; note?: string }[],
+): PlaneFilter {
+  const total = (params: Params) =>
+    reach(params) + (cornersWanted(params) ? distanceOf(params) : 0);
+  return {
+    id: measure,
+    kind: "derived",
+    alphaWeighted: false,
+    radius: total,
+    plane: (input, params, { border }) => {
+      const r = total(params);
+      const values = score(padPlane(input, r, border), params);
+      const threshold =
+        measure === "fast" ? Number.MIN_VALUE : read.number(params, "threshold", 0.1);
+      const result = cornersWanted(params)
+        ? cornerPeaks(values, distanceOf(params), threshold)
+        : values;
+      return cropPlane(result, r);
+    },
+    representation: (params) => ({
+      kind: "stages",
+      stages: [
+        ...stages(params),
+        ...(cornersWanted(params)
+          ? [
+              {
+                name: "Corners",
+                formula: `R(p) ${measure === "fast" ? "> 0" : `\\ge ${read.number(params, "threshold", 0.1)}`} \\text{ and } R(p) = \\max_{|q - p|_\\infty \\le ${distanceOf(params)}} R(q)`,
+                note: "Corners become 255 and everything else 0.",
+              },
+            ]
+          : []),
+      ],
+    }),
+  };
+}
+
+const halfOf = (params: Params) => Math.max(1, Math.round(read.number(params, "window", 1)));
+
+export const moravecFilter: PlaneFilter = {
+  ...pointFilter(
+    "moravec",
+    (params) => halfOf(params) + 1,
+    (input, params) => moravecResponse(input, halfOf(params)),
+    (params) => [
+      {
+        name: "Shifted differences",
+        formula: `E_s(p) = \\sum_{|q|_\\infty \\le ${halfOf(params)}} \\left(I(p + q) - I(p + q + s)\\right)^2`,
+        note: "For the shifts s = (1, 0), (1, 1), (0, 1) and (-1, 1), on a 0 to 1 scale.",
+      },
+      { name: "Response", formula: "R(p) = \\min_s E_s(p)" },
+    ],
+  ),
+  id: "moravec",
+};
+
+const nOf = (params: Params) => Math.round(read.number(params, "n", 9));
+const tOf = (params: Params) => read.number(params, "threshold", 0.15);
+
+export const fastFilter: PlaneFilter = {
+  ...pointFilter(
+    "fast",
+    () => 3,
+    (input, params) => fastScore(input, nOf(params), tOf(params)),
+    (params) => [
+      {
+        name: "Segment test",
+        formula: `\\exists\\, ${nOf(params)} \\text{ circle pixels in a row with } I > I_p + ${tOf(params)} \\text{ or } I < I_p - ${tOf(params)}`,
+        note: "The circle has 16 pixels at radius 3. Values are on a 0 to 1 scale.",
+      },
+      {
+        name: "Score",
+        formula: `R(p) = \\max\\left(\\sum_{\\text{brighter}} \\left(I - I_p - ${tOf(params)}\\right),\\ \\sum_{\\text{darker}} \\left(I_p - I - ${tOf(params)}\\right)\\right)`,
+        note: "Pixels that fail the segment test score 0.",
+      },
+    ],
+  ),
+  id: "fast",
+};

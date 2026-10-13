@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="150.24pt" viewBox="0 0 360 150.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 150.24 
+L 360 150.24 
+L 360 0 
+L 0 0 
+L 0 150.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#pc03f398108)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAABqklEQVR4nO3cUU7DQBAEUcfiMD5RDjmXhH8kRALeqWm76huJTb8skgXkcRzH52ZYO/etTYABeQPgBIATAE4AOAHgBIATAE4AOAHgPl79wqraiJ7P53blvAFwAsAJACcAnABwAsAJkPIckFo1P7+8+9ziDYATAE4AOAHgBIATAE4AOAHgBIATAE4AOAHgBIATAE6AlN8HXP3vc6i8AXACwAkAJwCcAHACwAkA9/CzIti8AXACwAkAJwCcAHACwAkAJwCcAHACwAkAFw9Q0GdYnFU8QHr7Fd79FXwLYgHq2+ipCJEA9cPYiQhxAPXLyGkIUQD14rhJCDEA9eaoKQgRAPXHMRMQxgPUP0ecjjAaoE4abzLCaIA7NBagTn7XTr0FIwFq0VgTEcYB1OKRpiGMAqimcSYhjAGo5lGmIIwAKGiMCQg4QMEj0N9/v/OLn3CO/e7j0+fBfwTdPQRg2rufPFc7wNTxqfO1AkwfnzhnG0DK+N3nbQFIG7/z3MsBUsfvOv9SgPTxO17HMoCrjL/69fif8nA+CcMJACcAnABwAsAJACcAnABwAmxsX4BjdcGmULYZAAAAAElFTkSuQmCC" id="imagec699247750" width="96" height="96" transform="matrix(1.191667 0 0 1.191667 3.6 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="60.8" y="13.92" transform="rotate(-0 60.8 13.92)">Shapes</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p53cb4bb9ee)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAABvUlEQVR4nO3dwW2DQBBA0bGVChD0QDeudWtwE7gGJLdAtFIOyQ3HYT87+U9CuVjaxF8EZoWTS0RsIcyVW1oGOAHPAJgBYAaAGQBmAJgBYAaAGQBmANjH3hcuyxLrusbz+Yzb7XboN1VKiWEYYpqmmOc5Mtt9BrR686u6Rl2rrvkfbHuOUsqu1/3lUYA1Wx8Xt6NZXoRhBoAZAGaAXuaAXi0N5pd35pb0Z8DaYH55d27B74UjySzxm7WcA2DpfwWdnQFgBoAZAGYAmAFgBoAZAGaAXgLUDafWCrDmaQPU3b6Wb0j52mHMbneAutXaKkL5tr2bnZtxMC/CMAPADAAzACx9gNL41vlV6QMMjW+dX5U+wNRgfnlnbnEOgKU/A87OADADwAwAMwDMADADwAwAMwDMADADwLoPsG31gyb96j7A4/GInnUd4H6///jaI7ejYV2fARkYAGYAmAFgBoAZAGYAmAFgBoAZAGYAmAFgBoAZAGYAmAFgBoAZAGYAmAFgBoAZAGYAmAEyB6h/zr33f0W1HvwzXI98aHYcx8hgHMfDHgL20USY1wCYAWAGgBkAZgCYAWAGgBkAZoBgfQJwfThOgNruWQAAAABJRU5ErkJggg==" id="image45b75d3a57" width="96" height="96" transform="matrix(1.191667 0 0 1.191667 122.8 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="180" y="13.92" transform="rotate(-0 180 13.92)">Score</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#p280aee43df)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAABHklEQVR4nO3cwQ3DIBAAQZL+e74oLeTBGjLTALJWIBmf/FprzSLz7pZGgAewA2ICxASICRATICZATICYADEBTgkws//KaII1d3u5jGs5gmICxASICRATICZA7PoAs/Fd4pe1vAfErt8BTydATICYADEBYgLEBIgJEBMgJkBMgJgAMQFixlJirqNjjqCYADEBYgLEBIgJELs+wBhL4a93wNMJEBMgJkBMgJgAMQFiAsQEiAkQEyB2fIA5/H8SPsrHjt8BpxMgJkBMgJgAMQFiAsQEiAkQEyAmQEyAmAAxAWICxASICRATICZATICYADEBYgLEBIgJEBMgJsCtAb5Ds6cPzu54FsO5MUdQTICYADEBYgLEBIgJEBMgJsBqfQBnpi6McQnBmAAAAABJRU5ErkJggg==" id="image010cc14739" width="96" height="96" transform="matrix(1.191667 0 0 1.191667 242 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="299.2" y="13.92" transform="rotate(-0 299.2 13.92)">Corner points</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc03f398108">
+   <rect x="3.6" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p53cb4bb9ee">
+   <rect x="122.8" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+  <clipPath id="p280aee43df">
+   <rect x="242" y="17.92" width="114.4" height="114.4"/>
+  </clipPath>
+ </defs>
+</svg>

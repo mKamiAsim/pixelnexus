@@ -141,6 +141,8 @@ const CASES: [string, Params][] = [
   ["matched-vessel", { sigma: 1, length: 5, output: "angle", outputMapping: "clip" }],
   ["harris", { sigma: 1, output: "corners", distance: 2, threshold: 0.001, border: "wrap" }],
   ["shi-tomasi", { sigma: 1.5, output: "corners", threshold: 0.005, outputMapping: "clip" }],
+  ["moravec", { window: 1, output: "corners", threshold: 0.2, outputMapping: "clip" }],
+  ["fast", { n: 9, threshold: 0.1, output: "corners", border: "reflect" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

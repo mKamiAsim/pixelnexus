@@ -1,8 +1,137 @@
 id: fast
-name: FAST
+name: FAST corner detector
+aliases: [Features from accelerated segment test]
 family: features
+tags: [purpose:analysis]
 tier: core
 engine: browser
 phase: 5c
-status: planned
-planNotes: With non-maximum suppression.
+status: implemented-tested
+
+summary: Finds corners by testing a circle of 16 pixels for a long run of pixels that are all brighter or all darker.
+purpose: Find many corner points quickly, for tracking and matching.
+classification: {linearity: nonlinear, domain: spatial, operation: segment test on a circle}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/features/corners.ts, symbol: fastScore}
+supportRadius: 3, plus the minimum distance for the corners output
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  processed on its own.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full support, so strips
+  and whole images agree.
+
+params:
+  - key: n
+    label: Run length
+    type: number
+    min: 9
+    max: 16
+    step: 1
+    default: 9
+    description: How many circle pixels in a row must all be brighter or all be darker.
+    effect: Larger values keep only sharper corners.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.15
+    description: How much brighter or darker a circle pixel must be than the center. Values are on a 0 to 1 scale.
+    effect: Higher values keep fewer corners with more contrast.
+  - key: output
+    label: Output
+    type: select
+    default: response
+    options:
+      - {value: response, label: FAST score}
+      - {value: corners, label: Corner points}
+    description: The score at every pixel, or the corner points as white pixels.
+    effect: Corner points keep local maxima with a score above 0.
+  - key: distance
+    label: Minimum distance
+    type: number
+    min: 1
+    max: 20
+    step: 1
+    default: 1
+    unit: px
+    description: A corner must have the largest score within this many pixels in x and in y.
+    effect: Larger values keep fewer corners that lie farther apart.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  R(p) = \max\left(\sum_{x \in S_b} \left(I_x - I_p - t\right),\ \sum_{x \in S_d} \left(I_p - I_x - t\right)\right) \;\text{ if } p \text{ passes the segment test, else } 0
+formulaExplanation: >-
+  The circle holds 16 pixels at radius 3 around p. S_b holds the circle pixels brighter than
+  I_p + t and S_d those darker than I_p - t. The segment test passes when at least n circle
+  pixels in a row are all in S_b or all in S_d. Rosten and Drummond proposed this score for
+  non-maximum suppression. Values are on a 0 to 1 scale. The corners output keeps pixels with a
+  score above 0 that are the largest within the minimum distance. The segment test gives the
+  same corners as skimage.feature.corner_fast, whose score is computed differently.
+symbols:
+  - {symbol: 'I_p', meaning: The value at the center}
+  - {symbol: 't', meaning: The threshold}
+  - {symbol: 'S_b, S_d', meaning: The brighter and the darker circle pixels}
+  - {symbol: 'n', meaning: The run length}
+steps:
+  - Extend the image by the support with the border mode and scale it to 0 to 1.
+  - Read the 16 circle pixels around each pixel.
+  - Test for a run of n circle pixels that are all brighter or all darker.
+  - Score the pixels that pass, and give 0 to the rest.
+  - For corner points, keep the local maxima of the score, and cut the extension off.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each pixel reads 16 others.
+useCases:
+  - Corner points for tracking in video.
+  - The first step of ORB and other feature methods.
+advantages:
+  - Very fast, with only comparisons and sums.
+  - Rotation invariant up to the sampling of the circle.
+limitations:
+  - Not scale invariant. One circle size fits one corner size.
+  - Sensitive to noise, since single pixels decide the test.
+artifacts:
+  - Clusters of corners along strong curved edges when the threshold is low.
+references:
+  - kind: paper
+    text: Rosten, E. and Drummond, T. Machine learning for high-speed corner detection. European Conference on Computer Vision, Lecture Notes in Computer Science 3951, 430 to 443, 2006.
+    doi: 10.1007/11744023_34
+  - kind: library
+    text: scikit-image documentation, skimage.feature.corner_fast.
+    url: https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.corner_fast
+implementation: {path: web/src/core/filters/features/corners.ts, symbol: fastFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Look at a ring of 16 pixels. If a long stretch of it is all brighter or all darker than the center, it is a corner.
+  howItWorks:
+    - Read 16 pixels on a small circle around each pixel.
+    - Look for a long run of them that are all clearly brighter or all clearly darker.
+    - Score the corners and keep the best one in each small area.
+  academic: >-
+    The accelerated segment test of Rosten and Drummond, with the sum of absolute differences
+    above the threshold as the score for non-maximum suppression.
+  paramNotes:
+    n: The run length.
+    threshold: The contrast a circle pixel needs.
+    output: Score map or points.
+    distance: How close two corners may be.
+  tryThis:
+    - Show the corner points on the Checkerboard and raise the threshold.
+  pitfalls:
+    - A threshold for 0 to 255 values. Values are on a 0 to 1 scale.
+  demos: [line-profile]
+related: [harris, shi-tomasi, moravec, orb]
+docsPage: filters/features/fast.md

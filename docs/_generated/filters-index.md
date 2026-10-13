@@ -69,11 +69,13 @@
 | [Sobel](edges/sobel.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels. | Implemented and tested |
 | [Sobel with non-maximum suppression](edges/sobel-nms.md) | Edge detection and boundary analysis | Keeps the Sobel magnitude only where it peaks across the edge, which thins edges to one pixel. | Implemented and tested |
 | [Zero-crossing detector](edges/zero-crossing.md) | Edge detection and boundary analysis | Marks the pixels where a signed response changes sign, such as a Laplacian shown with the offset mapping. | Implemented and tested |
+| [FAST corner detector](features/fast.md) | Texture, corners, blobs and features | Finds corners by testing a circle of 16 pixels for a long run of pixels that are all brighter or all darker. | Implemented and tested |
 | [Gabor filter bank](features/gabor-bank.md) | Texture, corners, blobs and features | Many Gabor filters at several scales and orientations, combined into one texture or orientation map. | Implemented and tested |
 | [Harris corner detector](features/harris.md) | Texture, corners, blobs and features | Finds corners, where the brightness changes strongly in every direction, from the structure tensor. | Implemented and tested |
 | [Laws' texture energy filters](features/laws.md) | Texture, corners, blobs and features | Measures texture energy with 5x5 masks built from Laws' level, edge, spot, wave and ripple vectors. | Implemented and tested |
 | [Line detectors](features/line-detector.md) | Texture, corners, blobs and features | Finds thin bright lines with four 3x3 masks for horizontal, vertical and the two diagonal directions. | Implemented and tested |
 | [Matched vessel filter](features/matched-vessel.md) | Texture, corners, blobs and features | Finds thin dark or bright lines with a Gaussian profile, such as blood vessels, by matching kernels in many directions. | Implemented and tested |
+| [Moravec corner detector](features/moravec.md) | Texture, corners, blobs and features | Finds corners as points where a small window changes in every direction it is moved. | Implemented and tested |
 | [Shi-Tomasi](features/shi-tomasi.md) | Texture, corners, blobs and features | Finds corners by the smaller eigenvalue of the structure tensor, the measure behind Good features to track. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
