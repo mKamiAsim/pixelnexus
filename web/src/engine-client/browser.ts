@@ -105,7 +105,9 @@ export class BrowserEngine implements EngineClient {
     const workerPool = this.getPool();
     const workers = workerPool?.size ?? 1;
 
-    const needed = estimateJobBytes(region, halo, workers);
+    const needed = filter.global
+      ? estimateJobBytes(fullRect(image), halo, 1)
+      : estimateJobBytes(region, halo, workers);
     const budget = memoryBudget();
     if (needed > budget) {
       const mb = (bytes: number) => Math.round(bytes / 1024 ** 2);
@@ -127,7 +129,9 @@ export class BrowserEngine implements EngineClient {
       };
     }
 
-    const strips = planStrips(region, halo, workers);
+    // A global filter runs as one tile made of the whole image, and the region is cut out.
+    const strips = filter.global ? [region] : planStrips(region, halo, workers);
+    const source = (strip: Rect) => (filter.global ? fullRect(image) : strip);
     const transparent = isTransparent(image);
     const border = borderOf(params);
     const mapping = mappingOf(params);
@@ -137,8 +141,9 @@ export class BrowserEngine implements EngineClient {
 
     const tasks = (statsOnly: boolean, range?: ValueRange): TileTask[] =>
       strips.map((strip) => () => {
-        const padded = padRegion(image, strip, halo, border);
-        const guide = job.guide ? padRegion(job.guide, strip, halo, border) : null;
+        const tile = source(strip);
+        const padded = padRegion(image, tile, halo, border);
+        const guide = job.guide ? padRegion(job.guide, tile, halo, border) : null;
         return {
           type: "tile",
           filterId: filter.id,
@@ -149,6 +154,7 @@ export class BrowserEngine implements EngineClient {
           ...(guide ? { guideBuffer: guide.data.buffer } : {}),
           halo,
           core: strip,
+          origin: { x: tile.x - halo, y: tile.y - halo },
           transparent,
           mapping,
           range,

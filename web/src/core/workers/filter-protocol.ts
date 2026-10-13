@@ -17,6 +17,8 @@ export interface TileRequest {
   readonly halo: number;
   /** The tile without its halo, in image coordinates. */
   readonly core: Rect;
+  /** Image position of the padded tile's top-left pixel. Defaults to the core minus the halo. */
+  readonly origin?: { readonly x: number; readonly y: number };
   /** True when the whole source image has transparency. See ProcessOptions in run.ts. */
   readonly transparent: boolean;
   readonly mapping: OutputMapping;

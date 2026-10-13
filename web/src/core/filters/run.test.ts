@@ -156,6 +156,31 @@ describe("a region gives the same pixels as the whole image", () => {
     }
   });
 
+  it("runs a global filter on the whole image", () => {
+    // Each value minus the plane mean, so every pixel depends on the whole image.
+    const centered = (global: boolean): BrowserFilter => ({
+      id: "centered",
+      kind: "derived",
+      alphaWeighted: false,
+      global,
+      radius: () => 1,
+      plane: (input) => {
+        const mean = input.data.reduce((a, b) => a + b, 0) / input.data.length;
+        return { ...input, data: input.data.map((v) => v - mean) };
+      },
+      representation: () => ({ kind: "generator", description: "Each value minus the mean." }),
+    });
+    const params = { outputMapping: "offset" };
+    const whole = runFilter(image, centered(true), params).image;
+    for (const region of regions) {
+      expect(runFilter(image, centered(true), params, region).image.data).toEqual(
+        crop(whole, region).data,
+      );
+    }
+    const local = runFilter(image, centered(false), params, regions[1]).image.data;
+    expect(local).not.toEqual(crop(whole, regions[1] as Rect).data);
+  });
+
   it("covers every registered filter", () => {
     const tested = new Set(CASES.map(([id]) => id));
     expect(BROWSER_FILTERS.filter((f) => !tested.has(f.id)).map((f) => f.id)).toEqual([]);

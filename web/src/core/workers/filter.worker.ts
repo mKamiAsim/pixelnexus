@@ -26,9 +26,11 @@ scope.onmessage = (event: MessageEvent<TileRequest>) => {
       height: request.height,
       data: new Uint8ClampedArray(request.buffer),
     };
+    const originX = request.origin?.x ?? request.core.x - request.halo;
+    const originY = request.origin?.y ?? request.core.y - request.halo;
     const processed = processImage(padded, filter, request.params, {
-      originX: request.core.x - request.halo,
-      originY: request.core.y - request.halo,
+      originX,
+      originY,
       transparent: request.transparent,
       ...(request.guideBuffer
         ? {
@@ -40,12 +42,17 @@ scope.onmessage = (event: MessageEvent<TileRequest>) => {
           }
         : {}),
     });
+    const offsetX = request.core.x - originX;
+    const offsetY = request.core.y - originY;
     const core =
-      request.halo === 0
+      offsetX === 0 &&
+      offsetY === 0 &&
+      request.width === request.core.width &&
+      request.height === request.core.height
         ? processed
         : cropProcessed(processed, {
-            x: request.halo,
-            y: request.halo,
+            x: offsetX,
+            y: offsetY,
             width: request.core.width,
             height: request.core.height,
           });

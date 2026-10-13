@@ -62,6 +62,9 @@ export const fullRect = (image: { width: number; height: number }): Rect => ({
   height: image.height,
 });
 
+const sameRect = (a: Rect, b: Rect) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
 export function borderOf(params: Params): BorderMode {
   return isBorderMode(params.border) ? params.border : "reflect101";
 }
@@ -363,6 +366,10 @@ export function processRegion(
   transparent: boolean,
   guide?: RgbaImage,
 ): Processed {
+  const whole = fullRect(image);
+  if (filter.global && !sameRect(region, whole)) {
+    return cropProcessed(processRegion(image, filter, params, whole, transparent, guide), region);
+  }
   const halo = filter.radius(params);
   const padded = padRegion(image, region, halo, borderOf(params));
   const processed = processImage(padded, filter, params, {

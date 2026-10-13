@@ -95,6 +95,12 @@ interface FilterBase {
   readonly id: string;
   /** Halo in pixels that a region needs around it. 0 for point and pixel operations. */
   radius(params: Params): number;
+  /**
+   * True when a pixel can depend on pixels anywhere in the image, as in hysteresis, which
+   * follows edges as far as they go. Such filters always run on the whole image in one tile,
+   * and the region is cut out of the result.
+   */
+  readonly global?: boolean;
   /** The operator, for the Inspector. Built by the same code that the filter runs. */
   representation(params: Params): Representation;
 }
