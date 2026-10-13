@@ -275,6 +275,7 @@ nav:
           - Tikhonov regularization: filters/restoration/tikhonov.md
           - Constrained least squares: filters/restoration/cls.md
           - Richardson-Lucy: filters/restoration/richardson-lucy.md
+          - Regularized Richardson-Lucy: filters/restoration/regularized-rl.md
           - Landweber iteration: filters/restoration/landweber.md
           - Non-negative least-squares deconvolution: filters/restoration/nnls-deconv.md
       - Utility:

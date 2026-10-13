@@ -1,8 +1,171 @@
 id: regularized-rl
 name: Regularized Richardson-Lucy
+aliases: [Richardson-Lucy with total variation, RL-TV deconvolution]
 family: restoration
+tags: [purpose:sharpening]
 tier: core
 engine: browser
 phase: 5e
-status: planned
-planNotes: TV regularization (Dey et al.).
+status: implemented-tested
+
+summary: Richardson-Lucy deconvolution with a total variation term that keeps flat areas flat, so more iterations raise less noise.
+purpose: Deblur noisy images with many iterations while holding back the speckle that plain Richardson-Lucy builds up.
+classification: {linearity: nonlinear, domain: iterative, operation: regularized multiplicative iterative deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/iterative.ts, symbol: iterate}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: How many update steps to run.
+    effect: More iterations restore more detail, and after a point also raise the noise.
+  - key: lambda
+    label: Lambda
+    type: number
+    min: 0
+    max: 0.1
+    step: 0.001
+    default: 0.002
+    description: The weight lambda of the total variation term. 0 gives plain Richardson-Lucy.
+    effect: Higher values keep flat areas flatter and remove more noise, and also flatten fine texture.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  f_{k+1} = \frac{f_k}{1 - \lambda \operatorname{div}\left(\frac{\nabla f_k}{|\nabla f_k|}\right)} \cdot \left( h' \circledast \frac{g}{h \circledast f_k} \right),\quad \lambda = {{lambda}}
+formulaExplanation: >-
+  This is the update of Dey and colleagues. The Richardson-Lucy step is divided by 1 - lambda
+  times the curvature div(grad f / |grad f|), which comes from a total variation penalty. Where
+  the estimate has a bump, the curvature is negative and the bump is lowered. Flat areas and
+  straight edges are left alone. The gradient uses forward differences and the divergence
+  backward differences, with |grad f| computed as sqrt(f_x^2 + f_y^2 + 0.01^2), wrapping around
+  the FFT grid. These discretization choices are this filter's own. The divergence of unit
+  vectors lies between -4 and 4, so with lambda at most 0.1 the divisor stays above 0.6.
+  The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
+  - {symbol: '\lambda', meaning: The weight of the total variation term}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with the estimate f equal to the extended image g.
+  - Compute the curvature div(grad f / |grad f|) of the estimate.
+  - Take the Richardson-Lucy step and divide it by 1 - lambda times the curvature.
+  - Repeat for the chosen number of iterations.
+  - Crop the last estimate to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations.
+useCases:
+  - Confocal and fluorescence microscopy, the use of Dey and colleagues.
+  - Deblurring noisy images with many iterations.
+advantages:
+  - Holds back the noise that plain Richardson-Lucy raises after many iterations.
+  - Keeps edges sharp, since total variation allows jumps.
+limitations:
+  - Flattens fine texture into patches when lambda is high.
+  - As slow as Richardson-Lucy, plus the curvature at each step.
+artifacts:
+  - Flat patches, a staircase look, in smooth gradients at high lambda.
+references:
+  - kind: paper
+    text: Dey, N., Blanc-Feraud, L., Zimmer, C., Roux, P., Kam, Z., Olivo-Marin, J.-C. and Zerubia, J. Richardson-Lucy algorithm with total variation regularization for 3D confocal microscope deconvolution. Microscopy Research and Technique 69(4), 260 to 266, 2006.
+    doi: 10.1002/jemt.20294
+implementation: {path: web/src/core/filters/restoration/iterative.ts, symbol: regularizedRlFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/restoration/restoration.test.ts]
+learn:
+  oneSentence: Richardson-Lucy that also keeps flat areas flat, so noise does not grow into speckle.
+  howItWorks:
+    - Take a Richardson-Lucy step.
+    - Measure where the estimate bends, its curvature.
+    - Lower bumps and fill dips a little, by dividing by 1 - lambda times the curvature.
+    - Repeat.
+  academic: >-
+    Richardson-Lucy deconvolution with total variation regularization, the multiplicative
+    one-step-late scheme of Dey and colleagues.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    iterations: How long to refine the guess.
+    lambda: How strongly flat areas are kept flat.
+  tryThis:
+    - Run 100 iterations with lambda 0 and with lambda 0.005, and compare the flat areas.
+  pitfalls:
+    - A high lambda on a textured image. The texture turns into flat patches.
+  demos: [iteration-viewer, noise-lab]
+related: [richardson-lucy, tv-deblur, landweber]
+docsPage: filters/restoration/regularized-rl.md

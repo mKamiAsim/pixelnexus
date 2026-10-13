@@ -9,6 +9,11 @@ export function iterativeDocs(h) {
   const noisy = run(blurred, "noise-gaussian", { sigma: 2, seed: 7, monochrome: true });
   const specs = {
     "richardson-lucy": { name: "Richardson-Lucy", params: blur, counts: [5, 50] },
+    "regularized-rl": {
+      name: "Regularized Richardson-Lucy",
+      params: { ...blur, lambda: 0.002 },
+      counts: [5, 50],
+    },
     landweber: { name: "Landweber", params: { ...blur, tau: 1.5 }, counts: [5, 50] },
     "nnls-deconv": { name: "Projected Landweber", params: { ...blur, tau: 1.5 }, counts: [5, 50] },
   };
@@ -44,7 +49,7 @@ export function iterativeDocs(h) {
           ],
         ],
       ) +
-        `\nThe PSNR against the clean disks for the image of the figure, ${psnr(noisy)} dB before the filter${id === "richardson-lucy" ? "" : ", with step size 1.5"}. The value rises while the iterations restore detail. When it falls again, the iterations have started to raise the noise, so stopping early acts as regularization.\n`,
+        `\nThe PSNR against the clean disks for the image of the figure, ${psnr(noisy)} dB before the filter${id === "richardson-lucy" ? "" : id === "regularized-rl" ? ", with lambda 0.002" : ", with step size 1.5"}. The value rises while the iterations restore detail. When it falls again, the iterations have started to raise the noise, so stopping early acts as regularization.\n`,
     );
   }
 }
