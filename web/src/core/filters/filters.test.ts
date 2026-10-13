@@ -10,7 +10,7 @@ import { firTaps, type FirWindow } from "./linear/fir-lowpass";
 import { motionKernel } from "./linear/motion-blur";
 import { borderIndex, createPlane, isBorderMode, type BorderMode, type Plane } from "./planes";
 import { browserFilter, BROWSER_FILTERS } from "./registry";
-import type { Params, PlaneFilter } from "./types";
+import type { ColorFilter, Params, PlaneFilter } from "./types";
 
 interface FilterCase {
   filter: string;
@@ -36,6 +36,7 @@ const fixtures = JSON.parse(
   motionKernels: { length: number; angle: number; rows: number[][] }[];
   firTaps: { taps: number; cutoff: number; window: FirWindow; beta: number; output: number[] }[];
   diskKernels: { radius: number; rows: number[][] }[];
+  color: { width: number; height: number; input: number[]; cases: FilterCase[] };
 };
 
 const input: Plane = {
@@ -84,6 +85,33 @@ describe("browser filters against SciPy and scikit-image", () => {
       worst = Math.max(worst, Math.abs(v - expected) / Math.max(1, Math.abs(expected)));
     });
     expect(worst, `largest relative difference from ${c.source}`).toBeLessThan(fixtures.tolerance);
+  });
+});
+
+describe("color filters against NumPy and SciPy", () => {
+  const { width, height, input: rgb, cases } = fixtures.color;
+  const planes = [0, 1, 2].map((c) => ({
+    width,
+    height,
+    data: Float32Array.from({ length: width * height }, (_, i) => rgb[i * 3 + c] ?? 0),
+  })) as [Plane, Plane, Plane];
+  it.each(cases.map((c) => [describeCase(c), c] as const))("%s", (_name, c) => {
+    const filter = browserFilter(c.filter) as ColorFilter;
+    expect(filter.kind).toBe("color");
+    const out = filter.color(planes, c.params, {
+      border: c.params.border,
+      originX: 0,
+      originY: 0,
+      channel: 0,
+    });
+    let worst = 0;
+    for (let i = 0; i < width * height; i++) {
+      for (let ch = 0; ch < 3; ch++) {
+        const expected = c.output[i * 3 + ch] ?? NaN;
+        worst = Math.max(worst, Math.abs((out[ch].data[i] ?? NaN) - expected));
+      }
+    }
+    expect(worst, `largest difference from ${c.source}`).toBeLessThan(fixtures.tolerance);
   });
 });
 

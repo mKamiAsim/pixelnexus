@@ -1003,6 +1003,11 @@ try {
 
   const { rankDocs } = await import("./filter-docs/rank.mjs");
   rankDocs({ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic });
+  const { impulseDocs } = await import("./filter-docs/impulse.mjs");
+  impulseDocs({
+    ...{ run, pic, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
+    browserFilter,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

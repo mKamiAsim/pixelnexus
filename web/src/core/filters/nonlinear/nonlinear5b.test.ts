@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { createPlane, type Plane } from "@/core/filters/planes";
 
+import { medianOf } from "@/core/filters/restoration/dead-pixel";
+
+import { adaptiveSizes } from "./adaptive-median";
 import { alphaTrimmedMeanFilter, contraharmonicPlane, geometricMeanFilter, trimOf } from "./means";
 import { histogramMode } from "./mode";
 import { chosenRank } from "./rank-order";
+import { switchValue } from "./switching-median";
+import { vectorMedianIndex } from "./vector-median";
 import { DEFAULT_WEIGHTS, medianWeights, weightedMedianPlane } from "./weighted-median";
 import { extremePlane, rankPlane, windowSum } from "./window";
 
@@ -108,5 +113,31 @@ describe("mode and weighted median", () => {
       "reflect101",
     );
     expect(plain.data[4]).toBe(10);
+  });
+});
+
+describe("impulse filters", () => {
+  it("switch to the median only past the threshold", () => {
+    expect(switchValue(200, 60, 40)).toBe(60);
+    expect(switchValue(90, 60, 40)).toBe(90);
+    expect(switchValue(100, 60, 40)).toBe(100);
+  });
+
+  it("grow the adaptive window from 3 to the largest odd size", () => {
+    expect(adaptiveSizes(7)).toEqual([3, 5, 7]);
+    expect(adaptiveSizes(3)).toEqual([3]);
+  });
+
+  it("pick the central color as the vector median, and the first one on a tie", () => {
+    const red = [255, 0, 0];
+    const dark = [10, 10, 10];
+    const mid = [100, 100, 100];
+    expect(vectorMedianIndex(Float64Array.from([...red, ...mid, ...dark]), 3, "l2")).toBe(1);
+    expect(vectorMedianIndex(Float64Array.from([...mid, ...mid]), 2, "l1")).toBe(0);
+  });
+
+  it("take the mean of the two middle values for an even count", () => {
+    expect(medianOf(Float64Array.from([9, 1, 5, 3]), 4)).toBe(4);
+    expect(medianOf(Float64Array.from([9, 1, 5]), 3)).toBe(5);
   });
 });

@@ -1,8 +1,126 @@
 id: dead-pixel
 name: Dead-pixel correction
+aliases: [Hot pixel removal, Stuck pixel repair]
 family: restoration
+tags: [purpose:denoise, noise:impulse]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Outlier against the local median, then repair.
+
+summary: Finds pixels that differ strongly from the median of their neighbors and replaces them with that median.
+purpose: Repair dead, stuck or hot sensor pixels in photos and scans.
+classification: {linearity: nonlinear, domain: spatial, operation: outlier detection and repair}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/dead-pixel.ts, symbol: neighborMedians}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  The three channels are tested together. If any channel differs from its neighbor median by
+  more than the threshold, all three are replaced, because a defect usually spoils the whole
+  pixel. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 7
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: The neighbors are this window without its center pixel.
+    effect: Use 5 when defects come in pairs or small clusters.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 1
+    max: 255
+    step: 1
+    default: 50
+    description: How far a channel may differ from the neighbor median before the pixel counts as defective.
+    effect: Lower values find fainter defects, but may also hit real fine detail.
+  - key: output
+    label: Show
+    type: select
+    default: repaired
+    options:
+      - {value: repaired, label: Repaired image}
+      - {value: mask, label: Detected pixels}
+    description: Show the repaired image, or white dots where defects were found.
+    effect: Use Detected pixels to check the threshold before you repair.
+  - ref: border
+
+formula: |
+  d(x,y) = \max_{c} \bigl| I_c(x,y) - m_c(x,y) \bigr|,
+  \qquad
+  I_{\text{out},c}(x,y) =
+  \begin{cases}
+  m_c(x,y) & d(x,y) > T \\
+  I_c(x,y) & \text{otherwise}
+  \end{cases}
+formulaExplanation: >-
+  m_c is the median of channel c over the neighbors, the window without the pixel itself. The
+  pixel is left out, so a defect cannot pull its own reference. The neighbor count is even, so
+  the median is the mean of the two middle values. A pixel whose largest channel difference
+  d is above T is defective, and all its channels get the neighbor medians.
+symbols:
+  - {symbol: 'm_c(x, y)', meaning: 'Median of channel c over the neighbors of (x, y)'}
+  - {symbol: 'd(x, y)', meaning: The largest channel difference to the neighbor median}
+  - {symbol: 'T', meaning: The threshold}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel and channel, find the median of the neighbors, without the pixel itself.
+  - Find the largest channel difference between the pixel and those medians.
+  - Where it is above the threshold, write the medians. Elsewhere keep the pixel, or write the detection mask.
+complexity:
+  time: O(N\,k^2 \log k)
+  memory: O(N)
+  notes: N is the number of pixels and k is the window width. Each window of k^2 - 1 neighbors is sorted per channel.
+useCases:
+  - Repair hot pixels in long exposures and night photos.
+  - Repair stuck or dead pixels from a faulty sensor or a scanner.
+advantages:
+  - Changes only the defective pixels. All others keep their exact values.
+  - The detection view shows what will be repaired.
+limitations:
+  - Stars, specular highlights and other real one-pixel details look like defects and may be removed.
+  - Clusters larger than half the window are not found.
+artifacts:
+  - A small flat spot where a real fine detail was taken as a defect.
+references:
+  - kind: paper
+    text: Sun, T. and Neuvo, Y. Detail-preserving median based filters in image processing. Pattern Recognition Letters 15(4), 341 to 347, 1994.
+    doi: 10.1016/0167-8655(94)90082-5
+  - kind: library
+    text: NumPy documentation, numpy.median.
+    url: https://numpy.org/doc/stable/reference/generated/numpy.median.html
+implementation: {path: web/src/core/filters/restoration/dead-pixel.ts, symbol: deadPixelFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: A pixel that looks nothing like its neighbors is replaced by what its neighbors suggest.
+  howItWorks:
+    - Find the median of the neighbors of the pixel, without the pixel itself.
+    - If the pixel is far from that median in any channel, call it defective.
+    - Replace a defective pixel by the neighbor medians and keep all other pixels.
+  academic: >-
+    A switching filter with a leave-one-out median as the reference. Leaving the center out
+    keeps a defect from pulling its own reference. Detection uses the largest channel
+    difference, because sensor defects usually affect a whole pixel.
+  paramNotes:
+    threshold: The largest channel difference that still counts as a real value.
+    output: Detected pixels shows white dots where the filter would repair.
+  tryThis:
+    - Add 1 percent salt-and-pepper noise. Set Show to Detected pixels and raise the threshold until only the specks are white.
+  pitfalls:
+    - Running it on star fields with a low threshold. The stars are removed too.
+  demos: [line-profile]
+related: [switching-median, mad-outlier, median]
+docsPage: filters/restoration/dead-pixel.md

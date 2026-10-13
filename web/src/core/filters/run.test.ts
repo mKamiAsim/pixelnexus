@@ -78,6 +78,11 @@ const CASES: [string, Params][] = [
   ["harmonic-mean", { size: 5, channelScope: "luminance" }],
   ["contraharmonic-mean", { size: 3, order: -1.5, border: "wrap" }],
   ["weighted-median", { weights: "1 2 3 2 1", border: "reflect" }],
+  ["adaptive-median", { maxSize: 7, border: "replicate" }],
+  ["switching-median", { size: 5, threshold: 30 }],
+  ["vector-median", { size: 3, norm: "l1", border: "wrap" }],
+  ["dead-pixel", { size: 5, threshold: 40, border: "constant" }],
+  ["mad-outlier", { size: 5, t: 2.5, output: "mark" }],
 ];
 
 describe("a region gives the same pixels as the whole image", () => {

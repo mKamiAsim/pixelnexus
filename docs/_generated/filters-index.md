@@ -15,6 +15,7 @@
 | [Triangular filter](linear/triangular.md) | Linear spatial filters | Blurs with weights that rise in equal steps to the center and fall again. | Implemented and tested |
 | [Unsharp mask](linear/unsharp-mask.md) | Linear spatial filters | Sharpens by adding back the detail that a Gaussian blur removes. | Implemented and tested |
 | [Weighted average filter](linear/weighted-average.md) | Linear spatial filters | Filters with a kernel that you type, divided by its sum when you ask. | Implemented and tested |
+| [Adaptive median filter](nonlinear/adaptive-median.md) | Nonlinear spatial filters | A median filter whose window grows where the noise is dense, and that keeps pixels that are not noise. | Implemented and tested |
 | [Alpha-trimmed mean filter](nonlinear/alpha-trimmed-mean.md) | Nonlinear spatial filters | Drops the smallest and largest values of each window and averages the rest. | Implemented and tested |
 | [Contraharmonic mean filter](nonlinear/contraharmonic-mean.md) | Nonlinear spatial filters | A ratio of power sums with order Q. Positive Q removes pepper noise and negative Q removes salt noise. | Implemented and tested |
 | [Geometric mean filter](nonlinear/geometric-mean.md) | Nonlinear spatial filters | Replaces each pixel with the geometric mean of its window, the root of the product of the values. | Implemented and tested |
@@ -25,10 +26,14 @@
 | [Min filter](nonlinear/min.md) | Nonlinear spatial filters | Replaces each pixel with the smallest value of its window. | Implemented and tested |
 | [Mode filter](nonlinear/mode.md) | Nonlinear spatial filters | Replaces each pixel with the value that occurs most often in its window. | Implemented and tested |
 | [Rank-order filter](nonlinear/rank-order.md) | Nonlinear spatial filters | Sorts each window and keeps the value at a chosen rank or percentile. | Implemented and tested |
+| [Switching median filter](nonlinear/switching-median.md) | Nonlinear spatial filters | Replaces a pixel by the window median only when it differs from that median by more than a threshold. | Implemented and tested |
+| [Vector median filter](nonlinear/vector-median.md) | Nonlinear spatial filters | Replaces each pixel with the window color that is closest, in total, to all the other window colors. | Implemented and tested |
 | [Weighted median filter](nonlinear/weighted-median.md) | Nonlinear spatial filters | A median in which each window position counts as many times as its weight. | Implemented and tested |
+| [Median absolute deviation thresholding](adaptive/mad-outlier.md) | Adaptive and statistical filters | Marks or repairs values that lie more than t times the robust scale S from the local median. | Implemented and tested |
 | [Sobel](edges/sobel.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
+| [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add salt-and-pepper noise](utility/noise-salt-pepper.md) | Utilities | Turns a random share of pixels pure white or pure black. | Implemented and tested |
 | [Free rotation](utility/rotate-free.md) | Utilities | Turns the image by any angle around its center, with a choice of interpolation. | Implemented and tested |

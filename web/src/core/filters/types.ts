@@ -101,6 +101,19 @@ export interface PlaneFilter extends FilterBase {
   plane(input: Plane, params: Params, context: PlaneContext): Plane;
 }
 
+/**
+ * A neighborhood operation that needs the three color planes together, such as a vector median.
+ * It always works on red, green and blue. Results are clipped.
+ */
+export interface ColorFilter extends FilterBase {
+  readonly kind: "color";
+  color(
+    planes: readonly [Plane, Plane, Plane],
+    params: Params,
+    context: PlaneContext,
+  ): [Plane, Plane, Plane];
+}
+
 /** A function of one value, applied to every pixel. */
 export interface PointFilter extends FilterBase {
   readonly kind: "point";
@@ -127,7 +140,7 @@ export interface NoiseFilter extends FilterBase {
   ): void;
 }
 
-export type BrowserFilter = PlaneFilter | PointFilter | PixelFilter | NoiseFilter;
+export type BrowserFilter = PlaneFilter | ColorFilter | PointFilter | PixelFilter | NoiseFilter;
 
 /** Read parameters with a default, so filters never see undefined. */
 export const read = {

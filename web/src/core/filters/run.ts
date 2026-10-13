@@ -208,6 +208,11 @@ export function processImage(
       const { color, warnings } = processPlanes(filter, params, r, g, b, a, options);
       return { color, alpha: a, derived: filter.kind === "derived", warnings };
     }
+    case "color": {
+      const context = { border: borderOf(params), originX, originY, channel: 0 };
+      const color = filter.color([r, g, b], params, context);
+      return { color, alpha: a, derived: false, warnings: [] };
+    }
     case "point": {
       const transfer = filter.transfer(params);
       const table = Float64Array.from({ length: 256 }, (_, v) => transfer(v));

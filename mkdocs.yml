@@ -157,6 +157,9 @@ nav:
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
           - Weighted median filter: filters/nonlinear/weighted-median.md
+          - Adaptive median filter: filters/nonlinear/adaptive-median.md
+          - Switching median filter: filters/nonlinear/switching-median.md
+          - Vector median filter: filters/nonlinear/vector-median.md
           - Min filter: filters/nonlinear/min.md
           - Max filter: filters/nonlinear/max.md
           - Midpoint filter: filters/nonlinear/midpoint.md
@@ -166,11 +169,15 @@ nav:
           - Geometric mean filter: filters/nonlinear/geometric-mean.md
           - Harmonic mean filter: filters/nonlinear/harmonic-mean.md
           - Contraharmonic mean filter: filters/nonlinear/contraharmonic-mean.md
+      - Adaptive:
+          - MAD thresholding: filters/adaptive/mad-outlier.md
       - Edges:
           - Sobel: filters/edges/sobel.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md
+      - Restoration:
+          - Dead-pixel correction: filters/restoration/dead-pixel.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md

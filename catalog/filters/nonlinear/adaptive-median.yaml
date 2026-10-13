@@ -1,8 +1,102 @@
 id: adaptive-median
 name: Adaptive median filter
 family: nonlinear
+tags: [purpose:denoise, noise:impulse]
 tier: core
 engine: browser
 phase: 5b
-status: planned
+status: implemented-tested
 planNotes: Window grows until the median is not an impulse.
+
+summary: A median filter whose window grows where the noise is dense, and that keeps pixels that are not noise.
+purpose: Remove dense salt-and-pepper noise while keeping detail.
+classification: {linearity: nonlinear, domain: spatial, operation: adaptive order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/adaptive-median.ts, symbol: adaptiveSizes}
+supportRadius: floor(max size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately. With the brightness scope, luma is rounded to
+  whole values first. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: maxSize
+    label: Largest window
+    type: integer
+    min: 3
+    max: 21
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: The window starts at 3x3 and may grow up to this size.
+    effect: Larger values handle denser noise, at a higher cost.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \begin{aligned}
+  &\text{A: } z_{\min} < z_{\text{med}} < z_{\max} \;\Rightarrow\; \text{go to B, else grow } S_{xy} \text{ up to } {{maxSize}}, \text{ then output } z_{\text{med}} \\
+  &\text{B: } I_{\text{out}}(x,y) = \begin{cases} z_{xy} & z_{\min} < z_{xy} < z_{\max} \\ z_{\text{med}} & \text{otherwise} \end{cases}
+  \end{aligned}
+formulaExplanation: >-
+  z_min, z_med and z_max are the min, median and max of the current window S_xy, and z_xy is
+  the pixel. Stage A checks that the median is not an impulse itself. If it is, the window grows
+  by 2 and stage A runs again. Stage B keeps the pixel when it lies strictly between the min and
+  the max, so it is not an impulse, and replaces it by the median otherwise.
+symbols:
+  - {symbol: 'z_{\min}, z_{\text{med}}, z_{\max}', meaning: 'Min, median and max of the window'}
+  - {symbol: 'z_{xy}', meaning: 'The value of the pixel (x, y)'}
+  - {symbol: 'S_{xy}', meaning: 'The current window around (x, y)'}
+steps:
+  - Round the values to whole numbers and pad the image with the border mode.
+  - For every window size from 3 to the largest, compute the min, median and max of all windows.
+  - For each pixel, find the first size whose median lies strictly between its min and max.
+  - Keep the pixel if it also lies strictly between them, or write the median. If no size fits, write the median of the largest window.
+complexity:
+  time: O(N\,S_{\max}^2)
+  memory: O(N\,S_{\max})
+  notes: N is the number of pixels per channel. Each size s costs O(N s) for its min, median and max planes, and there are about S_max / 2 sizes.
+useCases:
+  - Remove dense salt-and-pepper noise, up to about half of the pixels.
+  - Clean impulse noise without blurring areas that have no noise.
+advantages:
+  - Keeps pixels that are not impulses, so detail survives.
+  - Handles noise that is too dense for a fixed 3x3 median.
+limitations:
+  - Detects only extreme values. It does not help with Gaussian noise.
+  - A pixel equal to the window min or max counts as an impulse, so flat areas next to edges can be replaced by the median.
+artifacts:
+  - Small blotches where the noise is very dense and the window reaches its largest size.
+references:
+  - kind: paper
+    text: Hwang, H. and Haddad, R. A. Adaptive median filters, new algorithms and results. IEEE Transactions on Image Processing 4(4), 499 to 502, 1995.
+    doi: 10.1109/83.370679
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, adaptive median filter.
+implementation: {path: web/src/core/filters/nonlinear/adaptive-median.ts, symbol: adaptiveMedianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: A median filter that first checks if a pixel is noise, and grows its window when the noise is dense.
+  howItWorks:
+    - Find the min, median and max of a 3x3 window.
+    - If the median is itself an extreme value, grow the window and look again.
+    - If the pixel lies between the min and the max, keep it. Otherwise use the median.
+  academic: >-
+    Two stages decide between keeping z_xy and writing z_med. Stage A grows the window until
+    the median is not an impulse, which makes the filter work at noise densities where a fixed
+    median fails. Stage B only replaces pixels that are extreme in their window.
+  paramNotes:
+    maxSize: The largest window the filter may try. 7 is enough for noise up to about 40 percent.
+  tryThis:
+    - Add 25 percent salt-and-pepper noise. Compare a 3x3 median, a 7x7 median and the adaptive median with largest window 7.
+  pitfalls:
+    - Using it on Gaussian noise. It looks only for extreme values, so it changes very little.
+  demos: [rank-stepper, line-profile]
+related: [median, switching-median, weighted-median]
+docsPage: filters/nonlinear/adaptive-median.md

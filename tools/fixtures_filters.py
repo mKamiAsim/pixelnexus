@@ -18,6 +18,7 @@ from numpy.typing import NDArray
 from scipy import integrate, ndimage, signal, special
 from skimage import exposure, filters
 
+from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_rank import add_rank_cases
 
 FloatArray = NDArray[np.float64]
@@ -418,7 +419,7 @@ def filter_cases() -> dict[str, Any]:
                 "scipy.ndimage.correlate",
             )
 
-    extra_inputs = add_rank_cases(plane, add)
+    extra_inputs = add_rank_cases(plane, add) | add_impulse_cases(plane, add)
 
     fir_taps = [
         {
@@ -484,6 +485,7 @@ def filter_cases() -> dict[str, Any]:
         "input": plane.astype(int).reshape(-1).tolist(),
         "inputs": {name: p.astype(int).reshape(-1).tolist() for name, p in extra_inputs.items()},
         "cases": cases,
+        "color": color_cases(),
         "gamma": gamma_cases,
         "grayscale": grayscale,
         "borders": {"pad": 7, "constant": -1, "tables": borders},

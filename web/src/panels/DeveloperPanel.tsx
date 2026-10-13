@@ -100,16 +100,17 @@ function NumericExample({
 }) {
   const probe = useUi((s) => s.probe);
   const filter = browserFilter(entry.id);
-  if (!filter || filter.kind === "point" || filter.kind === "pixel" || filter.kind === "noise") {
+  const representation = filter?.representation(values);
+  const kernels = representation?.kind === "kernels" ? representation.kernels : [];
+  const kernel = kernels[0];
+  if (!filter || !kernel) {
     return (
       <p className="text-text-secondary">
         This filter has no kernel. The Learn panel shows a worked example.
       </p>
     );
   }
-  const representation = filter.representation(values);
-  const kernel = representation.kind === "kernels" ? representation.kernels[0] : undefined;
-  if (!kernel || kernel.rows.length > 7) {
+  if (kernel.rows.length > 7) {
     return (
       <p className="text-text-secondary">
         The kernel is larger than 7x7, so the example is left out. The Learn panel has a smaller
@@ -134,9 +135,7 @@ function NumericExample({
   );
   // With two kernels (Sobel), compare the first one with the matching output.
   const engineValues =
-    representation.kind === "kernels" && representation.kernels.length > 1 && "output" in values
-      ? { ...values, output: "gx" }
-      : values;
+    kernels.length > 1 && "output" in values ? { ...values, output: "gx" } : values;
   const transparent = hasTransparency(image);
   const result = processRegion(
     image,

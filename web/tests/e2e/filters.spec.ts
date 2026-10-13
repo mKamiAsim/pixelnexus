@@ -151,7 +151,9 @@ test("window filters show their ranks in the Inspector and the Rank stepper", as
   await chooseFilter(page, "trimmed", "Alpha-trimmed mean filter");
   await front(page, "Inspector");
   await page.getByRole("tab", { name: "Operator" }).click();
-  await expect(page.getByText("the values at positions 3 to 7 of 9 make the output.")).toBeVisible();
+  await expect(
+    page.getByText("the values at positions 3 to 7 of 9 make the output."),
+  ).toBeVisible();
   await front(page, "Learn");
   const sorted = page.getByRole("list", { name: "Sorted window values" });
   await expect(sorted.locator("li[aria-current='true']")).toHaveCount(5);

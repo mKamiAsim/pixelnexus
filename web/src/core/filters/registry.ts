@@ -2,6 +2,7 @@
  * Every browser filter, by catalog id. tools/check_catalog.py checks that each catalog entry
  * with engine "browser" and an implemented status is listed here.
  */
+import { madOutlierFilter } from "./adaptive/mad-outlier";
 import { sobelFilter } from "./edges/sobel";
 import { gammaFilter } from "./enhancement/gamma";
 import { grayscaleFilter } from "./enhancement/grayscale";
@@ -17,6 +18,7 @@ import { motionBlurFilter } from "./linear/motion-blur";
 import { triangularFilter } from "./linear/triangular";
 import { unsharpMaskFilter } from "./linear/unsharp-mask";
 import { weightedAverageFilter } from "./linear/weighted-average";
+import { adaptiveMedianFilter } from "./nonlinear/adaptive-median";
 import {
   alphaTrimmedMeanFilter,
   contraharmonicMeanFilter,
@@ -27,7 +29,10 @@ import { medianFilter } from "./nonlinear/median";
 import { maxFilter, midpointFilter, minFilter } from "./nonlinear/min-max";
 import { modeFilter } from "./nonlinear/mode";
 import { rankOrderFilter } from "./nonlinear/rank-order";
+import { switchingMedianFilter } from "./nonlinear/switching-median";
+import { vectorMedianFilter } from "./nonlinear/vector-median";
 import { weightedMedianFilter } from "./nonlinear/weighted-median";
+import { deadPixelFilter } from "./restoration/dead-pixel";
 import type { BrowserFilter } from "./types";
 import { gaussianNoiseFilter, saltPepperNoiseFilter } from "./utility/noise";
 
@@ -44,6 +49,11 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   laplacianFilter,
   medianFilter,
   weightedMedianFilter,
+  adaptiveMedianFilter,
+  switchingMedianFilter,
+  vectorMedianFilter,
+  deadPixelFilter,
+  madOutlierFilter,
   minFilter,
   maxFilter,
   midpointFilter,
