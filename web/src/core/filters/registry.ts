@@ -50,6 +50,8 @@ import {
 import { histogramEqFilter, percentileNormalizeFilter } from "./enhancement/histogram";
 import { msrcrFilter, retinexMsrFilter, retinexSsrFilter } from "./enhancement/retinex";
 import { chromaDenoiseFilter } from "./enhancement/chroma";
+import { colorThresholdFilter } from "./enhancement/color-threshold";
+import { demosaicFilter } from "./enhancement/demosaic";
 import { detailEnhanceFilter } from "./enhancement/detail";
 import { bilateralTonemapFilter } from "./enhancement/tonemap";
 import {
@@ -350,6 +352,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   bilateralTonemapFilter,
   detailEnhanceFilter,
   chromaDenoiseFilter,
+  demosaicFilter,
+  colorThresholdFilter,
   gaussianNoiseFilter,
   saltPepperNoiseFilter,
   speckleNoiseFilter,

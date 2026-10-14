@@ -15,6 +15,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage, stats
 
+from fixtures_cfa import add_cfa_cases
 from fixtures_color import add_color_adjust_cases, add_white_balance_cases
 from fixtures_edge import add_edge_color_cases
 from fixtures_rank import PAD_MODES, SCIPY_MODES, flat_windows, windows
@@ -246,6 +247,7 @@ def color_cases() -> dict[str, Any]:
     add_retinex_cases(image, add)
     add_tone_cases(image, add)
     add_chroma_cases(image, add)
+    add_cfa_cases(image, add)
     return {
         "guide": guide.astype(int).reshape(-1).tolist(),
         "width": image.shape[1],
