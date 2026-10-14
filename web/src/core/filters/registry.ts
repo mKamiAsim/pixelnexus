@@ -49,6 +49,9 @@ import {
 } from "./enhancement/white-balance";
 import { histogramEqFilter, percentileNormalizeFilter } from "./enhancement/histogram";
 import { msrcrFilter, retinexMsrFilter, retinexSsrFilter } from "./enhancement/retinex";
+import { chromaDenoiseFilter } from "./enhancement/chroma";
+import { detailEnhanceFilter } from "./enhancement/detail";
+import { bilateralTonemapFilter } from "./enhancement/tonemap";
 import {
   contrastStretchFilter,
   invertFilter,
@@ -344,6 +347,9 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   retinexSsrFilter,
   retinexMsrFilter,
   msrcrFilter,
+  bilateralTonemapFilter,
+  detailEnhanceFilter,
+  chromaDenoiseFilter,
   gaussianNoiseFilter,
   saltPepperNoiseFilter,
   speckleNoiseFilter,

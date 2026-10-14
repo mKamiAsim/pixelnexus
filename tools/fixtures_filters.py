@@ -35,6 +35,7 @@ from fixtures_rank import add_rank_cases
 from fixtures_restoration import add_restoration_cases
 from fixtures_speckle import add_speckle_cases
 from fixtures_threshold import add_threshold_cases
+from fixtures_tone import add_detail_cases
 
 FloatArray = NDArray[np.float64]
 
@@ -479,6 +480,7 @@ def filter_cases() -> dict[str, Any]:
     add_point_cases(plane, add)
     add_clahe_cases(plane, add)
     add_threshold_cases(plane, add)
+    add_detail_cases(plane, add)
 
     fir_taps = [
         {
