@@ -1,8 +1,102 @@
 id: white-patch
 name: White-patch correction
+aliases: [Max-RGB, White patch white balance, Perfect reflector]
 family: enhancement
+tags: [purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Max-RGB and percentile versions.
+
+summary: Removes a color cast by assuming that the brightest part of each channel is white, so it scales each channel until that part reaches white.
+purpose: Automatic white balance for scenes with a white or bright neutral area, such as clouds or a white wall.
+classification: {linearity: linear, domain: color, operation: percentile-based channel gains}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: whitePatchGains}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each channel is multiplied by its own gain, measured from the whole image. All pixels count, whatever their alpha. Alpha is kept.
+boundary: Not needed for the gains. They come from the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: percentile
+    label: Percentile
+    type: number
+    min: 90
+    max: 100
+    step: 0.1
+    default: 99
+    unit: "%"
+    description: The percentile of each channel that becomes white. 100 uses the largest value, the max-RGB method.
+    effect: Lower values ignore more of the brightest pixels, such as highlights and noise, and clip them.
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: true
+    description: Scale the linear light values instead of the encoded sRGB values.
+    effect: Linear light matches how a change of light color acts on a scene.
+formula: |
+  g_C = \frac{1}{P_{ {{percentile}} }(C)},
+  \quad
+  C' = \begin{cases} \operatorname{srgb}\left(g_C \operatorname{lin}(C)\right) & \text{linear light} \\ g_C\, C & \text{otherwise} \end{cases}
+formulaExplanation: >-
+  P_p(C) is the p-th percentile of channel C, as a fraction of white, in linear light if it is
+  on. It uses the linear rule of numpy.percentile on the levels 0 to 255 of the whole image. The
+  white-patch assumption, from the retinex work of Land and McCann, is that the brightest
+  surface in a scene is white, so its color is the color of the light. The gains bring that
+  color to white. Percentile 100 is the max-RGB method, and lower percentiles keep a few bright
+  or noisy pixels from setting the gains. With Linear light on, the default, the gains act on linear light values: decoded from sRGB, scaled, and encoded again. A change in the color of the light scales linear values, so this is the physical model. With it off, the gains scale the encoded values. A channel whose percentile is 0 gets
+  gain 1.
+symbols:
+  - {symbol: 'P_p(C)', meaning: 'The p-th percentile of channel C, as a fraction of white'}
+  - {symbol: 'g_C', meaning: 'The gain of channel C'}
+steps:
+  - Find the chosen percentile of each channel over the whole image.
+  - Decode it to linear light, if Linear light is on, and take the gains as its inverse.
+  - Scale each channel by its gain, in linear light or on the encoded values.
+  - Encode back to sRGB and clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. One pass measures the channels, a second applies the gains.
+useCases:
+  - Scenes with clouds, snow, a white wall or other bright neutral areas.
+  - Stretching a dim image to full brightness while balancing it.
+advantages:
+  - Automatic. Also brightens dim images.
+  - The percentile makes it less sensitive to a few hot pixels than max-RGB.
+limitations:
+  - Fails when the brightest area is colored, such as a sunset sky.
+  - Clips the pixels above the percentile.
+artifacts:
+  - Clipped highlights. A cast when the brightest area is not neutral.
+references:
+  - kind: paper
+    text: Land, E. H. and McCann, J. J. Lightness and retinex theory. Journal of the Optical Society of America 61(1), 1 to 11, 1971.
+    doi: 10.1364/JOSA.61.000001
+implementation: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: whitePatchFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/enhancement.test.ts]
+learn:
+  oneSentence: Assume the brightest part of the image is white, and scale the colors until it is.
+  howItWorks:
+    - Find a very bright value in each color channel.
+    - Find the gain that brings each one to white.
+    - Multiply every pixel by those gains.
+  academic: >-
+    Diagonal white balance under the white-patch (max-RGB) assumption, with a percentile instead
+    of the maximum to reduce the effect of outliers.
+  paramNotes:
+    percentile: Which bright value counts as white. 100 is the brightest pixel.
+    linearLight: Work on linear light values, as light does.
+  tryThis:
+    - Compare percentile 100 and 98 on a photo with a few small bright reflections.
+  pitfalls:
+    - A colored bright area, such as a red sign. Its color is removed from the whole image.
+  demos: [line-profile]
+related: [gray-world, white-balance, percentile-normalize]
+docsPage: filters/enhancement/white-patch.md

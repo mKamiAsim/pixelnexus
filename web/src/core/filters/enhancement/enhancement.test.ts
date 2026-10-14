@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { createPlane } from "@/core/filters/planes";
+import { createPlane, type Plane } from "@/core/filters/planes";
 
 import { applyCurves, clipHistogram, curveAt, tileCurves } from "./clahe";
 import { applyTable, equalizeTable, histogram256, histogramPercentile } from "./histogram";
 import { posterizeTransfer, stretchTransfer } from "./point-ops";
+import { grayWorldFilter, whiteBalanceFilter } from "./white-balance";
+
+const CONTEXT = { border: "reflect101", originX: 0, originY: 0, channel: 0 } as const;
 
 /** numpy.percentile with its default linear rule, on a plain array. */
 function percentile(values: number[], q: number): number {
@@ -94,5 +97,26 @@ describe("CLAHE", () => {
       const v = plane.data[y * 23 + x] ?? 0;
       expect(out.data[y * 23 + x]).toBeCloseTo(curveAt(curves, x, y)[v] ?? NaN, 4);
     }
+  });
+});
+
+describe("white balance", () => {
+  it("turns the picked neutral into a gray of the same luminance", () => {
+    const out = new Float64Array(3);
+    whiteBalanceFilter.pixel(210, 200, 180, { neutral: "#d2c8b4", linearLight: true }, out);
+    expect(out[0]).toBeCloseTo(out[1] ?? NaN, 6);
+    expect(out[2]).toBeCloseTo(out[1] ?? NaN, 6);
+  });
+
+  it("makes the three channel means equal with gray world", () => {
+    const planes = [0, 1, 2].map((c) => {
+      const p = createPlane(9, 7);
+      p.data.forEach((_, i) => (p.data[i] = 40 + ((i * (c + 3) * 17) % 180)));
+      return p;
+    }) as [Plane, Plane, Plane];
+    const out = grayWorldFilter.color(planes, { linearLight: false }, CONTEXT);
+    const means = out.map((p) => p.data.reduce((s, v) => s + v, 0) / p.data.length);
+    expect(means[0]).toBeCloseTo(means[1] ?? NaN, 3);
+    expect(means[2]).toBeCloseTo(means[1] ?? NaN, 3);
   });
 });

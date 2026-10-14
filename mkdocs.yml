@@ -287,6 +287,11 @@ nav:
           - Hue, saturation and value adjustment: filters/enhancement/hsv-adjust.md
           - Channel mixer: filters/enhancement/channel-mixer.md
           - Color balance: filters/enhancement/color-balance.md
+          - White balance: filters/enhancement/white-balance.md
+          - Gray-world correction: filters/enhancement/gray-world.md
+          - White-patch correction: filters/enhancement/white-patch.md
+          - Chromatic adaptation: filters/enhancement/chromatic-adaptation.md
+          - Temperature and tint: filters/enhancement/temperature-tint.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

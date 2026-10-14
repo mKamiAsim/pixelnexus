@@ -207,6 +207,21 @@ export interface NoiseFilter extends FilterBase {
 
 export type BrowserFilter = PlaneFilter | ColorFilter | PointFilter | PixelFilter | NoiseFilter;
 
+/**
+ * Cache a value computed from the parameters, such as a color matrix, for as long as the same
+ * parameter object is in use. Pixel filters run once per pixel with one parameter object, so the
+ * value is computed once per run.
+ */
+export function perParams<T>(compute: (params: Params) => T): (params: Params) => T {
+  const cache = new WeakMap<Params, T>();
+  return (params) => {
+    if (cache.has(params)) return cache.get(params) as T;
+    const value = compute(params);
+    cache.set(params, value);
+    return value;
+  };
+}
+
 /** Read parameters with a default, so filters never see undefined. */
 export const read = {
   number(params: Params, key: string, fallback: number): number {

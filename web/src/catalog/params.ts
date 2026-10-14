@@ -1,6 +1,7 @@
 import { parseKernel } from "@/core/filters/linear/weighted-average";
 import { formatNotches, parseNotches } from "@/core/filters/frequency/notch";
 import { parseStructuringElement } from "@/core/filters/morphology/structuring";
+import { parseHexColor } from "@/core/filters/enhancement/white-balance";
 import { normalizeNumber } from "@/components/ui/number";
 import type { Param, ParamRef, ParamValue } from "@/generated/catalog-types";
 
@@ -83,6 +84,12 @@ export function validateParams(
       case "boolean":
         out[param.key] = typeof raw === "boolean" ? raw : param.default;
         break;
+      case "color": {
+        const ok = typeof raw === "string" && parseHexColor(raw) !== null;
+        if (!ok) warnings.push(`${param.label}: use a color like #808080. The default is used.`);
+        out[param.key] = ok ? (raw as string).trim().toLowerCase() : param.default;
+        break;
+      }
       case "image":
         // The id of an open image. The studio checks that it exists and has the right size.
         out[param.key] = typeof raw === "string" ? raw : param.default;

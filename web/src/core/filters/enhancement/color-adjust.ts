@@ -15,7 +15,13 @@
  *   Preserve luminosity puts the HSL lightness of the input back.
  */
 import { hslToRgb, hsvToRgb, rgbToHsl, rgbToHsv } from "@/core/color/convert";
-import { read, type Params, type PixelFilter, type Representation } from "@/core/filters/types";
+import {
+  perParams,
+  read,
+  type Params,
+  type PixelFilter,
+  type Representation,
+} from "@/core/filters/types";
 
 type Matrix = readonly [
   readonly [number, number, number],
@@ -48,7 +54,8 @@ function matrixStages(name: string, m: Matrix, note: string): Representation {
 
 const ENCODED = "Applied to the encoded sRGB values from 0 to 255.";
 
-function matrixFilter(name: string, matrixOf: (params: Params) => Matrix) {
+function matrixFilter(name: string, compute: (params: Params) => Matrix) {
+  const matrixOf = perParams(compute);
   return {
     kind: "pixel" as const,
     radius: () => 0,

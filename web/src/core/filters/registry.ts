@@ -40,6 +40,13 @@ import {
   vibranceFilter,
 } from "./enhancement/color-adjust";
 import { gammaFilter } from "./enhancement/gamma";
+import {
+  chromaticAdaptationFilter,
+  grayWorldFilter,
+  temperatureTintFilter,
+  whiteBalanceFilter,
+  whitePatchFilter,
+} from "./enhancement/white-balance";
 import { histogramEqFilter, percentileNormalizeFilter } from "./enhancement/histogram";
 import {
   contrastStretchFilter,
@@ -318,6 +325,11 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   hsvAdjustFilter,
   channelMixerFilter,
   colorBalanceFilter,
+  whiteBalanceFilter,
+  grayWorldFilter,
+  whitePatchFilter,
+  chromaticAdaptationFilter,
+  temperatureTintFilter,
   gaussianNoiseFilter,
   saltPepperNoiseFilter,
   speckleNoiseFilter,

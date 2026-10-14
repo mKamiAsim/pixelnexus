@@ -230,6 +230,11 @@ const CASES: [string, Params][] = [
   ["hsv-adjust", { hue: 30, saturation: 120, value: 90 }],
   ["channel-mixer", { redFromGreen: 30, redFromRed: 70 }],
   ["color-balance", { shadowsCyanRed: 40, highlightsYellowBlue: -30 }],
+  ["white-balance", { neutral: "#c0b0a0" }],
+  ["gray-world", { linearLight: true }],
+  ["white-patch", { percentile: 98 }],
+  ["chromatic-adaptation", { source: "D50", target: "D65", method: "von-kries" }],
+  ["temperature-tint", { temperature: 3500, tint: 5 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

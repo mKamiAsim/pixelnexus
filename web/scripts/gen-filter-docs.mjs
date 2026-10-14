@@ -1171,6 +1171,24 @@ try {
   const { colorDocs } = await import("./filter-docs/color.mjs");
   const { hsvToRgb } = await load("/src/core/color/convert.ts");
   colorDocs({ run, pic, figure, example, mdTable, fix, browserFilter, createImage, hsvToRgb });
+  const { whiteBalanceDocs } = await import("./filter-docs/wb.mjs");
+  const { neutralGains } = await load("/src/core/filters/enhancement/white-balance.ts");
+  const adaptation = await load("/src/core/color/adaptation.ts");
+  whiteBalanceDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    createImage,
+    hsvToRgb,
+    neutralGains,
+    ILLUMINANTS: adaptation.ILLUMINANTS,
+    planckianXy: adaptation.planckianXy,
+    adaptationMatrix: adaptation.adaptationMatrix,
+    rgbAdaptation: adaptation.rgbAdaptation,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

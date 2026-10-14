@@ -1,7 +1,113 @@
 id: temperature-tint
 name: Temperature and tint
+aliases: [Color temperature, White balance by temperature, Warm and cool]
 family: enhancement
+tags: [purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Removes the color of a light given by its temperature in kelvin and its tint, by adapting it to daylight.
+purpose: Set white balance the way cameras and raw converters do, with a temperature and a green to magenta tint.
+classification: {linearity: linear, domain: color, operation: Planckian white point adaptation}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/color/adaptation.ts, symbol: lightWhite}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix in linear light. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: temperature
+    label: Temperature
+    type: number
+    min: 2000
+    max: 12000
+    step: 50
+    default: 4500
+    unit: K
+    description: The color temperature of the light in the scene, in kelvin.
+    effect: Lower values say the light was warm, so the image is made cooler. Higher values make it warmer.
+  - key: tint
+    label: Tint
+    type: number
+    min: -50
+    max: 50
+    step: 1
+    default: 0
+    description: How far the light lies off the blackbody curve, as Duv times 1000. Positive values say the light was green.
+    effect: Positive values remove green and add magenta. Negative values do the opposite.
+formula: |
+  (x_c, y_c) = \text{Planckian}(T),
+  \quad
+  (u, v)_s = (u, v)(x_c, y_c) + \Delta_{uv}\, \hat{n},
+  \quad
+  M = \operatorname{Bradford}(W_s \to W_{\text{D65}}),
+  \qquad
+  T = {{temperature}}\,\text{K},\ \Delta_{uv} = {{tint}} / 1000
+formulaExplanation: >-
+  The chromaticity of a blackbody light at temperature T comes from the cubic spline of Kang
+  and colleagues, valid from 1667 K to 25000 K. The tint moves this white by Duv in the CIE 1960
+  uv diagram, perpendicular to the blackbody curve, toward green for positive values. The
+  direction comes from two nearby temperatures. That white, with luminance 1, is adapted to D65
+  with the Bradford transform, as in the chromatic adaptation filter, and the matrix is applied
+  in linear light. D65 itself lies a little above the blackbody curve, toward green, so tint 0
+  at about 6500 K still shifts the image slightly toward green. These choices of scale and
+  direction are PixelNexus's own. Raw converters use similar controls with their own scales.
+symbols:
+  - {symbol: 'T', meaning: 'The color temperature of the light, in kelvin'}
+  - {symbol: 'x_c, y_c', meaning: 'The chromaticity of a blackbody at T'}
+  - {symbol: '\Delta_{uv}', meaning: 'The distance off the blackbody curve, the tint over 1000'}
+  - {symbol: '\hat{n}', meaning: 'The unit direction across the curve, toward green'}
+steps:
+  - Find the blackbody chromaticity at the temperature.
+  - Move it across the curve by the tint, in CIE 1960 uv.
+  - Build the Bradford adaptation from that white to D65, in linear sRGB.
+  - Decode each pixel to linear light, multiply by the matrix, encode back and clip.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The gains or the matrix are computed once per run.
+useCases:
+  - White balance by numbers, as in a camera, such as 3200 K for studio tungsten.
+  - Warming or cooling a photo on purpose.
+advantages:
+  - Follows the physics of light sources, with a single warm to cool control.
+  - Separate control of the green to magenta cast.
+limitations:
+  - The tint scale is PixelNexus's own, so numbers do not carry over from other programs.
+  - Fluorescent and LED lights are not blackbodies, so the tint must do more of the work.
+artifacts:
+  - Clipping of saturated colors, which can leave the sRGB range.
+references:
+  - kind: paper
+    text: Kang, B., Moon, O., Hong, C., Lee, H., Cho, B. and Kim, Y. Design of advanced color temperature control system for HDTV applications. Journal of the Korean Physical Society 41(6), 865 to 871, 2002.
+  - kind: web
+    text: Lindbloom, B. Chromatic adaptation, with the cone response matrices and the white points of ASTM E308-01. Web Archive copy of 14 March 2026.
+    url: https://web.archive.org/web/20260314100017/http://brucelindbloom.com/Eqn_ChromAdapt.html
+implementation: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: temperatureTintFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/color/adaptation.test.ts]
+learn:
+  oneSentence: Tell the filter how warm or cool the light was, and it removes that color.
+  howItWorks:
+    - Find the color of a light at the given temperature.
+    - Shift it toward green or magenta by the tint.
+    - Adapt the image from that light to daylight.
+  academic: >-
+    Bradford chromatic adaptation from a Planckian source white, with a Duv offset in CIE 1960
+    uv, to D65.
+  paramNotes:
+    temperature: The color temperature of the light in the scene.
+    tint: The green or magenta of the light.
+  tryThis:
+    - Set 3000 K on a photo under warm indoor light. The orange cast goes away.
+  pitfalls:
+    - Expecting the same numbers as a raw converter. The scales differ between programs.
+  demos: [line-profile]
+related: [chromatic-adaptation, white-balance, color-balance]
+docsPage: filters/enhancement/temperature-tint.md

@@ -96,7 +96,7 @@ export function hslToRgb(hue: number, saturation: number, lightness: number): Rg
 }
 
 // sRGB primaries with D65 white, from IEC 61966-2-1.
-const RGB_TO_XYZ = [
+export const RGB_TO_XYZ = [
   [0.412453, 0.35758, 0.180423],
   [0.212671, 0.71516, 0.072169],
   [0.019334, 0.119193, 0.950227],

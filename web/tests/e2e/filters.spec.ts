@@ -116,6 +116,17 @@ test("the Point-op curve shows the local curve of CLAHE at the probe", async ({ 
   ).toBeVisible();
 });
 
+test("the color control takes the neutral color from the probe pixel", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "white bal", "White balance");
+  await front(page, "Properties");
+  const field = page.getByRole("textbox", { name: "Neutral color", exact: true });
+  await expect(field).toHaveValue("#d2c8b4");
+  await page.getByRole("button", { name: "Use probe pixel" }).click();
+  // Without a probe, the center pixel is used: the gray background of the test image.
+  await expect(field).toHaveValue("#1e1e1e");
+});
+
 test("scale space shows its response and its selected scale", async ({ page }) => {
   await openTestImage(page, "Disks");
   await chooseFilter(page, "scale", "Scale-space filtering");
