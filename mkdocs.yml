@@ -265,6 +265,9 @@ nav:
           - Phase-only filter: filters/frequency/phase-only.md
           - Spectral whitening: filters/frequency/spectral-whitening.md
           - Log-Gabor filter: filters/frequency/log-gabor.md
+      - Multiscale:
+          - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
+          - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

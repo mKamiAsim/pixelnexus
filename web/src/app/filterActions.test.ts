@@ -137,4 +137,13 @@ describe("preview plan", () => {
     });
     expect(scaleParams(entry("ideal-lowpass"), { cutoff: 0.3 }, 0.5).cutoff).toBe(0.5);
   });
+
+  it("takes one pyramid level away for each halving of the size", () => {
+    expect(scaleParams(entry("gaussian-pyramid"), { levels: 4 }, 0.25).levels).toBe(2);
+    expect(scaleParams(entry("laplacian-pyramid"), { levels: 4, gain1: 2 }, 0.6)).toMatchObject({
+      levels: 3,
+      gain1: 2,
+    });
+    expect(scaleParams(entry("gaussian-pyramid"), { levels: 1 }, 0.25).levels).toBe(1);
+  });
 });

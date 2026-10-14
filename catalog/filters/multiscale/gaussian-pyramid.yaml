@@ -1,7 +1,105 @@
 id: gaussian-pyramid
 name: Gaussian pyramid filtering
+aliases: [Gaussian pyramid, Pyramid low-pass, Reduce and expand]
 family: multiscale
+tags: [purpose:smoothing, purpose:blur]
 tier: core
 engine: browser
 phase: 5e
-status: planned
+status: implemented-tested
+
+summary: Shrinks the image to half size a few times with a small Gaussian-like kernel, then expands it back. Only the coarse detail of the smallest level remains.
+purpose: Show what one level of a Gaussian pyramid holds, at full size. Also a fast, strong blur.
+classification: {linearity: linear, domain: transform, operation: reduce and expand}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/multiscale/pyramid.ts, symbol: gaussianPyramid}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. Positions outside a level
+  follow the border mode on that level. The result depends on where each pixel falls in the
+  pyramid grid, so the filter always runs on the whole image.
+
+params:
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 2
+    unit: levels
+    description: How many times the image is reduced. Each level halves the width and the height. The pyramid stops early when a level is one pixel.
+    effect: More levels reach coarser detail.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+formula: |
+  I_{\text{out}} = \operatorname{EXPAND}^{L}(G_L),\quad L = {{levels}},
+  \qquad
+  G_{k+1}(i,j) = \sum_{m=-2}^{2} \sum_{n=-2}^{2} w(m)\, w(n)\, G_k(2i+m,\, 2j+n),
+  \qquad
+  \operatorname{EXPAND}(G)(i,j) = 4 \sum_{\substack{m,n=-2 \\ i-m,\ j-n \text{ even}}}^{2} w(m)\, w(n)\, G\!\left(\tfrac{i-m}{2},\, \tfrac{j-n}{2}\right),
+  \qquad
+  w = \tfrac{1}{16}[1, 4, 6, 4, 1]
+formulaExplanation: >-
+  G_0 is the image and G_{k+1} is level k reduced. REDUCE filters level k with the 5-tap kernel w along rows and columns. It keeps every second pixel, starting with the first, so a level of n pixels gives ceil(n / 2). EXPAND goes back up. Each output pixel sums the coarse pixels that land on it, weighted by 2 w(m) along each axis. So a flat level stays flat. Burt and Adelson define w by one number a, with w(0) = a, w(1) = 1/4 and w(2) = 1/4 - a/2. This filter uses a = 0.375, which gives the binomial weights [1, 4, 6, 4, 1] / 16. The result is the top level
+  G_L expanded L times, back to the size of the image. It is a low-pass image. The filter is
+  linear, but not shift invariant. Moving the image by one pixel can change the result by more
+  than a shift, since the pixels kept by REDUCE change.
+symbols:
+  - {symbol: 'G_k', meaning: Level k of the pyramid. G_0 is the image.}
+  - {symbol: 'w', meaning: 'The 5-tap kernel [1, 4, 6, 4, 1] / 16'}
+  - {symbol: 'L', meaning: The number of levels}
+  - {symbol: '(i, j)', meaning: Pixel position in a level}
+steps:
+  - Set G_0 to the image.
+  - Reduce G_k to G_{k+1} for each level, with the border mode at the edges of each level.
+  - Expand the top level G_L back to the size of the level below, L times, until it has the size of the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each level has about a quarter of the pixels of the level below, so all levels together have about 4 N / 3.
+useCases:
+  - Showing what a pyramid level holds, as the first step toward the Laplacian pyramid.
+  - A fast strong blur, since the cost does not grow with the blur size.
+advantages:
+  - Linear and fast. Each extra level doubles the blur size at little extra cost.
+  - A flat image stays flat.
+limitations:
+  - Not shift invariant. The result depends on where the image falls in the pyramid grid.
+  - The blur size can only grow in steps of 2.
+artifacts:
+  - Faint blocky or grid-like patterns at high level counts, from the repeated factor 2 sampling.
+references:
+  - kind: paper
+    text: Burt, P. J. and Adelson, E. H. The Laplacian pyramid as a compact image code. IEEE Transactions on Communications 31(4), 532 to 540, 1983.
+    doi: 10.1109/TCOM.1983.1095851
+implementation: {path: web/src/core/filters/multiscale/pyramid.ts, symbol: gaussianPyramidFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/multiscale/multiscale.test.ts]
+learn:
+  oneSentence: Shrink the image to half size a few times, then blow it back up. Only the coarse shapes survive.
+  howItWorks:
+    - Blur the image a little with a 5 by 5 kernel.
+    - Keep every second pixel in each direction. The image is now half as wide and half as tall.
+    - Repeat for the chosen number of levels.
+    - Expand the small image back to full size, one doubling at a time.
+  academic: >-
+    Reconstruction from level L of the Gaussian pyramid of Burt and Adelson, REDUCE with the
+    generating kernel a = 0.375 followed by L EXPAND steps.
+  paramNotes:
+    levels: How many times to halve the size. Each level doubles the size of the smallest detail kept.
+  tryThis:
+    - Raise the levels from 1 to 4 and watch fine detail go first, then coarser shapes.
+  pitfalls:
+    - Expecting the same result as a Gaussian blur. The pyramid samples the image, so a small shift of the image can change the result.
+  demos: [noise-lab]
+related: [laplacian-pyramid, gaussian, binomial, scale-space]
+docsPage: filters/multiscale/gaussian-pyramid.md

@@ -88,7 +88,8 @@ export function planPreview(
 
 /**
  * Scale parameters measured in pixels to a smaller copy of the image. Frequencies in cycles per
- * pixel grow by the same factor, since a detail spans fewer pixels on the copy.
+ * pixel grow by the same factor, since a detail spans fewer pixels on the copy. Pyramid level
+ * counts drop by one for each halving of the size.
  */
 export function scaleParams(
   entry: Filter,
@@ -111,6 +112,12 @@ export function scaleParams(
       continue;
     }
     if (typeof value !== "number") continue;
+    if (param.unit === "levels") {
+      // Each halving of the size takes one pyramid level away.
+      const shifted = Math.round(value + Math.log2(scale));
+      out[param.key] = Math.min(param.max ?? Infinity, Math.max(param.min ?? -Infinity, shifted));
+      continue;
+    }
     if (param.unit !== "px" && param.unit !== "cycles/px") continue;
     let scaled = param.unit === "px" ? value * scale : value / scale;
     if (param.type === "integer") {

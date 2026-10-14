@@ -1138,6 +1138,18 @@ try {
   });
   const { iterativeDocs } = await import("./filter-docs/iterative.mjs");
   iterativeDocs({ run, pic, figure, example, mdTable, fix, synthetic, qualityMetrics });
+  const { pyramidDocs } = await import("./filter-docs/pyramid.mjs");
+  pyramidDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    qualityMetrics,
+    browserFilter,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];
