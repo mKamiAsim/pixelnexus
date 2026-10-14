@@ -8,5 +8,7 @@
 | Adaptive Gaussian, 15 px, C = 5 | 100 | 99.6 |
 | Niblack, 15 px, k = -0.2 | 100 | 96.4 |
 | Sauvola, 15 px, k = 0.5, R = 128 | 97.5 | 100 |
+| Wolf, 15 px, k = 0.5 | 100 | 100 |
+| Bradley, 15 px, t = 15 | 100 | 100 |
 
-All six methods with their default settings on the page of the figure, 160 by 120 pixels. The background brightness rises from 60 at the left to 220 at the right, and the strokes are 45 percent of it. A stroke pixel is right when it is black, and a background pixel is right when it is white. The row "Sauvola, 15 px, k = 0.5, R = 128" is this filter.
+All eight methods with their default settings on the page of the figure, 160 by 120 pixels. The background brightness rises from 60 at the left to 220 at the right, and the strokes are 45 percent of it. A stroke pixel is right when it is black, and a background pixel is right when it is white. The row "Sauvola, 15 px, k = 0.5, R = 128" is this filter.

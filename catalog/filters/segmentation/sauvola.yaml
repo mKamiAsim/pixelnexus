@@ -44,7 +44,7 @@ params:
     step: 0.05
     default: 0.5
     description: How strongly the local deviation lowers the threshold.
-    effect: Higher values lower the threshold more in flat areas, which keeps them black.
+    effect: Higher values lower the threshold more in flat areas, which keeps them white.
   - key: r
     label: R
     type: number

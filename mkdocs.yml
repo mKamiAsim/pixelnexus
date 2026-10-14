@@ -312,6 +312,8 @@ nav:
           - Adaptive Gaussian threshold: filters/segmentation/threshold-adaptive-gaussian.md
           - Niblack threshold: filters/segmentation/niblack.md
           - Sauvola threshold: filters/segmentation/sauvola.md
+          - Wolf threshold: filters/segmentation/wolf.md
+          - Bradley threshold: filters/segmentation/bradley.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

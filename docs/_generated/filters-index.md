@@ -156,10 +156,12 @@
 | [Wiener deconvolution](restoration/wiener-deconv.md) | Restoration and reconstruction | Undoes a known blur while keeping noise in check, by dividing only as far as the noise allows. | Implemented and tested |
 | [Adaptive Gaussian threshold](segmentation/threshold-adaptive-gaussian.md) | Segmentation and regions | Thresholds each pixel against the mean of its own neighborhood, minus an offset, so it copes with uneven lighting. | Implemented and tested |
 | [Adaptive mean threshold](segmentation/threshold-adaptive-mean.md) | Segmentation and regions | Thresholds each pixel against the mean of its own neighborhood, minus an offset, so it copes with uneven lighting. | Implemented and tested |
+| [Bradley threshold](segmentation/bradley.md) | Segmentation and regions | Makes each pixel black when it is a set percent darker than the mean of its window, and white otherwise. | Implemented and tested |
 | [Global threshold](segmentation/threshold-global.md) | Segmentation and regions | Turns the image into black and white with one threshold for every pixel. | Implemented and tested |
 | [Niblack threshold](segmentation/niblack.md) | Segmentation and regions | Thresholds each pixel at the local mean plus k times the local standard deviation. | Implemented and tested |
 | [Otsu threshold](segmentation/otsu.md) | Segmentation and regions | Picks the global threshold that splits the histogram into two groups that are as far apart as possible, then thresholds the image. | Implemented and tested |
 | [Sauvola threshold](segmentation/sauvola.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, lowering the threshold where the contrast is low. | Implemented and tested |
+| [Wolf threshold](segmentation/wolf.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, measured against the darkest value and the highest local contrast of the whole image. | Implemented and tested |
 | [Posterize](artistic/posterize.md) | Artistic and geometric effects | Reduces each channel to a few flat levels, for a poster-like look with bands of color. | Implemented and tested |
 | [Solarize](artistic/solarize.md) | Artistic and geometric effects | Inverts the values at or above a threshold and keeps the others, a mix of positive and negative. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |

@@ -30,6 +30,8 @@ export function thresholdDocs(h) {
     "threshold-adaptive-gaussian": [{}, "Adaptive Gaussian, 15 px, C = 5"],
     niblack: [{}, "Niblack, 15 px, k = -0.2"],
     sauvola: [{}, "Sauvola, 15 px, k = 0.5, R = 128"],
+    wolf: [{}, "Wolf, 15 px, k = 0.5"],
+    bradley: [{}, "Bradley, 15 px, t = 15"],
   };
   const score = (image) => {
     let strokes = 0;
@@ -72,7 +74,7 @@ export function thresholdDocs(h) {
     example(
       id,
       table +
-        `\nAll six methods with their default settings on the page of the figure, ${width} by ${height} pixels. The background brightness rises from 60 at the left to 220 at the right, and the strokes are 45 percent of it. A stroke pixel is right when it is black, and a background pixel is right when it is white. The row "${label}" is this filter.\n`,
+        `\nAll eight methods with their default settings on the page of the figure, ${width} by ${height} pixels. The background brightness rises from 60 at the left to 220 at the right, and the strokes are 45 percent of it. A stroke pixel is right when it is black, and a background pixel is right when it is white. The row "${label}" is this filter.\n`,
     );
   }
 }
