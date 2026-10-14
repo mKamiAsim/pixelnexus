@@ -308,6 +308,7 @@ nav:
           - Edge enhance: filters/artistic/edge-enhance.md
           - Vignette: filters/artistic/vignette.md
           - Pixelate: filters/artistic/pixelate.md
+          - Dithering: filters/artistic/dithering.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md

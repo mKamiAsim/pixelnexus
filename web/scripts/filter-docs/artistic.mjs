@@ -112,4 +112,53 @@ export function artisticDocs(h) {
         "\nThe Siemens star of the figure, 160 by 160 pixels. The PSNR compares the result with the star. Larger blocks keep less of the fine detail.\n",
     );
   }
+
+  // Dithering: a gray ramp to black and white, judged after a 5 x 5 box blur.
+  {
+    const width = 256;
+    const height = 48;
+    const ramp = createImage(width, height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) ramp.data.set([x, x, x, 255], (y * width + x) * 4);
+    }
+    const blurError = (image) => {
+      const blurred = run(image, "box", { size: 5, border: "reflect101" });
+      let sum = 0;
+      let n = 0;
+      for (let y = 4; y < height - 4; y++) {
+        for (let x = 4; x < width - 4; x++) {
+          sum += Math.abs(blurred.data[(y * width + x) * 4] - x);
+          n++;
+        }
+      }
+      return sum / n;
+    };
+    const methods = [
+      ["Floyd-Steinberg", { method: "floyd-steinberg" }],
+      ["Atkinson", { method: "atkinson" }],
+      ["Bayer 4 x 4", { method: "bayer4" }],
+      ["Bayer 8 x 8", { method: "bayer8" }],
+    ];
+    const results = methods.map(([label, params]) => [label, run(ramp, "dithering", params)]);
+    figure("dithering", {
+      message:
+        "A gray ramp dithered to black and white with Floyd-Steinberg, Atkinson and the 8 x 8 Bayer matrix.",
+      panels: [
+        { title: "Ramp", image: pic(ramp) },
+        { title: "Floyd-Steinberg", image: pic(results[0][1]) },
+        { title: "Atkinson", image: pic(results[1][1]) },
+        { title: "Bayer 8 x 8", image: pic(results[3][1]) },
+      ],
+    });
+    example(
+      "dithering",
+      mdTable(
+        ["Method", "Error after a 5 x 5 blur"],
+        results.map(([label, image]) => [label, fix(blurError(image), 2)]),
+      ) +
+        `
+A ramp from 0 at the left to 255 at the right, ${width} by ${height} pixels, dithered to black and white. The error is the mean absolute difference between a 5 x 5 box blur of the result and the ramp, away from the edges. It shows how well the pattern keeps the tone when the eye blurs it. Atkinson passes on only 3/4 of the error, so it loses tone near black and white.
+`,
+    );
+  }
 }

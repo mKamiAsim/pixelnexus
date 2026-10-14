@@ -173,6 +173,7 @@
 | [Region growing](segmentation/region-growing.md) | Segmentation and regions | Starts at a seed pixel and grows a region over the connected pixels whose value is within a tolerance of the seed's. | Implemented and tested |
 | [Sauvola threshold](segmentation/sauvola.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, lowering the threshold where the contrast is low. | Implemented and tested |
 | [Wolf threshold](segmentation/wolf.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, measured against the darkest value and the highest local contrast of the whole image. | Implemented and tested |
+| [Dithering](artistic/dithering.md) | Artistic and geometric effects | Reduces each channel to a few levels, and hides the rounding error in a fine pattern of dots, so the tones still look right from a distance. | Implemented and tested |
 | [Edge enhance](artistic/edge-enhance.md) | Artistic and geometric effects | Sharpens edges with a fixed 3 x 3 kernel that adds a Laplacian to the image. | Implemented and tested |
 | [Emboss](artistic/emboss.md) | Artistic and geometric effects | Subtracts a diagonal neighbor from each pixel and adds mid gray, so edges look raised or pressed in, like a relief. | Implemented and tested |
 | [Outline](artistic/outline.md) | Artistic and geometric effects | Turns flat areas white and draws the darker side of every edge as a dark line, like a pen outline. | Implemented and tested |
