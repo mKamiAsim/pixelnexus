@@ -3,7 +3,7 @@
  *
  * - sRGB encoded values: 0 to 255.
  * - Linear light values: 0 to 1.
- * - HSV: hue in degrees from 0 up to 360, saturation and value from 0 to 1.
+ * - HSV and HSL: hue in degrees from 0 up to 360, the other two from 0 to 1.
  * - CIE Lab (D65 white, 2 degree observer): L from 0 to 100.
  *
  * The formulas follow IEC 61966-2-1 (sRGB) and CIE 15. Tests compare them with scikit-image.
@@ -71,6 +71,28 @@ export function hsvToRgb(hue: number, saturation: number, value: number): Rgb {
               ? [x, 0, c]
               : [c, 0, x];
   return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+
+/** sRGB encoded values to HSL, the hexcone model with lightness (max + min) / 2. */
+export function rgbToHsl(r: number, g: number, b: number): Rgb {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  if (delta === 0) return [0, 0, lightness];
+  const saturation = lightness <= 0.5 ? delta / (max + min) : delta / (2 - max - min);
+  const [hue] = rgbToHsv(r, g, b);
+  return [hue, saturation, lightness];
+}
+
+/** HSL to sRGB encoded values (0 to 255), not rounded. */
+export function hslToRgb(hue: number, saturation: number, lightness: number): Rgb {
+  const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const value = lightness + c / 2;
+  return hsvToRgb(hue, value === 0 ? 0 : c / value, value);
 }
 
 // sRGB primaries with D65 white, from IEC 61966-2-1.

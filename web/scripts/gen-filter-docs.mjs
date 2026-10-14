@@ -1168,6 +1168,9 @@ try {
   const { claheDocs } = await import("./filter-docs/clahe.mjs");
   const { tileCurves } = await load("/src/core/filters/enhancement/clahe.ts");
   claheDocs({ run, pic, figure, example, mdTable, fix, synthetic, tileCurves });
+  const { colorDocs } = await import("./filter-docs/color.mjs");
+  const { hsvToRgb } = await load("/src/core/color/convert.ts");
+  colorDocs({ run, pic, figure, example, mdTable, fix, browserFilter, createImage, hsvToRgb });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

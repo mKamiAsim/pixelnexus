@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { catalog } from "../../src/catalog";
 import { fillFormula } from "../../src/catalog/formula";
 import { defaultValues, resolveParams, validateParams } from "../../src/catalog/params";
+import { BROWSER_FILTERS } from "../../src/core/filters/registry";
+import type { Representation } from "../../src/core/filters/types";
 
 /**
  * Plan risk R9: formulas must render in KaTeX (studio) and MathJax (docs). This test compiles
@@ -39,4 +41,28 @@ describe("catalog parameter defaults", () => {
       expect(values).toEqual(defaults);
     },
   );
+});
+
+describe("Inspector formulas from the filter code compile in KaTeX", () => {
+  const formulasOf = (r: Representation): string[] => {
+    switch (r.kind) {
+      case "stages":
+        return r.stages.map((s) => s.formula);
+      case "frequency":
+        return [r.formula];
+      case "iterative":
+        return [r.update];
+      case "morphology":
+        return [r.operation];
+      default:
+        return [];
+    }
+  };
+  it.each(BROWSER_FILTERS.map((f) => [f.id, f] as const))("%s", (id, filter) => {
+    const entry = catalog.filters.find((f) => f.id === id);
+    const params = resolveParams(entry && "params" in entry ? entry.params : undefined);
+    for (const tex of formulasOf(filter.representation(defaultValues(params)))) {
+      expect(() => compile(tex), tex).not.toThrow();
+    }
+  });
 });

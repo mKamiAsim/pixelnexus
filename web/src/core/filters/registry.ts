@@ -29,6 +29,16 @@ import { sobelNmsFilter } from "./edges/nms";
 import { sobelFilter } from "./edges/sobel";
 import { marrHildrethFilter, zeroCrossingFilter } from "./edges/zero-crossing";
 import { aheFilter, claheFilter } from "./enhancement/clahe";
+import {
+  bwMixFilter,
+  channelMixerFilter,
+  colorBalanceFilter,
+  hsvAdjustFilter,
+  hueRotateFilter,
+  saturationFilter,
+  sepiaFilter,
+  vibranceFilter,
+} from "./enhancement/color-adjust";
 import { gammaFilter } from "./enhancement/gamma";
 import { histogramEqFilter, percentileNormalizeFilter } from "./enhancement/histogram";
 import {
@@ -300,6 +310,14 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   posterizeFilter,
   solarizeFilter,
   grayscaleFilter,
+  bwMixFilter,
+  sepiaFilter,
+  saturationFilter,
+  vibranceFilter,
+  hueRotateFilter,
+  hsvAdjustFilter,
+  channelMixerFilter,
+  colorBalanceFilter,
   gaussianNoiseFilter,
   saltPepperNoiseFilter,
   speckleNoiseFilter,

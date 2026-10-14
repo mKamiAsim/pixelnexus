@@ -279,6 +279,14 @@ nav:
           - Histogram equalization: filters/enhancement/histogram-eq.md
           - Adaptive histogram equalization: filters/enhancement/ahe.md
           - CLAHE: filters/enhancement/clahe.md
+          - Black-and-white conversion: filters/enhancement/bw-mix.md
+          - Sepia: filters/enhancement/sepia.md
+          - Saturation adjustment: filters/enhancement/saturation.md
+          - Vibrance: filters/enhancement/vibrance.md
+          - Hue rotation: filters/enhancement/hue-rotate.md
+          - Hue, saturation and value adjustment: filters/enhancement/hsv-adjust.md
+          - Channel mixer: filters/enhancement/channel-mixer.md
+          - Color balance: filters/enhancement/color-balance.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

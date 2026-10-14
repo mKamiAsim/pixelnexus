@@ -1,7 +1,95 @@
 id: saturation
 name: Saturation adjustment
+aliases: [Saturate, Desaturate, Color saturation]
 family: enhancement
+tags: [purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Makes colors stronger or weaker by moving each color away from or toward its gray.
+purpose: Boost dull colors, or tone down colors that are too loud.
+classification: {linearity: linear, domain: color, operation: color matrix}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: saturateMatrix}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: saturation
+    label: Saturation
+    type: number
+    min: 0
+    max: 300
+    step: 1
+    default: 150
+    unit: "%"
+    description: The saturation factor s, in percent. 100 keeps the image.
+    effect: 0 gives gray, values above 100 give stronger colors.
+formula: |
+  \begin{bmatrix} R' \\ G' \\ B' \end{bmatrix} =
+  \begin{bmatrix}
+  0.213 + 0.787 s & 0.715 - 0.715 s & 0.072 - 0.072 s \\
+  0.213 - 0.213 s & 0.715 + 0.285 s & 0.072 - 0.072 s \\
+  0.213 - 0.213 s & 0.715 - 0.715 s & 0.072 + 0.928 s
+  \end{bmatrix}
+  \begin{bmatrix} R \\ G \\ B \end{bmatrix},
+  \qquad s = \frac{ {{saturation}} }{100}
+formulaExplanation: >-
+  This is the matrix of the CSS saturate() function in the W3C Filter Effects spec. It equals
+  C' = Y + s (C - Y) for each channel C, with the gray Y = 0.213 R + 0.715 G + 0.072 B. So s = 0
+  gives gray, s = 1 keeps the image, and s above 1 pushes each color away from its gray. The
+  gray Y itself does not change. The matrix acts on the encoded sRGB values from 0 to 255, and the results are clipped to 0 to 255.
+symbols:
+  - {symbol: 'R, G, B', meaning: 'The encoded channel values from 0 to 255'}
+  - {symbol: 's', meaning: 'The saturation factor'}
+  - {symbol: 'Y', meaning: 'The gray value with the weights of the spec'}
+steps:
+  - Build the matrix for the factor s.
+  - Multiply each pixel's color by it.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Livening up dull photos.
+  - Muting colors for a calm or faded look.
+advantages:
+  - Keeps the gray value of every pixel.
+  - Linear, so it never shifts hues of grays.
+limitations:
+  - Already vivid colors clip quickly at high factors. Vibrance protects them.
+artifacts:
+  - Clipped, flat areas in strong colors at high factors.
+  - Skin turns orange when boosted a lot.
+references:
+  - kind: standard
+    text: W3C. Filter Effects Module Level 1, section 13.1, the filter functions. W3C Working Draft, 18 December 2018.
+    url: https://www.w3.org/TR/filter-effects-1/
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: saturationFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Push each color away from gray to make it stronger, or toward gray to make it weaker.
+  howItWorks:
+    - Find the gray value of the pixel.
+    - Measure how far each channel is from that gray.
+    - Multiply that distance by the factor and add the gray back.
+  academic: >-
+    A linear interpolation and extrapolation between each color and its luma-weighted gray,
+    written as a 3 by 3 matrix.
+  paramNotes:
+    saturation: How strong the colors are. 100 changes nothing.
+  tryThis:
+    - Compare saturation 200 with vibrance 100 on a portrait.
+  pitfalls:
+    - High factors on skin. Skin turns orange and clips.
+  demos: [line-profile]
+related: [vibrance, hsv-adjust, hue-rotate]
+docsPage: filters/enhancement/saturation.md

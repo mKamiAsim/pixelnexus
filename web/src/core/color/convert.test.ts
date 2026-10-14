@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  hslToRgb,
   hsvToRgb,
   linearToSrgb,
   luma709,
+  rgbToHsl,
   rgbToHsv,
   rgbToLab,
   srgbToLinear,
@@ -45,5 +47,30 @@ describe("round trips and known values", () => {
   it("luma weights add up to one", () => {
     expect(luma709(255, 255, 255)).toBeCloseTo(255, 10);
     expect(luma709(0, 255, 0)).toBeCloseTo(0.7152 * 255, 10);
+  });
+});
+
+describe("HSL", () => {
+  it("uses lightness (max + min) / 2 and the HSL saturation", () => {
+    expect(rgbToHsl(255, 0, 0)).toEqual([0, 1, 0.5]);
+    const [h, s, l] = rgbToHsl(51, 102, 204);
+    expect(h).toBeCloseTo(220, 9);
+    expect(l).toBeCloseTo(0.5, 9);
+    expect(s).toBeCloseTo(0.6, 9);
+    expect(rgbToHsl(128, 128, 128)).toEqual([0, 0, 128 / 255]);
+  });
+
+  it("goes back to the same color", () => {
+    const colors: [number, number, number][] = [
+      [12, 200, 77],
+      [255, 255, 255],
+      [0, 0, 0],
+      [240, 230, 250],
+      [3, 1, 2],
+    ];
+    for (const rgb of colors) {
+      const back = hslToRgb(...rgbToHsl(...rgb));
+      back.forEach((v, i) => expect(v).toBeCloseTo(rgb[i] ?? 0, 9));
+    }
   });
 });

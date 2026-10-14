@@ -222,6 +222,14 @@ const CASES: [string, Params][] = [
   ["solarize", { threshold: 100 }],
   ["clahe", { tilesX: 3, tilesY: 2, clipLimit: 2 }],
   ["ahe", { tilesX: 4, tilesY: 4, channelScope: "luminance" }],
+  ["bw-mix", { red: 40, green: 40, blue: 20 }],
+  ["sepia", { amount: 80 }],
+  ["saturation", { saturation: 200 }],
+  ["vibrance", { vibrance: 60 }],
+  ["hue-rotate", { angle: 45 }],
+  ["hsv-adjust", { hue: 30, saturation: 120, value: 90 }],
+  ["channel-mixer", { redFromGreen: 30, redFromRed: 70 }],
+  ["color-balance", { shadowsCyanRed: 40, highlightsYellowBlue: -30 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

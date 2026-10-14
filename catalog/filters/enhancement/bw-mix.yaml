@@ -1,8 +1,111 @@
 id: bw-mix
 name: Black-and-white conversion
+aliases: [Black and white mix, Monochrome mixer, Custom grayscale]
 family: enhancement
+tags: [purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Custom channel weights.
+
+summary: Turns the image gray with your own weights for red, green and blue, like a color filter in front of black-and-white film.
+purpose: Control how each color turns into gray, for example to darken a blue sky or lighten skin.
+classification: {linearity: linear, domain: color, operation: weighted channel sum}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: bwMixFilter}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Red, green and blue all become the same gray value. Alpha is kept. The weights act on the encoded sRGB values.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: red
+    label: Red
+    type: number
+    min: -200
+    max: 300
+    step: 1
+    default: 30
+    unit: "%"
+    description: The weight of the red channel, in percent.
+    effect: Higher values make red areas lighter.
+  - key: green
+    label: Green
+    type: number
+    min: -200
+    max: 300
+    step: 1
+    default: 59
+    unit: "%"
+    description: The weight of the green channel, in percent.
+    effect: Higher values make green areas lighter.
+  - key: blue
+    label: Blue
+    type: number
+    min: -200
+    max: 300
+    step: 1
+    default: 11
+    unit: "%"
+    description: The weight of the blue channel, in percent.
+    effect: Higher values make blue areas lighter.
+formula: |
+  Y = \frac{w_R R + w_G G + w_B B}{100},
+  \qquad
+  (w_R, w_G, w_B) = ({{red}}, {{green}}, {{blue}})
+formulaExplanation: >-
+  The gray value is a weighted sum of the three channels, with weights in percent. The defaults
+  30, 59 and 11 are close to the BT.601 luma weights. Weights that add up to 100 keep white white
+  and gray gray. A larger sum brightens the image, a smaller one darkens it. Negative weights
+  darken the areas where that channel is strong.
+symbols:
+  - {symbol: 'R, G, B', meaning: 'The encoded channel values from 0 to 255'}
+  - {symbol: 'w_R, w_G, w_B', meaning: 'The weights in percent'}
+steps:
+  - Multiply each channel by its weight and add the three.
+  - Divide by 100 and write the result to all three channels.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Black-and-white photos with a chosen look, such as a dark sky from a low blue weight.
+  - Making one color stand out in gray.
+advantages:
+  - Full control over how each color maps to gray.
+limitations:
+  - Colors with the same weighted sum turn into the same gray.
+  - Sums far from 100 clip highlights or crush shadows.
+artifacts:
+  - Noise in a channel with a large weight becomes visible.
+references:
+  - kind: web
+    text: GIMP documentation, the Channel Mixer filter.
+    url: https://docs.gimp.org/2.10/en/gimp-filter-channel-mixer.html
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: bwMixFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Make the image gray, choosing how much red, green and blue each count.
+  howItWorks:
+    - Multiply red, green and blue by their weights.
+    - Add them up and divide by 100.
+    - Use the result as the gray value.
+  academic: >-
+    A linear projection of RGB onto one axis with user weights, the monochrome mode of a
+    channel mixer.
+  paramNotes:
+    red: How bright red areas become.
+    green: How bright green areas become.
+    blue: How bright blue areas become.
+  tryThis:
+    - Set blue to 0 and red to 60 on an outdoor photo with sky. The sky turns dark, as with a red filter on film.
+  pitfalls:
+    - Weights that add up to much more than 100. The highlights clip to white.
+  demos: [line-profile]
+related: [grayscale, channel-mixer]
+docsPage: filters/enhancement/bw-mix.md

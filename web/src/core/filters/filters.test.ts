@@ -113,15 +113,26 @@ describe("color filters against NumPy and SciPy", () => {
   const planes = split(rgb);
   const guide = split(guideRgb);
   it.each(cases.map((c) => [describeCase(c), c] as const))("%s", (_name, c) => {
-    const filter = browserFilter(c.filter) as ColorFilter;
-    expect(filter.kind).toBe("color");
-    const out = filter.color(planes, c.params, {
-      border: c.params.border,
-      originX: 0,
-      originY: 0,
-      channel: 0,
-      ...(c.guide ? { guide } : {}),
-    });
+    const filter = browserFilter(c.filter);
+    let out: [Plane, Plane, Plane];
+    if (filter?.kind === "pixel") {
+      out = [0, 1, 2].map(() => createPlane(width, height)) as [Plane, Plane, Plane];
+      const pixel = new Float64Array(3);
+      for (let i = 0; i < width * height; i++) {
+        const [r, g, b] = planes.map((p) => p.data[i] ?? 0) as [number, number, number];
+        filter.pixel(r, g, b, c.params, pixel);
+        out.forEach((p, ch) => (p.data[i] = pixel[ch] ?? 0));
+      }
+    } else {
+      expect(filter?.kind).toBe("color");
+      out = (filter as ColorFilter).color(planes, c.params, {
+        border: c.params.border,
+        originX: 0,
+        originY: 0,
+        channel: 0,
+        ...(c.guide ? { guide } : {}),
+      });
+    }
     let worst = 0;
     for (let i = 0; i < width * height; i++) {
       for (let ch = 0; ch < 3; ch++) {
