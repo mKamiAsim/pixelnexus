@@ -167,6 +167,14 @@ import {
   regularizedRlFilter,
   richardsonLucyFilter,
 } from "./restoration/iterative";
+import {
+  adaptiveGaussianFilter,
+  adaptiveMeanFilter,
+  niblackFilter,
+  otsuFilter,
+  sauvolaFilter,
+  thresholdGlobalFilter,
+} from "./segmentation/thresholds";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -336,6 +344,12 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   poissonNoiseFilter,
   noisePeriodicFilter,
   degradeBlurFilter,
+  thresholdGlobalFilter,
+  otsuFilter,
+  adaptiveMeanFilter,
+  adaptiveGaussianFilter,
+  niblackFilter,
+  sauvolaFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

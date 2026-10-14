@@ -235,6 +235,12 @@ const CASES: [string, Params][] = [
   ["white-patch", { percentile: 98 }],
   ["chromatic-adaptation", { source: "D50", target: "D65", method: "von-kries" }],
   ["temperature-tint", { temperature: 3500, tint: 5 }],
+  ["threshold-global", { threshold: 120, invert: true }],
+  ["otsu", {}],
+  ["threshold-adaptive-mean", { size: 7, offset: 3 }],
+  ["threshold-adaptive-gaussian", { size: 9, offset: 2 }],
+  ["niblack", { size: 7, k: -0.2 }],
+  ["sauvola", { size: 7, k: 0.4, r: 128 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 
