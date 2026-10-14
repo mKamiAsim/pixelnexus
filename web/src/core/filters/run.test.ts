@@ -253,6 +253,9 @@ const CASES: [string, Params][] = [
   ["sauvola", { size: 7, k: 0.4, r: 128 }],
   ["wolf", { size: 7, k: 0.4 }],
   ["bradley", { size: 9, percent: 10 }],
+  ["region-growing", { seedX: 30, seedY: 60, tolerance: 60, measure: "color" }],
+  ["kmeans-color", { k: 3, iterations: 10 }],
+  ["ccl", { connectivity: "4", output: "gray" }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

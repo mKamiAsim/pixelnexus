@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { localMoments } from "@/core/filters/adaptive/local-stats";
 import { createPlane, type Plane } from "@/core/filters/planes";
 
+import {
+  cclLabelFilter,
+  componentLabels,
+  growRegion,
+  growSettings,
+  kmeansColors,
+  labelColor,
+  seedPixel,
+} from "./regions";
 import { bradleyFilter, otsuThreshold, wolfFilter, wolfThresholds } from "./thresholds";
 
 const CONTEXT = { border: "reflect101", originX: 0, originY: 0, channel: 0 } as const;
@@ -89,5 +98,66 @@ describe("Wolf and Bradley thresholds", () => {
     expect(bradleyFilter.plane(page, params, CONTEXT).data[12]).toBe(0);
     page.data[12] = 172; // mean 198.88, threshold 169.048: white
     expect(bradleyFilter.plane(page, params, CONTEXT).data[12]).toBe(255);
+  });
+});
+
+/** Three planes of a gray image drawn from rows of text, "#" bright and "." dark. */
+function grayPlanes(rows: string[], bright = 200, dark = 20): [Plane, Plane, Plane] {
+  const p = createPlane(rows[0]?.length ?? 0, rows.length);
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => (p.data[y * p.width + x] = ch === "#" ? bright : dark)),
+  );
+  return [p, p, p];
+}
+
+describe("connected-component labeling", () => {
+  const planes = grayPlanes(["##...", "##...", "..#..", "...#.", "....#"]);
+
+  it("joins diagonal neighbors with 8 neighbors and not with 4", () => {
+    expect(componentLabels(planes, { connectivity: "8" }).count).toBe(1);
+    expect(componentLabels(planes, { connectivity: "4" }).count).toBe(4);
+  });
+
+  it("numbers components by their first pixel in a row by row scan", () => {
+    const { labels } = componentLabels(planes, { connectivity: "4" });
+    expect([labels[0], labels[12], labels[18], labels[24]]).toEqual([1, 2, 3, 4]);
+  });
+
+  it("paints each component in its own color and the background black", () => {
+    const out = cclLabelFilter.color(planes, { connectivity: "4" }, CONTEXT);
+    out.forEach((p, c) => expect(p.data[12]).toBeCloseTo(labelColor(2)[c] ?? NaN, 4));
+    expect(out.map((p) => p.data[2])).toEqual([0, 0, 0]);
+  });
+});
+
+describe("region growing", () => {
+  it("places the seed at a percent of the width and height", () => {
+    expect(seedPixel(10, 20, growSettings({ seedX: 50, seedY: 0 }))).toEqual([5, 0]);
+    expect(seedPixel(10, 20, growSettings({ seedX: 100, seedY: 99.9 }))).toEqual([9, 19]);
+  });
+
+  it("keeps only the matching pixels that connect to the seed", () => {
+    // Two bright areas; the seed is in the left one.
+    const planes = grayPlanes(["##..#", "##..#", "##..#"]);
+    const region = growRegion(planes, growSettings({ seedX: 10, seedY: 50, tolerance: 10 }));
+    expect(Array.from(region)).toEqual([1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0]);
+  });
+});
+
+describe("k-means color segmentation", () => {
+  it("finds the means of two groups of colors", () => {
+    const planes = grayPlanes(["##..", "##..", "#..."], 200, 20);
+    planes[0] = { ...planes[0], data: planes[0].data.map((v, i) => v + (i % 3)) };
+    const { centers, labels } = kmeansColors(planes, 2, 20);
+    const means = [0, 1].map((c) => {
+      const members = Array.from(planes[0].data).filter((_, i) => labels[i] === c);
+      return members.reduce((a, b) => a + b, 0) / members.length;
+    });
+    expect([centers[0], centers[3]]).toEqual(means);
+  });
+
+  it("uses fewer clusters when the image has fewer colors than k", () => {
+    const planes = grayPlanes(["#.", ".#"]);
+    expect(kmeansColors(planes, 5, 10).centers).toHaveLength(6);
   });
 });

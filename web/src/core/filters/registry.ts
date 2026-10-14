@@ -183,6 +183,7 @@ import {
   thresholdGlobalFilter,
   wolfFilter,
 } from "./segmentation/thresholds";
+import { cclLabelFilter, kmeansColorFilter, regionGrowingFilter } from "./segmentation/regions";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -368,6 +369,9 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   sauvolaFilter,
   wolfFilter,
   bradleyFilter,
+  regionGrowingFilter,
+  kmeansColorFilter,
+  cclLabelFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));
