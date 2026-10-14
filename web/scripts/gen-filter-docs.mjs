@@ -1191,6 +1191,8 @@ try {
   });
   const { thresholdDocs } = await import("./filter-docs/thresholds.mjs");
   thresholdDocs({ run, pic, figure, example, mdTable, fix, createImage });
+  const { retinexDocs } = await import("./filter-docs/retinex.mjs");
+  retinexDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

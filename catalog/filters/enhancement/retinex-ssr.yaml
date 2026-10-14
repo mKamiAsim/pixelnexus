@@ -1,10 +1,146 @@
 id: retinex-ssr
 name: Single-scale Retinex
-aliases:
-- Retinex
+aliases: [Retinex, SSR, Center/surround Retinex]
 family: enhancement
+tags: [purpose:enhancement, purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: The "Retinex" name is an overview alias that links SSR, MSR and MSRCR.
+
+summary: Divides each pixel by a Gaussian average of its surroundings, in the log domain, to remove slow changes of lighting and bring out detail in shadows.
+purpose: Even out uneven lighting and lift detail in dark areas, at one chosen scale.
+classification: {linearity: nonlinear, domain: color, operation: log ratio to a Gaussian surround}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/retinex.ts, symbol: multiscaleRetinex}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  With Apply to set to each channel, red, green and blue are processed and balanced on their
+  own, so colors can shift toward gray. With intensity, the Retinex runs on (R + G + B) / 3 and
+  every pixel keeps its color ratios. Alpha is kept.
+boundary: >-
+  The image is mirrored at its edges, as in the article by Petro, Sbert and Morel. The color
+  balance uses the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: sigma
+    label: Scale sigma
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 80
+    unit: px
+    description: The standard deviation of the Gaussian surround.
+    effect: Small scales bring out fine detail but leave halos and gray colors. Large scales keep the colors but even out less light.
+  - key: apply
+    label: Apply to
+    type: select
+    default: channels
+    options:
+      - {value: channels, label: Each channel}
+      - {value: intensity, label: 'Intensity, keep colors'}
+    description: Run the Retinex on each color channel, or on the intensity while each pixel keeps its color.
+    effect: Intensity keeps the colors of the image. Each channel can also remove a color cast, but it makes colors grayer.
+  - key: clipLow
+    label: Clip dark
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s1 of the darkest values that the color balance sets to 0.
+    effect: Higher values deepen the shadows and raise the contrast.
+  - key: clipHigh
+    label: Clip bright
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s2 of the brightest values that the color balance sets to 255.
+    effect: Higher values brighten the image and raise the contrast.
+formula: |
+  R_c = \log(I_c + 1) - \log\left(G_\sigma * (I_c + 1)\right),
+  \quad
+  I'_c = 255\, \frac{\min(\max(R_c, V_{\min}), V_{\max}) - V_{\min}}{V_{\max} - V_{\min}},
+  \qquad \sigma = {{sigma}}
+formulaExplanation: >-
+  G_sigma is a Gaussian with standard deviation sigma, and * is convolution. Land's center and
+  surround idea is that the light changes slowly, so dividing by a wide average of the
+  neighborhood removes it and leaves the reflectance. The log turns the division into a
+  difference. Jobson, Rahman and Woodell place the log after the surround, as here, and found
+  sigma = 80 a good choice. The result has no fixed range, so Simplest Color Balance stretches
+  it to 0 to 255. V_min and V_max are the values at positions floor(N s1 / 100) and
+  floor(N (100 - s2) / 100) - 1 of the N sorted values. With Apply to set to intensity, R is
+  computed on I = (R + G + B) / 3 and balanced to I_1. Then each pixel is scaled by
+  A = min(255 / max(R, G, B), I_1 / I), which keeps its color ratios. PixelNexus takes the log of
+  I + 1 so that black pixels have a finite log. The article does not say how it handles zeros.
+  A result with no spread, as from a flat image, turns mid gray.
+symbols:
+  - {symbol: 'I_c', meaning: 'Channel c of the input, 0 to 255'}
+  - {symbol: 'G_\sigma', meaning: 'The Gaussian surround with standard deviation sigma'}
+  - {symbol: 'R_c', meaning: 'The Retinex output, a log ratio'}
+  - {symbol: 'V_{\min}, V_{\max}', meaning: 'The values clipped to 0 and 255 by the color balance'}
+steps:
+  - Add 1 to every value and take the log.
+  - Blur the image with the Gaussian on the image mirrored at its edges, through the FFT of each row and column.
+  - Subtract the log of the blurred image.
+  - Stretch the result to 0 to 255 with Simplest Color Balance, clipping s1 and s2 percent.
+  - With intensity, scale each pixel so that its intensity matches the result and its color ratios stay.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. Every row and column is extended to twice its length for the FFT, so the cost does not depend on sigma.
+useCases:
+  - Photos with deep shadows next to bright areas.
+  - A first look at how Retinex works, before the multi-scale version.
+advantages:
+  - Brings out detail in shadows without a global curve.
+  - Can remove a color cast when it runs on each channel.
+limitations:
+  - One scale cannot both keep colors and compress the range. Small scales leave halos, large scales even out less light.
+  - On each channel, colors turn grayish where one color fills a large area.
+artifacts:
+  - Halos along strong edges at small scales.
+  - Noise in dark, flat areas is boosted.
+references:
+  - kind: paper
+    text: Jobson, D. J., Rahman, Z. and Woodell, G. A. Properties and performance of a center/surround retinex. IEEE Transactions on Image Processing 6(3), 451 to 462, 1997.
+    doi: 10.1109/83.557356
+  - kind: paper
+    text: Petro, A. B., Sbert, C. and Morel, J.-M. Multiscale Retinex. Image Processing On Line 4, 71 to 88, 2014.
+    doi: 10.5201/ipol.2014.107
+  - kind: paper
+    text: Limare, N., Lisani, J.-L., Morel, J.-M., Petro, A. B. and Sbert, C. Simplest Color Balance. Image Processing On Line 1, 297 to 315, 2011.
+    doi: 10.5201/ipol.2011.llmps-scb
+implementation: {path: web/src/core/filters/enhancement/retinex.ts, symbol: retinexSsrFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/retinex.test.ts]
+learn:
+  oneSentence: Compare each pixel with a blurred copy of the image, so that slow changes of light cancel out.
+  howItWorks:
+    - Blur the image with a wide Gaussian. The blur stands for the light falling on each area.
+    - Divide each pixel by the blur, in the log domain, where division is a subtraction.
+    - Stretch the result to the full range, clipping a few percent at each end.
+  academic: >-
+    Jobson's single-scale center/surround Retinex, R = log I - log(G * I), with the Simplest Color
+    Balance of Limare and colleagues as the final stretch.
+  paramNotes:
+    sigma: How wide the blur is that stands for the light.
+    apply: Work on each color, or on brightness while keeping the colors.
+    clipLow: How many of the darkest values turn black.
+    clipHigh: How many of the brightest values turn white.
+  tryThis:
+    - Try sigma 15, 80 and 250 on a photo with a window and a dark room. Watch the halos shrink and the colors return as sigma grows.
+  pitfalls:
+    - Expecting natural colors from each channel on scenes with one dominant color. Use intensity there.
+  demos: [line-profile]
+related: [retinex-msr, msrcr, gray-world]
+docsPage: filters/enhancement/retinex-ssr.md

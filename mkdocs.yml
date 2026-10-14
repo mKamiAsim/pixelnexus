@@ -292,6 +292,9 @@ nav:
           - White-patch correction: filters/enhancement/white-patch.md
           - Chromatic adaptation: filters/enhancement/chromatic-adaptation.md
           - Temperature and tint: filters/enhancement/temperature-tint.md
+          - Single-scale Retinex: filters/enhancement/retinex-ssr.md
+          - Multi-scale Retinex: filters/enhancement/retinex-msr.md
+          - Multi-scale Retinex with color restoration: filters/enhancement/msrcr.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md
