@@ -1,7 +1,89 @@
 id: solarize
 name: Solarize
+aliases: [Solarization, Sabattier effect]
 family: artistic
+tags: [purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Inverts the values at or above a threshold and keeps the others, a mix of positive and negative.
+purpose: Create the look of a partly reversed photographic print.
+classification: {linearity: nonlinear, domain: point, operation: partial negative transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: solarizeTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - key: threshold
+    label: Threshold
+    type: integer
+    min: 0
+    max: 256
+    step: 1
+    default: 128
+    description: Values at or above this level are inverted.
+    effect: Lower thresholds invert more of the image. 0 inverts all of it and 256 none.
+  - ref: channelScope
+formula: |
+  I_{\text{out}} = \begin{cases} I & I < t \\ 255 - I & I \ge t \end{cases},
+  \qquad t = {{threshold}}
+formulaExplanation: >-
+  Values below the threshold stay. Values at or above it are mirrored, as in the image
+  negative. This is the rule of Pillow's ImageOps.solarize. In film photography, solarization
+  and the Sabattier effect reverse tones by overexposure or by a second exposure during
+  development. This filter only imitates the look.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: 't', meaning: 'The threshold'}
+steps:
+  - Build the 256-entry table, inverting the levels at or above the threshold.
+  - Look up every pixel value in the table.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Artistic, surreal photo effects.
+advantages:
+  - One parameter, simple to predict on the curve.
+limitations:
+  - The curve jumps at the threshold, so a smooth gradient through it breaks.
+artifacts:
+  - A sharp contour where values cross the threshold.
+references:
+  - kind: library
+    text: Pillow documentation, the ImageOps module.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageOps.html
+implementation: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: solarizeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Turn the bright parts into a negative and keep the dark parts as they are.
+  howItWorks:
+    - Compare each value with the threshold.
+    - Keep values below it.
+    - Replace values at or above it with 255 minus the value.
+  academic: >-
+    A non-monotonic point transformation: the identity below the threshold and the negative at
+    or above it.
+  paramNotes:
+    threshold: Where the inversion starts.
+    channelScope: Solarize the colors, or the brightness only.
+  tryThis:
+    - Open the gray ramp test image and move the threshold. The ramp folds back down at the threshold.
+  pitfalls:
+    - A threshold of 256. Nothing changes, since no value reaches it.
+  demos: [point-op-curve]
+related: [invert, posterize]
+docsPage: filters/artistic/solarize.md

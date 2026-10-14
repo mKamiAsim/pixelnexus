@@ -1,8 +1,82 @@
 id: log-transform
 name: Log transformation
+aliases: [Logarithmic transformation, Log transform]
 family: enhancement
+tags: [purpose:contrast, purpose:brightness]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Point operation.
+
+summary: Brightens the dark tones strongly and the bright tones a little, with a logarithm curve.
+purpose: Show detail in very dark areas, and view images with a huge range of values, such as Fourier spectra.
+classification: {linearity: nonlinear, domain: point, operation: logarithmic transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: logTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - ref: channelScope
+formula: |
+  I_{\text{out}} = c \ln(1 + I),\qquad c = \frac{255}{\ln 256}
+formulaExplanation: >-
+  This is the log transformation of Gonzalez and Woods. The constant c makes 255 map to 255,
+  and 0 maps to 0. The curve is steep for small values and flat for large ones. So the dark
+  tones spread out over a wide range and the bright tones are pressed together. Value 1
+  becomes 31.9 and value 128 becomes 223.5.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output value before rounding'}
+  - {symbol: 'c', meaning: 'The scale that maps 255 to 255'}
+steps:
+  - Build the 256-entry table c ln(1 + v).
+  - Look up every pixel value in the table.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Showing a Fourier magnitude spectrum, whose values span many orders of size.
+  - Revealing detail in shadows.
+advantages:
+  - No parameters to tune.
+  - Black and white stay fixed.
+limitations:
+  - The strength is fixed. Gamma correction gives a curve that can be tuned.
+  - Bright areas lose contrast.
+artifacts:
+  - Washed-out highlights and a gray, low-contrast look on normal photos.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+implementation: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: logTransformFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: A curve that lifts dark values a lot and bright values only a little.
+  howItWorks:
+    - Add 1 to the value, so 0 stays defined.
+    - Take the natural logarithm.
+    - Scale the result so that 255 stays 255.
+  academic: >-
+    The point transformation s = c log(1 + r), which expands the low intensities and compresses
+    the high ones.
+  paramNotes:
+    channelScope: Which part of the color image goes through the curve.
+  tryThis:
+    - Open the Spectrum panel on a photo, then compare a dark photo before and after this filter.
+  pitfalls:
+    - Using it on a normal photo. The result looks flat and gray.
+  demos: [point-op-curve]
+related: [gamma, contrast-stretch, histogram-eq]
+docsPage: filters/enhancement/log-transform.md

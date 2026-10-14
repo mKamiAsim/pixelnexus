@@ -153,6 +153,12 @@ export interface PlaneFilter extends FilterBase {
    */
   readonly alphaWeighted: boolean;
   plane(input: Plane, params: Params, context: PlaneContext): Plane;
+  /**
+   * For global point operations whose curve comes from the histogram of the whole plane, such
+   * as histogram equalization: the output for each level 0 to 255, given the counts of the
+   * levels. The Point-op curve widget draws it.
+   */
+  readonly pointTable?: (params: Params, histogram: ArrayLike<number>) => Float64Array;
 }
 
 /**

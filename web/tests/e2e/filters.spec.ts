@@ -91,6 +91,20 @@ test("the Stage viewer shows every stage of Canny", async ({ page }) => {
   }
 });
 
+test("the Point-op curve shows the equalization curve and both histograms", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "equaliz", "Histogram equalization");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Point-op curve" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Transfer curve/ })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma before the filter" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma after the filter" }),
+  ).toBeVisible();
+});
+
 test("scale space shows its response and its selected scale", async ({ page }) => {
   await openTestImage(page, "Disks");
   await chooseFilter(page, "scale", "Scale-space filtering");

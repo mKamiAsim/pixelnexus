@@ -73,17 +73,23 @@ describe("border rule against numpy.pad", () => {
 
 describe("browser filters against SciPy and scikit-image", () => {
   it.each(fixtures.cases.map((c) => [describeCase(c), c] as const))("%s", (_name, c) => {
-    const filter = browserFilter(c.filter) as PlaneFilter;
-    expect(filter.kind === "smooth" || filter.kind === "derived").toBe(true);
+    const filter = browserFilter(c.filter);
     const plane = c.input
       ? { ...input, data: Float32Array.from(fixtures.inputs[c.input] ?? []) }
       : input;
-    const output = filter.plane(plane, c.params, {
-      border: c.params.border,
-      originX: 0,
-      originY: 0,
-      channel: 0,
-    });
+    let output: Plane;
+    if (filter?.kind === "point") {
+      const transfer = filter.transfer(c.params);
+      output = { ...plane, data: plane.data.map((v) => transfer(v)) };
+    } else {
+      expect(filter?.kind === "smooth" || filter?.kind === "derived").toBe(true);
+      output = (filter as PlaneFilter).plane(plane, c.params, {
+        border: c.params.border,
+        originX: 0,
+        originY: 0,
+        channel: 0,
+      });
+    }
     expect(output.data).toHaveLength(c.output.length);
     // Tolerance relative to the size of the value, and at least the stated absolute tolerance.
     // Float32 holds about 7 digits, so values near 2000 cannot be closer than about 2e-4.

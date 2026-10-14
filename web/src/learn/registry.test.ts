@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { catalog, isRunnable } from "@/catalog";
+import { equalizeTable } from "@/core/filters/enhancement/histogram";
 
-import { stagesOf } from "./common";
+import { curveOf, stagesOf } from "./common";
 import { LATER_DEMOS, WIDGETS } from "./registry";
 
 describe("Learn demos", () => {
@@ -33,5 +34,14 @@ describe("Learn demos", () => {
       "thresholds",
       "edges",
     ]);
+  });
+});
+
+describe("the Point-op curve", () => {
+  it("draws the curve each filter really applies", () => {
+    const counts = Float64Array.from({ length: 256 }, (_, k) => (k % 3) + 1);
+    expect(curveOf("histogram-eq", {}, counts)).toEqual(Array.from(equalizeTable(counts)));
+    expect(curveOf("invert", {}, counts)?.[200]).toBe(55);
+    expect(curveOf("gaussian", {}, counts)).toBeNull();
   });
 });

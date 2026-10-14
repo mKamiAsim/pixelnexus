@@ -94,6 +94,6 @@ learn:
     - Compare gamma 0.5 with the RGB scope and with the brightness scope on a colorful photo.
   pitfalls:
     - Expecting gamma to fix contrast. It moves the midtones but leaves the black and white points.
-  demos: [line-profile]
-related: [grayscale]
+  demos: [point-op-curve, line-profile]
+related: [grayscale, log-transform, contrast-stretch, histogram-eq]
 docsPage: filters/enhancement/gamma.md

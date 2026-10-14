@@ -213,6 +213,13 @@ const CASES: [string, Params][] = [
   ["gaussian-pyramid", { levels: 2 }],
   ["laplacian-pyramid", { levels: 3, gain1: 2, gain2: 1.5, gain3: 0.5, gain4: 1 }],
   ["scale-space", { measure: "hessian", sigma: 1, sigmaMax: 2, scales: 3 }],
+  ["log-transform", {}],
+  ["contrast-stretch", { r1: 50, s1: 20, r2: 200, s2: 230 }],
+  ["percentile-normalize", { low: 2, high: 98 }],
+  ["invert", {}],
+  ["histogram-eq", { channelScope: "luminance" }],
+  ["posterize", { levels: 5 }],
+  ["solarize", { threshold: 100 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

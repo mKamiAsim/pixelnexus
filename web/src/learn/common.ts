@@ -94,3 +94,20 @@ export function stagesOf(filterId: string): {
     stages: (param?.options ?? []).map((o) => ({ value: String(o.value), label: o.label })),
   };
 }
+
+/** The curve the filter applies to the levels 0 to 255, or null for other filters. */
+export function curveOf(
+  filterId: string,
+  values: Params,
+  histogram: ArrayLike<number>,
+): number[] | null {
+  const filter = browserFilter(filterId);
+  if (filter?.kind === "point") {
+    const transfer = filter.transfer(values);
+    return Array.from({ length: 256 }, (_, v) => transfer(v));
+  }
+  if ((filter?.kind === "smooth" || filter?.kind === "derived") && filter.pointTable) {
+    return Array.from(filter.pointTable(values, histogram));
+  }
+  return null;
+}

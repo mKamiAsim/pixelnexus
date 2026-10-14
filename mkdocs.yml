@@ -272,6 +272,14 @@ nav:
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md
+          - Log transformation: filters/enhancement/log-transform.md
+          - Contrast stretching: filters/enhancement/contrast-stretch.md
+          - Percentile normalization: filters/enhancement/percentile-normalize.md
+          - Invert: filters/enhancement/invert.md
+          - Histogram equalization: filters/enhancement/histogram-eq.md
+      - Artistic:
+          - Posterize: filters/artistic/posterize.md
+          - Solarize: filters/artistic/solarize.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md

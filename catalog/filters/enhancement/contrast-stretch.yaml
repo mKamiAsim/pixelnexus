@@ -1,8 +1,129 @@
 id: contrast-stretch
 name: Contrast stretching
+aliases: [Piecewise-linear contrast stretch, Levels]
 family: enhancement
+tags: [purpose:contrast]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Point operation.
+
+summary: Remaps brightness with a curve of three straight segments through two control points.
+purpose: Spread a narrow range of brightness over more of the 0 to 255 range, or make a threshold.
+classification: {linearity: nonlinear, domain: point, operation: piecewise-linear transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: stretchTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - key: r1
+    label: Input 1
+    type: integer
+    min: 0
+    max: 255
+    step: 1
+    default: 64
+    description: The input value r1 of the first control point.
+    effect: Values below it are pressed toward black or spread out, depending on Output 1.
+  - key: s1
+    label: Output 1
+    type: integer
+    min: 0
+    max: 255
+    step: 1
+    default: 32
+    description: The output value s1 of the first control point.
+    effect: Lower values darken the shadows.
+  - key: r2
+    label: Input 2
+    type: integer
+    min: 0
+    max: 255
+    step: 1
+    default: 192
+    description: The input value r2 of the second control point.
+    effect: Values above it are pressed toward white or spread out, depending on Output 2.
+  - key: s2
+    label: Output 2
+    type: integer
+    min: 0
+    max: 255
+    step: 1
+    default: 224
+    description: The output value s2 of the second control point.
+    effect: Higher values brighten the highlights.
+  - ref: channelScope
+formula: |
+  I_{\text{out}} = \begin{cases}
+    s_1 \, I / r_1 & I \le r_1 \\
+    s_1 + (s_2 - s_1)\,\dfrac{I - r_1}{r_2 - r_1} & r_1 < I \le r_2 \\
+    s_2 + (255 - s_2)\,\dfrac{I - r_2}{255 - r_2} & I > r_2
+  \end{cases}
+  \qquad
+  (r_1, s_1) = ({{r1}}, {{s1}}),\ (r_2, s_2) = ({{r2}}, {{s2}})
+formulaExplanation: >-
+  The curve runs in straight lines through (0, 0), (r1, s1), (r2, s2) and (255, 255), the
+  contrast stretching of Gonzalez and Woods. A middle segment steeper than 45 degrees raises
+  the contrast of the values it covers. When r1 is above r2, the two points swap. With r1 = r2,
+  s1 = 0 and s2 = 255, the curve jumps from 0 to 255 and becomes a threshold. When r1 is 0, the
+  value 0 maps to s1. When r2 is 255, the value 255 maps to s2.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: '(r_1, s_1), (r_2, s_2)', meaning: 'The two control points, input and output'}
+steps:
+  - Sort the control points by their input values.
+  - Build the 256-entry table from the three straight segments.
+  - Look up every pixel value in the table.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Raising the contrast of a hazy or faded image.
+  - Making a hard threshold with r1 = r2.
+advantages:
+  - Full control over the shape with four numbers.
+  - Simple to read on the curve.
+limitations:
+  - The control points are fixed numbers. Percentile normalization finds them from the image.
+  - Steep segments merge nearby values in the flat segments.
+artifacts:
+  - Banding where a steep segment spreads a few input levels over many output levels.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+implementation: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: contrastStretchFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Bend the brightness curve with two points, to spread the tones you care about.
+  howItWorks:
+    - Place two control points on the curve.
+    - Join 0, the two points and 255 with straight lines.
+    - Look up each pixel value on the curve.
+  academic: >-
+    A piecewise-linear intensity transformation through (r1, s1) and (r2, s2). The slope of each
+    segment sets the contrast gain for its input range.
+  paramNotes:
+    r1: The input value of the first point.
+    s1: The output value of the first point.
+    r2: The input value of the second point.
+    s2: The output value of the second point.
+    channelScope: Which part of the color image goes through the curve.
+  tryThis:
+    - Set Input 1 and Input 2 to the same value, Output 1 to 0 and Output 2 to 255. The curve becomes a threshold.
+  pitfalls:
+    - A very steep middle segment on an 8-bit image. Gaps appear in the histogram.
+  demos: [point-op-curve]
+related: [percentile-normalize, gamma, histogram-eq, threshold-global]
+docsPage: filters/enhancement/contrast-stretch.md

@@ -1152,6 +1152,19 @@ try {
   });
   const { scaleSpaceDocs } = await import("./filter-docs/scale-space.mjs");
   scaleSpaceDocs({ run, pic, figure, example, mdTable, fix, synthetic, browserFilter });
+  const { pointOpsDocs } = await import("./filter-docs/pointops.mjs");
+  const { histogramPercentile } = await load("/src/core/filters/enhancement/histogram.ts");
+  pointOpsDocs({
+    run,
+    pic,
+    figure,
+    example,
+    mdTable,
+    fix,
+    synthetic,
+    browserFilter,
+    histogramPercentile,
+  });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

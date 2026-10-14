@@ -123,8 +123,13 @@
 | [Matched vessel filter](features/matched-vessel.md) | Texture, corners, blobs and features | Finds thin dark or bright lines with a Gaussian profile, such as blood vessels, by matching kernels in many directions. | Implemented and tested |
 | [Moravec corner detector](features/moravec.md) | Texture, corners, blobs and features | Finds corners as points where a small window changes in every direction it is moved. | Implemented and tested |
 | [Shi-Tomasi](features/shi-tomasi.md) | Texture, corners, blobs and features | Finds corners by the smaller eigenvalue of the structure tensor, the measure behind Good features to track. | Implemented and tested |
+| [Contrast stretching](enhancement/contrast-stretch.md) | Enhancement, illumination and color | Remaps brightness with a curve of three straight segments through two control points. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |
+| [Histogram equalization](enhancement/histogram-eq.md) | Enhancement, illumination and color | Spreads the brightness values so that each level is used about equally often, which raises contrast where most pixels are. | Implemented and tested |
+| [Invert](enhancement/invert.md) | Enhancement, illumination and color | Turns the image into its negative, so black becomes white and white becomes black. | Implemented and tested |
+| [Log transformation](enhancement/log-transform.md) | Enhancement, illumination and color | Brightens the dark tones strongly and the bright tones a little, with a logarithm curve. | Implemented and tested |
+| [Percentile normalization](enhancement/percentile-normalize.md) | Enhancement, illumination and color | Stretches the image so its darkest and brightest few percent reach black and white. | Implemented and tested |
 | [Constrained least squares](restoration/cls.md) | Restoration and reconstruction | Undoes a known blur with a smoothness penalty whose weight is set from the noise level, so the result fits the image as closely as the noise allows. | Implemented and tested |
 | [Dead-pixel correction](restoration/dead-pixel.md) | Restoration and reconstruction | Finds pixels that differ strongly from the median of their neighbors and replaces them with that median. | Implemented and tested |
 | [Inverse filtering](restoration/inverse-filter.md) | Restoration and reconstruction | Undoes a known blur by dividing the spectrum by the transform of the blur, only where the blur left enough of each frequency. | Implemented and tested |
@@ -134,6 +139,8 @@
 | [Richardson-Lucy](restoration/richardson-lucy.md) | Restoration and reconstruction | Undoes a known blur step by step, with an update that keeps every value positive and the total brightness the same. | Implemented and tested |
 | [Tikhonov regularization](restoration/tikhonov.md) | Restoration and reconstruction | Undoes a known blur while keeping the result smooth, by adding a penalty on its size or its gradient. | Implemented and tested |
 | [Wiener deconvolution](restoration/wiener-deconv.md) | Restoration and reconstruction | Undoes a known blur while keeping noise in check, by dividing only as far as the noise allows. | Implemented and tested |
+| [Posterize](artistic/posterize.md) | Artistic and geometric effects | Reduces each channel to a few flat levels, for a poster-like look with bands of color. | Implemented and tested |
+| [Solarize](artistic/solarize.md) | Artistic and geometric effects | Inverts the values at or above a threshold and keeps the others, a mix of positive and negative. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |
 | [Add periodic noise](utility/noise-periodic.md) | Utilities | Adds a sine wave of one frequency and direction to every pixel, a model of periodic interference. | Implemented and tested |
