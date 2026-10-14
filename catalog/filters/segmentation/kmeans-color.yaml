@@ -1,7 +1,124 @@
 id: kmeans-color
 name: K-means color segmentation
+aliases: [K-means clustering, Color quantization by k-means, Lloyd's algorithm]
 family: segmentation
+tags: [purpose:segmentation, purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Groups the colors of the image into k clusters with k-means and paints each pixel with its cluster's mean color.
+purpose: Reduce an image to a few representative colors, or split it into areas of similar color.
+classification: {linearity: nonlinear, domain: color, operation: k-means clustering of colors}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/regions.ts, symbol: kmeansColors}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Clusters the encoded red, green and blue values, rounded to whole levels, by Euclidean distance.
+  Each pixel gets the mean color of its cluster, or a distinct color per cluster. Alpha is kept.
+boundary: Not needed. The clusters come from the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: k
+    label: Clusters
+    type: integer
+    min: 2
+    max: 32
+    default: 4
+    description: The number k of clusters.
+    effect: More clusters keep more of the original colors.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    default: 20
+    description: The largest number of assign and update steps. The steps stop earlier when no pixel changes cluster.
+    effect: More iterations let the clusters settle. Each step lowers the error or keeps it.
+  - key: output
+    label: Show
+    type: select
+    default: centers
+    options:
+      - {value: centers, label: Mean colors}
+      - {value: labels, label: Cluster colors}
+    description: Paint each pixel with its cluster's mean color, or with a distinct color per cluster.
+    effect: Cluster colors show clearly which areas belong to which cluster.
+formula: |
+  c(x) = \arg\min_j \lVert x - \mu_j \rVert^2,
+  \quad
+  \mu_j = \frac{1}{|C_j|} \sum_{x \in C_j} x,
+  \qquad k = {{k}}
+formulaExplanation: >-
+  x is the color of a pixel and mu_j the center of cluster j. Lloyd's algorithm repeats two steps.
+  It assigns each color to its nearest center, and it moves each center to the mean of its colors.
+  Both steps lower the sum of squared distances or keep it, so the steps settle. PixelNexus runs
+  them on the distinct colors weighted by how often they appear, which gives the same means as
+  running on every pixel. The result depends on the start, and k-means usually starts at random.
+  PixelNexus uses its own deterministic start, so the same image always gives the same clusters.
+  The first center is the color nearest to the mean color. Each next one is the color farthest from
+  the centers so far. Ties go to the smaller color code 65536 R + 256 G + B. A cluster that loses
+  all its colors keeps its center. An image with fewer distinct colors than k gets fewer clusters.
+symbols:
+  - {symbol: 'x', meaning: 'The color of a pixel'}
+  - {symbol: '\mu_j', meaning: 'The center of cluster j'}
+  - {symbol: 'C_j', meaning: 'The colors in cluster j'}
+  - {symbol: 'c(x)', meaning: 'The cluster of color x'}
+steps:
+  - Count the distinct colors of the image.
+  - Choose the start centers, the color nearest to the mean and then the farthest colors.
+  - Assign each color to its nearest center.
+  - Move each center to the weighted mean of its colors.
+  - Repeat the last two steps until no color changes cluster or the iterations run out.
+  - Paint each pixel with its cluster's center or color.
+complexity:
+  time: O(N + I k M)
+  memory: O(N)
+  notes: N is the number of pixels, M the number of distinct colors and I the number of iterations.
+useCases:
+  - Posterizing a photo to a palette of k colors.
+  - Splitting a scene into areas of similar color before analysis.
+advantages:
+  - Finds colors that suit the image, unlike fixed posterization.
+  - The same result every time, thanks to the deterministic start.
+limitations:
+  - k must be chosen in advance.
+  - Clusters follow color only, so one cluster can cover areas far apart in the image.
+  - Lloyd's algorithm finds a local minimum, which depends on the start.
+artifacts:
+  - Banding in smooth gradients.
+  - Small areas of a rare color can vanish into a larger cluster.
+references:
+  - kind: paper
+    text: Lloyd, S. P. Least squares quantization in PCM. IEEE Transactions on Information Theory 28(2), 129 to 137, 1982.
+    doi: 10.1109/TIT.1982.1056489
+  - kind: library
+    text: OpenCV documentation, clustering, kmeans.
+    url: https://docs.opencv.org/4.x/d5/d38/group__core__cluster.html
+implementation: {path: web/src/core/filters/segmentation/regions.ts, symbol: kmeansColorFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Find k colors that best stand for all the colors in the image, and use only those.
+  howItWorks:
+    - Pick k starting colors.
+    - Give each pixel the starting color nearest to its own.
+    - Replace each starting color by the mean of its pixels, and repeat until nothing changes.
+  academic: >-
+    K-means clustering of the colors by Lloyd's algorithm, with a deterministic farthest-point
+    start.
+  paramNotes:
+    k: How many colors to keep.
+    iterations: How long the clusters may settle.
+    output: Mean colors or a color per cluster.
+  tryThis:
+    - Compare k = 4 and k = 16 on a photo of fields and sky. Then compare with Posterize at a similar number of levels.
+  pitfalls:
+    - Expecting regions that are connected in the image. Clusters are sets of colors.
+  demos: [line-profile]
+related: [posterize, region-growing, slic]
+docsPage: filters/segmentation/kmeans-color.md

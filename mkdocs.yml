@@ -322,6 +322,9 @@ nav:
           - Sauvola threshold: filters/segmentation/sauvola.md
           - Wolf threshold: filters/segmentation/wolf.md
           - Bradley threshold: filters/segmentation/bradley.md
+          - Region growing: filters/segmentation/region-growing.md
+          - K-means color segmentation: filters/segmentation/kmeans-color.md
+          - Connected-component labeling: filters/segmentation/ccl.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

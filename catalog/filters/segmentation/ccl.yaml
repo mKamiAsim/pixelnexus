@@ -1,8 +1,115 @@
 id: ccl
 name: Connected-component labeling
+aliases: [Component labeling, Blob labeling, Connected components]
 family: segmentation
+tags: [purpose:segmentation, purpose:analysis]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Labels and statistics.
+
+summary: Gives every connected group of foreground pixels its own number, and shows each group in its own color.
+purpose: Separate and count the objects in a black and white mask, for example after a threshold.
+classification: {linearity: nonlinear, domain: spatial, operation: connected-component labeling}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/regions.ts, symbol: componentLabels}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Reads the brightness 0.2126 R + 0.7152 G + 0.0722 B. Pixels at or above 128 are foreground, as in
+  the binary morphology filters. The result shows each component in its own color, or as gray
+  levels. Alpha is kept.
+boundary: Not needed. A component ends at the image edge, so the filter always runs on the whole image.
+
+params:
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: "8 (sides and corners)"}
+      - {value: "4", label: "4 (sides only)"}
+    description: Which neighbors join two foreground pixels into one component.
+    effect: With 4 neighbors, pixels that touch only at a corner belong to different components.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Treat the dark pixels, below 128, as foreground instead.
+    effect: Labels dark objects on a bright background.
+  - key: output
+    label: Show
+    type: select
+    default: colors
+    options:
+      - {value: colors, label: Colors}
+      - {value: gray, label: Gray levels}
+    description: Show the components in distinct colors, or as gray levels that rise with the label number.
+    effect: Gray levels show the order in which the components were found.
+formula: |
+  L(p) = \begin{cases} k & p \text{ in the } k\text{th component of } F \\ 0 & p \notin F \end{cases},
+  \qquad F = \{\, p : Y(p) \ge 128 \,\}
+formulaExplanation: >-
+  Two foreground pixels belong to the same component when a path of foreground pixels joins them,
+  each step to one of 4 or 8 neighbors. The components are numbered by their first pixel in a row
+  by row scan, as scipy.ndimage.label and scikit-image number them. Rosenfeld and Pfaltz describe
+  labeling in two passes over the image. PixelNexus follows each component from its first pixel
+  instead, which gives the same labels. In the color view, label k gets the hue k times 137.5
+  degrees, the golden angle, so neighboring numbers get very different colors. The gray view shows
+  label k as 255 k / n for n components.
+symbols:
+  - {symbol: 'F', meaning: 'The foreground pixels'}
+  - {symbol: 'L(p)', meaning: 'The label of pixel p'}
+  - {symbol: 'Y(p)', meaning: 'The brightness of pixel p'}
+steps:
+  - Mark the foreground, brightness at or above 128.
+  - Scan the image row by row. At each foreground pixel without a label, start a new label and give it to every foreground pixel connected to it.
+  - Color each label, and paint the background black.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each pixel is visited a few times.
+useCases:
+  - Counting cells, coins, stars or particles in a mask.
+  - Finding separate objects before measuring them.
+advantages:
+  - Exact and fast.
+  - The same labels as SciPy and scikit-image.
+limitations:
+  - Touching objects become one component. Separate them first, for example with erosion or a watershed.
+  - Noise gives many tiny components. Remove them with connected-component filtering.
+artifacts:
+  - Thin gaps split one object into several components.
+references:
+  - kind: paper
+    text: Rosenfeld, A. and Pfaltz, J. L. Sequential Operations in Digital Picture Processing. Journal of the ACM 13(4), 471 to 494, 1966.
+    doi: 10.1145/321356.321357
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.label.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
+implementation: {path: web/src/core/filters/segmentation/regions.ts, symbol: cclLabelFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Give each separate white shape its own number and color.
+  howItWorks:
+    - Find the white pixels.
+    - Start at the first white pixel without a number and give the same number to every white pixel you can reach from it.
+    - Move on to the next white pixel without a number, and use the next number.
+  academic: >-
+    Connected-component labeling of a binary image with 4- or 8-connectivity, numbered in raster
+    order.
+  paramNotes:
+    connectivity: Whether corners join pixels.
+    invert: Label dark shapes instead.
+    output: Colors or gray levels.
+  tryThis:
+    - Threshold a photo of coins with Otsu, then label it. Count the colors.
+  pitfalls:
+    - Labeling a gray image that is not black and white. Threshold it first.
+  demos: [line-profile]
+related: [ccl-filter, otsu, region-growing]
+docsPage: filters/segmentation/ccl.md
