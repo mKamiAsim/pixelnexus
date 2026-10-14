@@ -1195,6 +1195,8 @@ try {
   retinexDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb });
   const { toneDocs } = await import("./filter-docs/tone.mjs");
   toneDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb });
+  const { cfaDocs } = await import("./filter-docs/cfa.mjs");
+  cfaDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb, synthetic });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

@@ -298,6 +298,8 @@ nav:
           - Bilateral tone mapping: filters/enhancement/bilateral-tonemap.md
           - Detail enhancement: filters/enhancement/detail-enhance.md
           - Chroma denoising: filters/enhancement/chroma-denoise.md
+          - Demosaicing: filters/enhancement/demosaic.md
+          - Color threshold: filters/enhancement/color-threshold.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

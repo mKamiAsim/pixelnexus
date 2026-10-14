@@ -1,8 +1,159 @@
 id: color-threshold
 name: Color threshold
+aliases: [HSV threshold, Color range mask, inRange]
 family: enhancement
+tags: [purpose:segmentation, purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Binary output from HSV ranges.
+
+summary: Makes pixels white when their hue, saturation and value all lie in chosen ranges, and black otherwise.
+purpose: Pick out objects of one color, such as a red ball or green leaves, as a black and white mask.
+classification: {linearity: nonlinear, domain: color, operation: HSV range test}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-threshold.ts, symbol: insideRanges}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Converts each pixel to hue, saturation and value with Smith's hexcone model. The result is the
+  same in all three channels, a gray mask. Alpha is kept.
+boundary: Not needed. Each pixel is tested on its own.
+
+params:
+  - key: hueMin
+    label: Hue from
+    type: number
+    min: 0
+    max: 360
+    step: 1
+    default: 330
+    unit: deg
+    description: The start of the hue range. If it is above Hue to, the range wraps through 0 degrees.
+    effect: Moves the start of the selected colors around the color wheel.
+  - key: hueMax
+    label: Hue to
+    type: number
+    min: 0
+    max: 360
+    step: 1
+    default: 30
+    unit: deg
+    description: The end of the hue range.
+    effect: Moves the end of the selected colors around the color wheel.
+  - key: satMin
+    label: Saturation from
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 40
+    unit: "%"
+    description: The smallest saturation that counts.
+    effect: Higher values leave out pale and grayish pixels.
+  - key: satMax
+    label: Saturation to
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 100
+    unit: "%"
+    description: The largest saturation that counts.
+    effect: Lower values select only pale colors.
+  - key: valMin
+    label: Value from
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 30
+    unit: "%"
+    description: The smallest value, the brightness of the strongest channel, that counts.
+    effect: Higher values leave out dark pixels, whose hue is unreliable.
+  - key: valMax
+    label: Value to
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 100
+    unit: "%"
+    description: The largest value that counts.
+    effect: Lower values leave out bright pixels.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels outside the ranges white instead.
+    effect: Selects everything except the chosen color.
+formula: |
+  I_{\text{out}} = \begin{cases} 255 & H \in [H_1, H_2],\ S \in [S_1, S_2],\ V \in [V_1, V_2] \\ 0 & \text{otherwise} \end{cases}
+formulaExplanation: >-
+  H, S and V are the hue in degrees and the saturation and value from 0 to 1, from Smith's hexcone
+  model. The bounds count as inside, as in OpenCV's inRange. When H_1 is above H_2, the hue range
+  wraps through 0 degrees. It then means H at least H_1 or H at most H_2, so 330 to 30 selects
+  reds.
+  Gray pixels have no real hue. Their hue is 0, which is red, so a saturation minimum above 0 keeps
+  them out. The default ranges, reds with saturation and value of at least 40 % and 30 %, are
+  PixelNexus's own starting point.
+symbols:
+  - {symbol: 'H, S, V', meaning: 'Hue, saturation and value of the pixel'}
+  - {symbol: 'H_1, H_2', meaning: 'The hue range, which may wrap through 0'}
+  - {symbol: 'S_1, S_2, V_1, V_2', meaning: 'The saturation and value ranges'}
+steps:
+  - Convert the pixel to hue, saturation and value.
+  - Test each against its range, with the hue range wrapping through 0 if needed.
+  - Write 255 if all three pass and 0 otherwise, or the reverse with Invert.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel is tested on its own.
+useCases:
+  - Masks of colored objects, such as a ball, a sign or plants.
+  - Green screen and color keying.
+advantages:
+  - Hue does not change much with shading, so one range covers lit and shaded parts of an object.
+  - Simple and fast, and the same idea as OpenCV's inRange on HSV.
+limitations:
+  - Dark and pale pixels have an unreliable hue.
+  - Hard edges. There is no partial selection, unlike the Color Range selection tool.
+artifacts:
+  - Speckle where the color of the object is near a bound.
+  - Holes at highlights, where the saturation drops.
+references:
+  - kind: paper
+    text: Smith, A. R. Color gamut transform pairs. ACM SIGGRAPH Computer Graphics 12(3), 12 to 19, 1978.
+    doi: 10.1145/965139.807361
+  - kind: library
+    text: OpenCV documentation, core operations, inRange.
+    url: https://docs.opencv.org/4.x/d2/de8/group__core__array.html
+implementation: {path: web/src/core/filters/enhancement/color-threshold.ts, symbol: colorThresholdFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/cfa.test.ts]
+learn:
+  oneSentence: Keep the pixels whose color falls in a range of hues, saturations and brightnesses.
+  howItWorks:
+    - Describe each pixel by its hue, how strong its color is, and how bright it is.
+    - Check each of the three against its range.
+    - Make the pixel white if all three pass.
+  academic: >-
+    Thresholding in HSV space with an interval test per component and a circular hue interval.
+  paramNotes:
+    hueMin: Where the range of colors starts on the color wheel.
+    hueMax: Where it ends.
+    satMin: How strong a color must be.
+    satMax: How strong a color may be.
+    valMin: How bright a pixel must be.
+    valMax: How bright a pixel may be.
+    invert: Swap white and black.
+  tryThis:
+    - Open the hue sweep test image and select 90 to 150 degrees. Then raise the saturation minimum and watch the mask shrink toward the top.
+  pitfalls:
+    - Forgetting that red sits at both ends of the hue circle. Use a range that wraps, such as 330 to 30.
+  demos: [line-profile]
+related: [demosaic, hsv-adjust, threshold-global]
+docsPage: filters/enhancement/color-threshold.md
