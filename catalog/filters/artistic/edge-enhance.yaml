@@ -1,8 +1,95 @@
 id: edge-enhance
 name: Edge enhance
+aliases: [Edge enhancement, Pillow EDGE_ENHANCE]
 family: artistic
+tags: [purpose:sharpening]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Fixed kernel.
+
+summary: Sharpens edges with a fixed 3 x 3 kernel that adds a Laplacian to the image.
+purpose: Make edges crisper with one click, as Pillow's edge enhance filters do.
+classification: {linearity: linear, domain: spatial, operation: Laplacian sharpening with a fixed kernel}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/kernels.ts, symbol: edgeEnhanceRows}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is sharpened on its own. With the brightness scope, only luma is
+  sharpened and the colors stay. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. Pillow leaves the outermost pixels unchanged instead.
+
+params:
+  - key: strength
+    label: Strength
+    type: select
+    default: normal
+    options:
+      - {value: normal, label: Normal}
+      - {value: more, label: More}
+    description: Pillow's EDGE_ENHANCE or EDGE_ENHANCE_MORE kernel.
+    effect: More gives twice the edge boost of normal.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  K_{\text{normal}} = \frac{1}{2} \begin{bmatrix} -1 & -1 & -1 \\ -1 & 10 & -1 \\ -1 & -1 & -1 \end{bmatrix},
+  \quad
+  K_{\text{more}} = \begin{bmatrix} -1 & -1 & -1 \\ -1 & 9 & -1 \\ -1 & -1 & -1 \end{bmatrix}
+formulaExplanation: >-
+  These are Pillow's EDGE_ENHANCE and EDGE_ENHANCE_MORE kernels. Both add up to 1, so flat areas
+  keep their value. Each is the image plus a multiple of the 8-neighbor Laplacian with a positive
+  center: half of it for normal, and all of it for more. That is Laplacian sharpening with a fixed
+  amount.
+symbols:
+  - {symbol: 'K', meaning: 'The 3 x 3 kernel'}
+steps:
+  - Correlate the image with the chosen kernel.
+  - Clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Quick sharpening of slightly soft photos and scans.
+advantages:
+  - One click, no settings to tune, and the same as Pillow away from the edge.
+limitations:
+  - Fixed strength. Laplacian sharpening and unsharp masking offer control.
+  - Boosts noise along with edges.
+artifacts:
+  - Bright and dark rims along strong edges.
+references:
+  - kind: library
+    text: Pillow documentation, ImageFilter module, built-in filters.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageFilter.html
+implementation: {path: web/src/core/filters/artistic/kernels.ts, symbol: edgeEnhanceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Add a fixed amount of edge contrast to the image.
+  howItWorks:
+    - Compare each pixel with its 8 neighbors.
+    - Push the pixel away from its neighbors' mean.
+    - Flat areas stay the same, and edges get steeper.
+  academic: >-
+    Laplacian sharpening with Pillow's fixed 3 x 3 kernels.
+  paramNotes:
+    strength: How much edge contrast is added.
+    border: How the window is filled past the image edge.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Sharpen each color or only the brightness.
+  tryThis:
+    - Compare Edge enhance with Laplacian sharpening at amounts 0.5 and 1 on the same photo.
+  pitfalls:
+    - Applying it several times. Rims and noise grow each time.
+  demos: [line-profile]
+related: [laplacian-sharpen, unsharp-mask, emboss]
+docsPage: filters/artistic/edge-enhance.md

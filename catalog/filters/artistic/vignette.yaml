@@ -1,7 +1,119 @@
 id: vignette
 name: Vignette
+aliases: [Vignetting, Edge darkening]
 family: artistic
+tags: [purpose:brightness]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Darkens the image smoothly toward its corners, as many lenses do, to draw the eye to the center.
+purpose: Add a classic photographic vignette, or show how light can fall off toward the corners.
+classification: {linearity: linear, domain: spatial, operation: radial gain}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/effects.ts, symbol: vignetteFactor}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, all three channels are scaled by the same factor, so hues stay. Alpha is kept.
+boundary: Not needed. The factor depends on the position in the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: amount
+    label: Amount
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    unit: "%"
+    description: How much light the corners lose.
+    effect: 100 makes the corners black.
+  - key: start
+    label: Start
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    unit: "%"
+    description: Where the darkening starts, as a percent of the distance from the center to the corners.
+    effect: Lower values start the darkening closer to the center.
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: true
+    description: Scale the linear light values instead of the encoded values.
+    effect: Linear light darkens as a loss of light does. Off darkens the encoded values, which looks stronger.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  f = 1 - a\, t^2 (3 - 2t),
+  \quad
+  t = \operatorname{clamp}\left(\frac{d - d_0}{1 - d_0}, 0, 1\right),
+  \qquad a = {{amount}}\,\%,\ d_0 = {{start}}\,\%
+formulaExplanation: >-
+  d is the distance from the center of the image, measured on an ellipse with the shape of the
+  image, so that the corners are at 1. Below the start d_0 nothing changes. Beyond it, the factor
+  falls smoothly along the smoothstep curve t^2 (3 - 2t), down to 1 - a at the corners. This
+  falloff is PixelNexus's own. Real lenses lose light toward the corners for several reasons, and
+  their curves differ. With Linear light on, f multiplies the linear light values, as a loss of
+  light does.
+symbols:
+  - {symbol: 'd', meaning: 'The distance from the center, 1 at the corners'}
+  - {symbol: 'd_0', meaning: 'The start'}
+  - {symbol: 'a', meaning: 'The amount'}
+  - {symbol: 'f', meaning: 'The factor on each pixel'}
+steps:
+  - Find each pixel's distance from the center, scaled so that the corners are at 1.
+  - Compute the factor from the start and the amount.
+  - Multiply the pixel by the factor, in linear light if it is on.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Portraits and other photos that need focus on the center.
+  - Showing how a loss of light toward the corners looks.
+advantages:
+  - Smooth, with no visible edge where the darkening starts.
+limitations:
+  - The falloff is a simple smoothstep, not the measured curve of a real lens.
+  - Inside a selection, the center is still the center of the whole image.
+artifacts:
+  - Banding in dark, smooth corners of 8-bit images.
+references:
+  - kind: web
+    text: GIMP documentation, the Vignette filter, a similar effect with its own falloff.
+    url: https://docs.gimp.org/2.10/en/gimp-filter-vignette.html
+implementation: {path: web/src/core/filters/artistic/effects.ts, symbol: vignetteFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Darken the image gently toward its corners.
+  howItWorks:
+    - Measure how far each pixel is from the center.
+    - Leave the middle alone, and darken more and more toward the corners.
+    - Multiply each pixel by its darkening factor.
+  academic: >-
+    A radial gain with a smoothstep falloff on an ellipse with the image's shape, applied in
+    linear light.
+  paramNotes:
+    amount: How dark the corners get.
+    start: Where the darkening begins.
+    linearLight: Darken light values, as a loss of light does.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Darken all colors or only the brightness.
+  tryThis:
+    - Set the start to 0 and the amount to 100. Then raise the start and watch the clear middle grow.
+  pitfalls:
+    - Expecting the darkening to follow a selection. It follows the whole image.
+  demos: [line-profile]
+related: [gamma, bloom, tilt-shift]
+docsPage: filters/artistic/vignette.md

@@ -173,8 +173,13 @@
 | [Region growing](segmentation/region-growing.md) | Segmentation and regions | Starts at a seed pixel and grows a region over the connected pixels whose value is within a tolerance of the seed's. | Implemented and tested |
 | [Sauvola threshold](segmentation/sauvola.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, lowering the threshold where the contrast is low. | Implemented and tested |
 | [Wolf threshold](segmentation/wolf.md) | Segmentation and regions | Thresholds each pixel from its local mean and standard deviation, measured against the darkest value and the highest local contrast of the whole image. | Implemented and tested |
+| [Edge enhance](artistic/edge-enhance.md) | Artistic and geometric effects | Sharpens edges with a fixed 3 x 3 kernel that adds a Laplacian to the image. | Implemented and tested |
+| [Emboss](artistic/emboss.md) | Artistic and geometric effects | Subtracts a diagonal neighbor from each pixel and adds mid gray, so edges look raised or pressed in, like a relief. | Implemented and tested |
+| [Outline](artistic/outline.md) | Artistic and geometric effects | Turns flat areas white and draws the darker side of every edge as a dark line, like a pen outline. | Implemented and tested |
+| [Pixelate](artistic/pixelate.md) | Artistic and geometric effects | Replaces each block of n by n pixels with its mean, so the image looks made of large square pixels. | Implemented and tested |
 | [Posterize](artistic/posterize.md) | Artistic and geometric effects | Reduces each channel to a few flat levels, for a poster-like look with bands of color. | Implemented and tested |
 | [Solarize](artistic/solarize.md) | Artistic and geometric effects | Inverts the values at or above a threshold and keeps the others, a mix of positive and negative. | Implemented and tested |
+| [Vignette](artistic/vignette.md) | Artistic and geometric effects | Darkens the image smoothly toward its corners, as many lenses do, to draw the eye to the center. | Implemented and tested |
 | [Add Gaussian noise](utility/noise-gaussian.md) | Utilities | Adds random values with a normal distribution to every pixel. | Implemented and tested |
 | [Add Poisson noise](utility/noise-poisson.md) | Utilities | Simulates photon counting. Each value becomes a random count with that mean, so noise grows with the square root of the brightness. | Implemented and tested |
 | [Add periodic noise](utility/noise-periodic.md) | Utilities | Adds a sine wave of one frequency and direction to every pixel, a model of periodic interference. | Implemented and tested |

@@ -1197,6 +1197,8 @@ try {
   toneDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb });
   const { cfaDocs } = await import("./filter-docs/cfa.mjs");
   cfaDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb, synthetic });
+  const { artisticDocs } = await import("./filter-docs/artistic.mjs");
+  artisticDocs({ run, pic, figure, example, mdTable, fix, createImage, synthetic });
   const { regionDocs } = await import("./filter-docs/regions.mjs");
   const regions = await load("/src/core/filters/segmentation/regions.ts");
   const { toPlanes } = await load("/src/core/filters/planes.ts");

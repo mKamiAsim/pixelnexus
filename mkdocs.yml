@@ -303,6 +303,11 @@ nav:
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md
+          - Emboss: filters/artistic/emboss.md
+          - Outline: filters/artistic/outline.md
+          - Edge enhance: filters/artistic/edge-enhance.md
+          - Vignette: filters/artistic/vignette.md
+          - Pixelate: filters/artistic/pixelate.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md

@@ -44,7 +44,7 @@ The Inspector shows the base filter with its settings, the detail layer and the 
 
 --8<-- "examples/detail-enhance.md"
 
-Both bases make the texture about 5 times stronger. Next to the edge, the guided base pushes the dark side from 60 down to about 13. It pushes the bright side from 180 up to about 229. These are the bands in the figure. The bilateral base leaves the edge as it was.
+Both bases make the texture about 5 times stronger. Next to the edge, the guided base pushes the dark side from 60 down to about 12. It pushes the bright side from 180 up to about 229. These are the bands in the figure. The bilateral base leaves the edge as it was.
 
 ## Complexity
 

@@ -1,7 +1,94 @@
 id: pixelate
 name: Pixelate
+aliases: [Mosaic, Pixelation, Block averaging]
 family: artistic
+tags: [purpose:blur]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Replaces each block of n by n pixels with its mean, so the image looks made of large square pixels.
+purpose: Hide details such as faces or text, or give an image a low-resolution, retro look.
+classification: {linearity: linear, domain: spatial, operation: block mean}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/effects.ts, symbol: pixelatePlane}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is averaged on its own, so each block gets its mean color. On
+  transparent images, colors are averaged weighted by alpha. Alpha is kept.
+boundary: Not needed. Blocks are counted from the top-left corner of the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: size
+    label: Block size
+    type: integer
+    min: 2
+    max: 256
+    default: 8
+    unit: px
+    description: The side n of each square block.
+    effect: Larger blocks hide more detail.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  I_{\text{out}}(p) = \frac{1}{|B(p)|} \sum_{q \in B(p)} I(q),
+  \qquad n = {{size}}
+formulaExplanation: >-
+  B(p) is the block that holds pixel p. Blocks start at the top-left corner of the image and are n
+  by n pixels. At the right and bottom edges, blocks can be smaller, and they average the pixels
+  they have. Every pixel of a block gets the same mean. This is a box filter sampled once per block
+  and repeated. Pillow's reduce followed by nearest-neighbor enlarging gives the same means.
+symbols:
+  - {symbol: 'B(p)', meaning: 'The block that holds pixel p'}
+  - {symbol: 'n', meaning: 'The block size'}
+steps:
+  - Cut the image into n by n blocks from the top-left corner.
+  - Compute the mean of each block.
+  - Fill each block with its mean.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each pixel is read once and written once.
+useCases:
+  - Hiding faces, plates or text.
+  - Retro and low-resolution looks.
+advantages:
+  - Simple and fast, and the blocks line up across the whole image.
+limitations:
+  - Small blocks do not hide enough. Use large ones to hide faces or text.
+artifacts:
+  - Hard edges between blocks.
+  - False patterns from fine detail.
+references:
+  - kind: library
+    text: Pillow documentation, Image.reduce.
+    url: https://pillow.readthedocs.io/en/stable/reference/Image.html
+implementation: {path: web/src/core/filters/artistic/effects.ts, symbol: pixelateFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Average the image in square blocks, so it looks made of big pixels.
+  howItWorks:
+    - Cut the image into squares of the chosen size.
+    - Find the mean color of each square.
+    - Paint the whole square with that color.
+  academic: >-
+    Block averaging on a grid aligned with the image origin, a box filter sampled once per block.
+  paramNotes:
+    size: How large the blocks are.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Average each color or only the brightness.
+  tryThis:
+    - Pixelate the Siemens star with blocks of 8. Look for patterns that are not in the star.
+  pitfalls:
+    - Using small blocks to hide sensitive details. They may still be readable.
+  demos: [line-profile]
+related: [resize, box, posterize]
+docsPage: filters/artistic/pixelate.md

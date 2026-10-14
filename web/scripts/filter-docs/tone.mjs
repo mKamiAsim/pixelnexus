@@ -108,10 +108,17 @@ export function toneDocs(h) {
     };
     const rows = [
       ["Input", step],
-      ["Guided base, boost 5", run(step, "detail-enhance", { channelScope: "rgb" })],
+      [
+        "Guided base, boost 5",
+        run(step, "detail-enhance", { outputMapping: "clip", channelScope: "rgb" }),
+      ],
       [
         "Bilateral base, boost 5",
-        run(step, "detail-enhance", { base: "bilateral", channelScope: "rgb" }),
+        run(step, "detail-enhance", {
+          outputMapping: "clip",
+          base: "bilateral",
+          channelScope: "rgb",
+        }),
       ],
     ];
     figure("detail-enhance", {
