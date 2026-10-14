@@ -184,6 +184,8 @@ import {
   wolfFilter,
 } from "./segmentation/thresholds";
 import { cclLabelFilter, kmeansColorFilter, regionGrowingFilter } from "./segmentation/regions";
+import { pixelateFilter, vignetteFilter } from "./artistic/effects";
+import { edgeEnhanceFilter, embossFilter, outlineFilter } from "./artistic/kernels";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -372,6 +374,11 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   regionGrowingFilter,
   kmeansColorFilter,
   cclLabelFilter,
+  embossFilter,
+  outlineFilter,
+  edgeEnhanceFilter,
+  vignetteFilter,
+  pixelateFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

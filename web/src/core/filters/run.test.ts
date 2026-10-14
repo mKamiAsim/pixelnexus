@@ -256,6 +256,11 @@ const CASES: [string, Params][] = [
   ["region-growing", { seedX: 30, seedY: 60, tolerance: 60, measure: "color" }],
   ["kmeans-color", { k: 3, iterations: 10 }],
   ["ccl", { connectivity: "4", output: "gray" }],
+  ["emboss", {}],
+  ["outline", {}],
+  ["edge-enhance", { strength: "more" }],
+  ["vignette", { amount: 70, start: 20 }],
+  ["pixelate", { size: 4 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 
