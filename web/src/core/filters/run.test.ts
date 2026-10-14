@@ -241,6 +241,8 @@ const CASES: [string, Params][] = [
   ["threshold-adaptive-gaussian", { size: 9, offset: 2 }],
   ["niblack", { size: 7, k: -0.2 }],
   ["sauvola", { size: 7, k: 0.4, r: 128 }],
+  ["wolf", { size: 7, k: 0.4 }],
+  ["bradley", { size: 9, percent: 10 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

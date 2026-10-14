@@ -1,6 +1,6 @@
 /**
  * Global and local thresholds. Catalog entries: catalog/filters/segmentation/{threshold-global,
- * otsu,threshold-adaptive-mean,threshold-adaptive-gaussian,niblack,sauvola}.yaml.
+ * otsu,threshold-adaptive-mean,threshold-adaptive-gaussian,niblack,sauvola,wolf,bradley}.yaml.
  *
  * Every threshold gives 255 where the value is above the threshold T and 0 elsewhere, or the
  * other way around with Invert. The local thresholds follow scikit-image:
@@ -11,6 +11,12 @@
  * - Niblack: T = m + k s, with the window mean m and population standard deviation s.
  * - Sauvola: T = m (1 + k (s / R - 1)).
  *
+ * Two more follow their papers:
+ *
+ * - Wolf, Jolion and Chassaing: T = (1 - k) m + k M + k (s / R) (m - M), with M the smallest
+ *   value of the image and R the largest s, as in OpenCV's niBlackThreshold (BINARIZATION_WOLF).
+ * - Bradley and Roth: T = m (100 - t) / 100, the window mean lowered by t percent.
+ *
  * Otsu picks the global threshold t that maximizes the between-class variance of the levels at
  * or below t and those above it. Ties go to the smallest t, as in OpenCV and scikit-image.
  */
@@ -18,6 +24,7 @@ import { localMoments } from "@/core/filters/adaptive/local-stats";
 import { boxMean, correlateSeparable } from "@/core/filters/convolve";
 import { histogram256 } from "@/core/filters/enhancement/histogram";
 import { gaussianKernel1d } from "@/core/filters/linear/gaussian";
+import { windowSumOf } from "@/core/filters/nonlinear/window";
 import { createPlane, type BorderMode, type Plane } from "@/core/filters/planes";
 import { read, type Params, type PlaneFilter, type Representation } from "@/core/filters/types";
 
@@ -216,4 +223,83 @@ export const sauvolaFilter: PlaneFilter = {
     (params) =>
       `T = m \\left(1 + k \\left(\\frac{s}{R} - 1\\right)\\right),\\quad k = ${read.number(params, "k", 0.5)},\\ R = ${read.number(params, "r", 128)}`,
   ),
+};
+
+/**
+ * The threshold of Wolf, Jolion and Chassaing at every pixel. M is the smallest value of the
+ * plane and R the largest local deviation. Where R = 0 the plane is flat, s / R counts as 0,
+ * and the threshold is (1 - k) m + k M, which equals the value itself.
+ */
+export function wolfThresholds(
+  input: Plane,
+  size: number,
+  k: number,
+  border: BorderMode,
+): Float64Array {
+  const { mean, variance } = localMoments(input, (size - 1) >> 1, border);
+  const deviation = variance.map(Math.sqrt);
+  let low = Number.POSITIVE_INFINITY;
+  for (const v of input.data) low = Math.min(low, v);
+  let range = 0;
+  for (const s of deviation) range = Math.max(range, s);
+  return mean.map((m, i) => {
+    const ratio = range > 0 ? (deviation[i] ?? 0) / range : 0;
+    return (1 - k) * m + k * low + k * ratio * (m - low);
+  });
+}
+
+export const wolfFilter: PlaneFilter = {
+  id: "wolf",
+  kind: "derived",
+  alphaWeighted: false,
+  // M and R come from the whole image.
+  global: true,
+  radius: () => 0,
+  plane: (input, params, { border }) => {
+    const t = wolfThresholds(input, sizeOf(params), read.number(params, "k", 0.5), border);
+    return binarize(input, (i) => t[i] ?? 0, invertOf(params));
+  },
+  representation: (params) =>
+    stages([
+      {
+        name: "Local mean and deviation",
+        formula: `m, s \\text{ over the } ${sizeOf(params)} \\times ${sizeOf(params)} \\text{ window}`,
+        note: "s is the population standard deviation.",
+      },
+      {
+        name: "Image statistics",
+        formula: "M = \\min I,\\quad R = \\max s",
+        note: "Both come from the whole image.",
+      },
+      {
+        name: "Local threshold",
+        formula: `T = (1 - k)\\, m + k M + k\\, \\frac{s}{R}\\, (m - M),\\quad k = ${read.number(params, "k", 0.5)}`,
+      },
+    ]),
+};
+
+export const bradleyFilter: PlaneFilter = {
+  id: "bradley",
+  kind: "derived",
+  alphaWeighted: false,
+  radius: (params) => (sizeOf(params) - 1) >> 1,
+  plane: (input, params, { border }) => {
+    const size = sizeOf(params);
+    const sums = windowSumOf(input, (size - 1) >> 1, border, (v) => v);
+    const keep = 100 - read.number(params, "percent", 15);
+    const scale = 100 * size * size;
+    return binarize(input, (i) => ((sums[i] ?? 0) * keep) / scale, invertOf(params));
+  },
+  representation: (params) =>
+    stages([
+      {
+        name: "Local mean",
+        formula: `m = \\operatorname{mean}_{${sizeOf(params)} \\times ${sizeOf(params)}}(I)`,
+        note: "The window sums come from running sums, like the integral image of the paper.",
+      },
+      {
+        name: "Local threshold",
+        formula: `T = m\\, \\frac{100 - t}{100},\\quad t = ${read.number(params, "percent", 15)}`,
+      },
+    ]),
 };

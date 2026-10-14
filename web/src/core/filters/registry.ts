@@ -170,10 +170,12 @@ import {
 import {
   adaptiveGaussianFilter,
   adaptiveMeanFilter,
+  bradleyFilter,
   niblackFilter,
   otsuFilter,
   sauvolaFilter,
   thresholdGlobalFilter,
+  wolfFilter,
 } from "./segmentation/thresholds";
 import type { BrowserFilter } from "./types";
 import {
@@ -350,6 +352,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   adaptiveGaussianFilter,
   niblackFilter,
   sauvolaFilter,
+  wolfFilter,
+  bradleyFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));
