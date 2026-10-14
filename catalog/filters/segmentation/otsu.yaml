@@ -1,7 +1,100 @@
 id: otsu
 name: Otsu threshold
+aliases: [Otsu's method, Otsu binarization]
 family: segmentation
+tags: [purpose:segmentation]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Picks the global threshold that splits the histogram into two groups that are as far apart as possible, then thresholds the image.
+purpose: Threshold images automatically when objects and background each have a fairly uniform brightness.
+classification: {linearity: nonlinear, domain: statistical, operation: between-class variance maximization}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: otsuThreshold}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: Not needed for the comparison. The threshold comes from the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  \sigma_B^2(t) = \omega_0(t)\, \omega_1(t)\, \left(\mu_0(t) - \mu_1(t)\right)^2,
+  \quad
+  t^* = \arg\max_t \sigma_B^2(t),
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > t^* \\ 0 & \text{otherwise} \end{cases}
+formulaExplanation: >-
+  Here omega_0 and mu_0 are the number and the mean of the pixels at or below level t. The
+  values omega_1 and mu_1 are those of the pixels above it. Otsu showed that maximizing the between-class variance
+  sigma_B^2 is the same as minimizing the variance within the two classes. Only the levels from
+  the lowest to the highest one present are tried. Ties go to the smallest t, as in
+  scikit-image and OpenCV. A flat image gets its own level as threshold and turns all 0.
+  The result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with Invert.
+symbols:
+  - {symbol: '\omega_0, \omega_1', meaning: 'The pixel counts at or below t, and above t'}
+  - {symbol: '\mu_0, \mu_1', meaning: 'The mean levels of the two classes'}
+  - {symbol: 't^*', meaning: 'The chosen threshold'}
+steps:
+  - Count the histogram of the levels of the whole image.
+  - For each level t, compute the between-class variance from running sums.
+  - Keep the level with the largest variance and threshold the image there.
+complexity:
+  time: O(N + 256)
+  memory: O(1)
+  notes: N is the number of pixels. Running sums make each candidate threshold cost the same.
+useCases:
+  - Cells, coins, text and other objects on a uniform background.
+  - A first segmentation step before labeling.
+advantages:
+  - Automatic and fast, with no parameters.
+  - Well founded, and the same as in OpenCV and scikit-image.
+limitations:
+  - Assumes two classes. Small objects on a large background can be missed.
+  - One threshold for the whole image, so uneven lighting still fails.
+artifacts:
+  - Noise in flat regions when the histogram has only one clear peak.
+references:
+  - kind: paper
+    text: Otsu, N. A threshold selection method from gray-level histograms. IEEE Transactions on Systems, Man, and Cybernetics 9(1), 62 to 66, 1979.
+    doi: 10.1109/TSMC.1979.4310076
+  - kind: library
+    text: scikit-image documentation, skimage.filters.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: otsuFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Find the brightness that best splits the pixels into a dark group and a bright group.
+  howItWorks:
+    - Count how many pixels have each brightness.
+    - Try every split into darker and brighter pixels.
+    - Keep the split where the two groups are most different, and threshold there.
+  academic: >-
+    Otsu's method: the threshold that maximizes the between-class variance of the gray-level
+    histogram.
+  paramNotes:
+    invert: Swap white and black.
+  tryThis:
+    - Compare Otsu with a global threshold of 128 on a dark image.
+  pitfalls:
+    - Images with more than two kinds of region. Otsu still gives only two.
+  demos: [line-profile]
+related: [threshold-global, threshold-adaptive-mean, ccl]
+docsPage: filters/segmentation/otsu.md

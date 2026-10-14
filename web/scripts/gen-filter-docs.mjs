@@ -1189,6 +1189,8 @@ try {
     adaptationMatrix: adaptation.adaptationMatrix,
     rgbAdaptation: adaptation.rgbAdaptation,
   });
+  const { thresholdDocs } = await import("./filter-docs/thresholds.mjs");
+  thresholdDocs({ run, pic, figure, example, mdTable, fix, createImage });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

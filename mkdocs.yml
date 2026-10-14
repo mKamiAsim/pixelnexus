@@ -305,6 +305,13 @@ nav:
           - Regularized Richardson-Lucy: filters/restoration/regularized-rl.md
           - Landweber iteration: filters/restoration/landweber.md
           - Non-negative least-squares deconvolution: filters/restoration/nnls-deconv.md
+      - Segmentation:
+          - Global threshold: filters/segmentation/threshold-global.md
+          - Otsu threshold: filters/segmentation/otsu.md
+          - Adaptive mean threshold: filters/segmentation/threshold-adaptive-mean.md
+          - Adaptive Gaussian threshold: filters/segmentation/threshold-adaptive-gaussian.md
+          - Niblack threshold: filters/segmentation/niblack.md
+          - Sauvola threshold: filters/segmentation/sauvola.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md
