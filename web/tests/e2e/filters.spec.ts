@@ -91,6 +91,19 @@ test("the Stage viewer shows every stage of Canny", async ({ page }) => {
   }
 });
 
+test("scale space shows its response and its selected scale", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "scale", "Scale-space filtering");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText("Normalized measure")).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Stage viewer" })).toBeVisible();
+  for (const stage of ["Strongest response", "Selected scale"]) {
+    await expect(page.getByRole("img", { name: `${stage}, patch around the probe` })).toBeVisible();
+  }
+});
+
 test("the structuring element editor shapes erosion, and the stepper shows it", async ({
   page,
 }) => {

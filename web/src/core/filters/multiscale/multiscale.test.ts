@@ -9,6 +9,7 @@ import {
   laplacianPyramidFilter,
   laplacianRebuild,
 } from "./pyramid";
+import { scaleSpaceFilter, scaleStack } from "./scale-space";
 
 const BORDERS: readonly BorderMode[] = ["reflect101", "reflect", "replicate", "wrap", "constant"];
 
@@ -79,5 +80,55 @@ describe("pyramids", () => {
     // Away from the border, REDUCE keeps 8 / 16 of the impulse and EXPAND spreads each coarse
     // pixel with total weight 2, so the response sums to the impulse.
     expect(even.reduce((s, v) => s + v, 0)).toBeCloseTo(1, 6);
+  });
+});
+
+describe("scale space", () => {
+  const spot = (size: number, value: (r2: number) => number) => {
+    const plane = createPlane(size, size);
+    const c = (size - 1) / 2;
+    plane.data.forEach((_, i) => {
+      plane.data[i] = value(((i % size) - c) ** 2 + (Math.floor(i / size) - c) ** 2);
+    });
+    return plane;
+  };
+  const chosenAtCenter = (plane: Plane, params: Params) => {
+    const out = run(scaleSpaceFilter, plane, { measure: "laplacian", output: "scale", ...params });
+    return out.data[((plane.height - 1) / 2) * plane.width + (plane.width - 1) / 2] ?? 0;
+  };
+
+  it("spaces the stack evenly in log sigma", () => {
+    const stack = scaleStack(1, 4, 5);
+    [1, Math.SQRT2, 2, 2 * Math.SQRT2, 4].forEach((v, i) => expect(stack[i]).toBeCloseTo(v, 12));
+    expect(scaleStack(2, 8, 1)).toEqual([2]);
+    expect(scaleStack(3, 2, 4)).toEqual([3]);
+  });
+
+  it("picks the sigma of a Gaussian blob with the normalized Laplacian", () => {
+    // At the center, t times the Laplacian of a blob of variance s^2 peaks at t = s^2.
+    const blob = spot(65, (r2) => 200 * Math.exp(-r2 / (2 * 16)));
+    expect(chosenAtCenter(blob, { sigma: 2, sigmaMax: 8, scales: 25 })).toBeCloseTo(4, 0);
+  });
+
+  it("picks about r / sqrt 2 at the center of a disk of radius r", () => {
+    // At the center of a disk, t times the Laplacian is -(r^2 / t) exp(-r^2 / (2 t)), largest
+    // in size at t = r^2 / 2.
+    const step = 16 ** (1 / 40);
+    for (const r of [4, 8, 12]) {
+      const disk = spot(97, (r2) => (r2 <= r * r ? 255 : 0));
+      const chosen = chosenAtCenter(disk, { sigma: 1, sigmaMax: 16, scales: 41 });
+      expect(Math.abs(Math.log(chosen / (r / Math.SQRT2)))).toBeLessThanOrEqual(Math.log(step));
+    }
+  });
+
+  it("keeps the sign of the strongest response and reports its sigma", () => {
+    const disk = spot(41, (r2) => (r2 <= 25 ? 255 : 0));
+    const params = { measure: "laplacian", sigma: 1, sigmaMax: 8, scales: 7 };
+    const response = run(scaleSpaceFilter, disk, { ...params, output: "response" });
+    // A bright disk on a dark ground has a negative Laplacian at its center.
+    expect(response.data[20 * 41 + 20]).toBeLessThan(0);
+    const scales = run(scaleSpaceFilter, disk, { ...params, output: "scale" });
+    const stack = scaleStack(1, 8, 7);
+    scales.data.forEach((v) => expect(stack.some((s) => Math.abs(s - v) < 1e-5)).toBe(true));
   });
 });

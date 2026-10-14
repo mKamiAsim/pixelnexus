@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 5: browser filter library |
-| Next action | Phase 5e: scale-space filtering (Lindeberg 1998, DOI 10.1023/A:1008045108935 checked), then tick 5e in section 9. Then Phase 5f (60 entries), as the owner asked on 2026-10-13. Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
+| Next action | Phase 5f (60 entries): enhancement, color, thresholds, region growing, k-means, artistic and geometric effects, and the Point-op curve widget. Start by reading the 5f entries in catalog/ and CATALOG.md and planning their order. Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
 | Last updated | 2026-10-13 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 5e part 9b: Gaussian and Laplacian pyramid filtering are implemented-tested, with catalog entries, docs pages, figures and worked examples. |
+| Last finished step | Phase 5e is done: all 34 entries are implemented-tested. The last part added scale-space filtering (Lindeberg's normalized derivatives with scale selection). |
 | In progress | Phase 5: browser filter library |
-| Next steps | Phase 5e: scale-space filtering (Lindeberg 1998, DOI 10.1023/A:1008045108935 checked), then tick 5e in section 9. Then Phase 5f (60 entries), as the owner asked on 2026-10-13. Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
+| Next steps | Phase 5f (60 entries): enhancement, color, thresholds, region growing, k-means, artistic and geometric effects, and the Point-op curve widget. Start by reading the 5f entries in catalog/ and CATALOG.md and planning their order. Checkpoint 3 (Inspector, Learn and panel layout review) is still open. |
 | Open questions | Checkpoint 3: please review the look and feel of the Inspector, the Learn panel and the panel layout. You asked to continue with Phase 4 meanwhile (2026-10-12). On 2026-10-13 you accepted the default designs of Phase 5e (frequencies in cycles per pixel, notches at the mirror points for mirror borders, and the filter-own rules that the docs label) and asked to continue into Phase 5f. |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). |
 
@@ -581,7 +581,7 @@ Six sub-phases. The entries for each are listed in CATALOG.md. Each sub-phase en
 - [x] **5b** Nonlinear, rank and adaptive statistical filters. Dead-pixel repair. Weight viewer, Noise lab and Metrics panel.
 - [x] **5c** Edges, lines, corners and texture kernels. Canny with every stage visible. Stage viewer. Nevatia-Babu was removed by the owner's decision.
 - [x] **5d** Morphology with a structuring-element editor (rectangle, ellipse, cross, diamond, line with angle, custom). Morphology stepper.
-- [ ] **5e** Frequency domain, browser deconvolution, pyramids and scale space. Mixed-radix FFT (radix 2, 3 and 5 with a Bluestein fallback) checked against NumPy. Spectrum panel with notch placement. Frequency explorer and Iteration viewer.
+- [x] **5e** Frequency domain, browser deconvolution, pyramids and scale space. Mixed-radix FFT (radix 2, 3 and 5 with a Bluestein fallback) checked against NumPy. Spectrum panel with notch placement. Frequency explorer and Iteration viewer.
 - [ ] **5f** Enhancement, color, thresholds, region growing, k-means, artistic and geometric effects. Point-op curve widget.
 
 Exit per sub-phase: every entry meets the definition of done. Catalog statuses are updated. The docs build is strict and the prose lint is clean.
@@ -883,3 +883,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-13 | 5e | Phase 5e part 8. Catalog entry, docs page, figure and worked example for regularized Richardson-Lucy. On the docs figure (Gaussian blur of sigma 2 plus noise of sigma 2) it reaches 30.74 dB after 100 iterations with lambda 0.002, against 28.46 dB for plain Richardson-Lucy. 153 catalog entries are implemented-tested. 2624 Vitest tests pass. | Pyramids and scale space, then Phase 5f. |
 | 2026-10-13 | 5e | Phase 5e part 9a. Pyramids after Burt and Adelson 1983 (DOI checked on Crossref): REDUCE filters with [1, 4, 6, 4, 1] / 16 and keeps the even pixels (a level of n pixels gives ceil(n / 2)); EXPAND weights the coarse pixels by 2 w. Positions outside a level follow the border mode on that level. The Gaussian pyramid filter reduces and expands back; the Laplacian pyramid filter rebuilds with a gain on each of the first four detail levels. Both are global filters, since the result depends on each pixel's place in the pyramid grid. Self-checks: all gains 1 give the image back for every border mode, and a flat image stays flat. NumPy references match. Entries stay planned until their docs are written. | Entries and docs for the pyramids, then scale space. |
 | 2026-10-13 | 5e | Phase 5e part 9b. Catalog entries for gaussian-pyramid and laplacian-pyramid, now implemented-tested, with docs pages under a new Multiscale section, figures (zone plate, Siemens star) and worked examples (the impulse response on an even and an odd pixel, and PSNR for lower fine-level gains on noisy disks). New tests: level sizes, exact rebuild with gains 1 for all five border modes, a flat image stays flat, and an impulse moved by one pixel gives more than a moved response. A param unit "levels" makes the preview on a smaller copy take one level away for each halving of the size. | Scale space, then Phase 5f. |
+| 2026-10-13 | 5e | Phase 5e part 10. Scale-space filtering after Lindeberg 1998 (DOI checked on Crossref): a stack of sigmas spaced evenly in log sigma, SciPy-style Gaussian derivative kernels cut at 4 sigma, and the gradient, Laplacian or Hessian determinant times sigma to the power of the order times gamma. Each pixel keeps the strongest normalized response or its sigma. Fixtures from scipy.ndimage.gaussian_filter with order cover all measures, both outputs and all five border modes. Tests check that a Gaussian blob of sigma 4 picks sigma 4 and that disks pick r / sqrt 2, which the heat equation predicts at a disk center. Docs page with figure and worked example, Stage viewer and Line profile demos, and a new E2E test. 2659 Vitest and 31 E2E tests pass. Phase 5e is ticked in section 9. | Phase 5f. |

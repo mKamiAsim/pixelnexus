@@ -212,6 +212,7 @@ const CASES: [string, Params][] = [
   ["landweber", { psf: "motion", length: 5, angle: 45, iterations: 4, tau: 1.5 }],
   ["gaussian-pyramid", { levels: 2 }],
   ["laplacian-pyramid", { levels: 3, gain1: 2, gain2: 1.5, gain3: 0.5, gain4: 1 }],
+  ["scale-space", { measure: "hessian", sigma: 1, sigmaMax: 2, scales: 3 }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 
