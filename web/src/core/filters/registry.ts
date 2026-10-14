@@ -184,6 +184,7 @@ import {
   wolfFilter,
 } from "./segmentation/thresholds";
 import { cclLabelFilter, kmeansColorFilter, regionGrowingFilter } from "./segmentation/regions";
+import { ditheringFilter } from "./artistic/dither";
 import { pixelateFilter, vignetteFilter } from "./artistic/effects";
 import { edgeEnhanceFilter, embossFilter, outlineFilter } from "./artistic/kernels";
 import type { BrowserFilter } from "./types";
@@ -379,6 +380,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   edgeEnhanceFilter,
   vignetteFilter,
   pixelateFilter,
+  ditheringFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

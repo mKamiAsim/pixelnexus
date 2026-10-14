@@ -119,3 +119,74 @@ def add_artistic_cases(plane: FloatArray, add: Add) -> None:
             vignette(plane, amount, start, linear),
             "NumPy, PixelNexus's own falloff",
         )
+
+
+DIFFUSION = {
+    "floyd-steinberg": [(1, 0, 7 / 16), (-1, 1, 3 / 16), (0, 1, 5 / 16), (1, 1, 1 / 16)],
+    "atkinson": [
+        (1, 0, 1 / 8),
+        (2, 0, 1 / 8),
+        (-1, 1, 1 / 8),
+        (0, 1, 1 / 8),
+        (1, 1, 1 / 8),
+        (0, 2, 1 / 8),
+    ],
+}
+# The 4 x 4 Bayer matrix as it is usually printed.
+BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+
+
+def bayer_matrix(n: int) -> NDArray[np.int64]:
+    m = np.array([[0, 2], [3, 1]])
+    while m.shape[0] < n:
+        m = np.block([[4 * m, 4 * m + 2], [4 * m + 3, 4 * m + 1]])
+    return m
+
+
+def dither(plane: FloatArray, method: str, levels: int) -> FloatArray:
+    step = 255 / (levels - 1)
+
+    def quantize(v: float) -> float:
+        # Math.round in JavaScript rounds halves up, unlike numpy.round.
+        return float(min(levels - 1, max(0, np.floor(v / step + 0.5))) * step)
+
+    h, w = plane.shape
+    out = np.zeros_like(plane)
+    if method.startswith("bayer"):
+        n = 4 if method == "bayer4" else 8
+        m = bayer_matrix(n)
+        for y in range(h):
+            for x in range(w):
+                t = (m[y % n, x % n] + 0.5) / (n * n) - 0.5
+                out[y, x] = quantize(plane[y, x] + step * t)
+        return out
+    work = plane.astype(np.float64).copy()
+    for y in range(h):
+        for x in range(w):
+            old = work[y, x]
+            level = quantize(old)
+            out[y, x] = level
+            error = old - level
+            for dx, dy, wt in DIFFUSION[method]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and ny < h:
+                    work[ny, nx] += error * wt
+    return out
+
+
+def add_dither_cases(plane: FloatArray, add: Add) -> None:
+    if not np.array_equal(bayer_matrix(4), np.array(BAYER4)):
+        raise SystemExit("Dithering: the Bayer matrix differs from the printed 4 x 4 matrix")
+    for method, levels in (
+        ("floyd-steinberg", 2),
+        ("floyd-steinberg", 4),
+        ("atkinson", 2),
+        ("bayer4", 2),
+        ("bayer8", 3),
+    ):
+        add(
+            "dithering",
+            {"method": method, "levels": levels},
+            dither(plane, method, levels),
+            "NumPy, the error weights of Floyd and Steinberg and of Atkinson, and the Bayer matrix",
+        )

@@ -261,6 +261,8 @@ const CASES: [string, Params][] = [
   ["edge-enhance", { strength: "more" }],
   ["vignette", { amount: 70, start: 20 }],
   ["pixelate", { size: 4 }],
+  ["dithering", { method: "atkinson", levels: 3 }],
+  ["dithering", { method: "bayer8" }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 
