@@ -28,6 +28,7 @@ import { cannyFilter, hysteresisFilter } from "./edges/hysteresis";
 import { sobelNmsFilter } from "./edges/nms";
 import { sobelFilter } from "./edges/sobel";
 import { marrHildrethFilter, zeroCrossingFilter } from "./edges/zero-crossing";
+import { aheFilter, claheFilter } from "./enhancement/clahe";
 import { gammaFilter } from "./enhancement/gamma";
 import { histogramEqFilter, percentileNormalizeFilter } from "./enhancement/histogram";
 import {
@@ -294,6 +295,8 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   percentileNormalizeFilter,
   invertFilter,
   histogramEqFilter,
+  aheFilter,
+  claheFilter,
   posterizeFilter,
   solarizeFilter,
   grayscaleFilter,

@@ -2,10 +2,15 @@
  * The Point-op curve: the transfer curve of a point operation, with the histograms of the image
  * before and after. Fixed curves come from the filter's transfer function. Curves built from the
  * image, such as histogram equalization, come from the filter's own table and the histogram of
- * the whole image, so the widget draws the curve the filter really applies.
+ * the whole image, so the widget draws the curve the filter really applies. For local
+ * operations such as CLAHE, the curve is the one that applies at the probe pixel, and the
+ * histogram after comes from running the filter on the whole image.
  */
 import { useMemo } from "react";
 
+import { histogram256 } from "@/core/filters/enhancement/histogram";
+import { createPlane, type Plane } from "@/core/filters/planes";
+import { browserFilter } from "@/core/filters/registry";
 import type { RgbaImage } from "@/core/image/types";
 
 import { channelOf, curveOf, round, valueAt } from "./common";
@@ -24,6 +29,18 @@ function histogramOf(image: RgbaImage, channel: "luma" | "red"): Float64Array {
   }
   return counts;
 }
+
+function planeOf(image: RgbaImage, channel: "luma" | "red"): Plane {
+  const plane = createPlane(image.width, image.height);
+  for (let y = 0; y < image.height; y++) {
+    for (let x = 0; x < image.width; x++) {
+      plane.data[y * image.width + x] = valueAt(image, x, y, channel);
+    }
+  }
+  return plane;
+}
+
+const CONTEXT = { border: "reflect101", originX: 0, originY: 0, channel: 0 } as const;
 
 const at = (curve: readonly number[], v: number) => {
   const k = Math.min(254, Math.floor(v));
@@ -60,17 +77,32 @@ function Histogram({ counts, label }: { counts: ArrayLike<number>; label: string
 export function PointOpCurve({ filterId, values, image, point }: WidgetProps) {
   const channel = channelOf(values);
   const before = useMemo(() => histogramOf(image, channel), [image, channel]);
+  // Local operations: the channel as a plane, and the histogram of the real result.
+  const local = useMemo(() => {
+    const filter = browserFilter(filterId);
+    if (filter?.kind !== "smooth" && filter?.kind !== "derived") return null;
+    const tableAt = filter.pointTableAt;
+    if (!tableAt) return null;
+    const plane = planeOf(image, channel);
+    return { tableAt, plane, after: histogram256(filter.plane(plane, values, CONTEXT)) };
+  }, [filterId, values, image, channel]);
   const data = useMemo(() => {
-    const curve = curveOf(filterId, values, before);
+    const curve = local
+      ? Array.from(local.tableAt(values, local.plane, point.x, point.y))
+      : curveOf(filterId, values, before);
     if (!curve) return null;
-    const after = new Float64Array(256);
-    curve.forEach((v, k) => {
-      const j = Math.min(255, Math.max(0, Math.round(v)));
-      after[j] = (after[j] ?? 0) + (before[k] ?? 0);
-    });
+    let after: ArrayLike<number> = local?.after ?? new Float64Array(256);
+    if (!local) {
+      const counts = new Float64Array(256);
+      curve.forEach((v, k) => {
+        const j = Math.min(255, Math.max(0, Math.round(v)));
+        counts[j] = (counts[j] ?? 0) + (before[k] ?? 0);
+      });
+      after = counts;
+    }
     const probe = valueAt(image, point.x, point.y, channel);
     return { curve, after, probe, out: Math.min(255, Math.max(0, at(curve, probe))) };
-  }, [filterId, values, before, image, point.x, point.y, channel]);
+  }, [filterId, values, before, local, image, point.x, point.y, channel]);
   if (!data) return null;
   const xy = (v: number, out: number) =>
     `${(v / 255) * SIZE},${SIZE - (Math.min(255, Math.max(0, out)) / 255) * SIZE}`;
@@ -110,6 +142,9 @@ export function PointOpCurve({ filterId, values, image, point }: WidgetProps) {
         The curve maps each input level, left to right, to an output level, bottom to top. The
         dashed line changes nothing. At the probe, the {name} value {round(data.probe)} becomes{" "}
         {round(data.out)}.
+        {local
+          ? " This filter uses a different curve in each part of the image. The one shown applies at the probe pixel."
+          : ""}
       </p>
       <Histogram counts={before} label={`Histogram of the ${name} before the filter`} />
       <Histogram counts={data.after} label={`Histogram of the ${name} after the filter`} />

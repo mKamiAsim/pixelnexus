@@ -1,15 +1,18 @@
-"""Reference results for the point operations of Phase 5f.
+"""Reference results for the point operations and histogram equalization of Phase 5f.
 
 tools/fixtures_filters.py adds these one-plane cases to web/tests/fixtures/filters.json. Each
 curve is written again here with NumPy. Invert and solarize are checked against Pillow, and the
-percentiles against numpy.percentile on the plane itself, before the cases are written.
+percentiles against numpy.percentile on the plane itself, before the cases are written. CLAHE
+follows the steps of cv::CLAHE and is checked against cv2.createCLAHE.
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from typing import Any
 
+import cv2
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image, ImageOps
@@ -108,3 +111,95 @@ def add_point_cases(plane: FloatArray, add: Add) -> None:
             percentile_normalize(plane, low, high),
             "numpy.percentile",
         )
+
+
+def _round_even(v: Any) -> FloatArray:
+    """Round half to even, as cvRound does."""
+    return np.asarray(np.rint(v), dtype=np.float64)
+
+
+def clip_histogram(hist: NDArray[np.int64], limit: int) -> None:
+    """Clip and spread the excess, as cv::CLAHE does. Changes hist in place."""
+    excess = int(np.maximum(hist - limit, 0).sum())
+    np.minimum(hist, limit, out=hist)
+    batch, residual = divmod(excess, 256)
+    hist += batch
+    if residual:
+        step = max(256 // residual, 1)
+        i = 0
+        while i < 256 and residual > 0:
+            hist[i] += 1
+            i += step
+            residual -= 1
+
+
+def clahe(
+    p: FloatArray, grid_x: int, grid_y: int, clip_limit: float, float32: bool = False
+) -> FloatArray:
+    """CLAHE with the steps of cv::CLAHE, without the final rounding.
+
+    With float32, the blend runs in 32-bit floats and rounds, as OpenCV does.
+    """
+    height, width = p.shape
+    tiles_x, tiles_y = min(width, grid_x), min(height, grid_y)
+    pad_x = 0 if width % tiles_x == 0 else tiles_x - width % tiles_x
+    pad_y = 0 if height % tiles_y == 0 else tiles_y - height % tiles_y
+    levels = np.clip(np.rint(p), 0, 255).astype(int)
+    ext = np.pad(levels, ((0, pad_y), (0, pad_x)), mode="reflect")
+    tile_w, tile_h = ext.shape[1] // tiles_x, ext.shape[0] // tiles_y
+    total = tile_w * tile_h
+    limit = max(1, int(clip_limit * total / 256)) if clip_limit > 0 else 0
+    scale = np.float32(255) / np.float32(total)
+    luts = np.zeros((tiles_y, tiles_x, 256))
+    for ty in range(tiles_y):
+        for tx in range(tiles_x):
+            tile = ext[ty * tile_h : (ty + 1) * tile_h, tx * tile_w : (tx + 1) * tile_w]
+            hist = np.bincount(tile.ravel(), minlength=256).astype(np.int64)
+            if limit:
+                clip_histogram(hist, limit)
+            cdf = np.cumsum(hist).astype(np.float32)
+            luts[ty, tx] = np.minimum(255, _round_even(cdf * scale))
+    real = np.float32 if float32 else np.float64
+    if float32:
+        luts = luts.astype(np.float32)
+
+    def blend(pos: int, size: int, tiles: int) -> tuple[int, int, Any, Any]:
+        f = real(pos) * (real(1) / real(size)) - real(0.5)
+        first = math.floor(f)
+        weight = real(f - real(first))
+        return max(first, 0), min(first + 1, tiles - 1), weight, real(1) - weight
+
+    out = np.zeros_like(p)
+    for y in range(height):
+        ya, yb, wy, wy1 = blend(y, tile_h, tiles_y)
+        for x in range(width):
+            xa, xb, wx, wx1 = blend(x, tile_w, tiles_x)
+            v = levels[y, x]
+            top = luts[ya, xa, v] * wx1 + luts[ya, xb, v] * wx
+            bottom = luts[yb, xa, v] * wx1 + luts[yb, xb, v] * wx
+            out[y, x] = top * wy1 + bottom * wy
+    return np.rint(out) if float32 else out
+
+
+def _check_clahe_against_opencv() -> None:
+    """With the blend in 32-bit floats, the reference must equal cv2.createCLAHE exactly."""
+    rng = np.random.default_rng(5)
+    base = rng.normal(110, 25, size=(61, 83)).cumsum(axis=1) / 40
+    image = np.clip(base - base.min() + rng.normal(0, 6, size=base.shape), 0, 255)
+    image = np.rint(image).astype(np.uint8)
+    for grid, clip_limit in (((8, 8), 2.0), ((4, 3), 40.0), ((5, 7), 0.0), ((1, 1), 1.0)):
+        ours = clahe(image.astype(np.float64), *grid, clip_limit, float32=True)
+        theirs = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid).apply(image)
+        if not np.array_equal(ours, theirs):
+            _fail(f"CLAHE differs from OpenCV for grid {grid} and clip limit {clip_limit}")
+
+
+def add_clahe_cases(plane: FloatArray, add: Add) -> None:
+    _check_clahe_against_opencv()
+    source = "the steps of cv::CLAHE written with NumPy, checked against cv2.createCLAHE"
+    for grid_x, grid_y, clip_limit in ((2, 2, 2.0), (3, 2, 1.0), (4, 4, 40.0), (5, 3, 0.5)):
+        params = {"tilesX": grid_x, "tilesY": grid_y, "clipLimit": clip_limit}
+        add("clahe", params, clahe(plane, grid_x, grid_y, clip_limit), source)
+    for grid_x, grid_y in ((2, 2), (4, 3), (13, 10)):
+        params = {"tilesX": grid_x, "tilesY": grid_y}
+        add("ahe", params, clahe(plane, grid_x, grid_y, 0.0), source)

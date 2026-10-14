@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createPlane } from "@/core/filters/planes";
 
+import { applyCurves, clipHistogram, curveAt, tileCurves } from "./clahe";
 import { applyTable, equalizeTable, histogram256, histogramPercentile } from "./histogram";
 import { posterizeTransfer, stretchTransfer } from "./point-ops";
 
@@ -60,5 +61,38 @@ describe("fixed point operations", () => {
   it("posterizes to evenly spaced levels that keep black and white", () => {
     const t = posterizeTransfer(3);
     expect([t(0), t(85), t(86), t(170), t(171), t(255)]).toEqual([0, 0, 127.5, 127.5, 255, 255]);
+  });
+});
+
+describe("CLAHE", () => {
+  const plane = createPlane(23, 17);
+  plane.data.forEach((_, i) => (plane.data[i] = (i * 53 + Math.floor(i / 23) * 7) % 200));
+
+  it("keeps the pixel count when it clips and spreads a histogram", () => {
+    const h = Array.from({ length: 256 }, (_, k) => (k === 10 ? 500 : k % 4));
+    const total = h.reduce((s, v) => s + v, 0);
+    clipHistogram(h, 20);
+    expect(h.reduce((s, v) => s + v, 0)).toBe(total);
+    expect(Math.max(...h)).toBeLessThanOrEqual(20 + Math.ceil((500 - 20) / 256) + 1);
+  });
+
+  it("is rounded global equalization with one tile and no clip limit", () => {
+    const curves = tileCurves(plane, 1, 1, 0);
+    const exact = equalizeTable(histogram256(plane));
+    for (let k = 0; k < 256; k++) expect(curves.luts[k]).toBe(Math.round(exact[k] ?? 0));
+  });
+
+  it("applies at each pixel the curve that curveAt reports there", () => {
+    const curves = tileCurves(plane, 4, 3, 2);
+    const out = applyCurves(plane, curves);
+    for (const [x, y] of [
+      [0, 0],
+      [5, 9],
+      [22, 16],
+      [11, 3],
+    ] as const) {
+      const v = plane.data[y * 23 + x] ?? 0;
+      expect(out.data[y * 23 + x]).toBeCloseTo(curveAt(curves, x, y)[v] ?? NaN, 4);
+    }
   });
 });

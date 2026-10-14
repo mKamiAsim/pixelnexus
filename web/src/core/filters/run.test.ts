@@ -220,6 +220,8 @@ const CASES: [string, Params][] = [
   ["histogram-eq", { channelScope: "luminance" }],
   ["posterize", { levels: 5 }],
   ["solarize", { threshold: 100 }],
+  ["clahe", { tilesX: 3, tilesY: 2, clipLimit: 2 }],
+  ["ahe", { tilesX: 4, tilesY: 4, channelScope: "luminance" }],
   ["nnls-deconv", { psf: "defocus", radius: 1.5, iterations: 4, tau: 1 }],
 ];
 

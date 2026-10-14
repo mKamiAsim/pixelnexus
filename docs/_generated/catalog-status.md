@@ -2,7 +2,7 @@
 
 | Status | Entries |
 |---|--:|
-| Implemented and tested | 163 |
-| Planned but not implemented | 168 |
+| Implemented and tested | 165 |
+| Planned but not implemented | 166 |
 | Unsupported or deprecated | 6 |
 | **Total** | **337** |

@@ -277,6 +277,8 @@ nav:
           - Percentile normalization: filters/enhancement/percentile-normalize.md
           - Invert: filters/enhancement/invert.md
           - Histogram equalization: filters/enhancement/histogram-eq.md
+          - Adaptive histogram equalization: filters/enhancement/ahe.md
+          - CLAHE: filters/enhancement/clahe.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

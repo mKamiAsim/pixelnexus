@@ -105,6 +105,17 @@ test("the Point-op curve shows the equalization curve and both histograms", asyn
   ).toBeVisible();
 });
 
+test("the Point-op curve shows the local curve of CLAHE at the probe", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "clahe", "CLAHE");
+  await front(page, "Learn");
+  await expect(page.getByRole("img", { name: /^Transfer curve/ })).toBeVisible();
+  await expect(page.getByText(/The one shown applies at the probe pixel/)).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma after the filter" }),
+  ).toBeVisible();
+});
+
 test("scale space shows its response and its selected scale", async ({ page }) => {
   await openTestImage(page, "Disks");
   await chooseFilter(page, "scale", "Scale-space filtering");

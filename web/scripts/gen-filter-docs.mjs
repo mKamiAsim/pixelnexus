@@ -1165,6 +1165,9 @@ try {
     browserFilter,
     histogramPercentile,
   });
+  const { claheDocs } = await import("./filter-docs/clahe.mjs");
+  const { tileCurves } = await load("/src/core/filters/enhancement/clahe.ts");
+  claheDocs({ run, pic, figure, example, mdTable, fix, synthetic, tileCurves });
 
   // Write or check ---------------------------------------------------------------------------
   const stale = [];

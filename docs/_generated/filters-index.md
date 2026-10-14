@@ -123,6 +123,8 @@
 | [Matched vessel filter](features/matched-vessel.md) | Texture, corners, blobs and features | Finds thin dark or bright lines with a Gaussian profile, such as blood vessels, by matching kernels in many directions. | Implemented and tested |
 | [Moravec corner detector](features/moravec.md) | Texture, corners, blobs and features | Finds corners as points where a small window changes in every direction it is moved. | Implemented and tested |
 | [Shi-Tomasi](features/shi-tomasi.md) | Texture, corners, blobs and features | Finds corners by the smaller eigenvalue of the structure tensor, the measure behind Good features to track. | Implemented and tested |
+| [Adaptive histogram equalization](enhancement/ahe.md) | Enhancement, illumination and color | Equalizes the histogram of each tile of a grid on its own and blends the tile curves smoothly, so each region gets its own contrast. | Implemented and tested |
+| [CLAHE](enhancement/clahe.md) | Enhancement, illumination and color | Equalizes the histogram of each tile of a grid, with a clip limit that caps the contrast gain, and blends the tile curves smoothly. | Implemented and tested |
 | [Contrast stretching](enhancement/contrast-stretch.md) | Enhancement, illumination and color | Remaps brightness with a curve of three straight segments through two control points. | Implemented and tested |
 | [Gamma correction](enhancement/gamma.md) | Enhancement, illumination and color | Brightens or darkens the midtones with a power curve, while black and white stay put. | Implemented and tested |
 | [Grayscale conversion](enhancement/grayscale.md) | Enhancement, illumination and color | Turns a color image into shades of gray with a weighted sum of red, green and blue. | Implemented and tested |

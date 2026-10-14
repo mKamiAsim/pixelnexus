@@ -159,6 +159,11 @@ export interface PlaneFilter extends FilterBase {
    * levels. The Point-op curve widget draws it.
    */
   readonly pointTable?: (params: Params, histogram: ArrayLike<number>) => Float64Array;
+  /**
+   * For local point operations whose curve changes across the image, such as CLAHE: the curve
+   * that applies at pixel (x, y) of the plane.
+   */
+  readonly pointTableAt?: (params: Params, plane: Plane, x: number, y: number) => Float64Array;
 }
 
 /**
