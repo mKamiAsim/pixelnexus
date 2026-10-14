@@ -241,6 +241,7 @@ const CASES: [string, Params][] = [
   ["bilateral-tonemap", { contrast: 4, spatial: 10, range: 0.3, downsample: 2 }],
   ["detail-enhance", { radius: 3, eps: 0.02, boost: 3 }],
   ["chroma-denoise", { method: "median", size: 3 }],
+  ["chroma-denoise", { method: "gaussian", sigma: 1.5 }],
   ["threshold-global", { threshold: 120, invert: true }],
   ["otsu", {}],
   ["threshold-adaptive-mean", { size: 7, offset: 3 }],

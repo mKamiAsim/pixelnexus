@@ -295,6 +295,9 @@ nav:
           - Single-scale Retinex: filters/enhancement/retinex-ssr.md
           - Multi-scale Retinex: filters/enhancement/retinex-msr.md
           - Multi-scale Retinex with color restoration: filters/enhancement/msrcr.md
+          - Bilateral tone mapping: filters/enhancement/bilateral-tonemap.md
+          - Detail enhancement: filters/enhancement/detail-enhance.md
+          - Chroma denoising: filters/enhancement/chroma-denoise.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

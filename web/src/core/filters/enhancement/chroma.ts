@@ -9,8 +9,9 @@
  * Cb and Cr are smoothed with a Gaussian or a median, Y is kept, and the image is converted back
  * with the exact inverse. The eye sees fine detail mostly in brightness, which is why JPEG may
  * store Cb and Cr at a lower resolution, so smoothing them removes color blotches and keeps the
- * detail. The combination is PixelNexus's own. The median works on whole levels, so Cb and Cr
- * are rounded first for it.
+ * detail. The combination is PixelNexus's own. The median is the default because it keeps color
+ * edges, while the Gaussian lets colors bleed across them. The median works on whole levels, so
+ * Cb and Cr are rounded first for it.
  */
 import { correlateSeparable } from "@/core/filters/convolve";
 import { gaussianKernel1d, gaussianRadius } from "@/core/filters/linear/gaussian";
@@ -20,7 +21,7 @@ import { read, type ColorFilter, type Params } from "@/core/filters/types";
 
 type Method = "gaussian" | "median";
 
-const methodOf = (params: Params) => read.string<Method>(params, "method", "gaussian");
+const methodOf = (params: Params) => read.string<Method>(params, "method", "median");
 const sigmaOf = (params: Params) => read.number(params, "sigma", 2);
 const sizeOf = (params: Params) => read.number(params, "size", 5);
 

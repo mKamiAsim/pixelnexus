@@ -1,8 +1,151 @@
 id: bilateral-tonemap
 name: Bilateral tone mapping
+aliases: [Durand-Dorsey tone mapping, Fast bilateral tone mapping, Base and detail tone mapping]
 family: enhancement
+tags: [purpose:contrast, purpose:enhancement]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Durand and Dorsey.
+
+summary: Splits the log intensity into a base layer, from a bilateral filter, and a detail layer, then compresses only the base, so shadows and highlights come closer while detail stays.
+purpose: Compress a high range of brightness, such as a dark room with a bright window, without losing detail or making halos at strong edges.
+classification: {linearity: nonlinear, domain: color, operation: base and detail decomposition with base compression}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/tonemap.ts, symbol: bilateralTonemap}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Works on the intensity (20 R + 40 G + B) / 61. Each pixel keeps its color ratios R / I, G / I
+  and B / I, and the three channels are scaled by the new intensity. Alpha is kept.
+boundary: >-
+  The image is mirrored at its edges for the Gaussian of the bilateral filter. The compression
+  uses the range of the whole base layer, so the filter always runs on the whole image.
+
+params:
+  - key: contrast
+    label: Base contrast
+    type: number
+    min: 1.5
+    max: 100
+    step: 0.5
+    default: 5
+    description: The ratio between the brightest and the darkest base value after compression.
+    effect: Lower values bring shadows and highlights closer together. Higher values keep more of the original contrast.
+  - key: spatial
+    label: Spatial sigma
+    type: number
+    min: 0.2
+    max: 20
+    step: 0.1
+    default: 2
+    unit: "%"
+    description: The spatial scale sigma_s of the bilateral filter, in percent of the longer side of the image.
+    effect: Larger values make the base layer smoother, so more of the image counts as detail.
+  - key: range
+    label: Range sigma
+    type: number
+    min: 0.05
+    max: 2
+    step: 0.05
+    default: 0.4
+    description: The range scale sigma_r of the bilateral filter, in log10 units of intensity.
+    effect: Smaller values keep weaker edges in the base layer. Larger values blur across them and can make halos.
+  - key: downsample
+    label: Downsampling
+    type: integer
+    min: 1
+    max: 16
+    default: 4
+    description: The bilateral filter runs on every z-th pixel in each direction, as in the paper. 1 runs it on every pixel.
+    effect: Higher values are much faster. Edges stay sharp, because the final step uses every pixel.
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: true
+    description: Decode the sRGB values to linear light first, so the intensity is proportional to light.
+    effect: Linear light follows the paper, which works on radiance. Off works on the encoded values.
+formula: |
+  B = \operatorname{bilateral}(\log_{10} I),
+  \quad
+  D = \log_{10} I - B,
+  \quad
+  O = c\,B + D - c \max B,
+  \quad
+  c = \frac{\log_{10} C}{\max B - \min B},
+  \qquad C = {{contrast}}
+formulaExplanation: >-
+  I is the intensity (20 R + 40 G + B) / 61. The bilateral filter of the log intensity is the base
+  layer B, the large shapes of the light. What is left, D, is the detail. The base is scaled by c,
+  so that its range becomes log10 C, and shifted so that its largest value becomes 0. The detail
+  is not scaled, so it keeps its contrast. Each channel becomes its ratio to I times 10^O, clipped
+  to 1. Durand and Dorsey keep sigma_s at 2 percent of the image size and found sigma_r = 0.4 and
+  a base contrast of 5 to work well. The bilateral filter is their piecewise-linear version. It
+  filters at NB evenly spaced levels of log I, with NB = (max - min) / sigma_r rounded up. Each
+  pixel mixes the two levels nearest to its value. PixelNexus's own choices are linear light for 8-bit images,
+  intensities of at least 1e-4, the longer side as the image size, and bilinear upsampling.
+symbols:
+  - {symbol: 'I', meaning: 'The intensity (20 R + 40 G + B) / 61'}
+  - {symbol: 'B', meaning: 'The base layer, the bilateral filter of log10 I'}
+  - {symbol: 'D', meaning: 'The detail layer'}
+  - {symbol: 'C', meaning: 'The target base contrast'}
+  - {symbol: 'O', meaning: 'The log10 of the output intensity'}
+steps:
+  - Decode to linear light, compute the intensity and the color ratios.
+  - Take log10 of the intensity.
+  - Filter it with the piecewise-linear bilateral filter to get the base layer, on every z-th pixel, with a Gaussian through the FFT of each row and column.
+  - Subtract the base from the log intensity to get the detail layer.
+  - Scale and shift the base, add the detail, and raise 10 to the result.
+  - Multiply the color ratios by the new intensity, clip to 1 and encode back to sRGB.
+complexity:
+  time: O(N log N + NB N / z^2)
+  memory: O(N)
+  notes: N is the number of pixels, NB the number of levels and z the downsampling. The cost does not depend on sigma_s.
+useCases:
+  - Photos of rooms with a bright window, or scenes with deep shadows and a bright sky.
+  - Bringing out shadow detail before other edits.
+advantages:
+  - Strong edges between light and shadow stay sharp, with no wide halos.
+  - Only one setting, the base contrast, usually needs a change.
+limitations:
+  - Small halos can appear at antialiased or very high-contrast edges. The paper's fix for uncertain pixels is not included.
+  - An 8-bit photo has little detail left in its deepest shadows, so lifting them also lifts noise.
+artifacts:
+  - Noise in lifted shadows.
+  - Thin bright or dark rims at some strong edges.
+references:
+  - kind: paper
+    text: Durand, F. and Dorsey, J. Fast bilateral filtering for the display of high-dynamic-range images. ACM Transactions on Graphics 21(3), 257 to 266, 2002.
+    doi: 10.1145/566654.566574
+  - kind: web
+    text: Durand, F. Fast Bilateral Filtering for the Display of High-Dynamic-Range Images, the paper's page with the tone mapping recipe.
+    url: https://people.csail.mit.edu/fredo/PUBLI/Siggraph2002/
+implementation: {path: web/src/core/filters/enhancement/tonemap.ts, symbol: bilateralTonemapFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/tonemap.test.ts]
+learn:
+  oneSentence: Separate the broad light from the fine detail, squeeze only the light, and add the detail back.
+  howItWorks:
+    - Smooth the log brightness with a filter that stops at strong edges. This is the light, the base layer.
+    - Subtract it from the log brightness. What is left is the detail.
+    - Squeeze the base so that its brightest and darkest parts are closer.
+    - Add the detail back and restore the colors.
+  academic: >-
+    Durand and Dorsey's two-scale tone mapping: compression of the bilateral base layer of the
+    log intensity in the log domain, with the detail layer unchanged.
+  paramNotes:
+    contrast: How far apart the brightest and darkest light may stay.
+    spatial: How large the areas are that count as light.
+    range: How strong an edge must be to separate two areas of light.
+    downsample: How coarse a grid the filter uses, for speed.
+    linearLight: Work on light values, as the paper does.
+  tryThis:
+    - Open a photo with a bright window and a dark room. Lower the base contrast from 10 to 3 and watch the room appear.
+  pitfalls:
+    - Expecting it to remove noise. It lifts shadows, noise included.
+  demos: [line-profile]
+related: [detail-enhance, retinex-msr, clahe]
+docsPage: filters/enhancement/bilateral-tonemap.md

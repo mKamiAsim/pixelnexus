@@ -1,8 +1,121 @@
 id: chroma-denoise
 name: Chroma denoising
+aliases: [Color noise reduction, Chrominance smoothing]
 family: enhancement
+tags: [purpose:denoise, purpose:color]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Denoises chroma only.
+
+summary: Smooths only the color differences Cb and Cr and keeps the luma, so color blotches disappear while detail stays sharp.
+purpose: Remove colored noise from photos, especially from high ISO or dark scenes, without blurring detail.
+classification: {linearity: nonlinear, domain: color, operation: smoothing of the chroma channels}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/chroma.ts, symbol: chromaDenoiseFilter}
+supportRadius: floor(size / 2) for the median, floor(3 sigma + 0.5) for the Gaussian
+supportsMask: true
+preview: live
+colorHandling: >-
+  Converts to Y, Cb and Cr of ITU-R BT.601, smooths Cb and Cr, keeps Y and converts back, so the
+  luma of every pixel stays the same. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: median
+    options:
+      - {value: median, label: Median}
+      - {value: gaussian, label: Gaussian}
+    description: How Cb and Cr are smoothed.
+    effect: The median keeps color edges. The Gaussian is smoother but lets colors bleed across edges.
+  - key: size
+    label: Median size
+    type: integer
+    min: 3
+    max: 31
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: The side of the median window, for the median method.
+    effect: Larger windows remove larger blotches.
+  - key: sigma
+    label: Gaussian sigma
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian, for the Gaussian method. It is cut at 3 sigma.
+    effect: Larger values remove larger blotches and bleed colors further.
+  - ref: border
+formula: |
+  Y = 0.299 R + 0.587 G + 0.114 B,
+  \quad
+  C_b = 128 + \frac{B - Y}{1.772},
+  \quad
+  C_r = 128 + \frac{R - Y}{1.402}
+formulaExplanation: >-
+  These are the luma and color differences of ITU-R BT.601, as JPEG uses them. Cb and Cr are
+  smoothed with the median or the Gaussian, and Y is kept. R, G and B come back from the exact
+  inverse. It is R = Y + 1.402 (Cr - 128), B = Y + 1.772 (Cb - 128) and
+  G = (Y - 0.299 R - 0.114 B) / 0.587. The eye sees fine detail mostly in brightness, which is why JPEG may store Cb and Cr at a
+  lower resolution. So smoothing them removes color noise and keeps the detail. The combination
+  is PixelNexus's own. The median works on whole levels, so Cb and Cr are rounded for it.
+symbols:
+  - {symbol: 'Y', meaning: 'Luma'}
+  - {symbol: 'C_b, C_r', meaning: 'The blue and red color differences, centered at 128'}
+steps:
+  - Convert each pixel to Y, Cb and Cr.
+  - Smooth Cb and Cr with the median or the Gaussian.
+  - Convert back to R, G and B with the original Y.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels and r the window radius. The median slides a histogram along each row, the Gaussian runs on rows and columns.
+useCases:
+  - Photos from phones and cameras at high ISO, with colored speckles in dark areas.
+  - A first step before a luma denoiser.
+advantages:
+  - Keeps all brightness detail, since luma is untouched.
+  - Removes much of the color noise with a simple filter.
+limitations:
+  - Leaves the noise in luma. Use a denoiser on brightness for that.
+  - Small, thin colored details, such as a red thread, can fade.
+artifacts:
+  - Colors bleeding across edges with the Gaussian method.
+  - Small color details lost with large windows.
+references:
+  - kind: standard
+    text: ITU-R Recommendation BT.601. Studio encoding parameters of digital television for standard 4:3 and wide-screen 16:9 aspect ratios.
+  - kind: standard
+    text: ITU-T Recommendation T.871. Information technology, Digital compression and coding of continuous-tone still images, JPEG File Interchange Format (JFIF), 2011.
+implementation: {path: web/src/core/filters/enhancement/chroma.ts, symbol: chromaDenoiseFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/chroma.test.ts]
+learn:
+  oneSentence: Smooth only the color of the image and leave its brightness alone.
+  howItWorks:
+    - Split each pixel into brightness and two color differences.
+    - Smooth the two color differences.
+    - Put the pixel back together with its original brightness.
+  academic: >-
+    Chrominance-only smoothing in BT.601 YCbCr, with a median or a Gaussian on Cb and Cr.
+  paramNotes:
+    method: How the color is smoothed.
+    size: How large the median window is.
+    sigma: How wide the Gaussian is.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Open a photo taken in dim light and zoom in on a dark area. Compare the median and the Gaussian at the edge of a colored object.
+  pitfalls:
+    - Expecting it to remove grain in brightness. It only touches color.
+  demos: [line-profile]
+related: [median, noise-gaussian, bilateral]
+docsPage: filters/enhancement/chroma-denoise.md
