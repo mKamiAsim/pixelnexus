@@ -4,7 +4,7 @@
 name = "pixelnexus-workspace"
 version = "0.0.0"
 requires-python = ">=3.12,<3.14"
-dependencies = ["pixelnexus-engine"]
+dependencies = ["pixelnexus-engine[optional]"]
 
 [dependency-groups]
 dev = [
@@ -28,7 +28,7 @@ package = false
 default-groups = ["dev", "docs"]
 # Dependency age rule from PLAN.md D19: ignore releases newer than this date.
 # Move it forward when you update dependencies.
-exclude-newer = "2026-09-27T00:00:00Z"
+exclude-newer = "2026-10-01T00:00:00Z"
 
 [tool.uv.workspace]
 members = ["engine"]

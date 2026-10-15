@@ -18,6 +18,11 @@ dependencies = [
   "jsonschema>=4.25",
 ]
 
+[project.optional-dependencies]
+# Packages for the catalog entries with tier "optional". The engine runs without them, and
+# their filters then show as not available.
+optional = ["pyrtools>=1.0.11"]
+
 [project.scripts]
 pixelnexus-engine = "pixelnexus_engine.__main__:main"
 

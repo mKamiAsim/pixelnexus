@@ -5,4 +5,5 @@ tier: optional
 engine: science
 phase: 6b
 status: planned
-planNotes: Optional `dtcwt` package. Check NumPy 2 support first. If it fails, status becomes Planned.
+reason: The dtcwt package, version 0.14.0, requires NumPy below version 2. The engine uses NumPy 2, so this filter waits for a newer dtcwt.
+planNotes: Optional `dtcwt` package. Checked on 2026-10-15. dtcwt 0.14.0 pins numpy<2.0.0, and its license points to extra terms of the original MATLAB toolbox. Stays Planned.
