@@ -138,7 +138,16 @@ try {
       { length: image.width * image.height * 3 },
       (_, i) => image.data[Math.floor(i / 3) * 4 + (i % 3)],
     );
-  const run = (image, id, params) => runFilter(image, browserFilter(id), params).image;
+  // The studio passes the catalog default of the output mapping, so the docs do the same.
+  const { catalog } = await load("/src/catalog/index.ts");
+  const { entryParams } = await load("/src/catalog/params.ts");
+  const mappingDefault = (id) => {
+    const entry = catalog.filters.find((f) => f.id === id);
+    const param = entry ? entryParams(entry).find((p) => p.key === "outputMapping") : undefined;
+    return param ? { outputMapping: param.default } : {};
+  };
+  const run = (image, id, params) =>
+    runFilter(image, browserFilter(id), { ...mappingDefault(id), ...params }).image;
   const pic = (image, color = false) => ({
     width: image.width,
     height: image.height,
