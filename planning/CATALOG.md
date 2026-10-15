@@ -335,12 +335,12 @@ Restoration never claims to recover information the input does not contain. Each
 | red | Regularization by Denoising | RED. Done on 2026-10-15. | Advanced | Science | 6c |
 | inpaint | Image inpainting | Telea, Navier-Stokes and biharmonic. The selection is the mask. | Advanced | Science | 6c |
 | sr-classical | Super-resolution reconstruction | Bicubic plus iterative back-projection. Changes image size. | Advanced | Science | 6c |
-| deband | Debanding | | Advanced | Science | 6c |
-| descreen | Descreening | Halftone peak removal in frequency. | Advanced | Science | 6c |
-| deblock | Deblocking | | Advanced | Science | 6c |
-| dering | Deringing | Edge-aware smoothing near strong edges. Approximate. | Advanced | Science | 6c |
-| jpeg-cleanup | JPEG artifact removal (classical) | Deblock plus dering. The learned version is in section 12. | Advanced | Science | 6c |
-| dehaze | Dehazing | Dark channel prior with guided filter refinement. | Advanced | Science | 6c |
+| deband | Debanding | Done on 2026-10-15. | Advanced | Science | 6c |
+| descreen | Descreening | Halftone peak removal in frequency. Done on 2026-10-15. | Advanced | Science | 6c |
+| deblock | Deblocking | Done on 2026-10-15. | Advanced | Science | 6c |
+| dering | Deringing | Edge-aware smoothing near strong edges. Approximate. Done on 2026-10-15. | Advanced | Science | 6c |
+| jpeg-cleanup | JPEG artifact removal (classical) | Deblock plus dering. The learned version is in section 12. Done on 2026-10-15. | Advanced | Science | 6c |
+| dehaze | Dehazing | Dark channel prior with guided filter refinement. Done on 2026-10-15. | Advanced | Science | 6c |
 
 ## 11. Segmentation and region-based processing
 

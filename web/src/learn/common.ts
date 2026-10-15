@@ -64,12 +64,18 @@ export function engineValueAt(
   return result.color[0].data[0] ?? Number.NaN;
 }
 
-/** The patch of the image around a point, at most size x size pixels. */
-export function patchAt(image: RgbaImage, x: number, y: number, size = 64): RgbaImage {
+/** The top left corner of the patch around a point, and its size. */
+export function patchFrame(image: RgbaImage, x: number, y: number, size = 64) {
   const width = Math.min(size, image.width);
   const height = Math.min(size, image.height);
   const x0 = Math.min(Math.max(0, x - (width >> 1)), image.width - width);
   const y0 = Math.min(Math.max(0, y - (height >> 1)), image.height - height);
+  return { x0, y0, width, height };
+}
+
+/** The patch of the image around a point, at most size x size pixels. */
+export function patchAt(image: RgbaImage, x: number, y: number, size = 64): RgbaImage {
+  const { x0, y0, width, height } = patchFrame(image, x, y, size);
   const out = createImage(width, height);
   for (let row = 0; row < height; row++) {
     const from = ((y0 + row) * image.width + x0) * 4;

@@ -1,7 +1,137 @@
 id: deband
 name: Debanding
+aliases: [Banding removal, False contour removal, Gradient smoothing]
 family: restoration
+tags: [purpose:smoothing]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
+
+summary: Smooths the steps of color banding in gentle gradients. Each pixel is compared with four pixels at a random distance. Where all of them are close to it, it takes their mean.
+purpose: Hide the visible steps in skies and soft gradients that come from too few color levels or strong compression.
+classification: {linearity: nonlinear, domain: spatial, operation: random reference averaging under a threshold}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: deband_representation}
+supportRadius: range
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, with the same
+  random reference positions. With the brightness scope, only luma is filtered and the colors
+  stay. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect. References past the edge read the extended image.
+dependencies:
+  - {name: NumPy, optional: false, note: The random positions (numpy.random.default_rng).}
+
+params:
+  - key: range
+    label: Range
+    type: integer
+    min: 2
+    max: 64
+    step: 1
+    default: 16
+    unit: px
+    description: The largest distance of the reference pixels.
+    effect: Use about the width of one band. Larger ranges smooth wider bands and can blur faint detail.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 4
+    description: A pixel is replaced only where all four references lie closer to it than this, in pixel values.
+    effect: Set it a little above the height of one band step. Larger values also smooth real texture.
+  - key: seed
+    label: Seed
+    type: integer
+    min: 0
+    max: 9999
+    step: 1
+    default: 0
+    description: The seed of the random positions. The same seed gives the same result.
+    effect: Another seed gives another pattern of fine grain.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  r_{1,2} = p \pm (d \cos\theta,\ d \sin\theta),
+  \quad
+  r_{3,4} = p \pm (-d \sin\theta,\ d \cos\theta),
+  \qquad
+  q(p) = \begin{cases} \tfrac{1}{4} \sum_i I(r_i) & \max_i \lvert I(r_i) - I(p) \rvert < T \\ I(p) & \text{otherwise} \end{cases},
+  \qquad
+  d \le {{range}},\ T = {{threshold}}
+formulaExplanation: >-
+  Banding is a gradient drawn with too few levels, so it breaks into flat steps. A flat step
+  has no detail to keep, so it can be replaced by an average over a wide area, which brings back
+  the levels in between. Real edges must be kept. For every pixel p, the filter draws a distance
+  d from 1 to the range and an angle theta, at random but with a fixed seed. The four references
+  are p plus and minus d in that direction, and p plus and minus d at right angles to it, rounded
+  to whole pixels. If all four lie within the threshold T of the pixel, the area is flat or a
+  gentle step, and the pixel takes their mean. Otherwise it stays. The random positions turn the
+  step into fine grain, which the eye accepts better than a sharp contour. This follows the idea
+  of the deband filters of flash3kyuu_deband and FFmpeg. The details here are PixelNexus's own.
+symbols:
+  - {symbol: 'p', meaning: The pixel}
+  - {symbol: 'r_i', meaning: The four reference pixels}
+  - {symbol: 'd, \theta', meaning: 'The random distance and angle of pixel p'}
+  - {symbol: 'T', meaning: The threshold}
+steps:
+  - Draw a random distance and angle for every pixel, with the seed.
+  - Read four references, two along the angle and two at right angles, on both sides.
+  - If all four are within the threshold of the pixel, write their mean.
+  - Otherwise keep the pixel.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each pixel reads four references, whatever the range.
+useCases:
+  - Skies and soft studio backdrops with visible steps.
+  - Gradients in compressed video frames and screenshots.
+advantages:
+  - Keeps edges that are stronger than the threshold.
+  - Fast, and the same for any range.
+limitations:
+  - Adds fine grain in smoothed areas.
+  - Faint texture weaker than the threshold is smoothed too.
+  - Steps higher than the threshold stay.
+artifacts:
+  - A grainy look in flat areas.
+  - Thin lines near gradients can fade if the threshold is high.
+references:
+  - kind: library
+    text: FFmpeg filters documentation, deband.
+    url: https://ffmpeg.org/ffmpeg-filters.html#deband
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: deband}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: Where a pixel looks like its far neighbors, replace it with their average, so steps in a smooth gradient blend away.
+  howItWorks:
+    - Pick four pixels at a random distance around each pixel.
+    - If all four look almost the same as the pixel, the area is a smooth gradient.
+    - Replace the pixel with their average, which lies between the steps.
+    - Leave pixels near real edges alone.
+  academic: >-
+    Threshold-gated averaging of four randomly placed, point-symmetric references, in the
+    manner of the flash3kyuu and FFmpeg deband filters. The random placement dithers the false
+    contours.
+  paramNotes:
+    range: How far away the neighbors are picked.
+    threshold: How different the neighbors may be.
+    seed: Which random pattern is used.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Use Posterize with 16 levels on a sky, then apply this filter with a threshold of 18.
+  pitfalls:
+    - A threshold below the height of the steps. Nothing changes.
+  demos: [line-profile]
+related: [dithering, posterize, median, bilateral]
+docsPage: filters/restoration/deband.md

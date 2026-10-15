@@ -1,7 +1,148 @@
 id: deblock
 name: Deblocking
+aliases: [JPEG deblocking, Re-application of JPEG, Block artifact removal]
 family: restoration
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
+planNotes: Re-application of JPEG (Nosratinia 2001).
+
+summary: Smooths the 8 x 8 blocks of JPEG images with Nosratinia's re-application of JPEG. It compresses shifted copies of the image again with the same quality and averages them.
+purpose: Hide the block edges and some of the ringing of strongly compressed JPEG images.
+classification: {linearity: nonlinear, domain: transform, operation: shifted JPEG re-application and averaging}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: deblock_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  As in JPEG, the filter works on the Y'CbCr of JFIF, with the BT.601 weights. Y uses the
+  luminance table and Cb and Cr the chrominance table. With Channels set to luma only, Cb and Cr
+  stay. Chroma subsampling is not modeled. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. Shifted grids reach up to 8 pixels
+  past the edge. Shift (0, 0) is the grid of the image itself, with its first block at the top
+  left pixel, as in JPEG.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The 8 x 8 DCT (scipy.fft.dctn and idctn).'}
+
+params:
+  - key: quality
+    label: JPEG quality
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 50
+    description: The quality the image was saved with, from 1 to 100, as in the IJG library that most programs use. It sets the quantization tables.
+    effect: Use the quality of the file, or a little lower. Lower values smooth more.
+  - key: shifts
+    label: Shifts per axis
+    type: select
+    default: '8'
+    options:
+      - {value: '1', label: '1 (1 grid)'}
+      - {value: '2', label: '2 (4 grids)'}
+      - {value: '4', label: '4 (16 grids)'}
+      - {value: '8', label: '8 (64 grids)'}
+    description: How many shifts of the 8 x 8 grid are averaged along each axis, evenly spaced. 1 re-applies JPEG on the original grid only.
+    effect: More shifts smooth block edges better and take longer.
+  - key: channels
+    label: Channels
+    type: select
+    default: all
+    options:
+      - {value: all, label: 'Y, Cb and Cr'}
+      - {value: luma, label: Luma only}
+    description: Which planes of the Y'CbCr of JFIF are processed.
+    effect: Luma only is faster and leaves color blocks.
+  - ref: border
+    default: reflect
+formula: |
+  Q = \min\!\left(255,\ \max\!\left(1,\ \left\lfloor \frac{Q_K\, s + 50}{100} \right\rfloor\right)\right),
+  \quad
+  s = \begin{cases} \lfloor 5000 / q \rfloor & q < 50 \\ 200 - 2q & q \ge 50 \end{cases},
+  \qquad
+  J(B) = \operatorname{IDCT}\!\left(Q \cdot \operatorname{round}\!\left(\frac{\operatorname{DCT}(B - 128)}{Q}\right)\right) + 128,
+  \qquad
+  \hat{I} = \frac{1}{n^2} \sum_{s} S_{-s}\, J\big(S_s I\big),
+  \qquad
+  q = {{quality}}
+formulaExplanation: >-
+  JPEG splits each plane into 8 x 8 blocks and takes the DCT of each block after subtracting 128.
+  It rounds every coefficient to a multiple of its entry in a quantization table Q. Q_K is the
+  table of ITU-T T.81 Annex K, scaled for the quality q as the IJG library does. The rounding
+  makes each block jump at its edge. Nosratinia observed that compressing the decoded image
+  again, with the same tables but on a shifted grid, smooths those jumps, since the new blocks
+  straddle the old edges. Each shifted copy is a slightly different estimate of the original.
+  Their average, over n by n shifts S_s, is smoother and closer to the original. With n = 1 and
+  the original grid, the image comes back almost unchanged, since a decoded JPEG is already
+  rounded on that grid.
+symbols:
+  - {symbol: 'q', meaning: The JPEG quality}
+  - {symbol: 'Q_K, Q', meaning: 'The table of Annex K, and the table for quality q'}
+  - {symbol: 'B', meaning: An 8 x 8 block}
+  - {symbol: 'J', meaning: The lossy step of JPEG on a block}
+  - {symbol: 'S_s', meaning: 'A shift of the image by s, within the 8 x 8 grid'}
+  - {symbol: 'n', meaning: The number of shifts per axis}
+steps:
+  - Convert to the Y'CbCr of JFIF.
+  - Build the quantization tables for the quality.
+  - For each shift, compress every 8 x 8 block of the shifted plane again and decode it.
+  - Shift back and average over all shifts.
+  - Convert back to RGB.
+complexity:
+  time: O(n^2 N)
+  memory: O(N)
+  notes: N is the number of pixels and n the shifts per axis. Each shift costs one 8 x 8 DCT and inverse DCT per block.
+useCases:
+  - Strongly compressed JPEG photos and web images.
+  - Frames from old video that show blocks.
+advantages:
+  - Uses what is known about JPEG, so it smooths block edges without blurring the whole image.
+  - Nothing to tune but the quality.
+limitations:
+  - The quality must be known or guessed.
+  - Does not model chroma subsampling, so color blocks of 16 x 16 pixels stay partly.
+  - Assumes the block grid starts at the top left pixel. Cropped JPEGs can be off the grid.
+artifacts:
+  - Slight blur of fine texture when the quality is set too low.
+references:
+  - kind: paper
+    text: Nosratinia, A. Enhancement of JPEG-compressed images by re-application of JPEG. Journal of VLSI Signal Processing Systems 27(1 to 2), 69 to 79, 2001.
+    doi: 10.1023/A:1008167430544
+  - kind: standard
+    text: ITU-T Recommendation T.81. Information technology, digital compression and coding of continuous-tone still images, requirements and guidelines. 1992. Annex K, tables K.1 and K.2.
+    url: https://www.w3.org/Graphics/JPEG/itu-t81.pdf
+  - kind: standard
+    text: Hamilton, E. JPEG File Interchange Format, version 1.02. C-Cube Microsystems, 1992.
+    url: https://www.w3.org/Graphics/JPEG/jfif3.pdf
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: deblock}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: Compress the image again on shifted 8 x 8 grids and average the results, so the old block edges blend away.
+  howItWorks:
+    - JPEG cuts the image into 8 x 8 blocks and rounds away detail in each block. The blocks no longer meet smoothly.
+    - Shift the image a few pixels and compress it again with the same settings. The new blocks cross the old edges.
+    - Do this for many shifts and shift each result back.
+    - The average of all of them hides the block edges.
+  academic: >-
+    Nosratinia's re-application of JPEG: shift-averaged projection onto the JPEG quantization
+    constraint for each grid offset, with the IJG quality scaling of the T.81 Annex K tables in
+    JFIF Y'CbCr.
+  paramNotes:
+    quality: How hard the image was compressed.
+    shifts: How many shifted grids are averaged.
+    channels: Whether the color planes are cleaned too.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Save a photo as JPEG with quality 20, open it, and apply this filter with quality 20. Compare with shifts 1 and 8.
+  pitfalls:
+    - A cropped JPEG whose blocks no longer start at the top left. The grid then does not match.
+  demos: [line-profile]
+related: [jpeg-cleanup, dering, wavelet-threshold]
+docsPage: filters/restoration/deblock.md

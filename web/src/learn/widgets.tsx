@@ -16,7 +16,17 @@ import { borderOf, runFilter } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
 import { createImage, type RgbaImage } from "@/core/image/types";
 
-import { channelOf, engineValueAt, round, valueAt, windowAt, type Point } from "./common";
+import {
+  channelOf,
+  engineValueAt,
+  patchAt,
+  patchFrame,
+  round,
+  valueAt,
+  windowAt,
+  type Point,
+} from "./common";
+import { useEngineResults } from "./engine";
 
 export interface WidgetProps {
   readonly filterId: string;
@@ -387,10 +397,22 @@ export function GradientExplorer({ filterId, values, image, point, onMove }: Wid
   );
 }
 
+interface Profile {
+  readonly before: number[];
+  readonly filtered: number[];
+  readonly offset: number;
+}
+
+/**
+ * Brightness along the row or column through the probe, before and after the filter. Browser
+ * filters run on a line of up to 97 pixels. Science filters run in the engine on the 64x64
+ * patch around the probe, and the line is cut from the patch.
+ */
 export function LineProfile({ filterId, values, image, point }: WidgetProps) {
   const [axis, setAxis] = useState("row");
   const channel = channelOf(values);
-  const data = useMemo(() => {
+  const inBrowser = browserFilter(filterId) !== undefined;
+  const browserData = useMemo((): Profile | null => {
     const filter = browserFilter(filterId);
     if (!filter) return null;
     const half = 48;
@@ -413,7 +435,32 @@ export function LineProfile({ filterId, values, image, point }: WidgetProps) {
     }
     return { before, filtered, offset: axis === "row" ? region.x : region.y };
   }, [filterId, values, image, point, axis, channel]);
-  if (!data) return null;
+  const patch = useMemo(() => patchAt(image, point.x, point.y), [image, point.x, point.y]);
+  const inputs = useMemo(() => [{ image: patch, values }], [patch, values]);
+  const engine = useEngineResults(filterId, inputs, !inBrowser);
+  const engineData = useMemo((): Profile | null => {
+    const after = engine.images?.[0];
+    if (inBrowser || !after) return null;
+    const { x0, y0 } = patchFrame(image, point.x, point.y);
+    const length = axis === "row" ? patch.width : patch.height;
+    const before: number[] = [];
+    const filtered: number[] = [];
+    for (let i = 0; i < length; i++) {
+      const x = axis === "row" ? i : point.x - x0;
+      const y = axis === "row" ? point.y - y0 : i;
+      before.push(valueAt(patch, x, y, channel));
+      filtered.push(valueAt(after, x, y, channel));
+    }
+    return { before, filtered, offset: axis === "row" ? x0 : y0 };
+  }, [inBrowser, engine.images, image, patch, point.x, point.y, axis, channel]);
+  const data = browserData ?? engineData;
+  if (!data) {
+    return engine.note ? (
+      <p role="status" className="text-text-secondary">
+        {engine.note}
+      </p>
+    ) : null;
+  }
   const width = 240;
   const height = 110;
   const path = (series: number[]) =>

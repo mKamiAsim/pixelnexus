@@ -219,6 +219,18 @@ test("the Iteration viewer runs an engine filter at growing iteration counts", a
   await expect(page.getByRole("img", { name: "Estimate after iteration 100" })).toBeVisible();
 });
 
+test("the Line profile runs an engine filter on the patch around the probe", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "debanding", "Debanding");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Line profile" })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Brightness along the row through the probe pixel/ }),
+  ).toBeVisible();
+});
+
 test("the studio works with the local engine stopped", async ({ page }) => {
   // Whatever runs on this machine, the studio must find no engine here.
   await page.route(`${ENGINE}/**`, (route) => route.abort());

@@ -346,6 +346,12 @@ nav:
           - Blind deconvolution: filters/restoration/blind-deconv.md
           - Plug-and-play restoration: filters/restoration/pnp-admm.md
           - Regularization by Denoising: filters/restoration/red.md
+          - Dehazing: filters/restoration/dehaze.md
+          - Debanding: filters/restoration/deband.md
+          - Descreening: filters/restoration/descreen.md
+          - Deblocking: filters/restoration/deblock.md
+          - Deringing: filters/restoration/dering.md
+          - JPEG artifact removal (classical): filters/restoration/jpeg-cleanup.md
       - Segmentation:
           - Global threshold: filters/segmentation/threshold-global.md
           - Otsu threshold: filters/segmentation/otsu.md

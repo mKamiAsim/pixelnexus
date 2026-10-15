@@ -1,8 +1,168 @@
 id: descreen
 name: Descreening
+aliases: [Halftone removal, Moire removal for scans, Screen removal]
 family: restoration
+tags: [purpose:denoise, purpose:smoothing]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
 planNotes: Halftone peak removal in frequency.
+
+summary: Removes the regular dot pattern of printed halftones from scans. It finds the isolated bright peaks the pattern makes in the spectrum and lowers them to the level around them.
+purpose: Clean scans of magazines, newspapers and printed photos, whose dots show up as a fine grid or as moire.
+classification: {linearity: nonlinear, domain: frequency, operation: automatic spectral peak suppression}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: descreen_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is cleaned on its own, since each printing
+  ink has its own screen. With the brightness scope, only luma is cleaned and the colors stay.
+  The Removed output is a gray image with the brightness scope. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs and the median filter of the spectrum.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: image
+    options:
+      - {value: image, label: Cleaned image}
+      - {value: removed, label: Removed pattern}
+    description: The cleaned image, or what was removed, around a mid gray of 128.
+    effect: Removed pattern shows the screen the filter found.
+  - key: threshold
+    label: Peak threshold
+    type: number
+    min: 0.1
+    max: 4
+    step: 0.1
+    default: 0.5
+    description: A frequency is the core of a peak where its log magnitude is this much above the highest value on the ring around it. 0.5 means about 1.6 times as large.
+    effect: Lower values find weaker screens and risk taking image detail for a screen.
+  - key: minRadius
+    label: Lowest frequency
+    type: number
+    min: 0.01
+    max: 0.45
+    step: 0.01
+    default: 0.1
+    unit: cycles/px
+    description: Peaks are looked for only at this frequency or above, so the broad shapes of the image are safe. 0.1 is a period of 10 pixels.
+    effect: Set it below the frequency of the screen. Higher values protect more detail.
+  - key: window
+    label: Ring size
+    type: integer
+    min: 9
+    max: 81
+    step: 2
+    default: 41
+    description: The outer diameter of the ring each frequency is compared with, in frequency bins.
+    effect: Larger rings ask peaks to be isolated over a wider area, so fewer image features pass.
+  - key: spread
+    label: Peak spread
+    type: integer
+    min: 0
+    max: 10
+    step: 1
+    default: 5
+    description: Each peak core is widened by this many frequency bins in every direction. The ring starts at the spread plus 1.
+    effect: Larger spreads also catch the edges of wide peaks.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  L(f) = \ln\big(1 + \lvert \mathcal{F} I(f) \rvert\big),
+  \qquad
+  P = \Big\{ f : L(f) - \max_{R(f)} L > \tau,\ \lvert f \rvert \ge f_0 \Big\} \oplus D_s,
+  \quad
+  B(f) = \operatorname{median}_{R(f)} L,
+  \qquad
+  \mathcal{F} I'(f) = \mathcal{F} I(f)\, \frac{e^{B(f)} - 1}{\lvert \mathcal{F} I(f) \rvert}\ \ (f \in P),
+  \qquad
+  \tau = {{threshold}},\ f_0 = {{minRadius}},\ s = {{spread}}
+formulaExplanation: >-
+  A halftone screen is a regular grid of dots. In the spectrum, a regular pattern is a set of
+  sharp, isolated peaks at its frequency and its harmonics. The image itself also has strong
+  features in the spectrum, but they are lines and rings: an edge makes a line, a disk makes
+  rings. So the filter compares the log magnitude L at each frequency with the highest value on a
+  ring R(f) around it. The ring runs from s + 1 to half the ring size away. A point on a line or a ring has
+  neighbors on R(f) as high as itself, so only isolated peaks stand above all of R(f). Cores that stand more than tau above, at least f0 cycles per pixel from the center, are
+  widened by a square D_s of s bins. Their magnitude is lowered to B, the median of L on the
+  ring. The
+  phase is kept, so the rest of the image keeps its place. This is a notch filter as in Gonzalez
+  and Woods, with the notches found automatically. The rule for finding peaks is PixelNexus's
+  own. The spectrum is symmetric and every step treats f and -f alike, so the result is real.
+symbols:
+  - {symbol: 'L', meaning: The log magnitude of the spectrum}
+  - {symbol: 'R(f)', meaning: 'The ring of frequency bins around f, from s + 1 to half the ring size away'}
+  - {symbol: 'B', meaning: 'The background, the median of L on the ring'}
+  - {symbol: 'P', meaning: 'The peaks, widened by the spread'}
+  - {symbol: 's', meaning: The peak spread}
+  - {symbol: '\tau', meaning: The peak threshold}
+  - {symbol: 'f_0', meaning: 'The lowest frequency searched, in cycles per pixel'}
+steps:
+  - Extend the channel with the border mode and take its FFT.
+  - Compute the log magnitude, and its highest value and median on the ring around every bin, with wrap-around.
+  - Mark the bins that stand above the highest value on their ring by the threshold, above the lowest frequency, and widen them.
+  - Lower the magnitude at the peaks to the median on the ring and keep the phase.
+  - Take the inverse FFT and crop to the image.
+complexity:
+  time: O(N log N + N w^2)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and w the ring size. The maximum and median filters over the ring dominate.
+useCases:
+  - Scans of printed photos, magazines and newspapers.
+  - Removing moire from photos of screens and fabric.
+advantages:
+  - Finds the screen by itself, at any angle and frequency.
+  - Keeps image detail between the peaks better than a plain blur.
+limitations:
+  - A binary halftone has broadband dot noise besides its peaks, and that noise stays.
+  - Fine regular textures in the image itself, such as fabric or grids, can be taken for a screen.
+  - By PSNR it is about as good as a Gaussian blur on the test scans. See the worked example.
+artifacts:
+  - Faint ripples near strong edges, since peaks are removed in a hard-edged way.
+  - Weak remains of the screen where the peaks were below the threshold.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: descreen}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: Find the regular dot pattern of the print as bright spots in the spectrum, dim those spots, and turn the spectrum back into an image.
+  howItWorks:
+    - Take the spectrum of the scan.
+    - A regular dot grid makes a few very bright spots there, while the picture makes a smooth haze.
+    - Dim the spots down to the haze around them.
+    - Turn the spectrum back into an image. The dots are gone, the picture stays.
+  academic: >-
+    Notch filtering with automatic notch placement. Isolated maxima of the log magnitude
+    spectrum, measured against the maximum over a surrounding annulus and outside a
+    low-frequency disk, are attenuated to the annulus median with the phase kept.
+  paramNotes:
+    output: The cleaned scan, or the pattern that was removed.
+    threshold: How much a spot must stand out to count as part of the pattern.
+    minRadius: How fine a pattern must be to be removed.
+    window: How far around a spot it must stand out.
+    spread: How much around each spot is dimmed.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Choose the Removed pattern output to see the screen the filter found.
+    - Lower the peak threshold step by step. More of the screen goes, and then image detail too.
+  pitfalls:
+    - Fabrics and grids in the photo itself. They are regular too, and may be removed.
+  demos: [line-profile]
+related: [notch-reject, notch-pass, halftone, gaussian]
+docsPage: filters/restoration/descreen.md

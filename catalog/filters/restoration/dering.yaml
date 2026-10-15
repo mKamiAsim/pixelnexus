@@ -1,8 +1,158 @@
 id: dering
 name: Deringing
+aliases: [Ringing removal, Mosquito noise removal]
 family: restoration
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
 planNotes: Edge-aware smoothing near strong edges. Approximate.
+
+summary: Smooths the ripples next to strong edges that JPEG compression and sharpening leave, with a bilateral filter that works only in a zone around those edges. The zone rule is PixelNexus's own.
+purpose: Remove ringing and mosquito noise around text, lines and sharp edges while leaving the rest of the image alone.
+classification: {linearity: nonlinear, domain: spatial, operation: edge zone bilateral smoothing}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: dering_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  Edges are always found on the luma, with the BT.709 weights. By default only luma is smoothed,
+  and the colors stay. With the RGB scope, each of the red, green and blue channels is smoothed
+  in the same zone. The Zone output is gray. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect. It fills the Gaussian, Sobel and bilateral windows past the edge.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'The bilateral filter (cv2.bilateralFilter).'}
+  - {name: SciPy, optional: false, note: 'The Gaussian, Sobel and dilation steps (scipy.ndimage).'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: image
+    options:
+      - {value: image, label: Cleaned image}
+      - {value: zone, label: Zone}
+    description: The cleaned image, or the blend weight of the zone, from black (kept) to white (smoothed).
+    effect: Zone shows where the filter works.
+  - key: threshold
+    label: Edge threshold
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: Strong edges are where the gradient of the smoothed luma reaches this many levels per pixel.
+    effect: Lower values also treat weaker edges, so more of the image is smoothed.
+  - key: radius
+    label: Zone radius
+    type: integer
+    min: 1
+    max: 15
+    step: 1
+    default: 4
+    unit: px
+    description: How far from a strong edge the smoothing reaches. Ringing of JPEG stays within its 8 x 8 block.
+    effect: Larger zones catch ringing further out and smooth more texture.
+  - key: sigmaColor
+    label: Range sigma
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 25
+    description: The range sigma of the bilateral filter, in pixel values. Differences well above it are kept.
+    effect: Larger values smooth stronger ripples and also more texture.
+  - key: sigmaSpace
+    label: Space sigma
+    type: number
+    min: 0.5
+    max: 6
+    step: 0.1
+    default: 2
+    unit: px
+    description: The spatial sigma of the bilateral filter. Its window has a radius of ceil(2 sigma).
+    effect: Larger values smooth over wider areas.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  E = \left\{ x : \tfrac{1}{8} \big\lvert \nabla_{\text{Sobel}} (G_1 * Y)(x) \big\rvert \ge T \right\},
+  \qquad
+  w = G_1 * \big(E \oplus D_r\big),
+  \qquad
+  q = w\, \operatorname{bilateral}_{\sigma_s, \sigma_r}(I) + (1 - w)\, I,
+  \qquad
+  T = {{threshold}},\ r = {{radius}},\ \sigma_r = {{sigmaColor}}
+formulaExplanation: >-
+  Ringing is a ripple that compression and sharpening leave next to strong edges. It lives
+  in a narrow zone around them, while flat areas and texture further away are fine. So the filter first finds strong edges. It smooths the luma with a Gaussian G_1 of sigma
+  1 and takes the Sobel gradient, divided by 8 to give levels per pixel. Edges are where it
+  reaches the threshold T. It widens them with a
+  disk D_r of radius r, and blurs the zone with G_1 again for a soft blend weight w. Inside the
+  zone, a bilateral filter, after Tomasi and Manduchi, smooths the ripples but keeps the edge
+  itself, since the edge differs by far more than the range sigma. The weights come from
+  OpenCV's bilateral filter. The rule for the zone is PixelNexus's own.
+symbols:
+  - {symbol: 'Y', meaning: The luma}
+  - {symbol: 'G_1', meaning: 'A Gaussian of sigma 1'}
+  - {symbol: 'E', meaning: The strong edges}
+  - {symbol: 'D_r', meaning: 'A disk of radius r, for the dilation'}
+  - {symbol: 'w', meaning: 'The blend weight of the zone, from 0 to 1'}
+  - {symbol: '\sigma_s, \sigma_r', meaning: The space and range sigmas of the bilateral filter}
+steps:
+  - Smooth the luma with a Gaussian of sigma 1 and take its Sobel gradient, divided by 8.
+  - Mark the strong edges where the gradient reaches the threshold.
+  - Widen them by the zone radius and blur the zone into a soft weight.
+  - Blend the bilateral filter of each channel with the channel by that weight.
+complexity:
+  time: O(N r_s^2)
+  memory: O(N)
+  notes: N is the number of pixels and r_s the radius of the bilateral window. The other steps cost O(N).
+useCases:
+  - JPEG images of text, logos, drawings and screenshots.
+  - Photos with halos from too much sharpening.
+advantages:
+  - Leaves flat areas and texture away from strong edges untouched.
+  - The edges themselves stay sharp.
+limitations:
+  - Approximate. The zone rule is a simple heuristic of PixelNexus, not a model of the ringing.
+  - Fine texture next to strong edges is smoothed too.
+artifacts:
+  - A soft band along strong edges in textured areas.
+references:
+  - kind: paper
+    text: Tomasi, C., and Manduchi, R. Bilateral filtering for gray and color images. Sixth International Conference on Computer Vision, 839 to 846, 1998.
+    doi: 10.1109/ICCV.1998.710815
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: dering}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: Find the strong edges, and smooth only the ripples right next to them.
+  howItWorks:
+    - Find the strong edges of the image.
+    - Mark a thin zone around them, where ringing appears.
+    - In the zone, smooth with a filter that keeps the edge itself.
+    - Leave the rest of the image as it is.
+  academic: >-
+    Ringing suppression by bilateral filtering restricted to a feathered dilation of strong
+    Sobel edges of the smoothed luma.
+  paramNotes:
+    output: The cleaned image, or where the filter works.
+    threshold: How strong an edge must be.
+    radius: How far from the edge the cleaning reaches.
+    sigmaColor: How large the ripples may be that are smoothed.
+    sigmaSpace: How wide the smoothing is.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Choose the Zone output, then lower the edge threshold and watch the zone grow.
+  pitfalls:
+    - A large range sigma on photos. Real texture near edges is smoothed away.
+  demos: [line-profile, stage-viewer]
+related: [deblock, jpeg-cleanup, bilateral, unsharp-mask]
+docsPage: filters/restoration/dering.md

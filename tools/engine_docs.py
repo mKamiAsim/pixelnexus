@@ -15,6 +15,7 @@ Test images come from tools/synthetic.py, which matches the studio's own test im
 from __future__ import annotations
 
 import argparse
+import io
 import itertools
 import json
 import math
@@ -26,8 +27,20 @@ from typing import Any
 import numpy as np
 import pywt
 from numpy.typing import NDArray
+from PIL import Image
 from scipy import ndimage
 
+from pixelnexus_engine.filters.artifacts import (
+    atmospheric_light,
+    dark_channel,
+    deband,
+    deblock,
+    dehaze,
+    dehaze_parts,
+    dering,
+    descreen,
+    jpeg_cleanup,
+)
 from pixelnexus_engine.filters.directional import (
     BANKS,
     directional_curvelet,
@@ -863,6 +876,350 @@ def plugplay_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# Artifact removal ---------------------------------------------------------------------------
+
+Color = NDArray[np.uint8]
+
+
+def color_picture(rgb: Color) -> dict[str, Any]:
+    height, width = rgb.shape[:2]
+    return {"width": width, "height": height, "color": True, "data": rgb.ravel().tolist()}
+
+
+def rgba_color(rgb: Color) -> NDArray[np.uint8]:
+    out = np.empty((*rgb.shape[:2], 4), dtype=np.uint8)
+    out[..., :3] = rgb
+    out[..., 3] = 255
+    return out
+
+
+def run_color(
+    filter_function: Callable[..., Any], rgb: Color, filter_id: str, **values: Any
+) -> Color:
+    result = filter_function(rgba_color(rgb), catalog_values(filter_id, **values), lambda _: None)
+    return np.asarray(result[..., :3], dtype=np.uint8)
+
+
+def to_8bit(values: NDArray[np.float64]) -> Color:
+    out: Color = np.clip(np.rint(values), 0, 255).astype(np.uint8)
+    return out
+
+
+def blocks_scene(size: int = 160) -> NDArray[np.float64]:
+    """Colored squares of 20 pixels, each with one channel near 0, and red disks, from 0 to 1.
+    NumPy's default_rng with seed 1 picks the colors."""
+    rng = np.random.default_rng(1)
+    scene = np.zeros((size, size, 3))
+    for top in range(0, size, 20):
+        for left in range(0, size, 20):
+            color = rng.uniform(0, 1, 3)
+            color[rng.integers(3)] = rng.uniform(0, 0.15)
+            scene[top : top + 20, left : left + 20] = color
+    scene[disks(size, size) > 128] = [0.9, 0.2, 0.1]
+    return scene
+
+
+HAZE_LIGHT = np.array([0.85, 0.88, 0.9])
+
+
+def hazy(scene: NDArray[np.float64], beta: float = 1.6) -> NDArray[np.float64]:
+    """The haze model with t = exp(-beta depth), depth from 1 at the top to 0 at the bottom."""
+    size = scene.shape[0]
+    depth = 1 - np.arange(size)[:, None] / size
+    t = np.exp(-beta * depth)[..., None] * np.ones((1, scene.shape[1], 1))
+    out: NDArray[np.float64] = scene * t + HAZE_LIGHT * (1 - t)
+    return out
+
+
+def dehaze_docs(out: dict[Path, str]) -> None:
+    filter_id = "dehaze"
+    scene = blocks_scene()
+    clear = to_8bit(scene * 255)
+    damaged = to_8bit(hazy(scene) * 255)
+    result = run_color(dehaze, damaged, filter_id)
+    transmission = run_color(dehaze, damaged, filter_id, output="transmission")[..., 0]
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Colored squares under haze that thickens toward the top, the result of "
+            "dehazing with the defaults, the transmission it found, and the scene without haze.",
+            "panels": [
+                {"title": "Hazy", "image": color_picture(damaged)},
+                {"title": "Dehazed", "image": color_picture(result)},
+                {"title": "Transmission", "image": picture(transmission)},
+                {"title": "Without haze", "image": color_picture(clear)},
+            ],
+        },
+        separators=(",", ":"),
+    )
+    omegas = (0.8, 0.9, 0.95, 1.0)
+    rows = [
+        [fix(w, 2), fix(psnr(run_color(dehaze, damaged, filter_id, omega=w), clear), 2)]
+        for w in omegas
+    ]
+    params = catalog_values(filter_id)
+    _, t, _ = dehaze_parts(damaged.astype(np.float64) / 255, params)
+    rgb = damaged.astype(np.float64) / 255
+    light = atmospheric_light(rgb, dark_channel(rgb, params["patch"], params["border"]))
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Omega", "PSNR in dB"], rows)
+        + "\nColored squares of 160 by 160 pixels, each with one channel near 0, as the dark "
+        "channel prior expects, under haze made with the haze model: air light (0.85, 0.88, "
+        "0.9) and t = exp(-1.6 depth), with depth 1 at the top and 0 at the bottom. The hazy "
+        f"image has {fix(psnr(damaged, clear), 2)} dB against the scene. The filter found the "
+        f"air light ({', '.join(fix(v, 2) for v in light)}), a little darker than the true one, "
+        "since even the top row keeps 20 percent of the scene. The refined transmission ranges "
+        f"from {fix(float(t.min()), 2)} to {fix(float(t.max()), 2)}, against 0.20 to 1.00 in "
+        "the model. All rows use the other defaults.\n"
+    )
+
+
+def banded_ramp() -> tuple[NDArray[np.float64], Gray]:
+    """A gentle ramp from 100 to 124 with a slow wave, and the same in steps of 4 levels."""
+    y, x = np.mgrid[0:120, 0:160]
+    smooth = 100 + x * 24 / 160 + 6 * np.sin(y / 30)
+    return smooth, (np.round(smooth / 4) * 4).astype(np.uint8)
+
+
+def stretched(gray: Gray, low: float, high: float) -> Gray:
+    return to_8bit((gray.astype(np.float64) - low) * 255 / (high - low))
+
+
+def deband_docs(out: dict[Path, str]) -> None:
+    filter_id = "deband"
+    smooth, banded = banded_ramp()
+    result = run(deband, banded, filter_id, threshold=5)
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "A gentle ramp in steps of 4 levels and the result of debanding with a "
+            "threshold of 5, both as they are and with the range 95 to 130 stretched to the "
+            "full gray scale.",
+            "panels": [
+                {"title": "Banded", "image": picture(banded)},
+                {"title": "Debanded", "image": picture(result)},
+                {"title": "Banded, stretched", "image": picture(stretched(banded, 95, 130))},
+                {"title": "Debanded, stretched", "image": picture(stretched(result, 95, 130))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    def smoothness(gray: Gray) -> str:
+        local = ndimage.uniform_filter(gray.astype(np.float64), 5)[16:-16, 16:-16]
+        error = np.mean((local - smooth[16:-16, 16:-16]) ** 2)
+        return fix(10 * math.log10(255**2 / error), 2)
+
+    ranges = (8, 16, 32)
+    rows = [
+        [
+            fix(t, 0),
+            *(smoothness(run(deband, banded, filter_id, threshold=t, range=r)) for r in ranges),
+        ]
+        for t in (3, 5, 8)
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Threshold", *(f"Range {r}" for r in ranges)], rows)
+        + "\nA ramp from 100 to 124 across 160 pixels, with a wave of 6 levels down the rows, "
+        "rounded to steps of 4 levels, so each band is about 27 pixels wide. The numbers are "
+        "the PSNR in dB between the 5 x 5 local mean of the result and the smooth ramp, away "
+        "from the border. This measures how well the steps blend, while ignoring the fine grain "
+        f"the filter adds. The banded ramp itself has {smoothness(banded)} dB. A threshold of "
+        "3 is below the step of 4, so nothing changes. A range of 32 is longer than a band, so "
+        "more references reach a band that differs by more than the threshold, and fewer "
+        "pixels are replaced.\n"
+    )
+
+
+def halftone_scan(base: Gray, period: float = 6, angle: float = 45) -> tuple[Gray, Gray]:
+    """A clustered-dot screen of the base, blurred as a scanner would, and the base with the
+    same blur."""
+    height, width = base.shape
+    y, x = np.mgrid[0:height, 0:width]
+    a = math.radians(angle)
+    u = x * math.cos(a) + y * math.sin(a)
+    v = -x * math.sin(a) + y * math.cos(a)
+    screen = (np.cos(2 * np.pi * u / period) + np.cos(2 * np.pi * v / period)) / 4 + 0.5
+    dots = np.where(base / 255 > screen, 255.0, 0.0)
+    return (
+        to_8bit(ndimage.gaussian_filter(dots, 1.2)),
+        to_8bit(ndimage.gaussian_filter(base.astype(np.float64), 1.0)),
+    )
+
+
+def descreen_docs(out: dict[Path, str]) -> None:
+    filter_id = "descreen"
+    base = to_8bit(disks(160, 160).astype(np.float64) * 0.8 + 30)
+    scan, _ = halftone_scan(base)
+
+    def gaussian(gray: Gray) -> Gray:
+        return to_8bit(ndimage.gaussian_filter(gray.astype(np.float64), 2))
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "A scanned halftone of disks, the result of descreening with the "
+            "defaults, the pattern it removed, and a Gaussian blur of sigma 2 for comparison.",
+            "panels": [
+                {"title": "Scan", "image": picture(scan)},
+                {"title": "Descreened", "image": picture(run(descreen, scan, filter_id))},
+                {
+                    "title": "Removed",
+                    "image": picture(run(descreen, scan, filter_id, output="removed")),
+                },
+                {"title": "Gaussian, sigma 2", "image": picture(gaussian(scan))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+    rows = []
+    for label, image in (
+        ("Disks", disks(160, 160)),
+        ("Siemens star", siemens_star(160, 160)),
+    ):
+        source = to_8bit(image.astype(np.float64) * 0.8 + 30)
+        for period, angle in ((6, 45), (5, 15)):
+            dirty, clean = halftone_scan(source, period, angle)
+            rows.append(
+                [
+                    f"{label}, period {period}, {angle} degrees",
+                    fix(psnr(dirty, clean), 2),
+                    fix(psnr(run(descreen, dirty, filter_id), clean), 2),
+                    fix(psnr(gaussian(dirty), clean), 2),
+                ]
+            )
+    untouched = max(
+        int(np.abs(run(descreen, image, filter_id).astype(int) - image.astype(int)).max())
+        for image in (disks(160, 160), siemens_star(160, 160))
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Scan", "Scan", "Descreened", "Gaussian, sigma 2"], rows)
+        + "\nThe PSNR in dB against the image under the scanner blur alone. Each scan is a "
+        "clustered-dot screen of the image, with the period in pixels and the angle given, "
+        "blurred with a Gaussian of sigma 1.2 as a scanner would. Both images are 160 by 160 "
+        "pixels. By PSNR, descreening with the defaults stays a little behind a Gaussian blur of "
+        "sigma 2 on three of the four scans. The dots of a binary screen also leave broadband "
+        "noise, which no notch can remove, while the blur removes some of it. On the disks and "
+        "the Siemens star without a screen, "
+        + (
+            "the filter changes no pixel at all"
+            if untouched == 0
+            else f"the filter changes no pixel by more than {untouched} levels"
+        )
+        + ", since their spectra hold lines and rings, not isolated peaks.\n"
+    )
+
+
+def jpeg_round_trip(image: NDArray[np.uint8], quality: int) -> NDArray[np.uint8]:
+    """Pillow's JPEG encoder and decoder, without chroma subsampling."""
+    buffer = io.BytesIO()
+    mode = "RGB" if image.ndim == 3 else "L"
+    Image.fromarray(image, mode).save(buffer, "JPEG", quality=quality, subsampling=0)
+    decoded = Image.open(io.BytesIO(buffer.getvalue())).convert(mode)
+    return np.asarray(decoded, dtype=np.uint8)
+
+
+def jpeg_docs(out: dict[Path, str]) -> None:
+    star = siemens_star(160, 160)
+    scene = to_8bit(blocks_scene() * 255)
+    qualities = (10, 20, 30, 50)
+    for filter_id, function in (
+        ("deblock", deblock),
+        ("dering", dering),
+        ("jpeg-cleanup", jpeg_cleanup),
+    ):
+        decoded = jpeg_round_trip(star, 20)
+        values = {} if filter_id == "dering" else {"quality": 20}
+        panels = [
+            {"title": "JPEG, quality 20", "image": picture(decoded)},
+            {
+                "title": filter_id_title(filter_id),
+                "image": picture(run(function, decoded, filter_id, **values)),
+            },
+        ]
+        if filter_id == "dering":
+            panels.append(
+                {"title": "Zone", "image": picture(run(dering, decoded, filter_id, output="zone"))}
+            )
+        else:
+            panels.append(
+                {
+                    "title": "One grid",
+                    "image": picture(run(function, decoded, filter_id, quality=20, shifts="1")),
+                }
+            )
+        panels.append({"title": "Original", "image": picture(star)})
+        out[DATA / f"{filter_id}.json"] = json.dumps(
+            {
+                "filter": filter_id,
+                "message": f"A Siemens star saved as JPEG with quality 20, the result of "
+                f"{filter_id_title(filter_id).lower()} with the defaults, "
+                + (
+                    "the zone around strong edges, "
+                    if filter_id == "dering"
+                    else "the result with one grid only, "
+                )
+                + "and the original.",
+                "panels": panels,
+            },
+            separators=(",", ":"),
+        )
+        rows = []
+        for label, image in (("Siemens star", star), ("Colored squares", scene)):
+            for quality in qualities:
+                decoded = jpeg_round_trip(image, quality)
+                runner = run_color if image.ndim == 3 else run
+                row = [label, str(quality), fix(psnr(decoded, image), 2)]
+                if filter_id != "dering":
+                    row.append(
+                        fix(
+                            psnr(
+                                runner(function, decoded, filter_id, quality=quality, shifts="2"),
+                                image,
+                            ),
+                            2,
+                        )
+                    )
+                    row.append(
+                        fix(psnr(runner(function, decoded, filter_id, quality=quality), image), 2)
+                    )
+                else:
+                    row.append(fix(psnr(runner(function, decoded, filter_id), image), 2))
+                    row.append(
+                        fix(psnr(runner(function, decoded, filter_id, sigmaColor=50), image), 2)
+                    )
+                rows.append(row)
+        headers = (
+            ["Image", "Quality", "JPEG", "Defaults", "Range sigma 50"]
+            if filter_id == "dering"
+            else ["Image", "Quality", "JPEG", "2 x 2 shifts", "8 x 8 shifts"]
+        )
+        note = (
+            "The deringing columns use the defaults, and then a range sigma of 50."
+            if filter_id == "dering"
+            else "The filter is told the true quality of the file. The last two columns use 4 "
+            "and 64 shifted grids. On the colored squares, whose sharp color edges repeat every "
+            "20 pixels, 4 grids beat 64, and 64 grids even fall below the JPEG at low quality. "
+            "Averaging many grids also blurs sharp edges, most of all in Cb and Cr, whose table "
+            "is coarse."
+        )
+        out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+            header(filter_id)
+            + md_table(headers, rows)
+            + "\nThe PSNR in dB against the original, for images of 160 by 160 pixels saved "
+            "with Pillow's JPEG encoder at each quality, without chroma subsampling, and "
+            f"decoded again. {note} The colored squares are the scene of the dehazing example. "
+            "The Siemens star has many strong edges, where ringing is worst.\n"
+        )
+
+
+def filter_id_title(filter_id: str) -> str:
+    return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
@@ -878,6 +1235,10 @@ def build() -> dict[Path, str]:
     blind_deconv_docs(out)
     plugplay_docs(out, "pnp-admm")
     plugplay_docs(out, "red")
+    dehaze_docs(out)
+    deband_docs(out)
+    descreen_docs(out)
+    jpeg_docs(out)
     return out
 
 

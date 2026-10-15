@@ -1,8 +1,177 @@
 id: dehaze
 name: Dehazing
+aliases: [Haze removal, Dark channel prior, Defogging]
 family: restoration
+tags: [purpose:contrast, purpose:color]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
 planNotes: Dark channel prior with guided filter refinement.
+
+summary: Removes haze and fog with the dark channel prior of He, Sun and Tang. It estimates how much haze lies over each pixel and takes it away, with the haze map refined by a guided filter.
+purpose: Bring back contrast and color in outdoor photos that look washed out by haze, fog or smog.
+classification: {linearity: nonlinear, domain: spatial, operation: dark channel prior haze removal}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: dehaze_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter needs all three channels at once, since the dark channel is the minimum over red,
+  green and blue. It works on encoded values from 0 to 1, as the paper does. The transmission
+  and dark channel outputs are gray. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. It fills the minimum filter of the
+  dark channel and the box means of the guided filter past the edges.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The minimum filter and the box means (scipy.ndimage).'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: image
+    options:
+      - {value: image, label: Dehazed image}
+      - {value: transmission, label: Transmission}
+      - {value: dark, label: Dark channel}
+    description: The dehazed image, the refined transmission t from 0 (all haze) to 1 (no haze), or the dark channel of the input.
+    effect: The transmission shows where the filter thinks the haze is thick.
+  - key: patch
+    label: Patch size
+    type: integer
+    min: 3
+    max: 51
+    step: 2
+    default: 15
+    unit: px
+    description: The side of the square patch of the minimum filter in the dark channel. The paper uses 15.
+    effect: Larger patches make the dark channel more reliable and its edges coarser.
+  - key: omega
+    label: Haze kept away
+    type: number
+    min: 0.5
+    max: 1
+    step: 0.01
+    default: 0.95
+    description: The share of the haze that is removed. The paper uses 0.95, so a little haze stays for depth.
+    effect: Lower values leave more haze.
+  - key: radius
+    label: Guided filter radius
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 30
+    unit: px
+    description: The radius of the box windows of the guided filter that refines the transmission.
+    effect: Larger radii give smoother haze maps that follow edges over longer reaches.
+  - key: eps
+    label: Guided filter eps
+    type: number
+    min: 0.00001
+    max: 0.1
+    step: 0.00001
+    default: 0.001
+    description: The regularization of the guided filter, for values from 0 to 1.
+    effect: Smaller values make the haze map follow image edges more closely.
+  - key: t0
+    label: Lowest transmission
+    type: number
+    min: 0.01
+    max: 0.5
+    step: 0.01
+    default: 0.1
+    description: The transmission is never taken below this value, as in the paper, so thick haze does not blow up noise.
+    effect: Higher values remove less of the thickest haze.
+  - ref: border
+    default: reflect
+formula: |
+  I(x) = J(x)\, t(x) + A\, \big(1 - t(x)\big),
+  \qquad
+  \tilde{t}(x) = 1 - \omega \min_{y \in \Omega(x)} \min_c \frac{I_c(y)}{A_c},
+  \qquad
+  J(x) = \frac{I(x) - A}{\max\big(t(x), t_0\big)} + A,
+  \qquad
+  \omega = {{omega}},\ t_0 = {{t0}}
+formulaExplanation: >-
+  Haze mixes the scene radiance J with the air light A. The transmission t is the share of J
+  that reaches the camera. It falls with distance. He, Sun and Tang observed that in most patches
+  of a clear outdoor photo, at least one color channel is close to 0, in shadows, dark objects or
+  saturated colors. That is the dark channel prior. So the dark channel of the hazy image,
+  divided by A, measures 1 - t. The air light A is taken from the brightest 0.1 percent of the dark channel.
+  It is the pixel there with the highest intensity, here the mean of red, green and blue.
+  The raw transmission t tilde is blocky, since it comes from patches. The first paper refined it
+  with soft matting. Its authors later showed that the guided filter does the same job much
+  faster. Here the guide is the luma. omega keeps a little haze, and t0 keeps the division
+  stable.
+symbols:
+  - {symbol: 'I', meaning: 'The hazy image, values from 0 to 1'}
+  - {symbol: 'J', meaning: 'The scene radiance, the haze-free image'}
+  - {symbol: 'A', meaning: 'The air light, one color for the whole image'}
+  - {symbol: 't', meaning: 'The transmission, from 0 (all haze) to 1 (no haze)'}
+  - {symbol: '\Omega(x)', meaning: 'The square patch around pixel x'}
+  - {symbol: '\omega', meaning: The share of the haze that is removed}
+  - {symbol: 't_0', meaning: The lowest transmission used in the division}
+steps:
+  - Compute the dark channel, the minimum over red, green and blue and over a square patch.
+  - Pick the air light A among the brightest 0.1 percent of the dark channel.
+  - Compute the raw transmission from the dark channel of the image divided by A.
+  - Refine the transmission with the guided filter, guided by the luma.
+  - Recover J from the haze model, with the transmission kept at t0 or more.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The minimum filter and the box means cost the same for any patch size or radius.
+useCases:
+  - Outdoor photos and landscapes with haze or fog.
+  - Aerial and drone photos.
+advantages:
+  - Needs one image and no depth.
+  - Fast, since the guided filter runs in linear time.
+limitations:
+  - Bright white objects and sky break the prior, so they can turn too dark or blue.
+  - Assumes one air light color for the whole image.
+  - Strengthens noise in areas of thick haze.
+artifacts:
+  - Halos along strong depth edges when the guided filter radius is large.
+  - Too much saturation in the far parts of the scene.
+references:
+  - kind: paper
+    text: He, K., Sun, J., and Tang, X. Single image haze removal using dark channel prior. IEEE Transactions on Pattern Analysis and Machine Intelligence 33(12), 2341 to 2353, 2011.
+    doi: 10.1109/TPAMI.2010.168
+  - kind: paper
+    text: He, K., Sun, J., and Tang, X. Guided image filtering. IEEE Transactions on Pattern Analysis and Machine Intelligence 35(6), 1397 to 1409, 2013.
+    doi: 10.1109/TPAMI.2012.213
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: dehaze}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: Use the dark spots that every clear photo has to measure how much haze lies over each part of the image, and take it away.
+  howItWorks:
+    - In a clear photo, almost every small patch has a dark pixel in some color.
+    - Haze adds a bright veil, so those dark pixels turn gray. Their brightness shows how thick the haze is.
+    - The color of the haze comes from the brightest, haziest part of the image.
+    - Subtract the veil and stretch the rest back to full contrast.
+  academic: >-
+    Single-image dehazing with the dark channel prior. The air light comes from the brightest
+    dark-channel pixels and the transmission from the normalized dark channel. The guided filter
+    refines it, and the atmospheric scattering model is inverted with a lower bound on t.
+  paramNotes:
+    output: The clear image, or the haze map behind it.
+    patch: How large the patches are that look for dark pixels.
+    omega: How much of the haze is removed.
+    radius: How smooth the haze map is.
+    eps: How closely the haze map follows edges.
+    t0: How far the thickest haze may be cleared.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Choose the Transmission output to see the haze map. Far parts of the scene are darker.
+    - Lower omega to 0.8 to keep some haze for a sense of depth.
+  pitfalls:
+    - Photos with large white or sky areas. They break the dark channel prior.
+  demos: [stage-viewer]
+related: [guided, clahe, retinex-msr, contrast-stretch]
+docsPage: filters/restoration/dehaze.md
