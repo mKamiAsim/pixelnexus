@@ -18,7 +18,10 @@ const fixture = (name: string, mimeType: string) => ({
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    // The studio looks for the local engine, which is not running in these tests. The
+    // browser logs that refused connection as a console error.
+    const fromEngine = message.location().url.includes(":8765/");
+    if (message.type() === "error" && !fromEngine) errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));
   return errors;

@@ -6,6 +6,7 @@ import { catalog, isRunnable, STATUS_LABELS, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
 
 import { BrowserEngine } from "./browser";
+import { DEFAULT_ENGINE_URL, ScienceEngine } from "./science";
 import {
   EngineError,
   type EngineClient,
@@ -15,20 +16,15 @@ import {
 } from "./types";
 
 export { EngineError } from "./types";
+export { OFFLINE_MESSAGE } from "./science";
 export type { FilterJob, JobOptions, JobResult, JobTiming } from "./types";
 
 export const browserEngine = new BrowserEngine();
 
-/** The science engine arrives in Phase 6. Until then it explains why it cannot run. */
-export const scienceEngine: EngineClient = {
-  name: "science",
-  run: () =>
-    Promise.reject(
-      new EngineError(
-        "This filter runs in the PixelNexus engine on your computer. The studio connects to it from Phase 6.",
-      ),
-    ),
-};
+/** The local science engine. VITE_ENGINE_URL can point the studio at another address. */
+export const scienceEngine = new ScienceEngine(
+  (import.meta.env.VITE_ENGINE_URL as string | undefined) ?? DEFAULT_ENGINE_URL,
+);
 
 export function filterEntry(id: string): Filter {
   const entry = catalog.filters.find((filter) => filter.id === id);

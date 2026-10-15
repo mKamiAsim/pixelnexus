@@ -1,9 +1,10 @@
 import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { formatZoom } from "@/canvas/viewport";
 import { getChannel } from "@/core/image/types";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { useEngine, watchEngine } from "@/state/engine";
 import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
@@ -47,7 +48,7 @@ export function StatusBar() {
       ) : (
         <span>No image open</span>
       )}
-      <span className="hidden lg:inline">Engine: browser</span>
+      <EngineLight />
       {work.length > 0 ? (
         <span className="flex items-center gap-1.5 text-text-secondary">
           <LoaderCircle size={12} className="animate-spin motion-reduce:animate-none" aria-hidden />
@@ -60,5 +61,41 @@ export function StatusBar() {
         Images are processed locally in your browser.
       </span>
     </footer>
+  );
+}
+
+const ENGINE_TEXT = {
+  checking: "Local engine: checking",
+  online: "Local engine: on",
+  offline: "Local engine: off",
+} as const;
+
+/**
+ * Whether the local science engine answers. Browser filters work either way. A click checks
+ * again at once.
+ */
+function EngineLight() {
+  const status = useEngine((s) => s.status);
+  const version = useEngine((s) => s.version);
+  const check = useEngine((s) => s.check);
+  useEffect(() => watchEngine(), []);
+  const color =
+    status === "online" ? "bg-success" : status === "offline" ? "bg-text-muted" : "bg-warning";
+  const title =
+    status === "online"
+      ? `The PixelNexus engine ${version ?? ""} runs on this computer. Advanced filters can run.`
+      : status === "offline"
+        ? "The PixelNexus engine is not running. Browser filters work. Start the engine with: uv run pixelnexus-engine"
+        : "Looking for the PixelNexus engine on this computer.";
+  return (
+    <button
+      type="button"
+      onClick={() => void check()}
+      title={title}
+      className="hidden items-center gap-1.5 rounded-control px-1 hover:text-text-secondary lg:flex"
+    >
+      <span className={`inline-block size-2 rounded-full ${color}`} aria-hidden />
+      {ENGINE_TEXT[status]}
+    </button>
   );
 }

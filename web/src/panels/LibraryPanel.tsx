@@ -14,6 +14,7 @@ import {
   type LibraryFacets,
 } from "@/app/library";
 import { StatusBadge } from "@/components/ui/Badge";
+import { EngineBadge } from "@/components/ui/EngineBadge";
 import { IconButton } from "@/components/ui/IconButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
@@ -43,7 +44,8 @@ function FilterRow({ filter }: { filter: Filter }) {
         )}
       >
         <span className="truncate">{filter.name}</span>
-        <span className="ml-auto shrink-0">
+        <span className="ml-auto flex shrink-0 gap-1">
+          <EngineBadge entry={filter} />
           <StatusBadge status={filter.status} />
         </span>
       </button>

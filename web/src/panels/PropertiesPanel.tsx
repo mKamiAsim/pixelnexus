@@ -11,6 +11,7 @@ import { showPanel } from "@/app/layout";
 import { GlossaryText } from "@/components/GlossaryText";
 import { ParamControl } from "@/components/params/ParamControl";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { EngineBadge } from "@/components/ui/EngineBadge";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Select } from "@/components/ui/Select";
@@ -18,6 +19,7 @@ import { Switch } from "@/components/ui/Switch";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { FilterScope } from "@/core/composite/scope";
 import { activeDocument, activeSelection, useDocuments } from "@/state/documents";
+import { useNeedsEngine } from "@/state/engine";
 import { useFilterValues } from "@/app/useFilterValues";
 import { useFilters, type Preset, type RunInfo } from "@/state/filters";
 import { notify } from "@/state/notifications";
@@ -62,7 +64,10 @@ function FilterProperties({ entry }: { entry: Filter }) {
       <div className="flex flex-col gap-1.5 border-b border-border-subtle px-3 py-2.5">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold">{entry.name}</h3>
-          <StatusBadge status={entry.status} />
+          <span className="flex shrink-0 gap-1">
+            <EngineBadge entry={entry} />
+            <StatusBadge status={entry.status} />
+          </span>
         </div>
         {entry.summary ? (
           <p className="text-xs text-text-secondary">
@@ -101,6 +106,7 @@ function FilterProperties({ entry }: { entry: Filter }) {
 }
 
 function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
+  const needsEngine = useNeedsEngine(entry);
   const { values, warnings } = useFilterValues(entry);
   const setValue = useFilters((s) => s.setValue);
   const resetValues = useFilters((s) => s.resetValues);
@@ -178,7 +184,17 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
         </ul>
       ) : null}
 
-      <ApplyRow entry={entry} disabled={!runnable || !doc} onReset={() => resetValues(entry.id)} />
+      {needsEngine ? (
+        <p className="mx-3 mt-2 text-xs text-warning">
+          This filter runs in the PixelNexus engine on your computer, which is not running. Start it
+          with: uv run pixelnexus-engine
+        </p>
+      ) : null}
+      <ApplyRow
+        entry={entry}
+        disabled={!runnable || !doc || needsEngine}
+        onReset={() => resetValues(entry.id)}
+      />
       {params.length > 0 ? <PresetRow entry={entry} values={values} /> : null}
     </>
   );

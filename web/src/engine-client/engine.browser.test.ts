@@ -132,9 +132,9 @@ describe("engine client", () => {
     );
   });
 
-  it("explains that the science engine is not connected yet", async () => {
+  it("explains how to start the science engine when it does not answer", async () => {
     await expect(scienceEngine.run({ filterId: "bm3d", params: {}, image })).rejects.toThrow(
-      /Phase 6/,
+      /uv run pixelnexus-engine/,
     );
   });
 });

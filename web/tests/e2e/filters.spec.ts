@@ -127,6 +127,15 @@ test("the color control takes the neutral color from the probe pixel", async ({ 
   await expect(field).toHaveValue("#1e1e1e");
 });
 
+test("the studio works with the local engine stopped", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: off" })).toBeVisible();
+  await chooseFilter(page, "gaussian", "Gaussian filter");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Gaussian filter");
+});
+
 test("scale space shows its response and its selected scale", async ({ page }) => {
   await openTestImage(page, "Disks");
   await chooseFilter(page, "scale", "Scale-space filtering");
