@@ -1,8 +1,120 @@
 id: bokeh
 name: Bokeh blur
+aliases: [Lens blur, Disk blur with highlights]
 family: artistic
+tags: [purpose:blur]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Disk blur in linear light with highlight boost.
+
+summary: Blurs the image the way an out-of-focus lens does, so bright points turn into bright disks.
+purpose: Imitate the soft background of a photo taken with a wide-open lens.
+classification: {linearity: nonlinear, domain: spatial, operation: highlight boost and disk blur}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/lens.ts, symbol: bokehPlanes}
+supportRadius: ceil(radius - 0.5)
+supportsMask: true
+preview: live
+colorHandling: >-
+  The filter works on all three channels in linear light, decoded from sRGB, and encodes the
+  result again. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: radius
+    label: Radius
+    type: number
+    min: 1
+    max: 30
+    step: 0.5
+    default: 8
+    unit: px
+    description: The radius of the disk, the shape of an out-of-focus point.
+    effect: Larger values blur more.
+  - key: threshold
+    label: Highlight threshold
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 75
+    unit: "%"
+    description: The linear luminance where highlights start to be boosted.
+    effect: Lower values boost more of the image.
+  - key: boost
+    label: Highlight boost
+    type: number
+    min: 0
+    max: 20
+    step: 0.5
+    default: 4
+    description: How much the brightest highlights are scaled up before the blur.
+    effect: Higher values give brighter bokeh disks.
+  - ref: border
+formula: |
+  c_b = c \left(1 + \beta\, \operatorname{smoothstep}\left(\frac{Y - t}{1 - t}\right)\right),
+  \quad
+  c' = D_R * c_b,
+  \qquad R = {{radius}},\ t = \frac{ {{threshold}} }{100},\ \beta = {{boost}}
+formulaExplanation: >-
+  c is a channel in linear light and Y the linear luminance. A lens that is out of focus spreads
+  each point of light into a disk, its circle of confusion. Bright lights in a photo are often
+  clipped at white, so their true light is lost. The filter scales highlights up by a factor that
+  rises smoothly from 1 at the threshold to 1 + beta at white. So they act as if they had been
+  brighter. Then it blurs with the disk kernel of the disk averaging filter. Bright points spread into bright,
+  hard-edged disks, while dark areas blur normally. The results are clipped when encoded. The
+  rule is PixelNexus's own.
+symbols:
+  - {symbol: 'c', meaning: 'A channel in linear light'}
+  - {symbol: 'Y', meaning: 'The linear luminance'}
+  - {symbol: 'D_R', meaning: 'The disk kernel of radius R'}
+  - {symbol: 't, \beta', meaning: 'The highlight threshold and the boost'}
+steps:
+  - Decode the image to linear light.
+  - Scale up the highlights by the smoothstep of how far they are above the threshold.
+  - Blur with the disk kernel.
+  - Encode back to sRGB and clip.
+complexity:
+  time: O(N R^2)
+  memory: O(N)
+  notes: N is the number of pixels and R the disk radius. The disk is not separable.
+useCases:
+  - Soft backgrounds with glowing points of light.
+advantages:
+  - Bright points become disks, as with a real lens.
+limitations:
+  - The whole image is blurred the same. Real bokeh depends on depth.
+  - Slow for large radii.
+artifacts:
+  - Bright areas grow and lose detail at high boosts.
+references:
+  - kind: paper
+    text: Potmesil, M. and Chakravarty, I. A lens and aperture camera model for synthetic image generation. ACM SIGGRAPH Computer Graphics, 297 to 305, 1981.
+    doi: 10.1145/965161.806818
+implementation: {path: web/src/core/filters/artistic/lens.ts, symbol: bokehFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Blur like an out-of-focus lens, so lights turn into bright disks.
+  howItWorks:
+    - Make the brightest parts even brighter, as real lights are.
+    - Blur with a disk, the shape a lens gives an out-of-focus point.
+    - Turn the result back into normal brightness and clip.
+  academic: >-
+    Disk (circle of confusion) convolution in linear light, with a smooth highlight gain that
+    stands in for clipped light.
+  paramNotes:
+    radius: How strongly to blur.
+    threshold: How bright a pixel must be to count as a light.
+    boost: How bright the light disks become.
+    border: How the blur is filled past the image edge.
+  tryThis:
+    - Use a photo with small bright lights and compare boost 0 and boost 8.
+  pitfalls:
+    - Expecting a sharp subject. Use a selection to blur only the background.
+  demos: [line-profile]
+related: [disk-average, bloom, tilt-shift]
+docsPage: filters/artistic/bokeh.md

@@ -309,6 +309,13 @@ nav:
           - Vignette: filters/artistic/vignette.md
           - Pixelate: filters/artistic/pixelate.md
           - Dithering: filters/artistic/dithering.md
+          - Halftone: filters/artistic/halftone.md
+          - Oil-painting effect: filters/artistic/oil-painting.md
+          - Pencil sketch: filters/artistic/pencil-sketch.md
+          - Cartoon effect: filters/artistic/cartoon.md
+          - Bloom and glow: filters/artistic/bloom.md
+          - Bokeh blur: filters/artistic/bokeh.md
+          - Tilt-shift blur: filters/artistic/tilt-shift.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md

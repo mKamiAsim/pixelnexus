@@ -1,7 +1,133 @@
 id: tilt-shift
 name: Tilt-shift blur
+aliases: [Miniature effect, Fake tilt-shift]
 family: artistic
+tags: [purpose:blur]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Keeps a horizontal band sharp and blurs more and more above and below it, which makes scenes look like miniature models.
+purpose: Create the miniature look of tilt-shift photography.
+classification: {linearity: linear, domain: spatial, operation: position-dependent Gaussian blur}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/lens.ts, symbol: tiltSigma}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is blurred the same way. Alpha weights the blur on transparent
+  images, as for the other blurs.
+boundary: Set by the Border mode parameter. The default is reflect 101. The blur depends on the row's place in the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: center
+    label: Focus center
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    unit: "%"
+    description: The height of the middle of the sharp band, from the top.
+    effect: Moves the sharp band up or down.
+  - key: band
+    label: Sharp band
+    type: number
+    min: 0
+    max: 50
+    step: 1
+    default: 15
+    unit: "%"
+    description: Half the height of the sharp band, as a share of the image height.
+    effect: Larger values keep more of the image sharp.
+  - key: ramp
+    label: Transition
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 25
+    unit: "%"
+    description: How far, as a share of the image height, the blur takes to reach its largest value.
+    effect: Larger values give a gentler transition.
+  - key: maxBlur
+    label: Largest blur
+    type: number
+    min: 0.5
+    max: 30
+    step: 0.5
+    default: 6
+    unit: px
+    description: The Gaussian sigma at the far ends.
+    effect: Larger values blur the top and bottom more.
+  - ref: border
+  - ref: channelScope
+formula: |
+  \sigma(f) = \sigma_{\max}\, \operatorname{smoothstep}\left(\frac{|f - f_c| - b}{w}\right),
+  \quad
+  I'(y) = (1 - \lambda)\, (G_{\sigma_k} * I)(y) + \lambda\, (G_{\sigma_{k+1}} * I)(y),
+  \qquad \sigma_k = \frac{k}{8}\, \sigma_{\max},\ \sigma_{\max} = {{maxBlur}}
+formulaExplanation: >-
+  f is the height of a row as a share of the image, f_c the focus center, b the half height of
+  the sharp band and w the transition. Rows inside the band keep sigma 0. Outside it, sigma rises
+  along a smoothstep to the largest blur. The image is blurred with Gaussians at nine sigmas, 0,
+  1/8 and so on up to the largest, each cut at 3 sigma. Each row blends the two blurred images
+  whose sigmas lie around its own, with the weight lambda of its place between them. A real
+  tilt-shift lens tilts its plane of focus. This filter only imitates the look, and its rule is
+  PixelNexus's own.
+symbols:
+  - {symbol: 'f, f_c', meaning: 'The height of the row and of the focus center, as shares of the image'}
+  - {symbol: 'b, w', meaning: 'The half height of the sharp band and the transition'}
+  - {symbol: '\sigma_k', meaning: 'The nine blur levels'}
+  - {symbol: '\lambda', meaning: 'The blend weight of a row'}
+steps:
+  - Blur the image with Gaussians at nine sigmas from 0 to the largest.
+  - For each row, compute its sigma from its distance to the sharp band.
+  - Blend the two blurred images whose sigmas lie around the row's sigma.
+complexity:
+  time: O(N r)
+  memory: O(9 N)
+  notes: N is the number of pixels and r the radius of the largest Gaussian. Each of the nine blurs runs as two 1D passes.
+useCases:
+  - The miniature look for photos of streets, towns and fields taken from above.
+advantages:
+  - Smooth transition from sharp to blurred.
+limitations:
+  - The band is horizontal. Real tilt-shift lenses can tilt the plane of focus at any angle.
+  - The blur between two levels is a blend, not a true Gaussian of that sigma.
+artifacts:
+  - Ghost edges where the blend of two levels mixes a sharp and a blurred copy of a strong edge.
+references:
+  - kind: paper
+    text: Potmesil, M. and Chakravarty, I. A lens and aperture camera model for synthetic image generation. ACM SIGGRAPH Computer Graphics, 297 to 305, 1981.
+    doi: 10.1145/965161.806818
+implementation: {path: web/src/core/filters/artistic/lens.ts, symbol: tiltShiftFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Keep a band sharp and blur more and more away from it, so the scene looks like a model.
+  howItWorks:
+    - Choose a horizontal band to keep sharp.
+    - Make the blur grow with the distance from the band.
+    - Blend between a few blurred copies to get each row's blur.
+  academic: >-
+    A depth-of-field imitation by a row-dependent Gaussian blur, built from a stack of blur levels
+    and linear blending between them.
+  paramNotes:
+    center: Where the sharp band sits.
+    band: How tall the sharp band is.
+    ramp: How fast the blur grows.
+    maxBlur: How blurred the top and bottom get.
+    border: How the blurs are filled past the image edge.
+    channelScope: Blur all channels or the brightness only.
+  tryThis:
+    - Use a photo of a street from above and raise the saturation afterwards.
+  pitfalls:
+    - Scenes taken at eye level. The miniature illusion needs a view from above.
+  demos: [line-profile]
+related: [gaussian, bokeh, vignette]
+docsPage: filters/artistic/tilt-shift.md

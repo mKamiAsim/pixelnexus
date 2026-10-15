@@ -1,7 +1,117 @@
 id: halftone
 name: Halftone
+aliases: [Halftone screen, Dot screen]
 family: artistic
+tags: [purpose:texture]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Redraws the image as round black dots on a turned grid, larger where the image is darker, like printing in newspapers.
+purpose: Give an image a printed, dotted look, and show how printers make gray from black ink.
+classification: {linearity: nonlinear, domain: spatial, operation: amplitude-modulated dot screen}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/painterly.ts, symbol: halftonePlane}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  With the brightness scope, the default, the dots shape the luma and the colors stay. With RGB
+  scope, each channel gets its own dots on the same screen. Alpha is kept.
+boundary: The cell darkness uses the border mode near the edges. The screen depends on the position in the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: cell
+    label: Cell size
+    type: number
+    min: 3
+    max: 40
+    step: 0.5
+    default: 8
+    unit: px
+    description: The side of a cell of the screen.
+    effect: Larger cells give larger, coarser dots.
+  - key: angle
+    label: Screen angle
+    type: angle
+    min: 0
+    max: 90
+    step: 1
+    default: 45
+    unit: deg
+    description: The angle of the screen grid.
+    effect: 45 degrees hides the grid best, as printers have long known.
+  - ref: border
+  - ref: channelScope
+    default: luminance
+formula: |
+  a = 1 - \frac{\bar I(c)}{255},
+  \quad
+  \operatorname{area}\left(\text{disk}(\rho) \cap \text{cell}\right) = a\, s^2,
+  \quad
+  I'(p) = 255 \left(1 - \operatorname{clamp}\left(\rho - |p - c| + \tfrac{1}{2}\right)\right),
+  \qquad s = {{cell}},\ \theta = {{angle}}^{\circ}
+formulaExplanation: >-
+  The screen is a grid of square cells of side s, turned by theta. The darkness a of a cell is
+  one minus the box mean of the image at the cell center c. The box has about the cell's size,
+  and it is read by bilinear interpolation. The dot is a disk centered at c whose area inside the
+  cell is a s^2. Above a quarter of pi, about 0.785, the disk passes the sides of the cell. Then
+  its radius rho comes from the area of a circle cut by a square, solved by bisection. Each pixel
+  is black inside the dot and white outside, with one pixel of anti-aliasing at the edge. So a
+  flat gray keeps its mean tone. These rules are PixelNexus's own. Ulichney's book covers
+  halftoning in depth.
+symbols:
+  - {symbol: 'a', meaning: 'The ink share of a cell'}
+  - {symbol: '\bar I(c)', meaning: 'The box mean of the image at the cell center'}
+  - {symbol: '\rho', meaning: 'The dot radius'}
+  - {symbol: 's, \theta', meaning: 'The cell size and the screen angle'}
+steps:
+  - Blur the image with a box of about the cell's size.
+  - For each pixel, find its cell on the turned screen and the cell center.
+  - Read the darkness at the cell center and find the dot radius that inks that share of the cell.
+  - Paint the pixel by its distance to the dot center, with a soft one-pixel edge.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The box mean uses running sums.
+useCases:
+  - Comic, pop-art and newsprint looks.
+  - Teaching how printers render gray with black ink only.
+advantages:
+  - Keeps the mean tone, since each dot inks the cell's share.
+  - Turning the screen hides the grid.
+limitations:
+  - Detail smaller than a cell is lost.
+  - One screen for all channels in RGB scope, unlike real color printing with different angles per ink.
+artifacts:
+  - Moire against fine repeating patterns in the image.
+references:
+  - kind: book
+    text: Ulichney, R. Digital Halftoning. MIT Press, 1987.
+implementation: {path: web/src/core/filters/artistic/painterly.ts, symbol: halftoneFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Redraw the image as black dots on white, bigger dots where it is darker.
+  howItWorks:
+    - Lay a turned grid of cells over the image.
+    - Measure how dark each cell is.
+    - Draw a round dot in each cell that covers that share of the cell.
+  academic: >-
+    Amplitude-modulated clustered-dot halftoning with round dots whose clipped area matches the
+    local mean intensity.
+  paramNotes:
+    cell: How large the cells and dots are.
+    angle: How the grid is turned.
+    border: How the cell darkness is read near the image edge.
+    channelScope: Dots in the brightness only, or in each channel.
+  tryThis:
+    - Use cell size 12 on a portrait, then look at it from across the room.
+  pitfalls:
+    - Small cells on a high-resolution image. The dots get too fine to see.
+  demos: [line-profile]
+related: [dithering, posterize, pixelate]
+docsPage: filters/artistic/halftone.md

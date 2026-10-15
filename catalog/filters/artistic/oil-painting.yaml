@@ -1,8 +1,113 @@
 id: oil-painting
 name: Oil-painting effect
+aliases: [Oil paint, Paint daubs]
 family: artistic
+tags: [purpose:smoothing]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
 planNotes: Intensity histogram method.
+
+summary: Turns each pixel into the average color of the most common brightness around it, which gives flat, daubed patches like brush strokes.
+purpose: Give a photo the look of an oil painting, with flat patches and kept edges.
+classification: {linearity: nonlinear, domain: spatial, operation: local mode of brightness bins}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/painterly.ts, symbol: oilPaint}
+supportRadius: radius
+supportsMask: true
+preview: live
+colorHandling: >-
+  The filter works on all three channels together. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: radius
+    label: Radius
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 3
+    unit: px
+    description: The radius r of the square window, which has 2r + 1 pixels on each side.
+    effect: Larger windows give larger patches.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 2
+    max: 64
+    step: 1
+    default: 20
+    description: How many equal bins the luma falls into.
+    effect: Fewer levels give larger, flatter patches.
+  - ref: border
+formula: |
+  b(q) = \left\lfloor \frac{L\, Y(q)}{256} \right\rfloor,
+  \quad
+  b^* = \arg\max_b \#\{q \in W(p) : b(q) = b\},
+  \quad
+  C'(p) = \operatorname{mean}\{C(q) : q \in W(p),\ b(q) = b^*\},
+  \qquad L = {{levels}},\ r = {{radius}}
+formulaExplanation: >-
+  Y is the luma 0.2126 R + 0.7152 G + 0.0722 B and W(p) the square window of side 2r + 1 around
+  the pixel. The luma values fall into L equal bins. The most common bin in the window wins, and
+  ties go to the darker bin. The output is the mean color of the window pixels in that bin. So a
+  pixel takes the color of the brightness that most of its neighbors share, and small details
+  vanish into patches. OpenCV's xphoto module implements this effect and cites Holzmann's book
+  for it. OpenCV leaves pixels outside the image out of the window and quantizes the result.
+  Here the window follows the border mode, and nothing is quantized.
+symbols:
+  - {symbol: 'Y', meaning: 'The luma of a pixel'}
+  - {symbol: 'b(q)', meaning: 'The bin of pixel q'}
+  - {symbol: 'W(p)', meaning: 'The window around pixel p'}
+  - {symbol: 'L', meaning: 'The number of bins'}
+steps:
+  - Compute the luma of every pixel and its bin.
+  - Slide the window along each row, keeping the count and the color sums of each bin.
+  - At each pixel, take the most common bin and output the mean color of its pixels.
+complexity:
+  time: O(N r)
+  memory: O(N + L)
+  notes: N is the number of pixels and r the radius. Each step along a row removes one column of the window and adds one.
+useCases:
+  - Painterly looks for photos.
+  - Simplifying an image into patches of color.
+advantages:
+  - Keeps strong edges, since the bins split at them.
+  - Fast, with a sliding window.
+limitations:
+  - Small windows give little effect, and large windows lose structure.
+  - The patches have no brush direction.
+artifacts:
+  - Blocky, square patches, from the square window.
+references:
+  - kind: book
+    text: Holzmann, G. J. Beyond Photography, The Digital Darkroom. Prentice Hall, 1988.
+  - kind: library
+    text: OpenCV documentation, cv::xphoto::oilPainting.
+    url: https://docs.opencv.org/4.x/de/daa/group__xphoto.html
+implementation: {path: web/src/core/filters/artistic/painterly.ts, symbol: oilPaintingFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Each pixel takes the color of the brightness that most of its neighbors share.
+  howItWorks:
+    - Sort the neighbors' brightness into a few bins.
+    - Find the fullest bin.
+    - Use the average color of the neighbors in that bin.
+  academic: >-
+    A local mode filter on quantized luma, returning the mean color of the modal class, after the
+    oil painting effect in OpenCV's xphoto module.
+  paramNotes:
+    radius: How large each patch can grow.
+    levels: How many brightness bins. Fewer bins give flatter patches.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Use radius 5 and 10 levels on a portrait.
+  pitfalls:
+    - A large radius on a small image. Everything turns into a few big blocks.
+  demos: [line-profile]
+related: [kuwahara, mode, cartoon]
+docsPage: filters/artistic/oil-painting.md

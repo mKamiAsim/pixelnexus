@@ -1,7 +1,115 @@
 id: bloom
 name: Bloom and glow
+aliases: [Glow, Light bloom]
 family: artistic
+tags: [purpose:brightness]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Makes bright areas glow by blurring their light and adding it back, as bright lights bloom in a camera or the eye.
+purpose: Add a soft glow around lights and bright highlights.
+classification: {linearity: nonlinear, domain: spatial, operation: bright pass with blurred glow}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/lens.ts, symbol: bloomPlanes}
+supportRadius: floor(3 * sigma + 0.5)
+supportsMask: true
+preview: live
+colorHandling: >-
+  The filter works on all three channels in linear light, decoded from sRGB, and encodes the
+  result again. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 70
+    unit: "%"
+    description: The linear luminance where the glow starts.
+    effect: Lower values make more of the image glow.
+  - key: sigma
+    label: Glow size
+    type: number
+    min: 1
+    max: 60
+    step: 0.5
+    default: 12
+    unit: px
+    description: The sigma of the Gaussian blur of the bright part.
+    effect: Larger values spread the glow further.
+  - key: strength
+    label: Strength
+    type: number
+    min: 0
+    max: 300
+    step: 1
+    default: 80
+    unit: "%"
+    description: How much of the blurred light is added back.
+    effect: Higher values give a stronger glow.
+  - ref: border
+formula: |
+  B_c = c\, \operatorname{clamp}\left(\frac{Y - t}{1 - t}\right),
+  \quad
+  c' = c + k\, (G_\sigma * B_c),
+  \qquad t = \frac{ {{threshold}} }{100},\ \sigma = {{sigma}},\ k = \frac{ {{strength}} }{100}
+formulaExplanation: >-
+  c is a channel in linear light and Y the linear luminance 0.2126 R + 0.7152 G + 0.0722 B. The
+  bright part B keeps the share of the light above the threshold, rising linearly from 0 at t to
+  all of it at 1. It is blurred with a Gaussian cut at 3 sigma and added back with the strength
+  k. Light adds in linear space, so the glow mixes with the image as real light would. The
+  results are clipped when encoded. The rule is PixelNexus's own.
+symbols:
+  - {symbol: 'c', meaning: 'A channel in linear light, from 0 to 1'}
+  - {symbol: 'Y', meaning: 'The linear luminance'}
+  - {symbol: 't, \sigma, k', meaning: 'The threshold, the glow size and the strength'}
+steps:
+  - Decode the image to linear light.
+  - Keep the bright part of each pixel, by how far its luminance is above the threshold.
+  - Blur the bright part with a Gaussian and add it back with the strength.
+  - Encode back to sRGB and clip.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels and r the radius of the Gaussian, 3 sigma.
+useCases:
+  - Night scenes with lights, dreamy portraits, game-like looks.
+advantages:
+  - Glow follows the light, in linear space.
+limitations:
+  - Clipped highlights have lost their true brightness, so the glow can look weak.
+artifacts:
+  - A haze over the whole image at low thresholds.
+references:
+  - kind: paper
+    text: Spencer, G., Shirley, P., Zimmerman, K. and Greenberg, D. P. Physically-based glare effects for digital images. SIGGRAPH 95, 325 to 334, 1995.
+    doi: 10.1145/218380.218466
+implementation: {path: web/src/core/filters/artistic/lens.ts, symbol: bloomFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Blur the bright parts of the image and add them back, so lights glow.
+  howItWorks:
+    - Keep only the parts brighter than the threshold.
+    - Blur them.
+    - Add the blur back on top of the image.
+  academic: >-
+    A bright-pass filter, a Gaussian blur and additive compositing in linear light.
+  paramNotes:
+    threshold: How bright a pixel must be to glow.
+    sigma: How far the glow spreads.
+    strength: How strong the glow is.
+    border: How the blur is filled past the image edge.
+  tryThis:
+    - Use a night photo with street lights, threshold 60 and strength 150.
+  pitfalls:
+    - A low threshold on a bright image. Everything glows and the image looks foggy.
+  demos: [line-profile]
+related: [bokeh, gaussian, vignette]
+docsPage: filters/artistic/bloom.md

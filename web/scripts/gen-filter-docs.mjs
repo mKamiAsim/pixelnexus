@@ -1199,6 +1199,9 @@ try {
   cfaDocs({ run, pic, figure, example, mdTable, fix, createImage, hsvToRgb, synthetic });
   const { artisticDocs } = await import("./filter-docs/artistic.mjs");
   artisticDocs({ run, pic, figure, example, mdTable, fix, createImage, synthetic });
+  const { painterlyDocs } = await import("./filter-docs/painterly.mjs");
+  const { tiltSigma } = await load("/src/core/filters/artistic/lens.ts");
+  painterlyDocs({ run, pic, figure, example, mdTable, fix, createImage, synthetic, tiltSigma });
   const { regionDocs } = await import("./filter-docs/regions.mjs");
   const regions = await load("/src/core/filters/segmentation/regions.ts");
   const { toPlanes } = await load("/src/core/filters/planes.ts");
