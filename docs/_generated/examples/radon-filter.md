@@ -7,4 +7,4 @@
 
 The PSNR in dB of the filtered back projection against the disks, 160 by 160 pixels. Here more angles help up to about 180. Beyond that, the sampled transform itself limits the result. The Hann window gives a lower PSNR on this clean image, since it softens fine detail. On noisy projections, it softens the noise too.
 
-The Fourier slice theorem can be checked exactly at 0 degrees, where a projection is the sum of each column. For a random image of 48 by 48 pixels, the 1-D FFT of that projection and the row f_y = 0 of the 2-D FFT of the image differ by at most 7.1e-14, which is rounding.
+The Fourier slice theorem can be checked exactly at 0 degrees, where a projection is the sum of each column. For a random image of 48 by 48 pixels, the 1-D FFT of that projection and the row f_y = 0 of the 2-D FFT of the image differ by less than 1e-12, which is rounding.

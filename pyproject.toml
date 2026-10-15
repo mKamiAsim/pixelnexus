@@ -52,7 +52,9 @@ mypy_path = ["engine/src", "tools"]
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["cv2", "cv2.*", "pywt", "pywt.*", "skimage", "skimage.*", "scipy", "scipy.*"]
+module = [
+  "cv2", "cv2.*", "pywt", "pywt.*", "skimage", "skimage.*", "scipy", "scipy.*", "pyrtools.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

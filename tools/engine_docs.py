@@ -34,6 +34,7 @@ from pixelnexus_engine.filters.directional import (
     frequency_grid,
 )
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
+from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -406,8 +407,9 @@ def radon_docs(out: dict[Path, str]) -> None:
         "since it softens fine detail. On noisy projections, it softens the noise too.\n\n"
         "The Fourier slice theorem can be checked exactly at 0 degrees, where a projection is "
         "the sum of each column. For a random image of 48 by 48 pixels, the 1-D FFT of that "
-        "projection and the row f_y = 0 of the 2-D FFT of the image differ by at most "
-        f"{slice_error:.1e}, which is rounding.\n"
+        "projection and the row f_y = 0 of the 2-D FFT of the image differ by "
+        + ("less than 1e-12" if slice_error < 1e-12 else f"at most {slice_error:.1e}")
+        + ", which is rounding.\n"
     )
 
 
@@ -532,6 +534,91 @@ def directional_docs(out: dict[Path, str], bank: str) -> None:
     )
 
 
+# Steerable pyramid -------------------------------------------------------------------------
+
+
+def steerable_docs(out: dict[Path, str]) -> None:
+    filter_id = "steerable-pyramid"
+    clean = disks(160, 160)
+    damaged = noisy(clean, 20, 7)
+
+    def pyramid(gray: Gray, **values: Any) -> Gray:
+        return run(steerable_pyramid, gray, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks with Gaussian noise of sigma 20, the steerable pyramid removing "
+            "noise with the defaults, wavelet thresholding, and the clean disks with the band "
+            "of level 2 steered to lines at 45 degrees.",
+            "panels": [
+                {"title": "Noisy", "image": picture(damaged)},
+                {"title": "Steerable pyramid", "image": picture(pyramid(damaged))},
+                {
+                    "title": "Wavelet threshold",
+                    "image": picture(run(wavelet_threshold, damaged, "wavelet-threshold")),
+                },
+                {
+                    "title": "Level 2 at 45 degrees",
+                    "image": picture(pyramid(clean, output="band", level=2, direction=45)),
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    rows = []
+    for label, image in (("Lines", lines_image()), ("Disks", clean)):
+        dirty = noisy(image, 20, 7)
+        rows.append(
+            [
+                label,
+                fix(psnr(dirty, image), 2),
+                *(fix(psnr(pyramid(dirty, orientations=n), image), 2) for n in ("2", "4", "8")),
+                fix(psnr(pyramid(dirty, mode="soft", factor=1.5), image), 2),
+                fix(psnr(run(wavelet_threshold, dirty, "wavelet-threshold"), image), 2),
+                fix(psnr(run(swt_denoise, dirty, "swt-denoise"), image), 2),
+            ]
+        )
+    rebuilt = pyramid(clean, factor=0)
+    rebuild_error = int(np.abs(rebuilt.astype(int) - clean.astype(int)).max())
+    noise = band_noise((256, 256), 4, 4)
+    levels = ", ".join(fix(noise[(j, 0)], 3) for j in range(4))
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [
+                "Image",
+                "Noisy",
+                "2 orient.",
+                "4 orient.",
+                "8 orient.",
+                "Soft 1.5",
+                "Wavelet",
+                "Stationary",
+            ],
+            rows,
+        )
+        + "\nThe PSNR in dB against the clean image, for Gaussian noise of sigma 20 from "
+        "NumPy's default_rng with seed 7. Both images are 160 by 160 pixels. The lines image "
+        "has three straight lines, 3 pixels wide. The orientation columns use hard "
+        "thresholding with factor 3 and 4 levels. Soft 1.5 uses 4 orientations and soft "
+        "thresholding with factor 1.5. Wavelet is wavelet thresholding and Stationary is "
+        "stationary wavelet filtering, both with their defaults.\n\n"
+        + (
+            "With factor 0, the result equals the clean disks in every pixel, so the pyramid "
+            "gives the image back. "
+            if rebuild_error == 0
+            else "With factor 0, the result differs from the clean disks by at most "
+            f"{rebuild_error} levels. "
+        )
+        + "For an image of 256 by "
+        "256 pixels with 4 orientations, the norm of the band filter, which is the noise level "
+        f"for sigma 1, is {levels} from level 1 to level 4. It doubles with each level, since "
+        "pyrtools does not rescale the spectrum when it crops it to half the size.\n"
+    )
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
@@ -541,6 +628,7 @@ def build() -> dict[Path, str]:
     ridgelet_docs(out)
     directional_docs(out, "curvelet")
     directional_docs(out, "shearlet")
+    steerable_docs(out)
     return out
 
 

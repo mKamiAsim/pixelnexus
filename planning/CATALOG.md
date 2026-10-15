@@ -197,7 +197,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | wavelet-wiener | Wavelet Wiener filtering | | Advanced | Science | 6b |
 | dtcwt-denoise | Dual-tree complex wavelet filtering | Optional `dtcwt` package. Checked on 2026-10-15: dtcwt 0.14.0 requires NumPy below 2, so the entry stays Planned. | Optional | Science | 6b |
 | ridgelet | Ridgelet filtering | Radon plus 1D wavelet. Labeled as an approximation. | Advanced | Science | 6b |
-| steerable-pyramid | Steerable pyramid filters | Optional `pyrtools` (MIT). Checked on 2026-10-15: pyrtools 1.0.11 works with NumPy 2. Cross-listed in texture. | Optional | Science | 6b |
+| steerable-pyramid | Steerable pyramid filters | Optional `pyrtools` (MIT). Checked on 2026-10-15: pyrtools 1.0.11 works with NumPy 2. Done on 2026-10-15 as optional-dependency. Cross-listed in texture. | Optional | Science | 6b |
 | laplacian-pyramid | Laplacian pyramid filtering | Per-level gains. | Core | Browser | 5e |
 | gaussian-pyramid | Gaussian pyramid filtering | | Core | Browser | 5e |
 | scale-space | Scale-space filtering | Gaussian scale-space stack and normalized derivatives. | Core | Browser | 5e |

@@ -6,5 +6,6 @@
 from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     directional,
     radon,
+    steerable,
     wavelets,
 )

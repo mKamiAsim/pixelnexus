@@ -1,8 +1,231 @@
 id: steerable-pyramid
 name: Steerable pyramid filters
+aliases:
+- Steerable pyramid
+- Steerable pyramid denoising
+- Oriented subband pyramid
 family: multiscale
+tags: [purpose:denoise, purpose:texture]
 tier: optional
 engine: science
 phase: 6b
-status: planned
-planNotes: Optional `pyrtools` (MIT). Cross-listed in texture.
+status: optional-dependency
+planNotes: Optional `pyrtools` (MIT). Checked on 2026-10-15. pyrtools 1.0.11 works with NumPy 2. Cross-listed in texture.
+
+summary: Splits each channel into oriented bands at several sizes with the steerable pyramid of Simoncelli and Freeman. It removes noise band by band, or shows one band steered to any angle.
+purpose: Remove noise while keeping edges at every angle, or see how much structure an image has at one size and direction, as in texture analysis.
+classification: {linearity: nonlinear, domain: transform, operation: steerable pyramid coefficient shrinkage or band selection}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/steerable.py, symbol: steerable_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is filtered, and the colors stay. With the RGB scope, each of the red,
+  green and blue channels is filtered on its own. Show one band gives a gray image with the
+  brightness scope. With the RGB scope, each channel is stretched on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The pyramid wraps around at the
+  edges. So the image is first extended by half its size, at most 256 pixels, on each side. A
+  little more is added to reach a multiple of 2^J.
+dependencies:
+  - {name: pyrtools, optional: true, note: 'The steerable pyramid in the frequency domain (SteerablePyramidFreq) and steering (steer). MIT license.'}
+  - {name: PyWavelets, optional: false, note: The noise estimate from wavelet details.}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: denoise
+    options:
+      - {value: denoise, label: Remove noise}
+      - {value: band, label: Show one band}
+    description: Remove noise shrinks the coefficients of every band and rebuilds the image. Show one band shows the coefficients of one level, steered to one angle.
+    effect: Show one band lets you see what each part of the pyramid holds.
+  - key: orientations
+    label: Orientations
+    type: select
+    default: '4'
+    options:
+      - {value: '2', label: '2'}
+      - {value: '4', label: '4'}
+      - {value: '6', label: '6'}
+      - {value: '8', label: '8'}
+    description: How many oriented bands each level has, spread over 180 degrees. The angular masks are cos^K with K one less than this number.
+    effect: More orientations follow edge directions more closely, and take longer.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 6
+    step: 1
+    default: 4
+    description: How many levels of oriented bands, each an octave of frequency. It is capped at log2 of the short side of the extended image, less 2.
+    effect: More levels also reach broader structures.
+  - key: factor
+    label: Threshold factor
+    type: number
+    min: 0
+    max: 8
+    step: 0.1
+    default: 3
+    description: For removing noise, the threshold of each band is this factor times the noise in that band. 0 keeps every coefficient.
+    effect: Larger factors remove more noise and more faint detail.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: For removing noise, the standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal wavelet details.
+    effect: Larger values remove more.
+  - key: mode
+    label: Shrink rule
+    type: select
+    default: hard
+    options:
+      - {value: hard, label: Hard}
+      - {value: soft, label: Soft}
+    description: Hard thresholding sets small coefficients to 0 and keeps the others. Soft thresholding also moves the others toward 0 by T.
+    effect: Soft gives smoother results with less contrast.
+  - key: level
+    label: Band level
+    type: integer
+    min: 1
+    max: 6
+    step: 1
+    default: 1
+    description: For showing one band, the level to show. 1 is the finest. It is capped at the number of levels.
+    effect: Higher levels show broader structures.
+  - key: direction
+    label: Line angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: For showing one band, the band is steered to respond to lines and edges at this angle, counterclockwise on screen. 0 shows horizontal lines.
+    effect: Lines and edges at other angles fade.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  c_{j,b} = \mathcal{F}^{-1}\big(M_{j,b}\, \mathcal{F} I\big),
+  \quad
+  M_{j,b}(r, \theta) = L(r) \prod_{i<j} L(2^{i+1} r)\, H(2^{j+1} r)\, G_b(\theta),
+  \qquad
+  G_b(\theta) = \alpha_K \cos^K\!\big(\theta - \tfrac{\pi b}{K+1}\big),
+  \qquad
+  \hat{I} = \sum_{j,b} \mathcal{F}^{-1}\big(\overline{M_{j,b}}\, \mathcal{F}\,\eta_{T_{j,b}}(c_{j,b})\big) + \ldots,
+  \quad
+  T_{j,b} = k\, \sigma\, \lVert a_{j,b} \rVert,
+  \qquad
+  K + 1 = {{orientations}},\ J = {{levels}},\ k = {{factor}}
+formulaExplanation: >-
+  The steerable pyramid splits the spectrum of an image into rings an octave wide. Each ring
+  is split into K + 1 smooth wedges of direction. r is the frequency radius, 1 at the Nyquist
+  frequency, and theta its angle. H(r) = cos(pi/2 log2 r) rises from 0 at r = 1/2 to 1 at r = 1.
+  L(r) is the square root of 1 - H(r)^2, so the squares of H and L add up to 1. Levels are
+  counted from j = 0, the finest. Level j uses H and L with the radius doubled j + 1 times.
+  After each level, the spectrum is cropped to half its size. The angular masks G_b are cos^K
+  of the angle from the band's direction. alpha_K scales them so that their squares add up to
+  1. So the masks rebuild the image: filter each band once more with its own mask, and add up
+  the results. The dots stand for the high-pass residual H(r) and the low-pass residual. The
+  angular masks are cos^K, so a band at any angle is a fixed mix of the K + 1 bands. Freeman
+  and Adelson called such filters steerable. To remove noise, each band coefficient c_j,b is
+  shrunk with the rule eta and the threshold T_j,b. White noise of standard deviation sigma
+  gives each band a noise level of sigma times the norm of its filter a_j,b. The filter
+  measures that norm from the pyramid of a single bright pixel.
+symbols:
+  - {symbol: 'c_{j,b}', meaning: 'The coefficients of band b at level j'}
+  - {symbol: 'M_{j,b}', meaning: 'The whole frequency mask of band b at level j'}
+  - {symbol: 'H, L', meaning: 'The radial high-pass and low-pass masks, a raised cosine one octave wide'}
+  - {symbol: 'G_b', meaning: 'The angular mask of band b'}
+  - {symbol: 'K', meaning: 'The order of the angular masks, one less than the number of orientations'}
+  - {symbol: '\alpha_K', meaning: 'The scale that makes the squares of the angular masks add up to 1'}
+  - {symbol: '\lVert a_{j,b} \rVert', meaning: 'The norm of the filter of band b at level j'}
+  - {symbol: 'k', meaning: The threshold factor}
+  - {symbol: '\eta_T', meaning: The shrink rule with threshold T}
+steps:
+  - Extend the channel with the border mode to a multiple of 2^J on each side.
+  - Build the steerable pyramid with J levels and K + 1 orientations.
+  - "For removing noise: estimate sigma, shrink every band and the high-pass residual at k sigma times the norm of its filter, and rebuild."
+  - "For showing one band: steer the bands of the chosen level to the angle, enlarge the result to the image, and show it around mid gray."
+  - Cut the result back to the size of the channel.
+complexity:
+  time: O(N log N (K + 1))
+  memory: O(N (K + 1))
+  notes: N is the number of pixels of the extended image. Each band needs one FFT at its own size. The finest level holds K + 1 bands at full size, so the pyramid has about 4 (K + 1) / 3 + 2 times as many values as the image.
+useCases:
+  - Removing noise while keeping edges in every direction.
+  - Learning how a multiscale, oriented transform splits an image.
+  - Looking at the bands that texture models, such as the one of Portilla and Simoncelli, are built on.
+advantages:
+  - The bands do not alias, so they move smoothly with the image, unlike the bands of a decimated wavelet transform.
+  - It has K + 1 directions, not the three of a wavelet transform, and can be steered to any angle.
+  - The rebuild is exact up to rounding, so a threshold factor of 0 gives the image back.
+limitations:
+  - It holds about 4 (K + 1) / 3 + 2 times as many values as the image, so it is slower than a wavelet transform.
+  - pyrtools reads its masks from lookup tables, so the rebuild is exact only to about 1e-5 of the value range.
+  - The threshold assumes white noise of one sigma across the image.
+  - Needs the optional pyrtools package in the engine.
+artifacts:
+  - Faint ripples along strong edges with hard thresholding.
+  - Soft, blotchy patches in flat areas with a low threshold factor.
+references:
+  - kind: paper
+    text: Simoncelli, E. P., and Freeman, W. T. The steerable pyramid. A flexible architecture for multi-scale derivative computation. Proceedings of the International Conference on Image Processing, volume 3, 444 to 447, 1995.
+    doi: 10.1109/ICIP.1995.537667
+  - kind: paper
+    text: Simoncelli, E. P., Freeman, W. T., Adelson, E. H., and Heeger, D. J. Shiftable multiscale transforms. IEEE Transactions on Information Theory 38(2), 587 to 607, 1992.
+    doi: 10.1109/18.119725
+  - kind: paper
+    text: Freeman, W. T., and Adelson, E. H. The design and use of steerable filters. IEEE Transactions on Pattern Analysis and Machine Intelligence 13(9), 891 to 906, 1991.
+    doi: 10.1109/34.93808
+  - kind: paper
+    text: Portilla, J., and Simoncelli, E. P. A parametric texture model based on joint statistics of complex wavelet coefficients. International Journal of Computer Vision 40(1), 49 to 70, 2000.
+    doi: 10.1023/A:1026553619983
+  - kind: library
+    text: pyrtools, image pyramid tools for Python, SteerablePyramidFreq and steer.
+    url: https://github.com/LabForComputationalVision/pyrtools
+implementation: {path: engine/src/pixelnexus_engine/filters/steerable.py, symbol: steerable_pyramid}
+tests: [engine/tests/test_steerable.py]
+learn:
+  oneSentence: Split the image into bands by size and direction, clean each band, and add them back together.
+  howItWorks:
+    - Split the image into a stack of layers, from fine detail to broad shapes.
+    - Split each layer again by direction, for example into 4 directions.
+    - To remove noise, set the small values of every band to 0, since noise spreads thinly over all of them.
+    - Add the bands back together to get the cleaned image.
+  academic: >-
+    Frequency-domain steerable pyramid of Simoncelli and Freeman, from pyrtools. Raised-cosine
+    radial masks one octave wide, cos^K angular masks with K + 1 orientations, and a tight
+    frame. Denoising by hard or soft thresholding at k sigma times the norm of each band's
+    analysis filter. Bands can be steered to any angle by the interpolation of Freeman and
+    Adelson.
+  paramNotes:
+    output: Clean the image, or look at one band.
+    orientations: How many directions each layer is split into.
+    levels: How many sizes of detail there are.
+    factor: How high the cut-off is, in noise levels.
+    sigma: How strong the noise is. 0 lets the filter guess.
+    mode: Whether kept values are also made smaller.
+    level: Which size of detail to show.
+    direction: Which direction of lines to show.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Choose Show one band and turn the line angle slowly. Watch edges at that angle light up.
+    - Add noise with the Noise lab and compare this filter with wavelet thresholding.
+    - Set the threshold factor to 0 to see that the pyramid gives the image back.
+  pitfalls:
+    - Strong noise that is not white, such as JPEG blocks. The noise level of each band is then wrong.
+  demos: [noise-lab]
+related: [steerable, wavelet-threshold, swt-denoise, directional-curvelet, gabor-bank, laplacian-pyramid]
+docsPage: filters/multiscale/steerable-pyramid.md
