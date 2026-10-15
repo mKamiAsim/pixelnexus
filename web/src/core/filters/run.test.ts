@@ -258,6 +258,12 @@ const CASES: [string, Params][] = [
   ["bloom", { threshold: 50, sigma: 2 }],
   ["bokeh", { radius: 2.5, threshold: 60 }],
   ["tilt-shift", { maxBlur: 2 }],
+  ["fisheye", { fov: 140 }],
+  ["barrel", { strength: 0.5 }],
+  ["pincushion", { strength: 0.2, fit: false }],
+  ["swirl", { strength: 2, radius: 8 }],
+  ["ripple", { amplitude: 2, wavelength: 5 }],
+  ["wave", { amplitude: 2, wavelength: 6, direction: "both" }],
   ["wolf", { size: 7, k: 0.4 }],
   ["bradley", { size: 9, percent: 10 }],
   ["region-growing", { seedX: 30, seedY: 60, tolerance: 60, measure: "color" }],
@@ -336,10 +342,12 @@ describe("a region gives the same pixels as the whole image", () => {
 });
 
 describe("channels and alpha", () => {
-  it("keeps alpha unchanged", () => {
+  it("keeps alpha unchanged, except in filters that move pixels", () => {
     const image = randomImage(12, 9, 2, true);
     for (const [id, params] of CASES) {
-      const out = runFilter(image, get(id), params).image;
+      const filter = get(id);
+      if ("movesAlpha" in filter && filter.movesAlpha) continue;
+      const out = runFilter(image, filter, params).image;
       for (let i = 3; i < out.data.length; i += 4) expect(out.data[i]).toBe(image.data[i]);
     }
   });

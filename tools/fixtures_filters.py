@@ -24,6 +24,7 @@ from fixtures_artistic import add_artistic_cases, add_dither_cases
 from fixtures_binary import add_binary_cases
 from fixtures_canny import add_canny_cases
 from fixtures_corners import add_corner_cases
+from fixtures_distort import add_distort_cases
 from fixtures_edge import add_edge_plane_cases
 from fixtures_frequency import add_frequency_cases
 from fixtures_gradients import add_gradient_cases
@@ -486,6 +487,7 @@ def filter_cases() -> dict[str, Any]:
     add_artistic_cases(plane, add)
     add_dither_cases(plane, add)
     add_painterly_plane_cases(plane, add)
+    add_distort_cases(plane, add)
 
     fir_taps = [
         {

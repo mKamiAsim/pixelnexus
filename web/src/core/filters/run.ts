@@ -211,7 +211,10 @@ export function processImage(
     case "smooth":
     case "derived": {
       const { color, warnings } = processPlanes(filter, params, r, g, b, a, options);
-      return { color, alpha: a, derived: filter.kind === "derived", warnings };
+      const alpha = filter.movesAlpha
+        ? filter.plane(a, params, { border: borderOf(params), originX, originY, channel: 3 })
+        : a;
+      return { color, alpha, derived: filter.kind === "derived", warnings };
     }
     case "color": {
       const guide = options.guide ? toPlanes(options.guide) : null;

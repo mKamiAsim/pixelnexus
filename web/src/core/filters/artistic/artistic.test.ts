@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import { createPlane, type Plane } from "@/core/filters/planes";
 
+import { runFilter } from "@/core/filters/run";
+import { createImage } from "@/core/image/types";
+
+import {
+  barrelFilter,
+  fisheyeSource,
+  pincushionFilter,
+  polynomialSource,
+  rippleFilter,
+  swirlFilter,
+  waveFilter,
+} from "./distort";
 import { bayerMatrix, ditherPlane } from "./dither";
 import { bloomFilter, tiltShiftPlane, tiltSigma } from "./lens";
 import { circleInSquare, colorDodge, dotRadius, halftonePlane, oilPaint } from "./painterly";
@@ -86,5 +98,47 @@ describe("painterly and lens effects", () => {
     );
     const flat = [0, 1, 2].map(() => createPlane(10, 10, 90)) as [Plane, Plane, Plane];
     oilPaint(flat, 2, 16, "reflect101").forEach((p) => p.data.forEach((v) => expect(v).toBe(90)));
+  });
+});
+
+describe("geometric distortions", () => {
+  const ctx = { border: "reflect101", originX: 0, originY: 0, channel: 0 } as const;
+  const plane = createPlane(17, 11);
+  plane.data.forEach((_, i) => (plane.data[i] = (i * 29) % 251));
+
+  it("changes nothing at strength or amplitude 0", () => {
+    for (const [filter, params] of [
+      [barrelFilter, { strength: 0 }],
+      [pincushionFilter, { strength: 0 }],
+      [rippleFilter, { amplitude: 0 }],
+      [waveFilter, { amplitude: 0, direction: "both" }],
+      [swirlFilter, { strength: 0 }],
+    ] as const) {
+      const out = filter.plane(plane, params, ctx);
+      out.data.forEach((v, i) => expect(v).toBeCloseTo(plane.data[i] ?? 0, 3));
+    }
+  });
+
+  it("keeps the corners in place with Keep corners, and fisheye does too", () => {
+    expect(polynomialSource(0.4, true)(1)).toBeCloseTo(1, 12);
+    expect(polynomialSource(-0.2, true)(1)).toBeCloseTo(1, 12);
+    expect(fisheyeSource(150)(1)).toBeCloseTo(1, 12);
+    // The fisheye magnifies the center: a small radius reads from closer in.
+    expect(fisheyeSource(150)(0.1)).toBeLessThan(0.1);
+  });
+
+  it("moves alpha with the colors", () => {
+    const image = createImage(16, 12);
+    for (let i = 0; i < 16 * 12; i++) image.data.set([200, 100, 50, i % 16 < 8 ? 255 : 0], i * 4);
+    const out = runFilter(image, waveFilter, {
+      amplitude: 3,
+      wavelength: 6,
+      direction: "horizontal",
+    }).image;
+    const changed = Array.from(
+      { length: 16 * 12 },
+      (_, i) => out.data[i * 4 + 3] !== image.data[i * 4 + 3],
+    );
+    expect(changed.some(Boolean)).toBe(true);
   });
 });

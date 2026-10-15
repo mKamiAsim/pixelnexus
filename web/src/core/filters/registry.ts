@@ -184,6 +184,14 @@ import {
   wolfFilter,
 } from "./segmentation/thresholds";
 import { cclLabelFilter, kmeansColorFilter, regionGrowingFilter } from "./segmentation/regions";
+import {
+  barrelFilter,
+  fisheyeFilter,
+  pincushionFilter,
+  rippleFilter,
+  swirlFilter,
+  waveFilter,
+} from "./artistic/distort";
 import { ditheringFilter } from "./artistic/dither";
 import { pixelateFilter, vignetteFilter } from "./artistic/effects";
 import { edgeEnhanceFilter, embossFilter, outlineFilter } from "./artistic/kernels";
@@ -395,6 +403,12 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   bloomFilter,
   bokehFilter,
   tiltShiftFilter,
+  fisheyeFilter,
+  barrelFilter,
+  pincushionFilter,
+  swirlFilter,
+  rippleFilter,
+  waveFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

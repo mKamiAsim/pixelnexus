@@ -164,6 +164,11 @@ export interface PlaneFilter extends FilterBase {
    * that applies at pixel (x, y) of the plane.
    */
   readonly pointTableAt?: (params: Params, plane: Plane, x: number, y: number) => Float64Array;
+  /**
+   * True for geometric filters that move pixels, such as a swirl. The same plane function then
+   * moves the alpha plane too, so transparency travels with the colors.
+   */
+  readonly movesAlpha?: boolean;
 }
 
 /**
