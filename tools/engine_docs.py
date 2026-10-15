@@ -59,6 +59,12 @@ from pixelnexus_engine.filters.restoration import (
     support_mask,
     tv_deblur,
 )
+from pixelnexus_engine.filters.ridges import (
+    frangi_filter,
+    hessian_filter,
+    meijering_filter,
+    sato_filter,
+)
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
@@ -1354,6 +1360,78 @@ def sr_classical_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Ridge filters ----------------------------------------------------------------------------------
+
+RIDGE_FILTERS = {
+    "frangi": ("Frangi", frangi_filter),
+    "hessian": ("Hybrid Hessian", hessian_filter),
+    "sato": ("Sato", sato_filter),
+    "meijering": ("Meijering", meijering_filter),
+}
+RIDGE_WIDTHS = (1, 2, 4, 8)
+
+
+def ridge_scene() -> tuple[Gray, list[NDArray[np.bool_]], NDArray[np.bool_]]:
+    """Four dark waves 1, 2, 4 and 8 pixels wide and a dark disk of radius 6 on a bright ground,
+    with Gaussian noise of sigma 4. Also the center line of each wave and the disk center."""
+    height, width = 160, 192
+    y, x = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
+    image = np.full((height, width), 200.0)
+    centers = []
+    for k, w in enumerate(RIDGE_WIDTHS):
+        middle = 22 + 30 * k + 5 * np.sin(2 * np.pi * x / 96)
+        image[np.abs(y - middle) <= w / 2] = 70
+        centers.append(np.abs(y - middle) < 0.5)
+    image[(x - 172) ** 2 + (y - 145) ** 2 <= 36] = 70
+    blob = (np.abs(x - 172) < 1) & (np.abs(y - 145) < 1)
+    return noisy(np.asarray(ndimage.gaussian_filter(image, 0.6)), 4, seed=11), centers, blob
+
+
+def ridge_docs(out: dict[Path, str], filter_id: str) -> None:
+    name, function = RIDGE_FILTERS[filter_id]
+    scene, centers, blob = ridge_scene()
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Four dark waves 1, 2, 4 and 8 pixels wide and a dark disk, with noise, "
+            f"and the {name} filter with the defaults, with the scales 1 to 3 only, and "
+            "looking for bright ridges.",
+            "panels": [
+                {"title": "Input", "image": picture(scene)},
+                {"title": "Defaults", "image": picture(run(function, scene, filter_id))},
+                {
+                    "title": "Scales 1 to 3",
+                    "image": picture(run(function, scene, filter_id, sigmaMax=3, sigmaStep=1)),
+                },
+                {
+                    "title": "Bright ridges",
+                    "image": picture(run(function, scene, filter_id, ridges="bright")),
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    def cells(result: Gray) -> list[str]:
+        values = [f"{np.median(result[center]):.0f}" for center in centers]
+        return [*values, f"{np.median(result[blob]):.0f}"]
+
+    rows = [
+        ["Defaults (1 to 9)", *cells(run(function, scene, filter_id))],
+        ["Scales 1 to 3", *cells(run(function, scene, filter_id, sigmaMax=3, sigmaStep=1))],
+        ["Scales 5 to 9", *cells(run(function, scene, filter_id, sigmaMin=5))],
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Scales", *(f"Width {w}" for w in RIDGE_WIDTHS), "Disk"], rows)
+        + "\nThe image of the figure: four dark waves on a ground of 200, at 70 before a blur of "
+        "sigma 0.6 and noise of sigma 4, and a dark disk of radius 6. The numbers are the "
+        f"result of the {name} filter from 0 to 255, as the median along the middle of each "
+        "wave and the value at the middle of the disk. Each result is stretched so its "
+        "strongest response is 255.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1379,6 +1457,8 @@ def build() -> dict[Path, str]:
     jpeg_docs(out)
     inpaint_docs(out)
     sr_classical_docs(out)
+    for filter_id in RIDGE_FILTERS:
+        ridge_docs(out, filter_id)
     return out
 
 

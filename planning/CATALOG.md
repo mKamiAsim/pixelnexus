@@ -251,10 +251,10 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | ltp | Local Ternary Pattern | | Advanced | Science | 6d |
 | glcm | GLCM features | Global table and an optional sliding-window map. | Advanced | Science | 6d |
 | hog | Histogram of Oriented Gradients | With visualization. | Advanced | Science | 6d |
-| frangi | Frangi vesselness | Ridge filters are cross-listed here. | Advanced | Science | 6d |
-| sato | Sato filter | | Advanced | Science | 6d |
-| meijering | Meijering filter | | Advanced | Science | 6d |
-| hessian | Hessian-based filter | | Advanced | Science | 6d |
+| frangi | Frangi vesselness | Ridge filters are cross-listed here. Done on 2026-10-15. | Advanced | Science | 6d |
+| sato | Sato filter | Done on 2026-10-15. | Advanced | Science | 6d |
+| meijering | Meijering filter | Done on 2026-10-15. | Advanced | Science | 6d |
+| hessian | Hessian-based filter | Hybrid Hessian filter of scikit-image. Done on 2026-10-15. | Advanced | Science | 6d |
 | blob-log | LoG blob detection | | Advanced | Science | 6d |
 | blob-dog | DoG blob detection | DoG keypoint detection. | Advanced | Science | 6d |
 | blob-doh | Determinant of Hessian | | Advanced | Science | 6d |

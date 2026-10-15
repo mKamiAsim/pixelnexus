@@ -218,6 +218,10 @@ nav:
           - Laws' texture energy: filters/features/laws.md
           - Gabor filter bank: filters/features/gabor-bank.md
           - Matched vessel filter: filters/features/matched-vessel.md
+          - Frangi vesselness: filters/features/frangi.md
+          - Hessian-based filter: filters/features/hessian.md
+          - Sato filter: filters/features/sato.md
+          - Meijering filter: filters/features/meijering.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md

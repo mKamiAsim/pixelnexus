@@ -1,7 +1,162 @@
 id: hessian
 name: Hessian-based filter
+aliases: [Hybrid Hessian filter, Wrinkle filter]
 family: features
+tags: [purpose:analysis, purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
+
+summary: The hybrid Hessian filter of Ng et al. for wrinkles and fine lines. It is Frangi's vesselness with a fixed structure constant. scikit-image sets every pixel whose response is exactly 0 to 1, so those pixels come out white.
+purpose: Find fine wrinkles and lines, as in the face images the method was made for.
+classification: {linearity: nonlinear, domain: spatial, operation: hybrid Hessian ridge measure}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/ridges.py, symbol: ridge_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma, with the BT.709 weights, and gives a gray result. With
+  the RGB scope, each channel is filtered on its own. In retinal photos the green channel often
+  shows vessels best. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect, as in scikit-image. It fills the Gaussian derivatives past the edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.filters.hessian and the Hessian (skimage.feature.hessian_matrix).'}
+
+params:
+  - key: ridges
+    label: Ridges
+    type: select
+    default: dark
+    options:
+      - {value: dark, label: Dark ridges}
+      - {value: bright, label: Bright ridges}
+    description: Whether the lines to find are darker or brighter than their surroundings. Vessels in retinal photos are dark.
+    effect: The wrong choice finds the gaps between lines instead.
+  - key: sigmaMin
+    label: Smallest scale
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 1
+    unit: px
+    description: The smallest Gaussian sigma. A line of width w responds most near sigma = w / 2 or a little less.
+    effect: Smaller values find thinner lines, and also more noise.
+  - key: sigmaMax
+    label: Largest scale
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 9
+    unit: px
+    description: The largest Gaussian sigma. If it is below the smallest scale, only the smallest is used.
+    effect: Larger values also find wide lines, and take longer.
+  - key: sigmaStep
+    label: Scale step
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.5
+    default: 2
+    unit: px
+    description: The step between the scales. The defaults give 1, 3, 5, 7 and 9, the scikit-image defaults.
+    effect: Smaller steps try more scales and take longer.
+  - key: beta
+    label: Beta
+    type: number
+    min: 0.1
+    max: 2
+    step: 0.05
+    default: 0.5
+    description: How strongly round blobs are suppressed, through R_B = |lambda_1| / lambda_2. The paper uses 0.5.
+    effect: Smaller values keep only long, thin lines.
+  - key: gamma
+    label: Gamma
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 15
+    description: The structure scale, in pixel levels per pixel squared. Responses with S well below gamma are suppressed. scikit-image uses 15.
+    effect: Larger values ignore weak lines and noise.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  V_\sigma = \begin{cases} \exp\!\left(-\frac{R_B^2}{2\beta^2}\right)\left(1 - \exp\!\left(-\frac{S^2}{2\gamma^2}\right)\right) & \text{if this is above } 0 \\ 1 & \text{otherwise} \end{cases},
+  \qquad
+  \beta = {{beta}},\ \gamma = {{gamma}}
+formulaExplanation: >-
+  The hybrid Hessian filter of Ng and coworkers uses Frangi's vesselness with a fixed gamma. R_B = |lambda_1| / lambda_2 is the blob ratio and S the norm of the Hessian, as on the
+  Frangi page. Where the curvature has the wrong sign for a ridge, scikit-image clips lambda_2,
+  and the response becomes exactly 0. Then scikit-image sets every such pixel to 1, the largest
+  value the measure can have. On the Disks image with dark ridges, this makes the inside of the
+  disks white, while the dark background stays near 0. The result is stretched so the
+  strongest response is white.
+symbols:
+  - {symbol: '\lambda_1, \lambda_2', meaning: 'The Hessian eigenvalues, |lambda_1| <= |lambda_2|'}
+  - {symbol: 'R_B', meaning: 'The blob ratio'}
+  - {symbol: 'S', meaning: 'The structure, the norm of the Hessian'}
+  - {symbol: '\beta, \gamma', meaning: 'The blob and structure constants'}
+steps:
+  - Compute the Frangi vesselness with the fixed gamma at each scale.
+  - Keep the largest response over the scales.
+  - Set every pixel with no response to 1.
+  - Stretch the result to the full range.
+complexity:
+  time: O(K N sigma)
+  memory: O(N)
+  notes: N is the number of pixels, K the number of scales and sigma the largest scale. The Gaussian derivatives are separable, and their windows reach 8 sigma.
+useCases:
+  - Wrinkles and fine lines in face images.
+  - Comparing with the Frangi filter, which this one follows closely.
+advantages:
+  - A fixed gamma gives the same scale of response on every image.
+limitations:
+  - Pixels with the wrong curvature come out white, the same as the strongest lines, because scikit-image sets responses of exactly 0 to 1. Read the result together with the Frangi filter.
+  - Gamma is in pixel levels, so the response depends on the contrast of the image.
+  - As with Frangi, wide lines respond far more weakly than thin ones when small scales are included.
+  - On noisy images, many pixels of the background have the wrong curvature, so the result is full of white speckles.
+artifacts:
+  - White patches on the wrong side of edges, such as the inside of bright shapes when looking for dark ridges.
+  - White speckles over noisy flat areas.
+references:
+  - kind: paper
+    text: Ng, C. C., Yap, M. H., Costen, N., and Li, B. Automatic wrinkle detection using hybrid Hessian filter. Computer Vision, ACCV 2014, Lecture Notes in Computer Science 9005, 609 to 622, 2015.
+    doi: 10.1007/978-3-319-16811-1_40
+  - kind: library
+    text: scikit-image documentation, skimage.filters.hessian.
+implementation: {path: engine/src/pixelnexus_engine/filters/ridges.py, symbol: hessian_filter}
+tests: [engine/tests/test_ridges.py]
+learn:
+  oneSentence: Frangi's line measure with a fixed strength scale, as used for wrinkles.
+  howItWorks:
+    - Smooth the image at several scales.
+    - At each pixel, measure how the brightness bends across and along each direction.
+    - A line bends strongly across and hardly at all along.
+    - Keep the strongest answer over the scales.
+  academic: >-
+    The hybrid Hessian filter of Ng et al.: Frangi vesselness with fixed gamma, with zero responses set to 1 as in scikit-image.
+  paramNotes:
+    ridges: Dark or bright lines.
+    sigmaMin: The thinnest lines to find.
+    sigmaMax: The widest lines to find.
+    sigmaStep: How many widths are tried.
+    beta: How strongly round blobs are removed.
+    gamma: How strong a line must be.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Compare the result with the Frangi filter on the same image.
+  pitfalls:
+    - Reading white as a strong line. Here white is also where the curvature has the wrong sign.
+  demos: [line-profile]
+related: [frangi, sato, meijering]
+docsPage: filters/features/hessian.md
