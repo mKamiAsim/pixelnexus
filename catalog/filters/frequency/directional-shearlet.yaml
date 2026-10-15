@@ -1,8 +1,210 @@
 id: directional-shearlet
 name: Shearlet-inspired directional filter
+aliases:
+- Shearlet-inspired denoising
+- Sheared frequency filter
+- Cone-adapted frequency tiling
 family: frequency
+tags: [purpose:denoise, purpose:edge]
 tier: advanced
 engine: science
 phase: 6b
-status: planned
+status: implemented-tested
 planNotes: Sheared frequency masks. Not a true shearlet transform.
+
+summary: Cuts the spectrum into smooth sheared tiles in a horizontal and a vertical cone, and removes noise in each tile or keeps the tiles of one direction. Inspired by shearlets, not a shearlet transform.
+purpose: Remove noise around lines and curved edges, or pull out the structures that run in one direction.
+classification: {linearity: nonlinear, domain: frequency, operation: directional tile thresholding}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/directional.py, symbol: directional_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is filtered, and the colors stay. With the RGB scope, each of the red,
+  green and blue channels is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters of the browser.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.rfft2 and irfft2).'}
+  - {name: PyWavelets, optional: false, note: The noise estimate from wavelet details.}
+
+params:
+  - key: mode
+    label: Mode
+    type: select
+    default: denoise
+    options:
+      - {value: denoise, label: Remove noise}
+      - {value: orientation, label: Keep one direction}
+    description: Remove noise sets the small coefficients of every tile to 0. Keep one direction keeps only the tiles near one orientation.
+    effect: Keep one direction pulls out the lines and edges that run at the chosen angle.
+  - key: scales
+    label: Scales
+    type: integer
+    min: 2
+    max: 5
+    step: 1
+    default: 3
+    description: How many bands of directional tiles, each an octave of frequency. A coarse low-pass tile covers the rest.
+    effect: More scales split coarser structures by direction too, and take longer.
+  - key: directions
+    label: Directions
+    type: select
+    default: '16'
+    options:
+      - {value: '8', label: '8'}
+      - {value: '16', label: '16'}
+      - {value: '32', label: '32'}
+    description: The number of directions at the finest scale, over 180 degrees. It halves every second scale toward the coarse end, down to 4.
+    effect: More directions follow lines more closely, and take longer.
+  - key: factor
+    label: Threshold factor
+    type: number
+    min: 0
+    max: 8
+    step: 0.1
+    default: 3
+    description: For removing noise, the threshold is this factor times the noise in each tile. 0 keeps every coefficient.
+    effect: Larger factors remove more noise and more faint detail.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal wavelet details.
+    effect: Larger values remove more.
+  - key: direction
+    label: Line angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: For keeping one direction, the angle of the lines to keep, counterclockwise on screen. 0 keeps horizontal lines.
+    effect: Lines at other angles fade.
+  - key: width
+    label: Angle range
+    type: number
+    min: 1
+    max: 90
+    step: 1
+    default: 15
+    unit: deg
+    description: For keeping one direction, the tiles whose orientation is within this many degrees of the line angle are kept.
+    effect: Smaller ranges keep fewer directions. A range below the spacing of the tiles keeps only the nearest one.
+  - key: keepCoarse
+    label: Keep coarse part
+    type: boolean
+    default: true
+    description: For keeping one direction, also keep the coarse low-pass tile, which has no direction.
+    effect: With this off, the result shows only the kept lines and edges, around a mid gray of 128.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  W_{j,k}(f) = W_j(|f|)\, V\!\left(K_j\, \frac{f_y}{f_x} - k\right),
+  \quad
+  |f_y| \le |f_x|,\ k = -K_j \ldots K_j,
+  \qquad
+  c_{j,k} = \mathcal{F}^{-1}\big(W_{j,k}\, \mathcal{F} I\big),
+  \qquad
+  \hat{I} = \mathcal{F}^{-1}\Big(W_{\text{low}}^2\, \mathcal{F} I + \sum_{j,k} W_{j,k}\, \mathcal{F}\big(\eta(c_{j,k})\big)\Big),
+  \qquad
+  4 K_0 = {{directions}}
+formulaExplanation: >-
+  Cone-adapted shearlets, after Guo and Labate, split the spectrum into a horizontal cone,
+  where |f_y| <= |f_x|, and a vertical cone. In each cone, the directions are set by shearing.
+  The slope f_y / f_x, or f_x / f_y in the vertical cone, is cut into windows centered at k / K_j.
+  So the directions are evenly spaced in slope, not in angle. Here the radial windows W_j are
+  those of the curvelet-inspired filter, with squares that add up to 1. V uses Meyer's
+  polynomial nu, so the squares of neighboring slope windows add up to 1 too. The tiles of the
+  two cones that meet at a diagonal are joined into one, which gives 4 K_j tiles per band. K_j
+  halves every second scale toward the coarse end. Noise removal and orientation work as in the
+  curvelet-inspired filter. The tiles are not shearlets of a shearlet transform, which come
+  with their own sampling and generating functions, so this is a shearlet-inspired filter.
+symbols:
+  - {symbol: 'f_x, f_y', meaning: 'A frequency in cycles per pixel, with f_y growing downward'}
+  - {symbol: 'W_j', meaning: The radial window of band j. Band 0 is the finest.}
+  - {symbol: 'V', meaning: 'The slope window, with Meyer''s polynomial nu'}
+  - {symbol: 'K_j', meaning: 'The number of shears on each side of the cone axis in band j'}
+  - {symbol: 'c_{j,k}', meaning: The coefficients of tile j k}
+  - {symbol: '\eta', meaning: Hard thresholding at k sigma times the RMS of the mask}
+steps:
+  - Extend the channel with the border mode and take its FFT.
+  - Build the tiles, smooth masks whose squares add up to 1 at every frequency.
+  - To keep one direction, multiply the spectrum by the sum of the squared masks of the kept tiles and transform back.
+  - To remove noise, for each tile multiply the spectrum by its mask and transform back to get its coefficients.
+  - Set the coefficients below the factor times the noise of the tile to 0. Keep the coarse low-pass tile as it is.
+  - Transform each tile back, multiply by its mask again, add all tiles and transform back.
+  - Cut the result back to the image.
+complexity:
+  time: O(T N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and T the number of tiles. Removing noise needs two FFTs per tile. Keeping one direction needs one FFT each way.
+useCases:
+  - Removing noise from images with lines and edges, such as drawings, roads, fibers or wood grain.
+  - Pulling out the lines that run in one direction, such as scratches or a fabric weave.
+  - Learning how directional frequency tilings work, before the real transforms.
+advantages:
+  - The squares of the masks add up to 1, so with nothing removed the image comes back exactly.
+  - Long lines and edges fall into few tiles, so they survive a high threshold.
+limitations:
+  - Not a shearlet transform. The tiles borrow the cone-adapted shearlet tiling, but the coefficients are full-size images, one per tile, without the sampling of a real shearlet transform.
+  - The directions are even in slope, so they are closer together near the cone axes than near the diagonals.
+  - The noise level of each tile assumes white noise of the same strength everywhere.
+  - Slower than wavelet thresholding, since every tile needs its own FFTs.
+artifacts:
+  - Faint directional streaks where noise lines up by chance with a tile.
+  - Ringing along edges at angles between two tiles, where both tiles are thresholded apart.
+references:
+  - kind: paper
+    text: Guo, K., and Labate, D. Optimally sparse multidimensional representation using shearlets. SIAM Journal on Mathematical Analysis 39(1), 298 to 318, 2007.
+    doi: 10.1137/060649781
+  - kind: paper
+    text: Kutyniok, G., and Labate, D. Introduction to shearlets. In Shearlets. Multiscale Analysis for Multivariate Data, 1 to 38. Birkhauser, 2012.
+    doi: 10.1007/978-0-8176-8316-0_1
+  - kind: book
+    text: Daubechies, I. Ten Lectures on Wavelets. SIAM, 1992. Meyer's auxiliary polynomial nu.
+    doi: 10.1137/1.9781611970104
+implementation: {path: engine/src/pixelnexus_engine/filters/directional.py, symbol: directional_shearlet}
+tests: [engine/tests/test_directional.py]
+learn:
+  oneSentence: Split the image into pieces by size and by shear in two cones of directions, clean each piece, and put them back.
+  howItWorks:
+    - Take the spectrum of the image.
+    - Cut it into tiles, each for one band of sizes and one range of directions.
+    - In each tile, keep the strong parts, which belong to lines and edges, and drop the weak ones. Or keep only the tiles of one direction.
+    - Put the tiles back together.
+  academic: >-
+    A tight frame of smooth sheared masks in the Fourier domain, after the cone-adapted
+    shearlet tiling, with octave radial bands, slope windows built from Meyer's polynomial and
+    joined diagonal tiles. Hard thresholding of the tile coefficients at k times their noise
+    level, or selection of tiles by orientation.
+  paramNotes:
+    mode: Clean noise, or keep one direction.
+    scales: How many sizes of detail are split by direction.
+    directions: How finely the directions are split.
+    factor: How high the cut-off is, in noise levels.
+    sigma: How strong the noise is. 0 measures it.
+    direction: Which lines to keep.
+    width: How many directions near it to keep.
+    keepCoarse: Whether to keep the blurred base image.
+    border: How the image is extended past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Open an image with lines, choose Keep one direction and turn the line angle.
+    - Compare this filter with wavelet thresholding on a noisy drawing.
+  pitfalls:
+    - An angle range smaller than the spacing of the tiles. It keeps only the one nearest tile.
+  demos: [noise-lab]
+related: [directional-curvelet, radon-filter, ridgelet, log-gabor, swt-denoise]
+docsPage: filters/frequency/directional-shearlet.md

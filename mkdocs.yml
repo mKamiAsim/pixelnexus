@@ -266,6 +266,9 @@ nav:
           - Phase-only filter: filters/frequency/phase-only.md
           - Spectral whitening: filters/frequency/spectral-whitening.md
           - Log-Gabor filter: filters/frequency/log-gabor.md
+          - Radon and Fourier slice filtering: filters/frequency/radon-filter.md
+          - Curvelet-inspired directional filter: filters/frequency/directional-curvelet.md
+          - Shearlet-inspired directional filter: filters/frequency/directional-shearlet.md
       - Multiscale:
           - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
           - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
@@ -273,6 +276,7 @@ nav:
           - Stationary wavelet filtering: filters/multiscale/swt-denoise.md
           - Wavelet thresholding: filters/multiscale/wavelet-threshold.md
           - Wavelet Wiener filtering: filters/multiscale/wavelet-wiener.md
+          - Ridgelet filtering: filters/multiscale/ridgelet.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

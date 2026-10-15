@@ -17,6 +17,7 @@ Checks:
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 from collections import Counter
@@ -188,13 +189,25 @@ ENGINE_FILTERS = ROOT / "engine" / "src" / "pixelnexus_engine" / "filters"
 def _engine_registration_issues(entry: dict[str, Any], source: str, where: str) -> Iterator[Issue]:
     """A science filter registers its catalog id, in a module the filters package imports."""
     entry_id = entry.get("id", "")
-    if f'register("{entry_id}"' not in source:
+    if not re.search(rf'register\(\s*"{re.escape(entry_id)}"', source):
         yield Issue("error", where, f'the implementation does not register "{entry_id}"')
     path = ROOT / (entry.get("implementation") or {}).get("path", "")
     package = ENGINE_FILTERS / "__init__.py"
-    imports = package.read_text(encoding="utf-8") if package.is_file() else ""
-    if path.parent != ENGINE_FILTERS or not re.search(rf"\bimport {path.stem}\b", imports):
+    if path.parent != ENGINE_FILTERS or path.stem not in _imported_modules(package):
         yield Issue("error", where, f"'{path.stem}' is not imported in {_rel(package)}")
+
+
+def _imported_modules(package: Path) -> set[str]:
+    """The names imported from pixelnexus_engine.filters in the package's __init__.py."""
+    if not package.is_file():
+        return set()
+    tree = ast.parse(package.read_text(encoding="utf-8"))
+    return {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "pixelnexus_engine.filters"
+        for alias in node.names
+    }
 
 
 def summary(catalog: Catalog) -> str:

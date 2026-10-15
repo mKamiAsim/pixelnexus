@@ -1,8 +1,161 @@
 id: radon-filter
 name: Radon and Fourier slice filtering
+aliases:
+- Radon transform
+- Sinogram
+- Filtered back projection
+- Ramp filter
+- Fourier slice theorem
 family: frequency
+tags: [purpose:analysis]
 tier: advanced
 engine: science
 phase: 6b
-status: planned
+status: implemented-tested
 planNotes: Sinogram, ramp filter, filtered back projection.
+
+summary: Sums the image along straight lines at many angles to make a sinogram, then rebuilds the image from it by back projection, with or without the ramp filter.
+purpose: Show how computed tomography sees an image and rebuilds it, and what too few angles or a softer filter do to the result.
+classification: {linearity: linear, domain: transform, operation: Radon transform and filtered back projection}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/radon.py, symbol: radon_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is used. The sinogram and the plain back projection are then gray, and
+  the filtered back projection keeps the colors. With the RGB scope, each of the red, green and
+  blue channels is handled on its own.
+boundary: >-
+  The image is placed in the middle of a square of zeros. The Radon transform sees zero outside
+  it, and the result is cut back to the image.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'The Radon transform (radon), the back projection (iradon) and the ramp filter windows.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: fbp
+    options:
+      - {value: sinogram, label: Sinogram}
+      - {value: backprojection, label: Back projection without filter}
+      - {value: fbp, label: Filtered back projection}
+    description: Which stage to show. The sinogram is resized to the image, with the angle across and the position along the detector down.
+    effect: The sinogram and the plain back projection are stretched to the full gray range. The filtered back projection keeps the values of the image.
+  - key: angles
+    label: Angles
+    type: integer
+    min: 2
+    max: 720
+    step: 1
+    default: 180
+    description: How many projection angles, spread evenly over 180 degrees.
+    effect: Few angles leave straight streaks across the rebuilt image. More angles take longer.
+  - key: window
+    label: Filter window
+    type: select
+    default: ramp
+    options:
+      - {value: ramp, label: Ramp}
+      - {value: shepp-logan, label: Shepp-Logan}
+      - {value: cosine, label: Cosine}
+      - {value: hamming, label: Hamming}
+      - {value: hann, label: Hann}
+    description: The window that multiplies the ramp filter, for the filtered back projection.
+    effect: The ramp alone keeps the most detail and the most noise. Hamming and Hann soften both.
+  - ref: channelScope
+    default: luminance
+formula: |
+  p_\theta(t) = \sum_{x \cos\theta - y \sin\theta\, =\, t} I(x, y),
+  \quad
+  \theta_i = \frac{180^\circ\, i}{n},
+  \qquad
+  Q_i = h * p_{\theta_i},
+  \quad
+  \hat{I}(x, y) = \frac{\pi}{2n} \sum_{i=0}^{n-1} Q_i(x \cos\theta_i - y \sin\theta_i),
+  \qquad
+  n = {{angles}}
+formulaExplanation: >-
+  The Radon transform p_theta(t) sums the image along the line at angle theta and distance t
+  from the middle. Stacking the projections for all angles gives the sinogram. A point turns
+  into a sine curve there, which gives the sinogram its name. The Fourier slice theorem says
+  that the 1-D Fourier transform of one projection is the slice of the 2-D Fourier transform of
+  the image along the same angle. So the projections hold the whole spectrum, but the slices
+  crowd together near the center and spread apart far from it. Plain back projection smears each
+  projection back along its lines and sums them. That blurs the image, since low frequencies
+  are counted too often. The ramp filter h, whose response grows with |frequency|, undoes this
+  weighting. Here h is the sampled ramp filter of Kak and Slaney. It has h(0) = 1/4,
+  h(k) = -1 / (pi k)^2 for odd k and 0 for even k. It is applied with the FFT and multiplied by
+  the chosen window. x grows to the right and y downward from the middle.
+symbols:
+  - {symbol: 'I(x, y)', meaning: 'The input channel, with x to the right and y downward from the middle'}
+  - {symbol: 'p_\theta(t)', meaning: 'The projection at angle theta, at position t along the detector'}
+  - {symbol: 'n, \theta_i', meaning: The number of angles and the angles themselves}
+  - {symbol: 'h', meaning: 'The ramp filter, times the window'}
+  - {symbol: 'Q_i', meaning: The filtered projection at angle theta_i}
+  - {symbol: '\hat{I}', meaning: The rebuilt channel}
+steps:
+  - Place the channel in the middle of a square of zeros.
+  - For each of the n angles, sum the channel along parallel lines to get one projection.
+  - For the sinogram, resize the projections to the image and stretch them to the full gray range.
+  - Otherwise, filter each projection with the ramp filter and the window, or skip that for plain back projection.
+  - Smear each projection back along its lines, add them up and multiply by pi / (2 n).
+  - Cut the result back to the image.
+complexity:
+  time: O(N n)
+  memory: O(N + n sqrt(N))
+  notes: N is the number of pixels and n the number of angles. Each projection and each back projection touches every pixel once.
+useCases:
+  - Learning how computed tomography rebuilds an image from projections.
+  - Seeing why too few angles make streaks, and how the filter window trades detail for noise.
+  - Finding straight lines, which turn into bright points in the sinogram.
+advantages:
+  - Every stage is visible, from the sinogram to the rebuilt image.
+  - With enough angles, the filtered back projection gives the image back closely.
+limitations:
+  - The sampled transform and its back projection are not exact inverses. Fine detail and thin lines lose some contrast.
+  - Slow for large images, since each angle touches every pixel twice.
+  - Values outside the image count as zero, so a bright image edge acts like a step.
+artifacts:
+  - Straight streaks across the image when there are few angles.
+  - Ringing next to sharp edges with the ramp filter.
+references:
+  - kind: book
+    text: Kak, A. C., and Slaney, M. Principles of Computerized Tomographic Imaging. SIAM, 2001. Reprint of the IEEE Press edition of 1988.
+    doi: 10.1137/1.9780898719277
+  - kind: paper
+    text: Shepp, L. A., and Logan, B. F. The Fourier reconstruction of a head section. IEEE Transactions on Nuclear Science 21(3), 21 to 43, 1974.
+    doi: 10.1109/TNS.1974.6499235
+  - kind: library
+    text: scikit-image, skimage.transform.radon and iradon.
+    url: https://scikit-image.org/docs/stable/api/skimage.transform.html
+implementation: {path: engine/src/pixelnexus_engine/filters/radon.py, symbol: radon_filter}
+tests: [engine/tests/test_radon.py]
+learn:
+  oneSentence: Look at the image from many angles as an X-ray scanner does, then rebuild it from those views.
+  howItWorks:
+    - Add up the brightness along parallel lines, for one angle at a time.
+    - Each angle gives one row of numbers. Together they make the sinogram.
+    - Spread each row back over the image along its lines, and add them up.
+    - Sharpen the rows first with the ramp filter, or the rebuilt image is blurred.
+  academic: >-
+    Discrete Radon transform over n equally spaced angles, and filtered back projection with
+    the Kak and Slaney ramp filter and optional windows, after the Fourier slice theorem.
+  paramNotes:
+    output: Which step to show.
+    angles: How many views to take.
+    window: How much the sharpening is softened.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Choose the sinogram on an image with straight lines. Each line turns into a bright point.
+    - Rebuild the image with 10 angles, then with 180, and watch the streaks fade.
+    - Compare plain back projection with the filtered one.
+  pitfalls:
+    - Too few angles. The rebuilt image fills with streaks.
+  demos: [stage-viewer]
+related: [ridgelet, hough-lines, directional-curvelet, directional-shearlet, ideal-lowpass]
+docsPage: filters/frequency/radon-filter.md

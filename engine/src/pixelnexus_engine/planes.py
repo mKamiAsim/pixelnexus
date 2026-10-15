@@ -47,8 +47,14 @@ def to_uint8(plane: Plane) -> NDArray[np.uint8]:
     return np.clip(np.rint(plane), 0, 255).astype(np.uint8)
 
 
-def filter_by_scope(image: Rgba, scope: str, function: PlaneFunction, progress: Progress) -> Rgba:
-    """Run a plane function on the planes the channel scope names, and rebuild the image."""
+def filter_by_scope(
+    image: Rgba, scope: str, function: PlaneFunction, progress: Progress, derived: bool = False
+) -> Rgba:
+    """Run a plane function on the planes the channel scope names, and rebuild the image.
+
+    A derived result, such as a sinogram, is a new quantity, not a changed brightness. With the
+    brightness scope it becomes a gray image, as for the derived browser filters.
+    """
     r, g, b = (image[..., channel].astype(np.float64) for channel in range(3))
     if scope in ("rgb", "per-channel"):
         planes = [r, g, b]
@@ -61,8 +67,8 @@ def filter_by_scope(image: Rgba, scope: str, function: PlaneFunction, progress: 
         y, cb, cr = rgb_to_ycc(r, g, b)
         y = function(y, 0)
         progress(1.0)
-        color = ycc_to_rgb(y, cb, cr)
-    elif scope == "chroma":
+        color = (y, y, y) if derived else ycc_to_rgb(y, cb, cr)
+    elif scope == "chroma" and not derived:
         y, cb, cr = rgb_to_ycc(r, g, b)
         cb = function(cb, 1)
         progress(0.5)

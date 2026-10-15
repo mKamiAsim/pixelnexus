@@ -27,6 +27,13 @@ import numpy as np
 import pywt
 from numpy.typing import NDArray
 
+from pixelnexus_engine.filters.directional import (
+    BANKS,
+    directional_curvelet,
+    directional_shearlet,
+    frequency_grid,
+)
+from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -341,11 +348,199 @@ def wavelet_wiener_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Radon transform filters -------------------------------------------------------------------
+
+
+def lines_image(size: int = 160) -> Gray:
+    """Three straight lines, 3 pixels wide, at 200 on a background of 60."""
+    y, x = np.mgrid[0:size, 0:size]
+    image = np.full((size, size), 60.0)
+    for a, b, c in ((1, 0.4, -60), (0.3, -1, 90), (1, -1, 10)):
+        distance = np.abs(a * x + b * y + c) / math.hypot(a, b)
+        image = np.where(distance < 1.5, 200.0, image)
+    return image.astype(np.uint8)
+
+
+def radon_docs(out: dict[Path, str]) -> None:
+    filter_id = "radon-filter"
+    clean = disks(160, 160)
+
+    def radon(**values: Any) -> Gray:
+        return run(radon_filter, clean, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "The disks, their sinogram, the plain back projection, and the filtered "
+            "back projection with 180 angles, with 30 angles, and with 180 angles and the Hann "
+            "window.",
+            "panels": [
+                {"title": "Disks", "image": picture(clean)},
+                {"title": "Sinogram", "image": picture(radon(output="sinogram"))},
+                {"title": "No filter", "image": picture(radon(output="backprojection"))},
+                {"title": "Ramp, 180", "image": picture(radon())},
+                {"title": "Ramp, 30", "image": picture(radon(angles=30))},
+                {"title": "Hann, 180", "image": picture(radon(window="hann"))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    counts = [10, 30, 90, 180, 360]
+    rows = [
+        [w.capitalize(), *(fix(psnr(radon(angles=n, window=w), clean), 2) for n in counts)]
+        for w in ("ramp", "hann")
+    ]
+    image = np.random.default_rng(0).random((48, 48))
+    values, _ = sinogram(image, 4)
+    pad = (values.shape[0] - 48) // 2
+    slice_error = float(
+        np.abs(np.fft.fft(values[pad : pad + 48, 0]) - np.fft.fft2(image)[0, :]).max()
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Window", *(f"{n} angles" for n in counts)], rows)
+        + "\nThe PSNR in dB of the filtered back projection against the disks, 160 by 160 "
+        "pixels. Here more angles help up to about 180. Beyond that, the sampled transform "
+        "itself limits the result. The Hann window gives a lower PSNR on this clean image, "
+        "since it softens fine detail. On noisy projections, it softens the noise too.\n\n"
+        "The Fourier slice theorem can be checked exactly at 0 degrees, where a projection is "
+        "the sum of each column. For a random image of 48 by 48 pixels, the 1-D FFT of that "
+        "projection and the row f_y = 0 of the 2-D FFT of the image differ by at most "
+        f"{slice_error:.1e}, which is rounding.\n"
+    )
+
+
+def ridgelet_docs(out: dict[Path, str]) -> None:
+    filter_id = "ridgelet"
+    clean = lines_image()
+    damaged = noisy(clean, 20, 7)
+
+    def ridge(**values: Any) -> Gray:
+        return run(ridgelet, damaged, filter_id, **values)
+
+    threshold = run(wavelet_threshold, damaged, "wavelet-threshold")
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Three lines with Gaussian noise of sigma 20, the Radon round trip "
+            "alone, ridgelet filtering with the defaults, and wavelet thresholding.",
+            "panels": [
+                {"title": "Noisy", "image": picture(damaged)},
+                {"title": "Round trip", "image": picture(ridge(factor=0))},
+                {"title": "Ridgelet", "image": picture(ridge())},
+                {"title": "Wavelet threshold", "image": picture(threshold)},
+            ],
+        },
+        separators=(",", ":"),
+    )
+    values, offset = sinogram(clean.astype(np.float64), 180)
+    cap = psnr(
+        np.clip(np.rint(back_project(values, clean.shape, offset, "ramp")), 0, 255).astype(
+            np.uint8
+        ),
+        clean,
+    )
+    rows = [
+        ["Noisy", fix(psnr(damaged, clean), 2)],
+        ["Radon round trip, factor 0", fix(psnr(ridge(factor=0), clean), 2)],
+        *([f"Ridgelet, factor {k}", fix(psnr(ridge(factor=k), clean), 2)] for k in (2, 3, 4)),
+        ["Wavelet thresholding, BayesShrink", fix(psnr(threshold, clean), 2)],
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Result", "PSNR in dB"], rows)
+        + "\nThree straight lines, 3 pixels wide, at 200 on a background of 60, 160 by 160 "
+        "pixels, with Gaussian noise of sigma 20 from NumPy's default_rng with seed 7. The "
+        "ridgelet rows use 180 angles, db4, 4 levels and hard thresholding. The Radon round trip "
+        "alone, without noise, gives the clean lines back at only "
+        f"{fix(cap, 2)} dB, since the sampled transform blurs thin lines. That caps what any "
+        "threshold can reach. Here ridgelet filtering beats the round trip but not wavelet "
+        "thresholding.\n"
+    )
+
+
+# Directional filters ------------------------------------------------------------------------
+
+
+def directional_docs(out: dict[Path, str], bank: str) -> None:
+    filter_id = f"directional-{bank}"
+    function = directional_curvelet if bank == "curvelet" else directional_shearlet
+    name = "Curvelet-inspired" if bank == "curvelet" else "Shearlet-inspired"
+    lines = lines_image()
+    damaged = noisy(lines, 20, 7)
+
+    def directional(gray: Gray, **values: Any) -> Gray:
+        return run(function, gray, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": f"Three lines with Gaussian noise of sigma 20, the {name.lower()} filter "
+            "removing noise with the defaults, wavelet thresholding, and the clean lines with "
+            "only the direction of the 135 degree line kept, without the coarse part.",
+            "panels": [
+                {"title": "Noisy", "image": picture(damaged)},
+                {"title": name, "image": picture(directional(damaged))},
+                {
+                    "title": "Wavelet threshold",
+                    "image": picture(run(wavelet_threshold, damaged, "wavelet-threshold")),
+                },
+                {
+                    "title": "Lines at 135 degrees",
+                    "image": picture(
+                        directional(lines, mode="orientation", direction=135, keepCoarse=False)
+                    ),
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    rows = []
+    for label, clean in (("Lines", lines), ("Disks", disks(160, 160))):
+        dirty = noisy(clean, 20, 7)
+        rows.append(
+            [
+                label,
+                fix(psnr(dirty, clean), 2),
+                *(fix(psnr(directional(dirty, factor=k), clean), 2) for k in (2, 3, 4)),
+                fix(psnr(run(wavelet_threshold, dirty, "wavelet-threshold"), clean), 2),
+                fix(psnr(run(swt_denoise, dirty, "swt-denoise"), clean), 2),
+            ]
+        )
+    params = catalog_values(filter_id)
+    fx, fy = frequency_grid(64, 64)
+    tiles = BANKS[bank](fx, fy, params["scales"], int(params["directions"]))
+    per_scale = [
+        sum(1 for t in tiles if t.scale == s and t.angle is not None)
+        for s in range(params["scales"])
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Image", "Noisy", "Factor 2", "Factor 3", "Factor 4", "Wavelet", "Stationary"],
+            rows,
+        )
+        + "\nThe PSNR in dB against the clean image, for Gaussian noise of sigma 20 from "
+        "NumPy's default_rng with seed 7. Both images are 160 by 160 pixels. The lines image "
+        "has three straight lines, 3 pixels wide. Factor 2 to 4 is the threshold factor of this "
+        "filter, with its other defaults. Wavelet is wavelet thresholding and Stationary is "
+        "stationary wavelet filtering, both with their defaults. With the defaults there are "
+        f"{', '.join(str(n) for n in per_scale)} directional tiles from the finest scale to the "
+        "coarsest, plus the low-pass tile.\n"
+    )
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
     swt_denoise_docs(out)
     wavelet_wiener_docs(out)
+    radon_docs(out)
+    ridgelet_docs(out)
+    directional_docs(out, "curvelet")
+    directional_docs(out, "shearlet")
     return out
 
 

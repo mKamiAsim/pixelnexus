@@ -116,7 +116,7 @@ def sure_threshold(detail: Coefficients, sigma: float) -> float:
     return sigma * sure_minimizer(x, universal)
 
 
-def shrink(detail: Coefficients, threshold: float, mode: str) -> Coefficients:
+def shrink(detail: Coefficients, threshold: float | Coefficients, mode: str) -> Coefficients:
     """Soft: sign(w) max(|w| - T, 0). Hard: w where |w| >= T, else 0. As pywt.threshold."""
     magnitude = np.abs(detail)
     if mode == "hard":

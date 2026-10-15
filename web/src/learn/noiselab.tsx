@@ -3,7 +3,7 @@
  * selected filter and its current settings, and measure both against the clean patch. Every
  * step runs the real filter code. Science filters repair the patch in the local engine.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { browserFilter } from "@/core/filters/registry";
@@ -11,10 +11,9 @@ import { runFilter } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
 import { qualityMetrics } from "@/core/metrics/quality";
-import { runJob } from "@/engine-client";
-import { useEngine } from "@/state/engine";
 
 import { patchAt, round } from "./common";
+import { useEngineResults } from "./engine";
 import { PixelCanvas, type WidgetProps } from "./widgets";
 
 type Damage = "gaussian" | "salt-pepper" | "speckle" | "poisson" | "periodic" | "blur";
@@ -58,13 +57,6 @@ function damage(image: RgbaImage, kind: Damage): RgbaImage {
   }
 }
 
-interface EngineAnswer {
-  readonly noisy: RgbaImage;
-  readonly values: Params;
-  readonly image?: RgbaImage;
-  readonly message?: string;
-}
-
 /**
  * The repaired patch. Browser filters run at once. Science filters run in the engine a moment
  * after the last change, and the note says why there is no picture yet.
@@ -79,36 +71,10 @@ function useRepair(
     () => (inBrowser ? run(noisy, filterId, values) : null),
     [inBrowser, noisy, filterId, values],
   );
-  const engine = useEngine((s) => s.status);
-  const [answer, setAnswer] = useState<EngineAnswer | null>(null);
-  useEffect(() => {
-    if (inBrowser || engine !== "online") return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      runJob({ filterId, values, image: noisy }, { signal: controller.signal })
-        .then((result) => setAnswer({ noisy, values, image: result.image }))
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
-          const message = error instanceof Error ? error.message : "The engine did not answer.";
-          setAnswer({ noisy, values, message });
-        });
-    }, 200);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [inBrowser, engine, filterId, values, noisy]);
+  const inputs = useMemo(() => [{ image: noisy, values }], [noisy, values]);
+  const engine = useEngineResults(filterId, inputs, !inBrowser);
   if (browserImage) return { image: browserImage, note: "" };
-  if (engine === "offline") {
-    return {
-      image: null,
-      note: "This filter runs in the PixelNexus engine, which is not running. Start it with: uv run pixelnexus-engine",
-    };
-  }
-  if (answer?.noisy !== noisy || answer.values !== values) {
-    return { image: null, note: "Repairing the patch in the PixelNexus engine." };
-  }
-  return { image: answer.image ?? null, note: answer.message ?? "" };
+  return { image: engine.images?.[0] ?? null, note: engine.note };
 }
 
 export function NoiseLab({ filterId, values, image, point }: WidgetProps) {
