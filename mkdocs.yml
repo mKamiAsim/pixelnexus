@@ -270,7 +270,9 @@ nav:
           - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
           - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
           - Scale-space filtering: filters/multiscale/scale-space.md
+          - Stationary wavelet filtering: filters/multiscale/swt-denoise.md
           - Wavelet thresholding: filters/multiscale/wavelet-threshold.md
+          - Wavelet Wiener filtering: filters/multiscale/wavelet-wiener.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

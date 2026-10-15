@@ -77,7 +77,7 @@ params:
       - {value: sureshrink, label: SureShrink}
       - {value: manual, label: Fixed threshold}
     description: How the threshold T is chosen. VisuShrink uses one threshold for all subbands. BayesShrink and SureShrink choose one for each subband.
-    effect: VisuShrink removes the most and blurs the most. The rules per subband keep more detail.
+    effect: With soft thresholding, VisuShrink blurs the most, and the rules per subband keep more detail. With hard thresholding, its large threshold can work well, since hard thresholding keeps the edges at full size.
   - key: mode
     label: Shrink rule
     type: select

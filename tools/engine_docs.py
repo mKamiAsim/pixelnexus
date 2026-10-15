@@ -15,6 +15,7 @@ Test images come from tools/synthetic.py, which matches the studio's own test im
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import math
 import sys
@@ -27,9 +28,16 @@ import pywt
 from numpy.typing import NDArray
 
 from pixelnexus_engine.filters.wavelets import (
+    WINDOWS,
     estimate_sigma,
+    local_signal_variance,
+    stationary_plane,
     subband_thresholds,
+    swt_denoise,
     wavelet_threshold,
+    wavelet_threshold_plane,
+    wavelet_wiener,
+    wiener_gain,
 )
 from pixelnexus_engine.params import check_params, resolve_params
 from pixelnexus_engine.registry import common_params, science_entries
@@ -190,9 +198,154 @@ def wavelet_threshold_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Stationary wavelet filtering -------------------------------------------------------------------
+
+
+def swt_denoise_docs(out: dict[Path, str]) -> None:
+    filter_id = "swt-denoise"
+    clean = disks(160, 160)
+    damaged = noisy(clean, 20, 7)
+
+    def swt(**values: Any) -> Gray:
+        return run(swt_denoise, damaged, filter_id, **values)
+
+    def dwt(**values: Any) -> Gray:
+        return run(wavelet_threshold, damaged, "wavelet-threshold", **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks with Gaussian noise of sigma 20, filtered with the Haar wavelet "
+            "by the decimated transform, by cycle spinning with 2 shifts, and by the stationary "
+            "transform.",
+            "panels": [
+                {"title": "Noisy", "image": picture(damaged)},
+                {"title": "Decimated", "image": picture(dwt(wavelet="haar"))},
+                {
+                    "title": "Cycle spinning, 2",
+                    "image": picture(swt(wavelet="haar", transform="cycle-spinning", shifts=2)),
+                },
+                {"title": "Stationary", "image": picture(swt(wavelet="haar"))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    columns = ["Decimated", "Cycle spinning, 2", "Cycle spinning, 4", "Stationary"]
+    rows = []
+    for wavelet in ("haar", "sym4"):
+        results = [
+            dwt(wavelet=wavelet),
+            swt(wavelet=wavelet, transform="cycle-spinning", shifts=2),
+            swt(wavelet=wavelet, transform="cycle-spinning", shifts=4),
+            swt(wavelet=wavelet),
+        ]
+        rows.append([wavelet, *(fix(psnr(r, clean), 2) for r in results)])
+    rise = {row[0]: float(row[4]) - float(row[1]) for row in rows}
+    near = max(abs(float(row[3]) - float(row[4])) for row in rows)
+
+    plane = damaged.astype(np.float64)
+    moved = np.roll(plane, (3, 5), axis=(0, 1))
+
+    def drift(function: Callable[[Any, dict[str, Any]], Any], filter_id: str) -> float:
+        params = catalog_values(filter_id, border="wrap")
+        first = np.roll(function(plane, params), (3, 5), axis=(0, 1))
+        return float(np.abs(function(moved, params) - first).max())
+
+    decimated_drift = drift(wavelet_threshold_plane, "wavelet-threshold")
+    stationary_drift = drift(stationary_plane, filter_id)
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Wavelet", *columns], rows)
+        + "\nThe PSNR in dB against the clean disks, for the disks with Gaussian noise of "
+        f"sigma 20, {fix(psnr(damaged, clean), 2)} dB before the filter. The image and the "
+        "noise are those of the wavelet thresholding example. All columns use BayesShrink, soft "
+        "thresholding, 3 levels and the estimated noise sigma. Decimated is wavelet "
+        "thresholding. The stationary transform covers all 8 x 8 shifts of 3 levels. It "
+        f"raises the PSNR by {fix(rise['haar'], 2)} dB with Haar and by {fix(rise['sym4'], 2)} "
+        f"dB with sym4. With 4 shifts, cycle spinning comes within {fix(near, 2)} dB of it.\n\n"
+        + md_table(
+            ["Transform", "Largest change"],
+            [["Decimated", fix(decimated_drift, 2)], ["Stationary", fix(stationary_drift, 2)]],
+        )
+        + "\nThe noisy image is moved in a circle by 3 rows and 5 columns, filtered, and "
+        "compared with the filtered image moved the same way. The table shows the largest "
+        "difference in pixel values, before rounding. Both use the Wrap border mode. The "
+        "decimated transform gives a different result for the moved image. The stationary "
+        "transform gives the same result, moved.\n"
+    )
+
+
+# Wavelet Wiener filtering -------------------------------------------------------------------
+
+
+def wavelet_wiener_docs(out: dict[Path, str]) -> None:
+    filter_id = "wavelet-wiener"
+    clean = disks(160, 160)
+    damaged = noisy(clean, 20, 7)
+
+    def wiener(**values: Any) -> Gray:
+        return run(wavelet_wiener, damaged, filter_id, **values)
+
+    threshold = run(wavelet_threshold, damaged, "wavelet-threshold")
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks with Gaussian noise of sigma 20, filtered by wavelet "
+            "thresholding with BayesShrink, and by wavelet Wiener filtering with the smallest "
+            "estimate and with a 9 x 9 window.",
+            "panels": [
+                {"title": "Noisy", "image": picture(damaged)},
+                {"title": "BayesShrink", "image": picture(threshold)},
+                {"title": "Wiener, smallest", "image": picture(wiener())},
+                {"title": "Wiener, 9 x 9", "image": picture(wiener(window="9x9"))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    labels = {w: "Smallest of 3x3 to 9x9" if w == "min" else w.replace("x", " x ") for w in WINDOWS}
+    rows = [[labels[w], fix(psnr(wiener(window=w), clean), 2)] for w in WINDOWS]
+    rows.append(["Wavelet thresholding, BayesShrink", fix(psnr(threshold, clean), 2)])
+
+    params = catalog_values(filter_id)
+    plane = damaged.astype(np.float64)
+    coeffs = pywt.wavedec2(plane, params["wavelet"], mode="symmetric", level=params["levels"])
+    sigma = estimate_sigma(coeffs[-1][2])
+    sizes = WINDOWS[params["window"]]
+    gain_rows = []
+    for index, level in enumerate(coeffs[1:]):
+        number = len(coeffs) - 1 - index
+        gains = [
+            float(np.mean(wiener_gain(local_signal_variance(band, sigma, sizes), sigma)))
+            for band in level
+        ]
+        gain_rows.append([str(number), *(fix(g, 3) for g in gains)])
+    gain_rows.reverse()
+    # The text below says that the mean gain grows from the finest to the coarsest level.
+    means = [np.mean([float(g) for g in row[1:]]) for row in gain_rows]
+    assert all(a < b for a, b in itertools.pairwise(means))
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Window", "PSNR in dB"], rows)
+        + "\nThe PSNR against the clean disks, for the disks with Gaussian noise of sigma 20, "
+        f"{fix(psnr(damaged, clean), 2)} dB before the filter. The image and the noise are "
+        "those of the wavelet thresholding example. The Wiener rows use the defaults: db4, "
+        "4 levels and the estimated noise sigma. The last row is wavelet thresholding with its "
+        "defaults.\n\n"
+        + md_table(["Level", "Mean gain h", "Mean gain v", "Mean gain d"], gain_rows)
+        + f"\nThe mean Wiener gain in each subband with the default settings. The estimated "
+        f"noise sigma is {fix(sigma, 2)}. Level 1 is the finest. The gains are lowest there, "
+        "where the details are mostly noise, and highest at the coarsest level, where the "
+        "disks put most of their signal.\n"
+    )
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
+    swt_denoise_docs(out)
+    wavelet_wiener_docs(out)
     return out
 
 
