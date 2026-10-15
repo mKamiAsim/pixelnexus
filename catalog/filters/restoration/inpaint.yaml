@@ -1,8 +1,139 @@
 id: inpaint
 name: Image inpainting
+aliases: [Hole filling, Object removal, Telea inpainting, Navier-Stokes inpainting, Biharmonic inpainting]
 family: restoration
+tags: [purpose:restoration]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
 planNotes: Telea, Navier-Stokes and biharmonic. The selection is the mask.
+
+summary: Fills the selected area from the pixels around it, to remove scratches, spots, wires or small objects. Three classic methods are offered, from OpenCV and scikit-image.
+purpose: Remove small defects and unwanted details by painting over them with what surrounds them.
+classification: {linearity: nonlinear, domain: spatial, operation: hole filling from the boundary}
+output: image
+representation: algorithm
+representationLabel: definition
+representationSource: {path: engine/src/pixelnexus_engine/filters/inpainting.py, symbol: inpaint_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+preview: on-demand
+colorHandling: >-
+  Red, green and blue are filled together, from the same known pixels. Alpha is kept. The Hole
+  output is white in the hole and black elsewhere.
+boundary: >-
+  The filled values come only from known pixels of the image. The image edge is not extended.
+  A hole that touches the edge is filled from the known pixels on its other sides.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'Telea and Navier-Stokes (cv2.inpaint).'}
+  - {name: scikit-image, optional: false, note: 'Biharmonic inpainting (skimage.restoration.inpaint_biharmonic).'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: image
+    options:
+      - {value: image, label: Filled image}
+      - {value: hole, label: Hole}
+    description: The filled image, or the hole the filter fills, in white.
+    effect: Hole shows which pixels are replaced.
+  - key: method
+    label: Method
+    type: select
+    default: telea
+    options:
+      - {value: telea, label: Telea (fast marching)}
+      - {value: ns, label: Navier-Stokes}
+      - {value: biharmonic, label: Biharmonic}
+    description: How the hole is filled. Telea and Navier-Stokes come from OpenCV, biharmonic from scikit-image.
+    effect: Telea is fast and follows the gradient at the edge. Navier-Stokes continues edges into the hole. Biharmonic gives the smoothest fill.
+  - key: radius
+    label: Neighborhood radius
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 3
+    unit: px
+    description: How far around each hole pixel known pixels are used, for Telea and Navier-Stokes. Biharmonic does not use it.
+    effect: Larger values blur the fill a little and reduce drift in large holes.
+formula: |
+  \Omega = \{ x : m(x) > 0 \},
+  \qquad
+  \Delta^2 I = 0 \text{ in } \Omega,\quad I = I_0 \text{ outside } \Omega
+  \quad \text{(biharmonic)}
+formulaExplanation: >-
+  The hole Omega is every pixel the selection m touches. Pixels outside it never change. All
+  three methods make the fill meet the image smoothly at the edge of the hole. Biharmonic
+  inpainting asks for the smoothest surface that meets the image with its slope, so it solves
+  the biharmonic equation in the hole. Telea's method fills the hole from its edge inward, in
+  order of distance, as found by fast marching. Each new pixel is a weighted mean of the known
+  pixels within the radius, each moved on by its gradient. The Navier-Stokes method of
+  Bertalmio, Bertozzi and Sapiro carries the smoothness Delta I into the hole along the lines of
+  equal brightness, as a 2D fluid carries its vorticity. So edges that meet the hole continue
+  into it. The Inspector shows the equations of the chosen method.
+symbols:
+  - {symbol: 'm', meaning: 'The selection, from 0 to 1'}
+  - {symbol: '\Omega', meaning: The hole}
+  - {symbol: 'I_0', meaning: The image}
+  - {symbol: '\Delta', meaning: 'The Laplacian, the sum of the second derivatives'}
+steps:
+  - Take every pixel the selection touches as the hole.
+  - Fill the hole with the chosen method, from the known pixels around it.
+  - Keep every pixel outside the hole.
+  - Blend the result in through the selection, so a soft edge fades.
+complexity:
+  time: O(H r^2) for Telea and Navier-Stokes, a sparse solve for biharmonic
+  memory: O(N)
+  notes: N is the number of pixels, H the number of hole pixels and r the radius. Biharmonic solves a sparse linear system with one unknown per hole pixel, which is slower for large holes.
+useCases:
+  - Scratches, dust and spots on scanned photos.
+  - Wires, small signs and other small unwanted details.
+  - Text or date stamps on a plain background.
+advantages:
+  - Pixels outside the selection never change.
+  - Fast for small holes, and with no model to download.
+limitations:
+  - Fills only from the edge of the hole, so it cannot invent texture or objects. Large holes in textured areas look smeared.
+  - OpenCV's Telea drifts by a few levels in large holes, even on a flat area. With the default radius, a hole of radius 25 on a flat gray ends up to 5 levels off.
+artifacts:
+  - Smooth smears in large holes, most visible on texture such as grass or fabric.
+  - Edges that cross the hole at a slant may bend or blur.
+references:
+  - kind: paper
+    text: Telea, A. An image inpainting technique based on the fast marching method. Journal of Graphics Tools 9(1), 23 to 34, 2004.
+    doi: 10.1080/10867651.2004.10487596
+  - kind: paper
+    text: Bertalmio, M., Bertozzi, A. L., and Sapiro, G. Navier-Stokes, fluid dynamics, and image and video inpainting. IEEE Conference on Computer Vision and Pattern Recognition, I-355 to I-362, 2001.
+    doi: 10.1109/CVPR.2001.990497
+  - kind: paper
+    text: Damelin, S. B., and Hoang, N. S. On surface completion and image inpainting by biharmonic functions. Numerical aspects. International Journal of Mathematics and Mathematical Sciences, 3950312, 2018.
+    doi: 10.1155/2018/3950312
+implementation: {path: engine/src/pixelnexus_engine/filters/inpainting.py, symbol: inpaint}
+tests: [engine/tests/test_inpainting.py]
+learn:
+  oneSentence: Paint over the selected area with what surrounds it.
+  howItWorks:
+    - Select the spot or object to remove.
+    - The filter looks at the pixels around the selection.
+    - It fills the selection so that it meets them smoothly.
+    - Everything outside the selection stays as it was.
+  academic: >-
+    Boundary-driven inpainting of the selected region by fast marching (Telea), by transport of
+    the Laplacian along isophotes (Navier-Stokes), or by the biharmonic equation.
+  paramNotes:
+    output: The filled image, or the area that is filled.
+    method: How the area is filled.
+    radius: How far around each pixel the filter looks.
+  tryThis:
+    - Select a dark spot with the Ellipse marquee, a little larger than the spot, and apply the filter.
+    - Choose the Hole output to see which pixels are replaced.
+  pitfalls:
+    - A selection that misses the edge of the spot. Its dark rim stays and is spread into the fill.
+    - Large holes in texture. The fill is smooth, so it shows.
+  demos: [stage-viewer]
+related: [median, dead-pixel, tv-deblur]
+docsPage: filters/restoration/inpaint.md

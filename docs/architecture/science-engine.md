@@ -34,6 +34,8 @@ sequenceDiagram
 - **Processes.** Each job runs in a new process. So a long job never blocks the server, and Cancel really stops the work: the engine ends the process. At most `PIXELNEXUS_MAX_WORKERS` jobs run at the same time. The others wait in a queue.
 - **Progress.** The studio follows a job through server-sent events. Each event holds the state (queued, running, done, failed or cancelled) and the progress from 0 to 1.
 - **Results.** An image comes back as raw RGBA bytes, with its size in the `X-Width` and `X-Height` headers. Tables come back as JSON.
+- **Selections as inputs.** Some filters read the selection, such as inpainting, which fills it. Their catalog entries set `needsSelection`. The studio uploads the selection as a gray image of the same size, and the job names it in its `mask` field. The engine refuses such a job without a mask, a mask of another size, and a mask for a filter that does not read one.
+- **Results of another size.** Some filters change the size, such as super-resolution, which enlarges the image. Their catalog entries set `changesSize` and have a `scale` parameter. The studio checks the new size against its image limits first, runs the filter on the whole image, and replaces the image with the result. The selection is scaled with it.
 
 ## Routes
 
@@ -47,7 +49,7 @@ All routes start with `/api/v1`. The engine also serves an interactive descripti
 | `POST /filters/{id}/representation` | The operator for the Inspector, for the values in the body. |
 | `POST /images?width=&height=` | Upload raw RGBA bytes. Answers with the image id. |
 | `GET /images/{id}/metadata` | The size of an uploaded image. |
-| `POST /jobs` | Start a filter on an uploaded image. |
+| `POST /jobs` | Start a filter on an uploaded image, with a mask for filters that read the selection. |
 | `GET /jobs/{id}` | The status of a job. |
 | `GET /jobs/{id}/events` | The status as server-sent events, until the job ends. |
 | `GET /jobs/{id}/result` | The result of a finished job. |
@@ -66,7 +68,7 @@ All routes start with `/api/v1`. The engine also serves an interactive descripti
 Every science filter follows the same steps. Wavelet thresholding was the first.
 
 1. Write the filter in a module in `engine/src/pixelnexus_engine/filters/`, and import the module in `filters/__init__.py`.
-2. Register it with `@register("<catalog id>", representation=...)`. The filter gets the RGBA image, the checked values and a progress function. `filter_by_scope` in `planes.py` applies the channel scope with the same rules as the browser filters. It also keeps alpha, and rounds and clips the result to 8 bits.
+2. Register it with `@register("<catalog id>", representation=...)`, and `mask=True` if it reads the selection. That filter finds the selection in `params["mask"]`, from 0 to 255. The filter gets the RGBA image, the checked values and a progress function. `filter_by_scope` in `planes.py` applies the channel scope with the same rules as the browser filters. It also keeps alpha, and rounds and clips the result to 8 bits.
 3. Fill in the catalog entry with `engine: science` and `preview: on-demand`. The catalog check makes sure the module registers the id and is imported.
 4. Write tests in `engine/tests/` against an independent reference, such as scikit-image or a brute-force search, and run one job through the API.
 5. Add the figures and the worked example to `tools/engine_docs.py`. It runs the engine code on the studio's test images, copied to Python in `tools/synthetic.py`. A studio test checks that the copies give the same pixels. Then draw the figures with `tools/figures/make_figures.py`.

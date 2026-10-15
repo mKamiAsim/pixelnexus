@@ -5,6 +5,11 @@ an RGBA image, or a JSON-ready dict for features and tables. Filters register th
 id in ``FILTERS``. The catalog stays the single source of truth for what a filter is: the
 engine lists the catalog entries whose engine is "science" and says which of them it can run.
 
+A filter registered with ``mask=True`` reads the selection as an input, such as the area to
+fill. Its job must carry a mask, and the worker passes it as ``params["mask"]``: an array of
+shape (height, width) from 0 (not selected) to 255 (selected). A filter may return an image of
+another size, such as an enlarged one. The result carries its own size.
+
 Ids that start with an underscore are internal diagnostics for the contract tests. They are not
 catalog filters and are never listed.
 """
@@ -32,14 +37,17 @@ class EngineFilter:
     id: str
     run: Run
     representation: Representation | None = None
+    mask: bool = False
 
 
 FILTERS: dict[str, EngineFilter] = {}
 
 
-def register(filter_id: str, representation: Representation | None = None) -> Callable[[Run], Run]:
+def register(
+    filter_id: str, representation: Representation | None = None, mask: bool = False
+) -> Callable[[Run], Run]:
     def decorate(run: Run) -> Run:
-        FILTERS[filter_id] = EngineFilter(filter_id, run, representation)
+        FILTERS[filter_id] = EngineFilter(filter_id, run, representation, mask)
         return run
 
     return decorate

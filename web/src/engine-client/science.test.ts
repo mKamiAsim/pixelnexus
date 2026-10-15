@@ -70,6 +70,45 @@ describe("the science engine client", () => {
     expect(calls.filter((c) => c === "POST /images")).toHaveLength(1);
   });
 
+  it("sends the selection a filter reads as a gray mask image", async () => {
+    const { fetchStub } = engineServer(new Uint8Array(24), 3, 2);
+    const bodies: { url: string; body: unknown }[] = [];
+    const stub = vi.fn(async (url: string, init?: RequestInit) => {
+      bodies.push({ url, body: init?.body });
+      return fetchStub(url, init);
+    });
+    vi.stubGlobal("fetch", stub);
+    vi.stubGlobal("EventSource", eventSourceWith([{ state: "done", progress: 1 }]));
+    const hole = { width: 3, height: 2, data: Uint8Array.from([0, 255, 128, 0, 0, 9]) };
+    await new ScienceEngine("http://engine.test").run({ filterId: "x", params: {}, image, hole });
+    const uploads = bodies.filter((b) => b.url.includes("/images"));
+    expect(uploads).toHaveLength(2);
+    const gray = uploads[1]?.body as Uint8ClampedArray;
+    expect(Array.from(gray.slice(4, 12))).toEqual([255, 255, 255, 255, 128, 128, 128, 255]);
+    const job = bodies.find((b) => b.url.endsWith("/jobs"));
+    expect(JSON.parse(job?.body as string)).toEqual({
+      filter: "x",
+      image: "hash",
+      params: {},
+      mask: "hash",
+    });
+  });
+
+  it("returns a result of another size whole, whatever the region", async () => {
+    const result = Uint8Array.from({ length: 6 * 4 * 4 }, (_, i) => i % 251);
+    vi.stubGlobal("fetch", engineServer(result, 6, 4).fetchStub);
+    vi.stubGlobal("EventSource", eventSourceWith([{ state: "done", progress: 1 }]));
+    const out = await new ScienceEngine("http://engine.test").run({
+      filterId: "x",
+      params: {},
+      image,
+      region: { x: 0, y: 0, width: 3, height: 2 },
+    });
+    expect(out.region).toEqual({ x: 0, y: 0, width: 6, height: 4 });
+    expect(out.image.width).toBe(6);
+    expect(Array.from(out.image.data)).toEqual(Array.from(result));
+  });
+
   it("uploads the image again when the engine has dropped it", async () => {
     const { calls, fetchStub } = engineServer(new Uint8Array(24), 3, 2);
     let dropped = true;

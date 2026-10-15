@@ -4,11 +4,14 @@
  * A job uploads the image once as raw RGBA (the engine names it by its content hash), starts the
  * filter, follows its progress through server-sent events, and fetches the result as raw RGBA.
  * An abort cancels the job on the engine, which stops its process. Science filters work on the
- * whole image, so a region is cut out of the result.
+ * whole image, so a region is cut out of the result. A selection that the filter reads goes up
+ * as a gray image, and the job names it as its mask. A result of another size than the image,
+ * such as an enlargement, comes back whole.
  */
 import type { Params, Representation } from "@/core/filters/types";
 import { AbortedError } from "@/core/workers/pool";
 import type { RgbaImage } from "@/core/image/types";
+import { maskToImage, type Mask } from "@/core/mask/mask";
 
 import {
   EngineError,
@@ -51,6 +54,7 @@ export function cropImage(
 export class ScienceEngine implements EngineClient {
   readonly name = "science";
   private readonly uploads = new WeakMap<RgbaImage, Promise<string>>();
+  private readonly masks = new WeakMap<Mask, RgbaImage>();
 
   constructor(readonly baseUrl: string = DEFAULT_ENGINE_URL) {}
 
@@ -104,6 +108,7 @@ export class ScienceEngine implements EngineClient {
       const gone = error instanceof EngineError && error.status === 404;
       if (!gone || !error.message.includes(IMAGE_GONE)) throw error;
       this.uploads.delete(job.image);
+      if (job.hole) this.uploads.delete(this.maskImage(job.hole));
       return this.start(job);
     });
     const { id } = (await created.json()) as JobStatus;
@@ -126,7 +131,8 @@ export class ScienceEngine implements EngineClient {
         height,
         data: new Uint8ClampedArray(await response.arrayBuffer()),
       };
-      const region = job.region ?? { x: 0, y: 0, width, height };
+      const resized = width !== job.image.width || height !== job.image.height;
+      const region = job.region && !resized ? job.region : { x: 0, y: 0, width, height };
       const same =
         region.x === 0 && region.y === 0 && region.width === width && region.height === height;
       const totalMs = performance.now() - started;
@@ -141,13 +147,29 @@ export class ScienceEngine implements EngineClient {
     }
   }
 
-  /** Upload the image if needed and start the job. */
+  /** The gray picture of a mask that goes to the engine, made once per mask. */
+  private maskImage(mask: Mask): RgbaImage {
+    let image = this.masks.get(mask);
+    if (!image) {
+      image = maskToImage(mask);
+      this.masks.set(mask, image);
+    }
+    return image;
+  }
+
+  /** Upload the image, and the selection the filter reads, if needed and start the job. */
   private async start(job: FilterJob): Promise<Response> {
     const image = await this.upload(job.image);
+    const mask = job.hole ? await this.upload(this.maskImage(job.hole)) : undefined;
     return this.call("/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filter: job.filterId, image, params: job.params }),
+      body: JSON.stringify({
+        filter: job.filterId,
+        image,
+        params: job.params,
+        ...(mask ? { mask } : {}),
+      }),
     });
   }
 

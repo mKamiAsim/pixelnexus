@@ -55,14 +55,17 @@ function maskFromGray(image: RgbaImage): Mask {
   return out;
 }
 
+/** A selection scaled to a new image size, with bilinear weights. */
+export function scaleSelection(selection: Mask, width: number, height: number): Mask {
+  return maskFromGray(resizeImageTo(maskToImage(selection), width, height, "bilinear"));
+}
+
 /** Resize the active image. The selection is scaled with it, with bilinear weights. */
 export function resizeActive(width: number, height: number, method: ResizeMethod): void {
   const doc = activeDocument();
   if (!doc) return;
   const image = resizeImageTo(doc.current, width, height, method);
-  const selection = doc.selection
-    ? maskFromGray(resizeImageTo(maskToImage(doc.selection), width, height, "bilinear"))
-    : undefined;
+  const selection = doc.selection ? scaleSelection(doc.selection, width, height) : undefined;
   const label = `Resize to ${width} x ${height} (${METHOD_NAMES[method]})`;
   const params: Record<string, ParamValue> = { width, height, method };
   useDocuments.getState().edit(doc.id, image, label, { id: "resize", params }, selection);

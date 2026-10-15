@@ -135,13 +135,33 @@ const CORS = {
   "Access-Control-Expose-Headers": "X-Width, X-Height",
 };
 
+interface FakeJob {
+  readonly image: string;
+  readonly mask?: string;
+  readonly params: Record<string, unknown>;
+}
+
+/** Enlarge raw RGBA by a whole factor, copying each pixel. */
+function enlarge(body: Buffer, width: number, height: number, scale: number): Buffer {
+  const out = Buffer.alloc(width * height * scale * scale * 4);
+  for (let y = 0; y < height * scale; y++) {
+    for (let x = 0; x < width * scale; x++) {
+      const from = (Math.floor(y / scale) * width + Math.floor(x / scale)) * 4;
+      body.copy(out, (y * width * scale + x) * 4, from, from + 4);
+    }
+  }
+  return out;
+}
+
 /**
- * A stand-in for the local engine on its usual address. It keeps each upload, runs every job
- * at once, and returns the uploaded image unchanged as the result. The representation is a
- * fixed answer in the engine's format. Then the studio reloads, so it finds the engine.
+ * A stand-in for the local engine on its usual address. It keeps each upload and each job, runs
+ * every job at once, and returns the job's image unchanged as the result, or enlarged by the
+ * scale parameter when there is one. The representation is a fixed answer in the engine's
+ * format. Then the studio reloads, so it finds the engine.
  */
 async function fakeEngine(page: Page) {
   const images = new Map<string, { body: Buffer; width: string; height: string }>();
+  const jobs: FakeJob[] = [];
   let last = "";
   await page.route(`${ENGINE}/**`, async (route) => {
     const request = route.request();
@@ -158,7 +178,12 @@ async function fakeEngine(page: Page) {
       images.set(last, { body: request.postDataBuffer() ?? Buffer.alloc(0), width, height });
       return json({ id: last, width: Number(width), height: Number(height) });
     }
-    if (path === "/jobs") return json({ id: last, state: "queued", progress: 0 }, 202);
+    if (path === "/jobs") {
+      const job = request.postDataJSON() as FakeJob;
+      jobs.push(job);
+      last = `job-${jobs.length - 1}`;
+      return json({ id: last, state: "queued", progress: 0 }, 202);
+    }
     if (path.endsWith("/events")) {
       const done = { id: last, state: "done", progress: 1, error: null };
       return route.fulfill({
@@ -167,11 +192,15 @@ async function fakeEngine(page: Page) {
       });
     }
     if (path.endsWith("/result")) {
-      const image = images.get(path.split("/")[2] ?? "");
+      const job = jobs[Number((path.split("/")[2] ?? "").replace("job-", ""))];
+      const image = images.get(job?.image ?? "");
+      if (!image) return json({ detail: "There is no job with this id." }, 404);
+      const scale = Number(job?.params.scale ?? 1);
+      const [width, height] = [Number(image.width), Number(image.height)];
       return route.fulfill({
-        headers: { ...CORS, "X-Width": image?.width ?? "0", "X-Height": image?.height ?? "0" },
+        headers: { ...CORS, "X-Width": String(width * scale), "X-Height": String(height * scale) },
         contentType: "application/octet-stream",
-        body: image?.body ?? Buffer.alloc(0),
+        body: scale === 1 ? image.body : enlarge(image.body, width, height, scale),
       });
     }
     if (path.endsWith("/representation")) {
@@ -186,6 +215,23 @@ async function fakeEngine(page: Page) {
     return json({ detail: "Not in the stand-in engine." }, 404);
   });
   await page.reload();
+  return { images, jobs };
+}
+
+const canvas = (page: Page) => page.locator('canvas[tabindex="0"]');
+
+/** Drag a rectangle with the Rectangular marquee, from and to points relative to the canvas center. */
+async function marquee(page: Page, from: [number, number], to: [number, number]) {
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await canvas(page).focus();
+  await page.keyboard.press("m");
+  await page.mouse.move(cx + from[0], cy + from[1]);
+  await page.mouse.down();
+  await page.mouse.move(cx + to[0], cy + to[1], { steps: 5 });
+  await page.mouse.up();
 }
 
 test("an engine filter runs in the local engine, with its operator and the Noise lab", async ({
@@ -229,6 +275,49 @@ test("the Line profile runs an engine filter on the patch around the probe", asy
   await expect(
     page.getByRole("img", { name: /Brightness along the row through the probe pixel/ }),
   ).toBeVisible();
+});
+
+test("inpainting sends the selection to the engine as its mask", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "inpainting", "Image inpainting");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByText("Select the area first", { exact: true })).toBeVisible();
+  expect(engine.jobs).toHaveLength(0);
+  await marquee(page, [-40, -40], [40, 40]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Image inpainting");
+  const job = engine.jobs.at(-1);
+  const mask = engine.images.get(job?.mask ?? "");
+  expect(mask?.width).toBe("512");
+  const reds = [...(mask?.body ?? [])].filter((_, i) => i % 4 === 0);
+  const selected = reds.filter((v) => v === 255).length;
+  expect(selected).toBeGreaterThan(1000);
+  expect(selected).toBeLessThan((512 * 512) / 2);
+  await front(page, "Learn");
+  await expect(page.getByText("the hole is a disk of radius 8 pixels")).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Filled image, patch around the probe" }),
+  ).toBeVisible();
+});
+
+test("super-resolution replaces the image with the larger engine result", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "super-resolution", "Super-resolution reconstruction");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Super-resolution reconstruction");
+  await expect(page.getByRole("contentinfo")).toContainText("1024 x 1024 px");
+  await front(page, "Learn");
+  await expect(page.getByText("measured from the start at 0 iterations")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 10" })).toBeVisible();
+  await page.keyboard.press("Control+z");
+  await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
 });
 
 test("the studio works with the local engine stopped", async ({ page }) => {

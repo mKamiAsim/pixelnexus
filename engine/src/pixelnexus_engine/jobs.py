@@ -16,17 +16,25 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+from numpy.typing import NDArray
+
 from pixelnexus_engine.images import StoredImage
 from pixelnexus_engine.registry import FILTERS, Result, Rgba, load_filters
 
+Mask = NDArray[np.uint8]
 TERMINAL = frozenset({"done", "failed", "cancelled"})
 KEEP_FINISHED = 64
 
 
-def _worker(filter_id: str, pixels: Rgba, params: dict[str, Any], out: Any) -> None:
+def _worker(
+    filter_id: str, pixels: Rgba, params: dict[str, Any], mask: Mask | None, out: Any
+) -> None:
     """Run one filter in a child process and send messages back through the queue."""
     load_filters()
     spec = FILTERS[filter_id]
+    if mask is not None:
+        params = {**params, "mask": mask}
 
     def progress(fraction: float) -> None:
         out.put(("progress", min(1.0, max(0.0, float(fraction)))))
@@ -43,6 +51,7 @@ class Job:
     filter_id: str
     image: StoredImage
     params: dict[str, Any]
+    mask: Mask | None = None
     state: str = "queued"
     progress: float = 0.0
     error: str | None = None
@@ -76,8 +85,14 @@ class JobManager:
 
     # Public API ------------------------------------------------------------------------------
 
-    def submit(self, filter_id: str, image: StoredImage, params: dict[str, Any]) -> Job:
-        job = Job(uuid.uuid4().hex, filter_id, image, dict(params))
+    def submit(
+        self,
+        filter_id: str,
+        image: StoredImage,
+        params: dict[str, Any],
+        mask: Mask | None = None,
+    ) -> Job:
+        job = Job(uuid.uuid4().hex, filter_id, image, dict(params), mask)
         with self._lock:
             self._jobs[job.id] = job
             self._forget_old()
@@ -123,7 +138,7 @@ class JobManager:
         job.channel = self._context.Queue()
         job.process = self._context.Process(
             target=_worker,
-            args=(job.filter_id, job.image.pixels, job.params, job.channel),
+            args=(job.filter_id, job.image.pixels, job.params, job.mask, job.channel),
             daemon=True,
         )
         job.process.start()

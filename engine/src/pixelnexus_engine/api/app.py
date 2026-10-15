@@ -1,8 +1,10 @@
 """FastAPI application factory, with the routes of PLAN.md section 3.8.
 
 Images travel as raw RGBA bytes with their size, never as JSON arrays. Jobs run in their own
-processes (see jobs.py) and report progress as server-sent events. The selection and model
-routes arrive with Phase 6e and Phase 7.
+processes (see jobs.py) and report progress as server-sent events. A job for a filter that
+reads the selection names a mask, uploaded like an image. Results may have another size than
+the image, and say their size in X-Width and X-Height. The selection and model routes arrive
+with Phase 6e and Phase 7.
 """
 
 from __future__ import annotations
@@ -19,11 +21,12 @@ import numpy as np
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from numpy.typing import NDArray
 from pydantic import BaseModel, Field
 
 from pixelnexus_engine import API_VERSION, __version__
 from pixelnexus_engine.config import Settings
-from pixelnexus_engine.images import ImageError, ImageStore, decode_rgba
+from pixelnexus_engine.images import ImageError, ImageStore, StoredImage, decode_rgba
 from pixelnexus_engine.jobs import TERMINAL, JobManager
 from pixelnexus_engine.params import ParamError, check_params, resolve_params
 from pixelnexus_engine.registry import (
@@ -67,6 +70,9 @@ class JobRequest(BaseModel):
     filter: str
     image: str
     params: dict[str, Any] = Field(default_factory=dict)
+    # An uploaded image of the same size whose red channel is the selection, from 0 to 255.
+    # Only filters that read the selection, such as inpainting, take one, and they need it.
+    mask: str | None = None
 
 
 def _installed_version(distribution: str) -> str | None:
@@ -217,7 +223,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         stored = images.get(request.image)
         if stored is None:
             raise _not_found("image with this id. Upload it again")
-        return jobs().submit(request.filter, stored, params).status()
+        return jobs().submit(request.filter, stored, params, job_mask(request, stored)).status()
+
+    def job_mask(request: JobRequest, stored: StoredImage) -> NDArray[np.uint8] | None:
+        """The selection for a filter that reads it, checked against the image."""
+        wants = FILTERS[request.filter].mask
+        if request.mask is None:
+            if wants:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This filter needs a selection. Select the area first.",
+                )
+            return None
+        if not wants:
+            raise HTTPException(status_code=422, detail="This filter does not use a selection.")
+        mask = images.get(request.mask)
+        if mask is None:
+            raise _not_found("mask with this id. Upload it again")
+        if (mask.width, mask.height) != (stored.width, stored.height):
+            raise HTTPException(
+                status_code=422, detail="The mask must have the same size as the image."
+            )
+        return np.ascontiguousarray(mask.pixels[..., 0])
 
     @router.get("/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:

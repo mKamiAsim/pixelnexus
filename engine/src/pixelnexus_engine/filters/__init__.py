@@ -6,9 +6,11 @@
 from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     artifacts,
     directional,
+    inpainting,
     plugplay,
     radon,
     restoration,
     steerable,
+    superresolution,
     wavelets,
 )

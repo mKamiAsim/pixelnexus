@@ -352,6 +352,8 @@ nav:
           - Deblocking: filters/restoration/deblock.md
           - Deringing: filters/restoration/dering.md
           - JPEG artifact removal (classical): filters/restoration/jpeg-cleanup.md
+          - Image inpainting: filters/restoration/inpaint.md
+          - Super-resolution reconstruction: filters/restoration/sr-classical.md
       - Segmentation:
           - Global threshold: filters/segmentation/threshold-global.md
           - Otsu threshold: filters/segmentation/otsu.md

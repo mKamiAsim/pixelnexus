@@ -12,6 +12,7 @@
  */
 import { useMemo } from "react";
 
+import { catalog } from "@/catalog";
 import { createPlane, type Plane } from "@/core/filters/planes";
 import { browserFilter } from "@/core/filters/registry";
 import { ITERATIVE_METHODS, iterate } from "@/core/filters/restoration/iterative";
@@ -68,11 +69,16 @@ interface Run {
 }
 
 /** Snapshots and the mean change per iteration from results at growing iteration counts. */
-function changeRun(input: Plane, counts: readonly number[], results: readonly Plane[]): Run {
+function changeRun(
+  input: Plane,
+  counts: readonly number[],
+  results: readonly Plane[],
+  start: Plane = input,
+): Run {
   const wanted = new Set(snapshotsOf(counts[counts.length - 1] ?? 1));
   const snapshots: { iteration: number; image: RgbaImage }[] = [];
   const curve: [number, number][] = [];
-  let previous = input;
+  let previous = start;
   let previousCount = 0;
   counts.forEach((c, k) => {
     const result = results[k] ?? input;
@@ -129,20 +135,24 @@ function BrowserIterations({ filterId, values, image, point }: WidgetProps) {
 function EngineIterations({ filterId, values, image, point }: WidgetProps) {
   const patch = useMemo(() => patchAt(image, point.x, point.y), [image, point.x, point.y]);
   const counts = useMemo(() => snapshotsOf(iterationsOf(values)), [values]);
+  // A filter that changes the size, such as super-resolution, is also run with 0 iterations.
+  // Its first change is measured from that start, which has the size of the results.
+  const resizes = catalog.filters.find((f) => f.id === filterId)?.changesSize === true;
+  const runs = useMemo(() => (resizes ? [0, ...counts] : counts), [resizes, counts]);
   const inputs = useMemo(
-    () => counts.map((c) => ({ image: patch, values: { ...values, iterations: c } })),
-    [counts, patch, values],
+    () => runs.map((c) => ({ image: patch, values: { ...values, iterations: c } })),
+    [runs, patch, values],
   );
   const engine = useEngineResults(filterId, inputs, true);
   const data = useMemo(() => {
     if (!engine.images) return null;
     const channel = channelOf(values);
-    return changeRun(
-      planeOf(patch, channel),
-      counts,
-      engine.images.map((result) => planeOf(result, channel)),
-    );
-  }, [engine.images, counts, patch, values]);
+    const planes = engine.images.map((result) => planeOf(result, channel));
+    const input = planeOf(patch, channel);
+    return resizes
+      ? changeRun(input, counts, planes.slice(1), planes[0])
+      : changeRun(input, counts, planes);
+  }, [engine.images, counts, patch, values, resizes]);
   if (!data) {
     return (
       <p role="status" className="text-text-secondary">
@@ -153,7 +163,7 @@ function EngineIterations({ filterId, values, image, point }: WidgetProps) {
   return (
     <IterationView
       data={data}
-      where={` It runs in the PixelNexus engine once for each of the ${counts.length} counts on the plot.`}
+      where={` It runs in the PixelNexus engine once for each of the ${counts.length} counts on the plot.${resizes ? " The first change is measured from the start at 0 iterations." : ""}`}
     />
   );
 }

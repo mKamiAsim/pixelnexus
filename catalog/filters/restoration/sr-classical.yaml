@@ -1,8 +1,133 @@
 id: sr-classical
 name: Super-resolution reconstruction
+aliases: [Iterative back-projection, IBP, Classical upscaling]
 family: restoration
+alsoIn: [utility]
+tags: [purpose:restoration, purpose:geometry]
 tier: advanced
 engine: science
 phase: 6c
-status: planned
+status: implemented-tested
 planNotes: Bicubic plus iterative back-projection. Changes image size.
+
+summary: Enlarges the image 2, 3 or 4 times. It starts from a bicubic enlargement and then corrects it until shrinking it again gives back the original, by iterative back-projection after Irani and Peleg.
+purpose: Enlarge a small image with sharper edges than plain bicubic, while staying true to every original pixel.
+classification: {linearity: linear, domain: spatial, operation: iterative back-projection}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/superresolution.py, symbol: sr_representation}
+supportRadius: global
+supportsMask: false
+changesSize: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  Colors are premultiplied by alpha first, as Resize does. By default only the brightness Y of
+  full-range Y'CbCr with the BT.709 weights is back-projected. Cb, Cr and alpha are enlarged with
+  bicubic. With the RGB scope, red, green and blue are each back-projected. Alpha is always
+  enlarged with bicubic.
+boundary: >-
+  Near the edge, bicubic taps outside the image are left out and the rest renormalized, as in
+  Resize. The camera model needs no border, since each input pixel covers whole output pixels.
+dependencies:
+  - {name: SciPy, optional: false, note: 'Sparse matrices for the enlargement and the camera model (scipy.sparse).'}
+
+params:
+  - key: scale
+    label: Scale
+    type: integer
+    min: 2
+    max: 4
+    step: 1
+    default: 2
+    unit: x
+    description: How many times larger the image becomes in each direction. A 400 x 300 image becomes 800 x 600 at scale 2.
+    effect: Larger scales give larger images. They cannot add detail that the image never held.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 0
+    max: 50
+    step: 1
+    default: 10
+    description: The number of back-projection steps. With 0, the result is Resize with the bicubic method.
+    effect: The first few steps sharpen edges the most. After about 10 steps, little changes.
+  - ref: channelScope
+    default: luminance
+formula: |
+  u = \frac{x + 1/2}{s} - \frac{1}{2},
+  \qquad
+  x_0 = U g,
+  \qquad
+  x_{k+1} = x_k + U \big(g - D x_k\big),
+  \qquad
+  s = {{scale}}
+formulaExplanation: >-
+  The center of output pixel x sits at position u of the input, so the picture does not shift.
+  U is bicubic enlargement with Keys' kernel and a = -1/2, the same as Resize. D is a model of
+  the camera: each input pixel is the mean of the s x s output pixels it covers. The start x_0
+  is the bicubic enlargement of the image g. Shrinking it with D does not give g back exactly,
+  so each step takes the difference, enlarges it with U and adds it. This is the
+  back-projection of Irani and Peleg, here for a single image. The eigenvalues of D U lie
+  between 0 and 1, so the difference shrinks in every step, and in the end D x = g. The result
+  then holds the same information as the input, with sharper edges than bicubic.
+symbols:
+  - {symbol: 'g', meaning: The input image}
+  - {symbol: 'x_k', meaning: The estimate of the large image after k steps}
+  - {symbol: 's', meaning: The scale}
+  - {symbol: 'U', meaning: 'Bicubic enlargement, Keys with a = -1/2'}
+  - {symbol: 'D', meaning: 'The camera model, the mean of each s x s block'}
+steps:
+  - Premultiply the colors by alpha.
+  - Enlarge the image with bicubic to get the start.
+  - Shrink the estimate with the camera model and take the difference from the image.
+  - Enlarge the difference with bicubic and add it to the estimate. Repeat.
+  - Divide the colors by the enlarged alpha again.
+complexity:
+  time: O(K s^2 N)
+  memory: O(s^2 N)
+  notes: N is the number of input pixels, s the scale and K the number of iterations.
+useCases:
+  - Enlarging small images, icons and screenshots for print or display.
+  - A classical baseline to compare learned super-resolution against.
+advantages:
+  - Every original pixel stays the mean of the output pixels it covers.
+  - No model to download, and the result is fully explained by its formula.
+limitations:
+  - It cannot invent detail that the image never held. Fine texture stays soft.
+  - The camera model is a plain block mean. Images that were shrunk with another filter fit it less well.
+artifacts:
+  - Slight ringing next to strong edges, from the bicubic kernel.
+  - Jagged diagonal edges at large scales.
+references:
+  - kind: paper
+    text: Irani, M., and Peleg, S. Improving resolution by image registration. CVGIP. Graphical Models and Image Processing 53(3), 231 to 239, 1991.
+    doi: 10.1016/1049-9652(91)90045-L
+  - kind: paper
+    text: Keys, R. Cubic Convolution Interpolation for Digital Image Processing. IEEE Transactions on Acoustics, Speech, and Signal Processing 29(6), 1153 to 1160, 1981.
+    doi: 10.1109/TASSP.1981.1163711
+implementation: {path: engine/src/pixelnexus_engine/filters/superresolution.py, symbol: sr_classical}
+tests: [engine/tests/test_superresolution.py]
+learn:
+  oneSentence: Enlarge with bicubic, then fix the result until it shrinks back to the original.
+  howItWorks:
+    - Enlarge the image with bicubic.
+    - Shrink the large image again, as a camera with bigger pixels would see it.
+    - Compare with the original, and add the enlarged difference to the large image.
+    - Repeat until shrinking gives back the original.
+  academic: >-
+    Single-image iterative back-projection with a box camera model and a bicubic back-projection
+    kernel, on the pixel-center grid of Resize.
+  paramNotes:
+    scale: How many times larger the image becomes.
+    iterations: How many correction steps run.
+    channelScope: Which part of the color image is sharpened.
+  tryThis:
+    - Set the iterations to 0 and to 10 and compare the edges.
+    - Shrink an image with Resize, then enlarge it again with this filter and with Resize.
+  pitfalls:
+    - Expecting new detail. The filter only sharpens what is already there.
+  demos: [iteration-viewer]
+related: [resize, blind-deconv]
+docsPage: filters/restoration/sr-classical.md

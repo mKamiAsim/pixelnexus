@@ -6,11 +6,13 @@
  */
 import { useMemo } from "react";
 
+import { catalog } from "@/catalog";
+
 import { browserFilter } from "@/core/filters/registry";
 import { runFilter } from "@/core/filters/run";
 import type { RgbaImage } from "@/core/image/types";
 
-import { patchAt, stagesOf } from "./common";
+import { DEMO_HOLE_RADIUS, demoHole, patchAt, stagesOf } from "./common";
 import { useEngineResults } from "./engine";
 import { PixelCanvas, type WidgetProps } from "./widgets";
 
@@ -36,10 +38,15 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
       }).image,
     }));
   }, [filter, stages, key, values, patch]);
-  const inputs = useMemo(
-    () => stages.map((stage) => ({ image: patch, values: { ...values, [key]: stage.value } })),
-    [stages, key, values, patch],
-  );
+  const readsSelection = catalog.filters.find((f) => f.id === filterId)?.needsSelection === true;
+  const inputs = useMemo(() => {
+    const hole = readsSelection ? demoHole(patch.width, patch.height) : undefined;
+    return stages.map((stage) => ({
+      image: patch,
+      values: { ...values, [key]: stage.value },
+      ...(hole ? { hole } : {}),
+    }));
+  }, [stages, key, values, patch, readsSelection]);
   const engine = useEngineResults(filterId, inputs, !filter);
   const stagePictures =
     browserPictures ??
@@ -76,6 +83,9 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
           : " Each result is shown as the engine returns it."}{" "}
         The one the filter applies now is in bold. Steps that follow edges stop at the patch edge,
         so results near it can differ from the whole image.
+        {readsSelection
+          ? ` In place of your selection, the hole is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
+          : ""}
       </p>
     </div>
   );

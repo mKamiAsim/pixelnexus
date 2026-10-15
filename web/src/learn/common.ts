@@ -8,6 +8,7 @@ import { processRegion, scopeOf } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
 import { hasTransparency } from "@/core/image/encode";
 import { createImage, type RgbaImage } from "@/core/image/types";
+import { createMask, type Mask } from "@/core/mask/mask";
 
 export interface Point {
   readonly x: number;
@@ -116,4 +117,20 @@ export function curveOf(
     return Array.from(filter.pointTable(values, histogram));
   }
   return null;
+}
+
+/** The radius of the hole that the Stage viewer fills for filters that read the selection. */
+export const DEMO_HOLE_RADIUS = 8;
+
+/** A disk at the center of the patch, as the selection of filters that read one. */
+export function demoHole(width: number, height: number): Mask {
+  const mask = createMask(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x + 0.5 - width / 2;
+      const dy = y + 0.5 - height / 2;
+      if (dx * dx + dy * dy <= DEMO_HOLE_RADIUS * DEMO_HOLE_RADIUS) mask.data[y * width + x] = 255;
+    }
+  }
+  return mask;
 }

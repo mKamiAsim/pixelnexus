@@ -76,6 +76,8 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
 
             yield from _param_issues(entry, common, where)
             yield from _formula_issues(entry, where)
+            if section == "filters":
+                yield from _engine_rule_issues(entry, where)
             if entry.get("status") in FULL_STATUSES:
                 yield from _code_issues(entry, where, section)
 
@@ -93,6 +95,17 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
     for term, count in Counter(terms).items():
         if count > 1:
             yield Issue("error", "catalog/glossary.yaml", f"term '{term}' is defined twice")
+
+
+def _engine_rule_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
+    """Selections as inputs and size changes need the science engine, not the tiled engine."""
+    for flag in ("needsSelection", "changesSize"):
+        if entry.get(flag) and entry.get("engine") != "science":
+            yield Issue("error", where, f"{flag} needs the science engine")
+    if entry.get("changesSize") and "scale" not in _param_keys(entry):
+        yield Issue("error", where, "an entry that sets changesSize needs a scale parameter")
+    if entry.get("changesSize") and entry.get("command"):
+        yield Issue("error", where, "an entry with a command must not also set changesSize")
 
 
 def _param_issues(entry: dict[str, Any], common: dict[str, Any], where: str) -> Iterator[Issue]:

@@ -7,12 +7,15 @@ import { useEffect, useState } from "react";
 
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
+import type { Mask } from "@/core/mask/mask";
 import { runJob } from "@/engine-client";
 import { useEngine } from "@/state/engine";
 
 export interface EngineInput {
   readonly image: RgbaImage;
   readonly values: Params;
+  /** The selection, for filters that read it, such as inpainting. */
+  readonly hole?: Mask;
 }
 
 export interface EngineResults {
@@ -51,7 +54,12 @@ export function useEngineResults(
       Promise.all(
         inputs.map((input) =>
           runJob(
-            { filterId, values: input.values, image: input.image },
+            {
+              filterId,
+              values: input.values,
+              image: input.image,
+              ...(input.hole ? { hole: input.hole } : {}),
+            },
             { signal: controller.signal },
           ),
         ),

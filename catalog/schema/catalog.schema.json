@@ -711,6 +711,14 @@
         "supportsMask": {
           "type": "boolean"
         },
+        "needsSelection": {
+          "description": "The filter reads the selection as an input, such as the area to fill. The studio sends it with the job and does not run the filter without one. Science engine only.",
+          "type": "boolean"
+        },
+        "changesSize": {
+          "description": "The result has another size than the image, such as an enlarged one. The entry needs a scale parameter, the factor for width and height, so the studio can check the new size first. The studio runs the filter on the whole image and scales the selection with it. Science engine only.",
+          "type": "boolean"
+        },
         "preview": {
           "enum": [
             "live",

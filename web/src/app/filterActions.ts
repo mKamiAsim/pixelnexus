@@ -5,6 +5,7 @@
 import { catalog, isRunnable, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
 import { composite } from "@/core/composite/compose";
+import { fullRect } from "@/core/filters/run";
 import { processingRegion, scopeMask, type FilterScope } from "@/core/composite/scope";
 import type { ParamValue } from "@/core/filters/types";
 import { EngineError, runJob } from "@/engine-client";
@@ -17,9 +18,10 @@ import {
 } from "@/state/documents";
 import { useFilters } from "@/state/filters";
 import { announce, notify } from "@/state/notifications";
+import { useSettings } from "@/state/settings";
 import { useUi } from "@/state/ui";
 
-import { runEntryCommand } from "./geometryActions";
+import { runEntryCommand, scaleSelection } from "./geometryActions";
 import { guideImageFor } from "./guide";
 import { showPanel, workspaceApi } from "./layout";
 
@@ -109,6 +111,29 @@ export const isGlobal = (values: Readonly<Record<string, ParamValue>>) =>
   values.outputMapping === "normalize";
 
 /**
+ * The scope of a filter. A filter that reads the selection, such as inpainting, works inside
+ * it, or outside it with the inverse scope.
+ */
+function selectionScope(entry: Filter, doc: ImageDocument): FilterScope {
+  const scope = effectiveScope(doc);
+  return entry.needsSelection && scope === "whole" ? "selection" : scope;
+}
+
+/** For a filter that enlarges the image: false, with a message, when the result is too large. */
+function fitsLimits(image: { width: number; height: number }, scale: number): boolean {
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const { maxPixels, maxSide } = useSettings.getState().limits;
+  if (width * height <= maxPixels && Math.max(width, height) <= maxSide) return true;
+  notify(
+    "error",
+    "The result would be too large",
+    `It would be ${width} x ${height} pixels. The image limits in Preferences allow ${(maxPixels / 1e6).toFixed(0)} million pixels and ${maxSide} pixels per side.`,
+  );
+  return false;
+}
+
+/**
  * Apply the selected filter to the active image, through workers. With a selection, only the
  * selected part is processed and the result is blended in through the mask.
  */
@@ -128,9 +153,20 @@ export async function applySelected(): Promise<void> {
   }
   const source = doc.current;
   const { values } = filterValues(entry);
-  const scope = effectiveScope(doc);
-  const mask = scopeMask(activeSelection(doc), scope);
-  const region = processingRegion(source, mask, isGlobal(values));
+  const selection = activeSelection(doc);
+  if (entry.needsSelection && !selection) {
+    notify(
+      "info",
+      "Select the area first",
+      `${entry.name} works on the selection. Make a selection, then apply again.`,
+    );
+    return;
+  }
+  const resizes = entry.changesSize === true;
+  if (resizes && !fitsLimits(source, Number(values.scale))) return;
+  const scope = resizes ? "whole" : selectionScope(entry, doc);
+  const mask = scopeMask(selection, scope);
+  const region = resizes ? fullRect(source) : processingRegion(source, mask, isGlobal(values));
   if (!region) {
     notify(
       "info",
@@ -150,7 +186,14 @@ export async function applySelected(): Promise<void> {
   try {
     const guide = guideImageFor(entry, values, doc);
     const result = await runJob(
-      { filterId: entry.id, values, image: source, region, ...(guide ? { guide } : {}) },
+      {
+        filterId: entry.id,
+        values,
+        image: source,
+        region,
+        ...(guide ? { guide } : {}),
+        ...(entry.needsSelection && mask ? { hole: mask } : {}),
+      },
       {
         signal: controller.signal,
         onProgress: (fraction) => useFilters.getState().setProgress(fraction),
@@ -165,12 +208,21 @@ export async function applySelected(): Promise<void> {
       );
       return;
     }
-    const image = composite(source, result.image, result.region, mask);
-    useDocuments.getState().edit(doc.id, image, label, {
-      id: entry.id,
-      params: values,
-      ...(scope === "whole" ? {} : { scope }),
-    });
+    if (resizes) {
+      // The result replaces the image, and the selection grows with it.
+      const { width, height } = result.image;
+      const scaled = doc.selection ? scaleSelection(doc.selection, width, height) : undefined;
+      useDocuments
+        .getState()
+        .edit(doc.id, result.image, label, { id: entry.id, params: values }, scaled);
+    } else {
+      const image = composite(source, result.image, result.region, mask);
+      useDocuments.getState().edit(doc.id, image, label, {
+        id: entry.id,
+        params: values,
+        ...(scope === "whole" ? {} : { scope }),
+      });
+    }
     useFilters.getState().setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
     // A preview of the new image would show the filter twice, so the preview turns off.
     useFilters.getState().setPreviewOn(false);

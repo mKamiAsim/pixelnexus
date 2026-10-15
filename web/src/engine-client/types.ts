@@ -18,6 +18,11 @@ export interface FilterJob {
   readonly mask?: Mask | null;
   /** A guide image of the same size as `image`, for filters with an image parameter. */
   readonly guide?: RgbaImage;
+  /**
+   * The selection as an input, for science filters that read it, such as inpainting
+   * (catalog field needsSelection). The engine gets it with the job.
+   */
+  readonly hole?: Mask;
 }
 
 export interface JobOptions {
@@ -36,6 +41,10 @@ export interface JobTiming {
 }
 
 export interface JobResult {
+  /**
+   * Where the result goes in the image. For a filter that changes the size (catalog field
+   * changesSize), it is the whole result, which replaces the image.
+   */
   readonly region: Rect;
   /** The filtered region, region-sized. The compositor puts it into the image. */
   readonly image: RgbaImage;

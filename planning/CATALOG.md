@@ -333,8 +333,8 @@ Restoration never claims to recover information the input does not contain. Each
 | sparse-fista | Sparse regularization | FISTA with a wavelet L1 prior. Done on 2026-10-15. | Advanced | Science | 6c |
 | pnp-admm | Plug-and-play restoration | ADMM with a choice of denoiser. Done on 2026-10-15. | Advanced | Science | 6c |
 | red | Regularization by Denoising | RED. Done on 2026-10-15. | Advanced | Science | 6c |
-| inpaint | Image inpainting | Telea, Navier-Stokes and biharmonic. The selection is the mask. | Advanced | Science | 6c |
-| sr-classical | Super-resolution reconstruction | Bicubic plus iterative back-projection. Changes image size. | Advanced | Science | 6c |
+| inpaint | Image inpainting | Telea, Navier-Stokes and biharmonic. The selection is the mask. Done on 2026-10-15. | Advanced | Science | 6c |
+| sr-classical | Super-resolution reconstruction | Bicubic plus iterative back-projection. Changes image size. Done on 2026-10-15. | Advanced | Science | 6c |
 | deband | Debanding | Done on 2026-10-15. | Advanced | Science | 6c |
 | descreen | Descreening | Halftone peak removal in frequency. Done on 2026-10-15. | Advanced | Science | 6c |
 | deblock | Deblocking | Done on 2026-10-15. | Advanced | Science | 6c |

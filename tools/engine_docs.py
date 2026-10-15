@@ -47,6 +47,7 @@ from pixelnexus_engine.filters.directional import (
     directional_shearlet,
     frequency_grid,
 )
+from pixelnexus_engine.filters.inpainting import inpaint
 from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.restoration import (
@@ -59,6 +60,8 @@ from pixelnexus_engine.filters.restoration import (
     tv_deblur,
 )
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
+from pixelnexus_engine.filters.superresolution import Grid, sr_classical
+from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -1216,6 +1219,141 @@ def jpeg_docs(out: dict[Path, str]) -> None:
         )
 
 
+# Inpainting and super-resolution ---------------------------------------------------------------
+
+INPAINT_METHODS = [("telea", "Telea"), ("ns", "Navier-Stokes"), ("biharmonic", "Biharmonic")]
+
+
+def scratch_hole(size: int = 160) -> NDArray[np.bool_]:
+    """A scratch 5 pixels wide across the image, and a spot of radius 9."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float64)
+    # Distance from the line through (0.15 size, 0.75 size) and (0.85 size, 0.3 size).
+    x0, y0, x1, y1 = 0.15 * size, 0.75 * size, 0.85 * size, 0.3 * size
+    length = math.hypot(x1 - x0, y1 - y0)
+    distance = np.abs((x1 - x0) * (y0 - y) - (x0 - x) * (y1 - y0)) / length
+    along = ((x - x0) * (x1 - x0) + (y - y0) * (y1 - y0)) / length
+    scratch = (distance <= 2.5) & (along >= 0) & (along <= length)
+    spot = (x - 0.3 * size) ** 2 + (y - 0.3 * size) ** 2 <= 9**2
+    return np.asarray(scratch | spot)
+
+
+def run_inpaint(gray: Gray, hole: NDArray[np.bool_], **values: Any) -> Gray:
+    params = {**catalog_values("inpaint", **values), "mask": hole.astype(np.uint8) * 255}
+    result = np.asarray(inpaint(rgba(gray), params, lambda _: None))
+    return np.asarray(result[..., 0], dtype=np.uint8)
+
+
+def inpaint_docs(out: dict[Path, str]) -> None:
+    filter_id = "inpaint"
+    star = siemens_star(160, 160, spokes=12)
+    hole = scratch_hole()
+    damaged = np.where(hole, 255, star).astype(np.uint8)
+    panels = [
+        {"title": "Damaged", "image": picture(damaged)},
+        {"title": "Hole", "image": picture(np.where(hole, 255, 0).astype(np.uint8))},
+        {"title": "Original", "image": picture(star)},
+    ]
+    panels += [
+        {"title": label, "image": picture(run_inpaint(damaged, hole, method=method))}
+        for method, label in INPAINT_METHODS
+    ]
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "A Siemens star with 12 spokes, a white scratch and a white spot, the "
+            "hole that covers them, the star before the damage, and the three methods with "
+            "the other defaults.",
+            "panels": panels,
+        },
+        separators=(",", ":"),
+    )
+
+    scenes = [("Disks", disks(160, 160)), ("Siemens star", star)]
+
+    def in_hole(gray: Gray, clean: Gray) -> str:
+        return fix(psnr(gray[hole], clean[hole]), 2)
+
+    rows = [
+        [label, *(in_hole(run_inpaint(clean, hole, method=method), clean) for _, clean in scenes)]
+        for method, label in INPAINT_METHODS
+    ]
+    _, x = np.mgrid[0:160, 0:160]
+    ramp = (40 + x).astype(np.uint8)
+    ramp_error = {
+        label: int(np.abs(run_inpaint(ramp, hole, method=m).astype(int) - ramp)[hole].max())
+        for m, label in INPAINT_METHODS
+    }
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Method", *(name for name, _ in scenes)], rows)
+        + f"\nThe scratch and spot of the figure, {int(hole.sum())} pixels in all, on two "
+        "160 x 160 test images. The numbers are the PSNR in dB inside the hole, against the "
+        "image before the damage. On a ramp that rises by 1 level per pixel to the right, the "
+        "largest error in the hole is "
+        f"{ramp_error['Telea']} levels for Telea, {ramp_error['Navier-Stokes']} for "
+        f"Navier-Stokes and {ramp_error['Biharmonic']} for biharmonic, since a plane is its own "
+        "biharmonic fill.\n"
+    )
+
+
+def shrink(gray: NDArray[np.float64], scale: int) -> NDArray[np.float64]:
+    """The camera model of the filter: the mean of each scale x scale block."""
+    h, w = gray.shape[0] // scale, gray.shape[1] // scale
+    blocks = gray[: h * scale, : w * scale].reshape(h, scale, w, scale)
+    return np.asarray(blocks.mean(axis=(1, 3)))
+
+
+def sr_classical_docs(out: dict[Path, str]) -> None:
+    filter_id = "sr-classical"
+    star = siemens_star(160, 160, spokes=12)
+    small = to_8bit(shrink(star.astype(np.float64), 2))
+
+    def enlarged(iterations: int, image: Gray = small, scale: int = 2) -> Gray:
+        values = {"scale": scale, "iterations": iterations}
+        params = catalog_values(filter_id, **values)
+        result = np.asarray(sr_classical(rgba(image), params, lambda _: None))
+        return np.asarray(result[..., 0], dtype=np.uint8)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "A Siemens star with 12 spokes, shrunk to half by block means and "
+            "shown with each pixel copied, then enlarged again with bicubic (0 iterations) and "
+            "with 10 iterations of back-projection.",
+            "panels": [
+                {"title": "Original", "image": picture(star)},
+                {"title": "Shrunk", "image": picture(np.kron(small, np.ones((2, 2), np.uint8)))},
+                {"title": "Bicubic", "image": picture(enlarged(0))},
+                {"title": "Back-projection", "image": picture(enlarged(10))},
+            ],
+        },
+        separators=(",", ":"),
+    )
+
+    rows = []
+    for name, clean in (("Disks", disks(192, 192)), ("Siemens star", siemens_star(192, 192))):
+        for scale in (2, 3, 4):
+            low = to_8bit(shrink(clean.astype(np.float64), scale))
+            cells = [fix(psnr(enlarged(k, low, scale), clean), 2) for k in (0, 3, 10)]
+            rows.append([name, str(scale), *cells])
+    g = small.astype(np.float64)
+    grid = Grid(g.shape[0], g.shape[1], 2)
+    residual = [
+        fix(float(np.sqrt(np.mean((g - grid.down(sr_back_project(g, grid, k))) ** 2))), 4)
+        for k in (0, 3, 10)
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Image", "Scale", "Bicubic", "3 iterations", "10 iterations"], rows)
+        + "\nEach 192 x 192 test image is shrunk with the camera model of the filter, the mean "
+        "of each block, and rounded to 8 bits. Then the filter enlarges it again. The numbers "
+        "are the PSNR in dB against the image before shrinking. For the star at scale 2, the "
+        "root mean square difference between the shrunk image and the camera model of the "
+        f"estimate is {residual[0]} levels for bicubic, {residual[1]} after 3 iterations and "
+        f"{residual[2]} after 10, before rounding.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1239,6 +1377,8 @@ def build() -> dict[Path, str]:
     deband_docs(out)
     descreen_docs(out)
     jpeg_docs(out)
+    inpaint_docs(out)
+    sr_classical_docs(out)
     return out
 
 

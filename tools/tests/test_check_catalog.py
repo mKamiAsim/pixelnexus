@@ -142,3 +142,18 @@ def test_registered_browser_filter_passes(catalog: Any) -> None:
             item["status"] = "implemented-tested"
     messages = [i.message for i in structure_issues(fine)]
     assert not any("registered" in m or "declare id" in m for m in messages)
+
+
+def test_selection_inputs_and_size_changes_need_the_science_engine(catalog: Any) -> None:
+    broken = copy.deepcopy(catalog)
+    for item in broken.bundle["filters"]:
+        if item["id"] == "gaussian":
+            item["needsSelection"] = True
+            item["changesSize"] = True
+        if item["id"] == "resize":
+            item["changesSize"] = True
+    messages = [i.message for i in structure_issues(broken)]
+    assert "needsSelection needs the science engine" in messages
+    assert "changesSize needs the science engine" in messages
+    assert "an entry with a command must not also set changesSize" in messages
+    assert "an entry that sets changesSize needs a scale parameter" in messages
