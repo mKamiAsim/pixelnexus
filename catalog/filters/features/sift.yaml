@@ -1,10 +1,148 @@
 id: sift
 name: SIFT
-aliases:
-- SIFT-inspired scale-space keypoints
+aliases: [SIFT-inspired scale-space keypoints, Scale-invariant feature transform]
 family: features
+tags: [purpose:analysis]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: SIFT-inspired scale-space keypoints. OpenCV.
+
+summary: Finds keypoints that stay the same when the image is scaled or turned, with Lowe's scale-invariant feature transform. Each keypoint has a position, a size and an orientation. Only the detector runs, not the descriptor.
+purpose: Find distinctive points with their scale and orientation, the first step of matching and stitching images.
+classification: {linearity: nonlinear, domain: spatial, operation: difference of Gaussians extrema with orientation}
+output: features
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: keypoint_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the 8-bit luma with the BT.709 weights. Alpha is ignored. The image does
+  not change. The keypoints go to the Features panel and are drawn on the canvas, each as a
+  circle of its radius with a line for its angle.
+boundary: OpenCV fills past the edge when it blurs, and keypoints too close to the edge are dropped.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.SIFT_create and detect.'}
+
+params:
+  - key: maxFeatures
+    label: Most keypoints
+    type: integer
+    min: 0
+    max: 5000
+    step: 1
+    default: 0
+    description: Keep at most this many keypoints, the strongest. 0 keeps all.
+    effect: Lower values keep only the strongest.
+  - key: octaveLayers
+    label: Layers per octave
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 3
+    description: The number of scales in each octave, where the size doubles. Lowe uses 3.
+    effect: More layers find more keypoints at finer sizes.
+  - key: contrastThreshold
+    label: Contrast threshold
+    type: number
+    min: 0.001
+    max: 0.2
+    step: 0.001
+    default: 0.04
+    description: Weak extrema in flat areas are dropped. OpenCV divides this by the number of layers.
+    effect: Higher values keep fewer keypoints.
+  - key: edgeThreshold
+    label: Edge threshold
+    type: number
+    min: 1
+    max: 50
+    step: 0.5
+    default: 10
+    description: The largest ratio r of the two curvatures. Points on edges, where one curvature is much larger, are dropped. Lowe uses 10.
+    effect: Higher values keep more points near edges.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1.6
+    unit: px
+    description: The blur of the first scale. Lowe uses 1.6.
+    effect: Lower values find more fine detail.
+formula: |
+  D(x, \sigma) = (G_{k\sigma} - G_\sigma) * I,
+  \qquad
+  k = 2^{1/{{octaveLayers}}},
+  \qquad
+  \frac{\operatorname{tr}(H)^2}{\det H} < \frac{(r + 1)^2}{r},\quad r = {{edgeThreshold}}
+formulaExplanation: >-
+  SIFT builds a scale space of Gaussian blurs, k times wider at each step, and takes the
+  differences D of neighboring blurs. These approximate the scale-normalized Laplacian. A
+  keypoint is a point of D that is larger or smaller than its 26 neighbors in position and
+  scale. Its position and scale are refined by fitting a quadratic, and weak points are dropped.
+  Points on edges, where the Hessian H of D has one curvature much larger than the other, are
+  dropped too. The orientation is the peak of a histogram of gradient directions around the
+  point. Other peaks within 80 percent of the highest give more keypoints at the same place.
+symbols:
+  - {symbol: 'D', meaning: 'The difference of Gaussians'}
+  - {symbol: 'k', meaning: 'The scale step within an octave'}
+  - {symbol: 'H', meaning: 'The 2 x 2 Hessian of D'}
+  - {symbol: 'r', meaning: 'The edge threshold'}
+  - {symbol: 'x, y', meaning: 'The keypoint position, with the center of the top-left pixel at 0, 0'}
+  - {symbol: '\theta', meaning: 'The orientation, counterclockwise from the x axis'}
+steps:
+  - Build the difference-of-Gaussians scale space, octave by octave.
+  - Find points that beat their 26 neighbors, and refine them.
+  - Drop weak points and points on edges.
+  - Give each point the main direction of its gradients.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The octaves shrink by 4 in area, so all of them together cost about 4/3 of the first.
+useCases:
+  - Matching photos of the same scene for stitching and 3D reconstruction.
+  - Recognizing objects in cluttered scenes.
+advantages:
+  - Stays the same under scaling and rotation, and changes little under lighting.
+  - Each keypoint knows its size and orientation.
+limitations:
+  - Slower than ORB and AKAZE.
+  - Fine repeated detail can give no keypoints at all. On the Siemens star, all of them lie more than 205 pixels from the center, near the rim.
+  - Only the detector runs. The 128-number descriptors are not computed.
+artifacts:
+  - Two keypoints at the same place with different angles, where a point has two strong directions.
+references:
+  - kind: paper
+    text: Lowe, D. G. Distinctive image features from scale-invariant keypoints. International Journal of Computer Vision 60(2), 91 to 110, 2004.
+    doi: 10.1023/B:VISI.0000029664.99615.94
+  - kind: library
+    text: OpenCV documentation, cv2.SIFT_create and detect.
+implementation: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: sift}
+tests: [engine/tests/test_keypoints.py]
+learn:
+  oneSentence: Find points that look the same at any size and angle, with their size and direction.
+  howItWorks:
+    - Blur the image more and more, and subtract each blur from the next.
+    - Points that stand out in place and size are candidates.
+    - Drop weak points and points on straight edges.
+    - Give each point the main direction of the brightness change around it.
+  academic: >-
+    Difference-of-Gaussians extrema with subpixel refinement, contrast and edge rejection, and histogram orientation assignment, after Lowe.
+  paramNotes:
+    maxFeatures: How many keypoints to keep.
+    octaveLayers: How finely the sizes are tried.
+    contrastThreshold: How strong a point must be.
+    edgeThreshold: How far from straight edges a point must be.
+    sigma: The blur of the first scale.
+  tryThis:
+    - Apply it to the Siemens star, then rotate the image with Image > Rotate and apply it again. Most keypoints come back at the turned places.
+  pitfalls:
+    - Expecting corners only. SIFT finds blobs of any size.
+  demos: [feature-viewer]
+related: [orb, brisk, akaze, blob-dog, surf-inspired]
+docsPage: filters/features/sift.md

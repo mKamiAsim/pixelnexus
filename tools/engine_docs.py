@@ -49,6 +49,7 @@ from pixelnexus_engine.filters.directional import (
     frequency_grid,
 )
 from pixelnexus_engine.filters.inpainting import inpaint
+from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
 from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.restoration import (
@@ -1521,6 +1522,113 @@ def blob_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# Keypoint detectors -----------------------------------------------------------------------------
+
+KEYPOINT_FILTERS = {
+    "sift": ("SIFT", sift),
+    "orb": ("ORB", orb),
+    "brisk": ("BRISK", brisk),
+    "akaze": ("AKAZE", akaze),
+}
+
+
+def keypoint_rows(filter_id: str, gray: Gray, **values: Any) -> list[list[float]]:
+    function = KEYPOINT_FILTERS[filter_id][1]
+    table = function(rgba(gray), catalog_values(filter_id, **values), lambda _: None)
+    assert isinstance(table, dict)
+    rows: list[list[float]] = table["rows"]
+    return rows
+
+
+def with_keypoints(gray: Gray, rows: list[list[float]]) -> Gray:
+    """Draw each keypoint as a ring of its radius with a line from the center along its angle,
+    white on dark pixels and black on light ones. Angles count counterclockwise, y points down."""
+    y, x = np.mgrid[0 : gray.shape[0], 0 : gray.shape[1]]
+    marks = np.zeros(gray.shape, dtype=bool)
+    for kx, ky, radius, angle, *_ in rows:
+        r = max(radius, 2.0)
+        marks |= np.abs(np.hypot(x - kx, y - ky) - r) < 0.6
+        theta = math.radians(angle)
+        for t in np.linspace(0, r, max(2, int(2 * r))):
+            px = round(kx + t * math.cos(theta))
+            py = round(ky - t * math.sin(theta))
+            if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
+                marks[py, px] = True
+    out = gray.copy()
+    out[marks] = np.where(gray[marks] < 128, 255, 0)
+    return out
+
+
+def turned_share(filter_id: str, gray: Gray) -> float:
+    """The share of keypoints found again, at the turned place with the angle plus 90 degrees,
+    after turning the image a quarter counterclockwise."""
+    rows = keypoint_rows(filter_id, gray)
+    turned = keypoint_rows(filter_id, np.ascontiguousarray(np.rot90(gray)))
+    width = gray.shape[1]
+    found = 0
+    for x, y, radius, angle, *_ in rows:
+        for tx, ty, tr, ta, *_ in turned:
+            difference = (ta - angle - 90) % 360
+            close = math.hypot(tx - y, ty - (width - 1 - x)) < 1 and abs(tr - radius) < 0.1 * radius
+            if close and min(difference, 360 - difference) < 5:
+                found += 1
+                break
+    return found / max(1, len(rows))
+
+
+def keypoint_docs(out: dict[Path, str], filter_id: str) -> None:
+    name = KEYPOINT_FILTERS[filter_id][0]
+    star = siemens_star(256, 256)
+    scene = disks(256, 256)
+    turned = np.ascontiguousarray(np.rot90(star))
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": f"The keypoints {name} finds with the defaults on the Siemens star and "
+            "the Disks test images at 256 x 256, and on the star turned a quarter "
+            "counterclockwise. Each keypoint is a ring of its radius with a line along its "
+            "angle.",
+            "panels": [
+                {"title": "Siemens star", "image": picture(star)},
+                {
+                    "title": "Keypoints",
+                    "image": picture(with_keypoints(star, keypoint_rows(filter_id, star))),
+                },
+                {
+                    "title": "Turned star",
+                    "image": picture(with_keypoints(turned, keypoint_rows(filter_id, turned))),
+                },
+                {
+                    "title": "Disks",
+                    "image": picture(with_keypoints(scene, keypoint_rows(filter_id, scene))),
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
+    rows = []
+    for title, image in (("Siemens star", siemens_star(512, 512)), ("Disks", disks(512, 512))):
+        found = keypoint_rows(filter_id, image)
+        radii = [row[2] for row in found]
+        rows.append(
+            [
+                title,
+                str(len(found)),
+                f"{min(radii):.1f} to {max(radii):.1f}" if radii else "",
+                f"{100 * turned_share(filter_id, image):.0f}",
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Image", "Keypoints", "Radius (px)", "Found after a quarter turn (%)"], rows)
+        + f"\n{name} with the defaults on the 512 x 512 test images. The last column is the "
+        "share of keypoints found again after the image is turned a quarter counterclockwise: "
+        "within 1 pixel of the turned place, with a radius within 10 percent, and with an "
+        "angle 90 degrees larger, within 5 degrees. A quarter turn moves pixels exactly onto "
+        "pixels, so any loss comes from the detector itself.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1550,6 +1658,8 @@ def build() -> dict[Path, str]:
         ridge_docs(out, filter_id)
     for filter_id in BLOB_FILTERS:
         blob_docs(out, filter_id)
+    for filter_id in KEYPOINT_FILTERS:
+        keypoint_docs(out, filter_id)
     return out
 
 

@@ -2,8 +2,9 @@
  * Feature tables: what feature detectors in the science engine return instead of an image.
  *
  * A table has columns with a key, a label and a unit, and one row of numbers per feature. Rows
- * with the keys x and y are points: x is the column and y the row of a pixel, so the point sits
- * at the pixel center (x + 0.5, y + 0.5) in image coordinates. An optional radius in pixels and
+ * with the keys x and y are points, in pixels, with the center of the top-left pixel at (0, 0).
+ * They may have a fraction. In image coordinates, where pixel i covers [i, i + 1), the point
+ * sits at (x + 0.5, y + 0.5). An optional radius in pixels and
  * an angle in degrees, counterclockwise from the x axis, give its size and orientation.
  */
 import type { Mask } from "@/core/mask/mask";
@@ -58,7 +59,8 @@ export function featurePoints(table: FeatureTable): FeaturePoint[] {
 }
 
 /**
- * Keep the rows whose point lies on a selected pixel of the mask. Tables without points, and
+ * Keep the rows whose point lies on a selected pixel of the mask: the pixel whose center is
+ * nearest. Tables without points, and
  * all tables when there is no mask, stay as they are.
  */
 export function rowsInMask(table: FeatureTable, mask: Mask | null): FeatureTable {
@@ -66,8 +68,8 @@ export function rowsInMask(table: FeatureTable, mask: Mask | null): FeatureTable
   const y = column(table, "y");
   if (!mask || x < 0 || y < 0) return table;
   const rows = table.rows.filter((row) => {
-    const px = Math.floor(row[x] ?? -1);
-    const py = Math.floor(row[y] ?? -1);
+    const px = Math.round(row[x] ?? -1);
+    const py = Math.round(row[y] ?? -1);
     const inside = px >= 0 && py >= 0 && px < mask.width && py < mask.height;
     return inside && (mask.data[py * mask.width + px] ?? 0) > 0;
   });

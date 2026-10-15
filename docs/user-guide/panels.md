@@ -106,7 +106,7 @@ Below the chart are the mean, the standard deviation, the median, the lowest and
 
 Feature detectors, such as LoG blob detection, find things in the image instead of changing it. The Features panel lists what the last detector found on the active image.
 
-- **The table.** One row per feature, with the strongest first. x and y are the column and row of the center pixel, counted from 0 at the top left. Other columns depend on the detector, such as the radius, sigma and the score. The table shows the first 200 rows.
+- **The table.** One row per feature, with the strongest first. The x and y columns give the position of each feature in pixels, with the center of the top-left pixel at 0, 0. Some detectors give positions between pixels. Other columns depend on the detector, such as the radius, sigma and the score. The table shows the first 200 rows.
 - **Show on the canvas** draws each feature over the image: a circle of its radius, or a small cross when it has none. The canvas draws at most 2000 features.
 - **Export CSV** saves all rows as a CSV file, with the units in the header.
 - **Clear** forgets the features of this image.

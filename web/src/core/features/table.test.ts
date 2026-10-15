@@ -50,6 +50,8 @@ describe("feature tables", () => {
     one.data[4 * 8] = 255;
     expect(rowsInMask(table, one).summary).toBe("1 blob");
     expect(rowsInMask(table, null)).toBe(table);
+    const subpixel = { ...table, rows: [[2.6, 0.6, 1, 1]] };
+    expect(rowsInMask(subpixel, mask).rows).toEqual(subpixel.rows);
   });
 
   it("writes CSV with units in the header", () => {

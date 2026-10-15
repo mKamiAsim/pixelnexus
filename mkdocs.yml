@@ -225,6 +225,10 @@ nav:
           - LoG blob detection: filters/features/blob-log.md
           - DoG blob detection: filters/features/blob-dog.md
           - Determinant of Hessian: filters/features/blob-doh.md
+          - SIFT: filters/features/sift.md
+          - ORB: filters/features/orb.md
+          - BRISK: filters/features/brisk.md
+          - AKAZE: filters/features/akaze.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md

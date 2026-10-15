@@ -95,8 +95,8 @@ export function FeaturesPanel() {
         </p>
       ) : null}
       <p className="text-text-muted">
-        x is the column and y the row of the pixel at the center of each feature, counted from 0 at
-        the top left.
+        x and y give the position of each feature in pixels, with the center of the top-left pixel
+        at 0, 0.
       </p>
     </div>
   );

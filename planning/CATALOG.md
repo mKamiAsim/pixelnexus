@@ -258,11 +258,11 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | blob-log | LoG blob detection | Done on 2026-10-15. | Advanced | Science | 6d |
 | blob-dog | DoG blob detection | DoG keypoint detection. Done on 2026-10-15. | Advanced | Science | 6d |
 | blob-doh | Determinant of Hessian | Done on 2026-10-15. | Advanced | Science | 6d |
-| sift | SIFT | SIFT-inspired scale-space keypoints. OpenCV. | Advanced | Science | 6d |
+| sift | SIFT | SIFT-inspired scale-space keypoints. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
 | surf-inspired | SURF-inspired detector | Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped. | Advanced | Science | 6d |
-| orb | ORB | ORB-inspired binary features. OpenCV. | Advanced | Science | 6d |
-| brisk | BRISK | Extra. OpenCV. | Advanced | Science | 6d |
-| akaze | AKAZE | Extra. OpenCV. | Advanced | Science | 6d |
+| orb | ORB | ORB-inspired binary features. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
+| brisk | BRISK | Extra. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
+| akaze | AKAZE | Extra. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
 | susan-corner | SUSAN corner detector | | Advanced | Science | 6d |
 | mser | MSER region detector | | Advanced | Science | 6d |
 | hough-lines | Hough transform for lines | Accumulator view. | Advanced | Science | 6d |

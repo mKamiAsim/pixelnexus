@@ -2,8 +2,8 @@
 
 | Status | Entries |
 |---|--:|
-| Implemented and tested | 243 |
+| Implemented and tested | 247 |
 | Available through an optional dependency | 1 |
-| Planned but not implemented | 87 |
+| Planned but not implemented | 83 |
 | Unsupported or deprecated | 6 |
 | **Total** | **337** |
