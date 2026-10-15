@@ -1,7 +1,148 @@
 id: mser
 name: MSER region detector
+aliases: [Maximally stable extremal regions, MSER]
 family: features
+tags: [purpose:analysis, purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
+
+summary: Finds maximally stable extremal regions with OpenCV. These are blobs of any shape, brighter or darker than everything around them, whose area hardly changes over a range of thresholds. Each region is listed with its centroid, size, long axis and area.
+purpose: Find blob-shaped regions of any shape and size, such as text characters, signs and spots, as Matas et al. did for wide-baseline stereo.
+classification: {linearity: nonlinear, domain: spatial, operation: maximally stable extremal regions}
+output: features
+representation: algorithm
+representationLabel: definition
+representationSource: {path: engine/src/pixelnexus_engine/filters/mser.py, symbol: mser_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the 8-bit luma with the BT.709 weights. Alpha is ignored. The image does
+  not change. The regions go to the Features panel and are drawn on the canvas, each as a circle
+  of the same area with a line along its long axis.
+boundary: Regions end at the image edge. Nothing is filled past it.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.MSER_create and detectRegions.'}
+
+params:
+  - key: delta
+    label: Delta
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 5
+    unit: levels
+    description: The range of gray levels over which the area of a region is compared. OpenCV uses 5.
+    effect: Larger values keep only regions that stay the same over a wider range.
+  - key: minArea
+    label: Smallest area
+    type: integer
+    min: 1
+    max: 100000
+    step: 1
+    default: 60
+    unit: px
+    description: Smaller regions are dropped. OpenCV uses 60.
+    effect: Larger values drop small spots and noise.
+  - key: maxArea
+    label: Largest area
+    type: integer
+    min: 10
+    max: 1000000
+    step: 10
+    default: 14400
+    unit: px
+    description: Larger regions are dropped. OpenCV uses 14400. If it is below the smallest area, the smallest is used.
+    effect: Larger values also keep big regions.
+  - key: maxVariation
+    label: Most variation
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.25
+    description: The largest relative change of the area a stable region may have. OpenCV uses 0.25.
+    effect: Lower values keep only the most stable regions.
+  - key: minDiversity
+    label: Least diversity
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.2
+    description: Of nested regions whose areas differ by less than this share, only one stays. OpenCV uses 0.2.
+    effect: Higher values keep fewer nested regions.
+formula: |
+  Q_t = \{\text{connected } x : I(x) \le t\},
+  \qquad
+  v(Q_t) = \frac{\lvert Q_{t + \Delta} \rvert - \lvert Q_{t - \Delta} \rvert}{\lvert Q_t \rvert},
+  \qquad
+  \Delta = {{delta}}
+formulaExplanation: >-
+  Picture the threshold t sweeping the gray levels from black to white. The pixels at or below t
+  form connected regions, which appear, grow and merge. Each one is an extremal region, since
+  all its pixels are darker than every pixel on its border. Matas et al. measure how fast its
+  area changes with v. A region where v has a local minimum is maximally stable: it keeps its
+  shape while the threshold moves. Sweeping the other way gives the bright regions, and
+  OpenCV finds both in one run. Regions outside the area limits, or with v above the most
+  variation, are dropped. Of nested regions that are nearly the same, only one stays. The
+  table gives each region's centroid, the radius of a disk of the same area, and its long axis
+  from the second moments of its pixels.
+symbols:
+  - {symbol: 'Q_t', meaning: 'An extremal region at threshold t'}
+  - {symbol: 'v', meaning: 'The variation, the relative change of the area'}
+  - {symbol: '\Delta', meaning: 'Delta, the range of gray levels'}
+steps:
+  - Take the 8-bit luma.
+  - Sweep the threshold and follow how the connected regions grow, in both directions.
+  - Keep the regions whose area changes least, within the area and variation limits.
+  - Report each region's centroid, equal-area radius, long axis, area and axis ratio.
+complexity:
+  time: O(N log log N)
+  memory: O(N)
+  notes: N is the number of pixels, as Matas et al. give it for their algorithm.
+useCases:
+  - Finding text characters and signs.
+  - Matching regions between two views of a scene.
+advantages:
+  - Regions of any shape, not only round blobs.
+  - Its extremal regions do not change when the brightness is changed in a way that keeps the order of gray levels.
+limitations:
+  - On images whose shapes are perfectly flat, OpenCV finds no region at all. The Disks test image gives none, and after a blur of sigma 3 it gives 4.
+  - The table holds a summary of each region, not its pixels.
+artifacts:
+  - Nested regions of the same object at different thresholds.
+references:
+  - kind: paper
+    text: Matas, J., Chum, O., Urban, M., and Pajdla, T. Robust wide-baseline stereo from maximally stable extremal regions. Image and Vision Computing 22(10), 761 to 767, 2004.
+    doi: 10.1016/j.imavis.2004.02.006
+  - kind: library
+    text: OpenCV documentation, cv2.MSER_create and detectRegions.
+implementation: {path: engine/src/pixelnexus_engine/filters/mser.py, symbol: mser}
+tests: [engine/tests/test_mser.py]
+learn:
+  oneSentence: Find regions that keep their shape while a threshold sweeps through the gray levels.
+  howItWorks:
+    - Imagine thresholding the image at every gray level in turn.
+    - Dark regions appear, grow and merge as the threshold rises.
+    - Some keep almost the same shape over many levels. These are the stable ones.
+    - Do the same for bright regions, and list them all.
+  academic: >-
+    Maximally stable extremal regions of the gray-level component tree, after Matas et al.,
+    with OpenCV's area, variation and diversity limits.
+  paramNotes:
+    delta: Over how many gray levels a region must be stable.
+    minArea: The smallest region to keep.
+    maxArea: The largest region to keep.
+    maxVariation: How stable a region must be.
+    minDiversity: How different nested regions must be.
+  tryThis:
+    - Blur the Disks image with a Gaussian of sigma 3, then apply the filter. Without the blur it finds nothing.
+  pitfalls:
+    - Perfectly flat synthetic images. Their regions do not change at all, and OpenCV keeps none.
+  demos: [feature-viewer]
+related: [blob-log, threshold-global, sift]
+docsPage: filters/features/mser.md

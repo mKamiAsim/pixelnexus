@@ -259,12 +259,12 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | blob-dog | DoG blob detection | DoG keypoint detection. Done on 2026-10-15. | Advanced | Science | 6d |
 | blob-doh | Determinant of Hessian | Done on 2026-10-15. | Advanced | Science | 6d |
 | sift | SIFT | SIFT-inspired scale-space keypoints. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
-| surf-inspired | SURF-inspired detector | Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped. | Advanced | Science | 6d |
+| surf-inspired | SURF-inspired detector | Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped. Done on 2026-10-15. | Advanced | Science | 6d |
 | orb | ORB | ORB-inspired binary features. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
 | brisk | BRISK | Extra. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
 | akaze | AKAZE | Extra. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
-| susan-corner | SUSAN corner detector | | Advanced | Science | 6d |
-| mser | MSER region detector | | Advanced | Science | 6d |
+| susan-corner | SUSAN corner detector | Our own code, without the false-corner tests of the paper. Done on 2026-10-15. | Advanced | Science | 6d |
+| mser | MSER region detector | OpenCV. Regions as centroid, equal-area radius and long axis. Done on 2026-10-15. | Advanced | Science | 6d |
 | hough-lines | Hough transform for lines | Accumulator view. | Advanced | Science | 6d |
 | hough-circles | Hough transform for circles | Accumulator view. | Advanced | Science | 6d |
 

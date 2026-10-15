@@ -229,6 +229,9 @@ nav:
           - ORB: filters/features/orb.md
           - BRISK: filters/features/brisk.md
           - AKAZE: filters/features/akaze.md
+          - SURF-inspired detector: filters/features/surf-inspired.md
+          - SUSAN corner detector: filters/features/susan-corner.md
+          - MSER region detector: filters/features/mser.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md

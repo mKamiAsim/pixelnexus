@@ -50,6 +50,7 @@ from pixelnexus_engine.filters.directional import (
 )
 from pixelnexus_engine.filters.inpainting import inpaint
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
+from pixelnexus_engine.filters.mser import mser
 from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.restoration import (
@@ -70,6 +71,8 @@ from pixelnexus_engine.filters.ridges import (
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
+from pixelnexus_engine.filters.surf import surf_inspired
+from pixelnexus_engine.filters.susan import susan_corner
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -1529,15 +1532,18 @@ KEYPOINT_FILTERS = {
     "orb": ("ORB", orb),
     "brisk": ("BRISK", brisk),
     "akaze": ("AKAZE", akaze),
+    "surf-inspired": ("The SURF-inspired detector", surf_inspired),
 }
 
 
 def keypoint_rows(filter_id: str, gray: Gray, **values: Any) -> list[list[float]]:
+    """Rows of x, y, radius, angle and score, whatever the order of the table's columns."""
     function = KEYPOINT_FILTERS[filter_id][1]
     table = function(rgba(gray), catalog_values(filter_id, **values), lambda _: None)
     assert isinstance(table, dict)
-    rows: list[list[float]] = table["rows"]
-    return rows
+    keys = [column["key"] for column in table["columns"]]
+    picks = [keys.index(key) for key in ("x", "y", "radius", "angle", "score")]
+    return [[row[i] for i in picks] for row in table["rows"]]
 
 
 def with_keypoints(gray: Gray, rows: list[list[float]]) -> Gray:
@@ -1629,6 +1635,138 @@ def keypoint_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# SUSAN corners and MSER regions -----------------------------------------------------------------
+
+
+def table_rows(function: Any, filter_id: str, gray: Gray, **values: Any) -> list[dict[str, float]]:
+    """The rows of a feature table as dicts by column key."""
+    table = function(rgba(gray), catalog_values(filter_id, **values), lambda _: None)
+    assert isinstance(table, dict)
+    keys = [column["key"] for column in table["columns"]]
+    return [dict(zip(keys, row, strict=True)) for row in table["rows"]]
+
+
+def with_crosses(gray: Gray, rows: list[dict[str, float]]) -> Gray:
+    """A small cross on each point, white on dark pixels and black on light ones."""
+    out = gray.copy()
+    for row in rows:
+        x, y = round(row["x"]), round(row["y"])
+        for dx, dy in [(d, 0) for d in range(-3, 4)] + [(0, d) for d in range(-3, 4)]:
+            px, py = x + dx, y + dy
+            if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
+                out[py, px] = 255 if gray[py, px] < 128 else 0
+    return out
+
+
+def blurred_scene(gray: Gray, sigma: float) -> Gray:
+    return to_8bit(ndimage.gaussian_filter(gray.astype(np.float64), sigma))
+
+
+def susan_docs(out: dict[Path, str]) -> None:
+    filter_id = "susan-corner"
+    rectangle = np.full((256, 256), 40, np.uint8)
+    rectangle[60:200, 80:180] = 200
+    star = siemens_star(256, 256, spokes=12)
+    scene = disks(256, 256)
+    panels = [
+        {"title": title, "image": picture(with_crosses(g, table_rows(susan_corner, filter_id, g)))}
+        for title, g in (("Rectangle", rectangle), ("Siemens star", star), ("Disks", scene))
+    ]
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "The corners SUSAN finds with the defaults on a bright rectangle, a "
+            "Siemens star with 12 spokes and the Disks image, all 256 x 256, each marked with a "
+            "cross.",
+            "panels": panels,
+        },
+        separators=(",", ":"),
+    )
+    rows = []
+    for t in (10, 25, 40):
+        cells = [
+            str(len(table_rows(susan_corner, filter_id, g, brightness=t)))
+            for g in (rectangle, star, scene)
+        ]
+        rows.append([fix(t, 0), *cells])
+    edge = table_rows(susan_corner, filter_id, rectangle)
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Brightness threshold", "Rectangle", "Siemens star", "Disks"], rows)
+        + "\nThe number of corners with the geometric threshold of 0.5 on the three images of "
+        "the figure. The rectangle is 100 x 140 pixels at 200 on a ground of 40, so any "
+        "threshold well below the step of 160 finds its four corners, at the corner pixels "
+        f"themselves, with the response {edge[0]['score']:g} and a USAN area of "
+        f"{edge[0]['usan']:g} of 37. The other corners on the star and the disks lie along "
+        "the spokes and the round edges.\n"
+    )
+
+
+def with_regions(gray: Gray, rows: list[dict[str, float]]) -> Gray:
+    """Each region as a ring of its equal-area radius with a line along its long axis."""
+    y, x = np.mgrid[0 : gray.shape[0], 0 : gray.shape[1]]
+    marks = np.zeros(gray.shape, dtype=bool)
+    for row in rows:
+        r = max(row["radius"], 2.0)
+        marks |= np.abs(np.hypot(x - row["x"], y - row["y"]) - r) < 0.6
+        theta = math.radians(row["angle"])
+        for t in np.linspace(-r, r, max(2, int(4 * r))):
+            px = round(row["x"] + t * math.cos(theta))
+            py = round(row["y"] - t * math.sin(theta))
+            if 0 <= px < gray.shape[1] and 0 <= py < gray.shape[0]:
+                marks[py, px] = True
+    out = gray.copy()
+    out[marks] = np.where(gray[marks] < 128, 255, 0)
+    return out
+
+
+def mser_docs(out: dict[Path, str]) -> None:
+    filter_id = "mser"
+    scene = disks(256, 256)
+    soft = blurred_scene(scene, 3)
+    star = blurred_scene(siemens_star(256, 256, spokes=12), 3)
+    panels = [
+        {
+            "title": "Disks",
+            "image": picture(with_regions(scene, table_rows(mser, filter_id, scene))),
+        },
+        {
+            "title": "Disks, blurred",
+            "image": picture(with_regions(soft, table_rows(mser, filter_id, soft))),
+        },
+        {
+            "title": "Star, blurred",
+            "image": picture(with_regions(star, table_rows(mser, filter_id, star))),
+        },
+    ]
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "The regions MSER finds with the defaults on the Disks image as it is, "
+            "and on the Disks image and a Siemens star with 12 spokes after a Gaussian blur of "
+            "sigma 3, all 256 x 256. Each region is a ring of the same area with a line along "
+            "its long axis.",
+            "panels": panels,
+        },
+        separators=(",", ":"),
+    )
+    full = disks(512, 512)
+    rows = []
+    for sigma in (0, 1, 2, 3, 5):
+        g = full if sigma == 0 else blurred_scene(full, sigma)
+        found = table_rows(mser, filter_id, g)
+        areas = ", ".join(str(int(r["area"])) for r in found) or "none"
+        rows.append([fix(sigma, 0), str(len(found)), areas])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Blur sigma (px)", "Regions", "Areas (px)"], rows)
+        + "\nThe Disks test image at 512 x 512 with the defaults, after a Gaussian blur of "
+        "growing sigma, rounded to 8 bits. Its disks have areas of about 113 to 16300 pixels, "
+        "and the largest area allowed is 14400. On the image as it is, OpenCV finds no region. "
+        "After a blur it finds some, and how many depends on the blur.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1660,6 +1798,8 @@ def build() -> dict[Path, str]:
         blob_docs(out, filter_id)
     for filter_id in KEYPOINT_FILTERS:
         keypoint_docs(out, filter_id)
+    susan_docs(out)
+    mser_docs(out)
     return out
 
 
