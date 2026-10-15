@@ -331,8 +331,8 @@ Restoration never claims to recover information the input does not contain. Each
 | tv-deblur | Total variation restoration | Chambolle-Pock primal-dual. Done on 2026-10-15. | Advanced | Science | 6c |
 | blind-deconv | Blind deconvolution | Alternating Richardson-Lucy. Labeled experimental. Done on 2026-10-15. | Advanced | Science | 6c |
 | sparse-fista | Sparse regularization | FISTA with a wavelet L1 prior. Done on 2026-10-15. | Advanced | Science | 6c |
-| pnp-admm | Plug-and-play restoration | ADMM with a choice of denoiser. | Advanced | Science | 6c |
-| red | Regularization by Denoising | RED. | Advanced | Science | 6c |
+| pnp-admm | Plug-and-play restoration | ADMM with a choice of denoiser. Done on 2026-10-15. | Advanced | Science | 6c |
+| red | Regularization by Denoising | RED. Done on 2026-10-15. | Advanced | Science | 6c |
 | inpaint | Image inpainting | Telea, Navier-Stokes and biharmonic. The selection is the mask. | Advanced | Science | 6c |
 | sr-classical | Super-resolution reconstruction | Bicubic plus iterative back-projection. Changes image size. | Advanced | Science | 6c |
 | deband | Debanding | | Advanced | Science | 6c |

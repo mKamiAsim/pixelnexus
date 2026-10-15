@@ -344,6 +344,8 @@ nav:
           - Total variation restoration: filters/restoration/tv-deblur.md
           - Sparse regularization: filters/restoration/sparse-fista.md
           - Blind deconvolution: filters/restoration/blind-deconv.md
+          - Plug-and-play restoration: filters/restoration/pnp-admm.md
+          - Regularization by Denoising: filters/restoration/red.md
       - Segmentation:
           - Global threshold: filters/segmentation/threshold-global.md
           - Otsu threshold: filters/segmentation/otsu.md

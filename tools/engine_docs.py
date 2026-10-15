@@ -34,6 +34,7 @@ from pixelnexus_engine.filters.directional import (
     directional_shearlet,
     frequency_grid,
 )
+from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.restoration import (
     blind_deconv,
@@ -794,6 +795,74 @@ def blind_deconv_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Plug-and-play restoration ------------------------------------------------------------------
+
+DENOISER_LABELS = [
+    ("wavelet", "Wavelet"),
+    ("stationary", "Stationary"),
+    ("nlm", "Non-local means"),
+]
+
+
+def plugplay_docs(out: dict[Path, str], filter_id: str) -> None:
+    function = pnp_admm_filter if filter_id == "pnp-admm" else red_filter
+    name = "plug-and-play ADMM" if filter_id == "pnp-admm" else "RED"
+    clean = disks(160, 160)
+    damaged = blurred(clean, 2, 5)
+
+    def restore(gray: Gray, **values: Any) -> Gray:
+        return run(function, gray, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks blurred with a Gaussian of sigma 2 and Gaussian noise of sigma 5, "
+            f"and {name} with its other defaults and each of the three denoisers.",
+            "panels": [
+                {"title": "Blurred, noisy", "image": picture(damaged)},
+                *(
+                    {"title": label, "image": picture(restore(damaged, denoiser=kind))}
+                    for kind, label in DENOISER_LABELS
+                ),
+            ],
+        },
+        separators=(",", ":"),
+    )
+    star = siemens_star(160, 160)
+    dirty_star = blurred(star, 2, 5)
+    rows = [
+        [
+            label,
+            fix(psnr(restore(damaged, denoiser=kind), clean), 2),
+            fix(psnr(restore(dirty_star, denoiser=kind), star), 2),
+        ]
+        for kind, label in DENOISER_LABELS
+    ]
+    rows.append(
+        [
+            "Total variation restoration",
+            fix(psnr(run(tv_deblur, damaged, "tv-deblur"), clean), 2),
+            fix(psnr(run(tv_deblur, dirty_star, "tv-deblur"), star), 2),
+        ]
+    )
+    settings = (
+        "lambda 10, rho 0.1, gamma 1 and 20 iterations"
+        if filter_id == "pnp-admm"
+        else "lambda 0.02, a noise sigma of 5, a denoiser sigma of 5 and 20 iterations"
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Denoiser", "Disks", "Siemens star"], rows)
+        + "\nThe PSNR in dB against the sharp image. Both images are 160 by 160 pixels, "
+        "blurred with the Gaussian PSF of sigma 2 and the reflect border, with Gaussian noise of "
+        "sigma 5 from NumPy's default_rng with seed 7. The blurred images have "
+        f"{fix(psnr(damaged, clean), 2)} and {fix(psnr(dirty_star, star), 2)} dB. The "
+        f"denoiser rows use {settings}. The last row is total variation restoration with its "
+        "defaults, for comparison. Non-local means gives the best result and takes by far the "
+        "longest.\n"
+    )
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
@@ -807,6 +876,8 @@ def build() -> dict[Path, str]:
     tv_deblur_docs(out)
     sparse_fista_docs(out)
     blind_deconv_docs(out)
+    plugplay_docs(out, "pnp-admm")
+    plugplay_docs(out, "red")
     return out
 
 
