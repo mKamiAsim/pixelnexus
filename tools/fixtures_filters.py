@@ -31,6 +31,7 @@ from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_morphology import add_morphology_cases, element_cases
 from fixtures_multiscale import add_multiscale_cases
 from fixtures_oriented import add_oriented_cases
+from fixtures_painterly import add_painterly_plane_cases
 from fixtures_point import add_clahe_cases, add_point_cases
 from fixtures_rank import add_rank_cases
 from fixtures_restoration import add_restoration_cases
@@ -484,6 +485,7 @@ def filter_cases() -> dict[str, Any]:
     add_detail_cases(plane, add)
     add_artistic_cases(plane, add)
     add_dither_cases(plane, add)
+    add_painterly_plane_cases(plane, add)
 
     fir_taps = [
         {

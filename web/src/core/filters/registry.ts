@@ -187,6 +187,13 @@ import { cclLabelFilter, kmeansColorFilter, regionGrowingFilter } from "./segmen
 import { ditheringFilter } from "./artistic/dither";
 import { pixelateFilter, vignetteFilter } from "./artistic/effects";
 import { edgeEnhanceFilter, embossFilter, outlineFilter } from "./artistic/kernels";
+import { bloomFilter, bokehFilter, tiltShiftFilter } from "./artistic/lens";
+import {
+  cartoonFilter,
+  halftoneFilter,
+  oilPaintingFilter,
+  pencilSketchFilter,
+} from "./artistic/painterly";
 import type { BrowserFilter } from "./types";
 import {
   gaussianNoiseFilter,
@@ -381,6 +388,13 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   vignetteFilter,
   pixelateFilter,
   ditheringFilter,
+  oilPaintingFilter,
+  pencilSketchFilter,
+  cartoonFilter,
+  halftoneFilter,
+  bloomFilter,
+  bokehFilter,
+  tiltShiftFilter,
 ];
 
 const byId = new Map(BROWSER_FILTERS.map((filter) => [filter.id, filter]));

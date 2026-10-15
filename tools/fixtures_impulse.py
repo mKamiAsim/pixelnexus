@@ -18,6 +18,7 @@ from scipy import ndimage, stats
 from fixtures_cfa import add_cfa_cases
 from fixtures_color import add_color_adjust_cases, add_white_balance_cases
 from fixtures_edge import add_edge_color_cases
+from fixtures_painterly import add_painterly_color_cases
 from fixtures_rank import PAD_MODES, SCIPY_MODES, flat_windows, windows
 from fixtures_regions import add_region_cases
 from fixtures_retinex import add_retinex_cases
@@ -245,6 +246,7 @@ def color_cases() -> dict[str, Any]:
     guide = add_edge_color_cases(image, add)
     add_color_adjust_cases(image, add)
     add_white_balance_cases(image, add)
+    add_painterly_color_cases(image, add)
     add_retinex_cases(image, add)
     add_tone_cases(image, add)
     add_chroma_cases(image, add)
