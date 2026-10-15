@@ -12,10 +12,227 @@ aliases:
 - BayesShrink
 - SureShrink
 family: multiscale
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6b
-status: planned
+status: implemented-tested
 planNotes: 'One entry with presets. Aliases: Wavelet shrinkage denoising, Haar wavelet thresholding, Daubechies,
   Symlet and Coiflet wavelet filtering, Wavelet hard thresholding, Wavelet soft thresholding, VisuShrink,
   BayesShrink, SureShrink. SureShrink is our own SURE threshold code. Filter taps come from PyWavelets.'
+
+summary: Splits the image into wavelet subbands, shrinks the small detail coefficients toward zero, and puts the image back together.
+purpose: Remove Gaussian noise while keeping edges, which give large wavelet coefficients that the threshold leaves in place.
+classification: {linearity: nonlinear, domain: transform, operation: wavelet coefficient shrinkage}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: wavelet_threshold_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, with its own
+  noise estimate. With the brightness scope, only luma is filtered and the colors stay. With the
+  color scope, only Cb and Cr are filtered.
+boundary: >-
+  Set by the Border mode parameter, which picks the PyWavelets extension mode. The default is
+  reflect, the symmetric mode of PyWavelets.
+dependencies:
+  - {name: PyWavelets, optional: false, note: The 2-D transform (wavedec2 and waverec2) and the filter taps.}
+
+params:
+  - key: wavelet
+    label: Wavelet
+    type: select
+    default: sym4
+    options:
+      - {value: haar, label: Haar}
+      - {value: db2, label: Daubechies 2 (db2)}
+      - {value: db4, label: Daubechies 4 (db4)}
+      - {value: db8, label: Daubechies 8 (db8)}
+      - {value: sym4, label: Symlet 4 (sym4)}
+      - {value: sym8, label: Symlet 8 (sym8)}
+      - {value: coif1, label: Coiflet 1 (coif1)}
+      - {value: coif3, label: Coiflet 3 (coif3)}
+    description: The orthogonal wavelet. Its filter taps come from PyWavelets.
+    effect: Haar gives blocky results. Wavelets with more taps have smoother shapes, so their artifacts are smoother but reach farther.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 3
+    description: How many times the transform splits the low-pass part. It is capped at the deepest level the image size allows.
+    effect: More levels also reach coarser noise, and touch larger structures.
+  - key: rule
+    label: Threshold rule
+    type: select
+    default: bayesshrink
+    options:
+      - {value: visushrink, label: VisuShrink (universal)}
+      - {value: bayesshrink, label: BayesShrink}
+      - {value: sureshrink, label: SureShrink}
+      - {value: manual, label: Fixed threshold}
+    description: How the threshold T is chosen. VisuShrink uses one threshold for all subbands. BayesShrink and SureShrink choose one for each subband.
+    effect: VisuShrink removes the most and blurs the most. The rules per subband keep more detail.
+  - key: mode
+    label: Shrink rule
+    type: select
+    default: soft
+    options:
+      - {value: soft, label: Soft}
+      - {value: hard, label: Hard}
+    description: Soft thresholding sets small coefficients to 0 and moves the others toward 0 by T. Hard thresholding sets small coefficients to 0 and keeps the others.
+    effect: Hard keeps more contrast but leaves more isolated spots and ringing.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal details.
+    effect: Larger values remove more noise and more detail. The fixed threshold rule does not use it.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 0.5
+    default: 20
+    description: The threshold T in pixel values, for the fixed threshold rule only.
+    effect: Larger values remove more noise and more detail.
+    advanced: true
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \big(a_J,\ (h_j, v_j, d_j)_{j=1}^{J}\big) = \operatorname{DWT}(I),
+  \quad
+  \hat{I} = \operatorname{IDWT}\big(a_J,\ \eta_T(h_j),\ \eta_T(v_j),\ \eta_T(d_j)\big),
+  \qquad
+  \eta_T(w) = \begin{cases}
+    \operatorname{sign}(w)\, \max(|w| - T,\ 0) & \text{soft} \\
+    w\, [\,|w| \ge T\,] & \text{hard}
+  \end{cases}
+  \qquad
+  T = \begin{cases}
+    \sigma \sqrt{2 \ln N} & \text{VisuShrink} \\
+    \sigma^2 / \sigma_{x,b} & \text{BayesShrink} \\
+    \sigma\, t^{S}_b & \text{SureShrink}
+  \end{cases}
+  \qquad
+  \hat{\sigma} = \frac{\operatorname{median}(|d_1|)}{0.6745},
+  \quad
+  J = {{levels}}
+formulaExplanation: >-
+  The discrete wavelet transform splits the image into a coarse approximation a_J and, at each
+  level j, horizontal, vertical and diagonal details. An orthogonal wavelet transform turns
+  white Gaussian noise of standard deviation sigma into white noise of the same sigma in every
+  subband, away from the image borders. Edges and textures make a few large coefficients. So small coefficients are mostly noise. The
+  shrink rule eta_T sets them to 0. When sigma is 0, it is estimated from the diagonal details
+  d_1 of the finest level. The estimate is their median absolute value divided by 0.6745, the
+  75th percentile of the standard normal distribution. Coefficients that are exactly 0 are left
+  out.
+  VisuShrink uses the universal threshold of Donoho and Johnstone, where N is the number of
+  pixels. BayesShrink, after Chang, Yu and Vetterli, divides sigma^2 by the signal deviation
+  sigma_x,b of each subband b. That is the square root of the subband variance minus sigma^2.
+  If the difference is not positive, the subband is set to 0. SureShrink, after Donoho and
+  Johnstone, picks a threshold t^S_b for each subband, in units of sigma. It minimizes Stein's
+  unbiased risk estimate of soft thresholding, from 0 to sqrt(2 ln n_b). A sparse subband gets
+  the universal threshold of its size instead. The approximation a_J is kept.
+symbols:
+  - {symbol: 'I', meaning: The input channel}
+  - {symbol: 'a_J', meaning: The approximation after J levels}
+  - {symbol: 'h_j, v_j, d_j', meaning: 'The horizontal, vertical and diagonal details of level j. Level 1 is the finest.'}
+  - {symbol: 'w', meaning: One detail coefficient}
+  - {symbol: '\eta_T', meaning: The shrink rule with threshold T}
+  - {symbol: 'T', meaning: 'The threshold, in pixel values'}
+  - {symbol: '\sigma', meaning: The standard deviation of the noise}
+  - {symbol: 'N', meaning: The number of pixels}
+  - {symbol: 'n_b, \sigma_{x,b}', meaning: 'The number of coefficients in subband b, and the estimated deviation of the signal in it'}
+  - {symbol: 't^{S}_b', meaning: The SURE threshold of subband b in units of sigma}
+steps:
+  - Split the channel with the 2-D discrete wavelet transform into an approximation and J levels of horizontal, vertical and diagonal details.
+  - Estimate the noise sigma from the diagonal details of the finest level, unless it is set.
+  - Choose a threshold for each detail subband with the threshold rule.
+  - Shrink every detail coefficient with the soft or hard rule. Keep the approximation.
+  - Rebuild the channel with the inverse transform and cut it to the image size.
+complexity:
+  time: O(N L)
+  memory: O(N)
+  notes: N is the number of pixels and L the number of filter taps. Each level works on a quarter of the pixels of the level before. SureShrink also sorts each subband, which adds O(N log N).
+useCases:
+  - Removing sensor noise from photos taken in low light.
+  - Learning how sparse transforms separate signal from noise.
+  - Comparing threshold rules on the same image.
+advantages:
+  - Edges give large coefficients, so they pass the threshold and stay sharp.
+  - The thresholds come from the image itself, with no tuning needed.
+  - Fast, close to linear in the number of pixels.
+limitations:
+  - The rules assume white Gaussian noise of the same strength everywhere. Other noise, such as salt and pepper, is not removed well.
+  - The transform is not shift invariant, so the result changes when the image moves by one pixel. Stationary wavelet filtering removes this.
+  - Fine textures with small coefficients are removed along with the noise.
+artifacts:
+  - Ringing and small wavelet-shaped spots near edges, where some noise coefficients pass the threshold.
+  - Blocky patches with the Haar wavelet.
+  - With hard thresholding, isolated spots where single noise coefficients survive.
+references:
+  - kind: paper
+    text: Mallat, S. A theory for multiresolution signal decomposition. The wavelet representation. IEEE Transactions on Pattern Analysis and Machine Intelligence 11(7), 674 to 693, 1989.
+    doi: 10.1109/34.192463
+  - kind: paper
+    text: Daubechies, I. Orthonormal bases of compactly supported wavelets. Communications on Pure and Applied Mathematics 41(7), 909 to 996, 1988.
+    doi: 10.1002/cpa.3160410705
+  - kind: paper
+    text: Donoho, D. L., and Johnstone, I. M. Ideal spatial adaptation by wavelet shrinkage. Biometrika 81(3), 425 to 455, 1994.
+    doi: 10.1093/biomet/81.3.425
+  - kind: paper
+    text: Donoho, D. L. De-noising by soft-thresholding. IEEE Transactions on Information Theory 41(3), 613 to 627, 1995.
+    doi: 10.1109/18.382009
+  - kind: paper
+    text: Donoho, D. L., and Johnstone, I. M. Adapting to unknown smoothness via wavelet shrinkage. Journal of the American Statistical Association 90(432), 1200 to 1224, 1995.
+    doi: 10.1080/01621459.1995.10476626
+  - kind: paper
+    text: Chang, S. G., Yu, B., and Vetterli, M. Adaptive wavelet thresholding for image denoising and compression. IEEE Transactions on Image Processing 9(9), 1532 to 1546, 2000.
+    doi: 10.1109/83.862633
+  - kind: library
+    text: Lee, G. R., Gommers, R., Waselewski, F., Wohlfahrt, K., and O'Leary, A. PyWavelets. A Python package for wavelet analysis. Journal of Open Source Software 4(36), 1237, 2019.
+    doi: 10.21105/joss.01237
+implementation: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: wavelet_threshold}
+tests: [engine/tests/test_wavelets.py]
+learn:
+  oneSentence: Describe the image with wavelets, throw away the small wavelet coefficients that are mostly noise, and rebuild it.
+  howItWorks:
+    - Split the image into a small blurred copy and layers of detail at several sizes.
+    - Noise makes many small detail values. Edges make a few large ones.
+    - Set the small detail values to zero and keep the large ones.
+    - Put the layers back together.
+  academic: >-
+    Orthogonal discrete wavelet transform with soft or hard thresholding of the detail
+    subbands. Thresholds from the universal rule (VisuShrink), Stein's unbiased risk estimate
+    with the hybrid rule (SureShrink) or a Bayesian rule for generalized Gaussian priors
+    (BayesShrink). Noise from the median absolute deviation of the finest diagonal subband.
+  paramNotes:
+    wavelet: The shape of the building blocks.
+    levels: How many sizes of detail are cleaned.
+    rule: How the cut-off is chosen.
+    mode: Whether kept details are also made smaller.
+    sigma: How strong the noise is. 0 measures it.
+    threshold: The cut-off for the fixed rule.
+    border: How the image is extended past its edges.
+    channelScope: Which part of the color image is cleaned.
+  tryThis:
+    - Open the Noise lab and compare VisuShrink with BayesShrink on Gaussian noise.
+    - Switch to the Haar wavelet and look for blocky patches.
+    - Try hard thresholding and look for isolated spots.
+  pitfalls:
+    - Salt and pepper noise. Single extreme pixels give large coefficients that pass the threshold. Use a median filter first.
+  demos: [noise-lab]
+related: [swt-denoise, wavelet-wiener, dtcwt-denoise, laplacian-pyramid, nlm, bilateral, wiener-denoise]
+docsPage: filters/multiscale/wavelet-threshold.md

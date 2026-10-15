@@ -1,9 +1,9 @@
 /**
  * The Noise lab: damage a patch of the image with a known noise or blur, repair it with the
  * selected filter and its current settings, and measure both against the clean patch. Every
- * step runs the real filter code.
+ * step runs the real filter code. Science filters repair the patch in the local engine.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { browserFilter } from "@/core/filters/registry";
@@ -11,6 +11,8 @@ import { runFilter } from "@/core/filters/run";
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
 import { qualityMetrics } from "@/core/metrics/quality";
+import { runJob } from "@/engine-client";
+import { useEngine } from "@/state/engine";
 
 import { patchAt, round } from "./common";
 import { PixelCanvas, type WidgetProps } from "./widgets";
@@ -56,21 +58,76 @@ function damage(image: RgbaImage, kind: Damage): RgbaImage {
   }
 }
 
+interface EngineAnswer {
+  readonly noisy: RgbaImage;
+  readonly values: Params;
+  readonly image?: RgbaImage;
+  readonly message?: string;
+}
+
+/**
+ * The repaired patch. Browser filters run at once. Science filters run in the engine a moment
+ * after the last change, and the note says why there is no picture yet.
+ */
+function useRepair(
+  filterId: string,
+  values: Params,
+  noisy: RgbaImage,
+): { image: RgbaImage | null; note: string } {
+  const inBrowser = browserFilter(filterId) !== undefined;
+  const browserImage = useMemo(
+    () => (inBrowser ? run(noisy, filterId, values) : null),
+    [inBrowser, noisy, filterId, values],
+  );
+  const engine = useEngine((s) => s.status);
+  const [answer, setAnswer] = useState<EngineAnswer | null>(null);
+  useEffect(() => {
+    if (inBrowser || engine !== "online") return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      runJob({ filterId, values, image: noisy }, { signal: controller.signal })
+        .then((result) => setAnswer({ noisy, values, image: result.image }))
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          const message = error instanceof Error ? error.message : "The engine did not answer.";
+          setAnswer({ noisy, values, message });
+        });
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [inBrowser, engine, filterId, values, noisy]);
+  if (browserImage) return { image: browserImage, note: "" };
+  if (engine === "offline") {
+    return {
+      image: null,
+      note: "This filter runs in the PixelNexus engine, which is not running. Start it with: uv run pixelnexus-engine",
+    };
+  }
+  if (answer?.noisy !== noisy || answer.values !== values) {
+    return { image: null, note: "Repairing the patch in the PixelNexus engine." };
+  }
+  return { image: answer.image ?? null, note: answer.message ?? "" };
+}
+
 export function NoiseLab({ filterId, values, image, point }: WidgetProps) {
   const [kind, setKind] = useState<Damage>("gaussian");
+  const { clean, noisy } = useMemo(() => {
+    const patch = patchAt(image, point.x, point.y);
+    return { clean: patch, noisy: damage(patch, kind) };
+  }, [image, point.x, point.y, kind]);
+  const repair = useRepair(filterId, values, noisy);
   const result = useMemo(() => {
-    const clean = patchAt(image, point.x, point.y);
-    const noisy = damage(clean, kind);
-    const repaired = run(noisy, filterId, values);
     const enough = clean.width >= 11 && clean.height >= 11;
     return {
       clean,
       noisy,
-      repaired,
+      repaired: repair.image,
       before: enough ? qualityMetrics(noisy, clean) : null,
-      after: enough ? qualityMetrics(repaired, clean) : null,
+      after: enough && repair.image ? qualityMetrics(repair.image, clean) : null,
     };
-  }, [image, point.x, point.y, kind, filterId, values]);
+  }, [clean, noisy, repair.image]);
   const note = DAMAGES.find((d) => d.value === kind)?.note ?? "";
   const db = (v: number) => (Number.isFinite(v) ? `${round(v, 2)} dB` : "equal");
   return (
@@ -89,13 +146,20 @@ export function NoiseLab({ filterId, values, image, point }: WidgetProps) {
             ["Damaged", result.noisy],
             ["Repaired", result.repaired],
           ] as const
-        ).map(([title, picture]) => (
-          <figure key={title} className="flex flex-col gap-0.5">
-            <figcaption className="text-2xs text-text-muted">{title}</figcaption>
-            <PixelCanvas image={picture} scale={2} label={`${title} patch`} />
-          </figure>
-        ))}
+        ).map(([title, picture]) =>
+          picture ? (
+            <figure key={title} className="flex flex-col gap-0.5">
+              <figcaption className="text-2xs text-text-muted">{title}</figcaption>
+              <PixelCanvas image={picture} scale={2} label={`${title} patch`} />
+            </figure>
+          ) : null,
+        )}
       </div>
+      {repair.note ? (
+        <p role="status" className="text-text-secondary">
+          {repair.note}
+        </p>
+      ) : null}
       {result.before && result.after ? (
         <table className="tabular border-collapse text-2xs" aria-label="Noise lab metrics">
           <thead>

@@ -70,6 +70,42 @@ describe("the science engine client", () => {
     expect(calls.filter((c) => c === "POST /images")).toHaveLength(1);
   });
 
+  it("uploads the image again when the engine has dropped it", async () => {
+    const { calls, fetchStub } = engineServer(new Uint8Array(24), 3, 2);
+    let dropped = true;
+    const stub = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/jobs") && dropped) {
+        dropped = false;
+        calls.push("POST /jobs");
+        return Response.json(
+          { detail: "There is no image with this id. Upload it again." },
+          { status: 404 },
+        );
+      }
+      return fetchStub(url, init);
+    });
+    vi.stubGlobal("fetch", stub);
+    vi.stubGlobal("EventSource", eventSourceWith([{ state: "done", progress: 1 }]));
+    const engine = new ScienceEngine("http://engine.test");
+    await engine.run({ filterId: "x", params: {}, image });
+    expect(calls.filter((c) => c === "POST /images")).toHaveLength(2);
+    expect(calls.filter((c) => c === "POST /jobs")).toHaveLength(2);
+  });
+
+  it("does not upload again when the filter is missing", async () => {
+    const stub = vi.fn(async (url: string) =>
+      url.includes("/images")
+        ? Response.json({ id: "hash", width: 3, height: 2 })
+        : Response.json({ detail: 'There is no filter "x" in this engine.' }, { status: 404 }),
+    );
+    vi.stubGlobal("fetch", stub);
+    const engine = new ScienceEngine("http://engine.test");
+    await expect(engine.run({ filterId: "x", params: {}, image })).rejects.toThrow(
+      'There is no filter "x" in this engine.',
+    );
+    expect(stub.mock.calls.filter(([url]) => url.includes("/images"))).toHaveLength(1);
+  });
+
   it("reports a failed job with the engine's message", async () => {
     vi.stubGlobal("fetch", engineServer(new Uint8Array(24), 3, 2).fetchStub);
     vi.stubGlobal(

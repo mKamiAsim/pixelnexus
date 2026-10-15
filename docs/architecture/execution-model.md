@@ -12,15 +12,16 @@ flowchart TB
   RUN --> CHECK[Validate against catalog]
   CHECK --> PICK{Engine}
   PICK --> BROWSER[Browser engine]
-  PICK -.-> SCIENCE[Science engine, Phase 6]
+  PICK --> SCIENCE[Science engine]
   BROWSER --> POOL[Worker pool]
+  SCIENCE --> SERVER[Local Python server]
 ```
 
 1. `runJob` finds the catalog entry. It refuses planned and unsupported filters with a message.
 2. It validates the parameters against the catalog, the same way the Properties panel does. Missing values get their default. Numbers are clamped to their range and snapped to their step, whole-number and odd-only rules. Unknown keys are dropped. So the engine always gets values that obey the catalog.
 3. It sends the job to the engine of the entry. Both engines have the same interface: run with a cancel signal and a progress callback, and get back the pixels, warnings and timing.
 
-Until Phase 6, the science engine answers that it runs on your computer and arrives later.
+The science engine is a Python server on your computer. Its jobs run in their own processes there. See [Science engine](science-engine.md).
 
 ## Worker pool
 

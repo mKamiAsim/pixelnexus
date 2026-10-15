@@ -47,7 +47,7 @@ def register(filter_id: str, representation: Representation | None = None) -> Ca
 
 def load_filters() -> None:
     """Import the modules that register filters. Child processes call this too."""
-    from pixelnexus_engine import diagnostics  # noqa: F401, registers by import
+    from pixelnexus_engine import diagnostics, filters  # noqa: F401, registers by import
 
 
 def find_catalog(start: Path | None = None) -> Path | None:
@@ -58,6 +58,17 @@ def find_catalog(start: Path | None = None) -> Path | None:
         if candidate.is_dir():
             return candidate
     return None
+
+
+def common_params(catalog_dir: Path | None) -> list[dict[str, Any]]:
+    """The shared parameters that entries reuse with ``ref``, from catalog/common-params.yaml."""
+    if catalog_dir is None:
+        return []
+    path = catalog_dir.parent / "common-params.yaml"
+    if not path.is_file():
+        return []
+    params: list[dict[str, Any]] = yaml.safe_load(path.read_text(encoding="utf-8"))["params"]
+    return params
 
 
 def science_entries(catalog_dir: Path | None) -> list[dict[str, Any]]:

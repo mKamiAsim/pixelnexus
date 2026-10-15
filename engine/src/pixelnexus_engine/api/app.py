@@ -25,7 +25,14 @@ from pixelnexus_engine import API_VERSION, __version__
 from pixelnexus_engine.config import Settings
 from pixelnexus_engine.images import ImageError, ImageStore, decode_rgba
 from pixelnexus_engine.jobs import TERMINAL, JobManager
-from pixelnexus_engine.registry import FILTERS, find_catalog, load_filters, science_entries
+from pixelnexus_engine.params import ParamError, check_params, resolve_params
+from pixelnexus_engine.registry import (
+    FILTERS,
+    common_params,
+    find_catalog,
+    load_filters,
+    science_entries,
+)
 
 # Distribution names whose versions are reported by /info.
 # Only versions are reported. File system paths are never exposed.
@@ -37,6 +44,7 @@ REPORTED_DISTRIBUTIONS = (
     "pywavelets",
     "pillow",
     "fastapi",
+    "pyrtools",
 )
 
 
@@ -76,7 +84,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create the engine application."""
     settings = settings or Settings.from_env()
     load_filters()
-    catalog = science_entries(settings.catalog_dir or find_catalog())
+    catalog_dir = settings.catalog_dir or find_catalog()
+    catalog = science_entries(catalog_dir)
+    shared = common_params(catalog_dir)
+    definitions = {entry["id"]: resolve_params(entry, shared) for entry in catalog}
     images = ImageStore(settings.cache_mb * 1024 * 1024)
     managers: dict[str, JobManager] = {}
 
@@ -122,6 +133,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             limits=Limits(max_upload_mb=settings.max_upload_mb, max_pixels=settings.max_pixels),
         )
 
+    def checked_params(filter_id: str, values: dict[str, Any]) -> dict[str, Any]:
+        """Values checked against the catalog entry, with defaults filled in.
+
+        Diagnostics, whose ids start with an underscore, have no catalog entry.
+        """
+        if filter_id.startswith("_"):
+            return values
+        if filter_id not in definitions:
+            raise HTTPException(
+                status_code=404,
+                detail=f'The engine found no catalog entry for "{filter_id}". Start it from '
+                "the repository folder, or set PIXELNEXUS_CATALOG_DIR.",
+            )
+        try:
+            return check_params(definitions[filter_id], values)
+        except ParamError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
     def entry_view(entry: dict[str, Any]) -> dict[str, Any]:
         return {
             "id": entry["id"],
@@ -151,7 +180,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise _not_found(f'filter "{filter_id}" in this engine')
         if spec.representation is None:
             raise HTTPException(status_code=501, detail="This filter has no representation.")
-        return spec.representation(params)
+        return spec.representation(checked_params(filter_id, params))
 
     @router.post("/images")
     async def upload(request: Request, width: int, height: int) -> dict[str, Any]:
@@ -184,10 +213,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def submit(request: JobRequest) -> dict[str, Any]:
         if request.filter not in FILTERS:
             raise _not_found(f'filter "{request.filter}" in this engine')
+        params = checked_params(request.filter, request.params)
         stored = images.get(request.image)
         if stored is None:
             raise _not_found("image with this id. Upload it again")
-        return jobs().submit(request.filter, stored, request.params).status()
+        return jobs().submit(request.filter, stored, params).status()
 
     @router.get("/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:

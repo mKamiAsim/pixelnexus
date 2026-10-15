@@ -171,7 +171,7 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
       </section>
 
       {runnable ? <ScopeRow /> : null}
-      {runnable ? <PreviewRow /> : null}
+      {runnable ? entry.engine === "browser" ? <PreviewRow /> : <EnginePreviewNote /> : null}
 
       {warnings.length > 0 ? (
         <ul className="flex flex-col gap-1 border-b border-border-subtle px-3 py-2">
@@ -278,6 +278,16 @@ function PreviewRow() {
         {status}
       </p>
     </div>
+  );
+}
+
+/** Science filters have no live preview. Their result arrives when they are applied. */
+function EnginePreviewNote() {
+  return (
+    <p className="border-b border-border-subtle px-3 py-2.5 text-2xs text-text-muted">
+      This filter runs in the PixelNexus engine on the whole image. There is no live preview. Click
+      Apply to see the result, and Undo to go back.
+    </p>
   );
 }
 

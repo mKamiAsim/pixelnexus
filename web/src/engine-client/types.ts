@@ -51,4 +51,11 @@ export interface EngineClient {
 /** An error with a message written for the person using the studio. */
 export class EngineError extends Error {
   override name = "EngineError";
+  /** The HTTP status of the engine's answer, when there was one. */
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
 }

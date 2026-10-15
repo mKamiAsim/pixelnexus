@@ -16,16 +16,21 @@ WORKDIR /app
 # Install dependencies first, so code changes do not reinstall them.
 COPY pyproject.toml uv.lock .python-version ./
 COPY engine/pyproject.toml engine/pyproject.toml
-RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --no-install-workspace
+RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional \
+    --no-install-workspace
 
 COPY engine engine
-RUN uv sync --frozen --no-default-groups --package pixelnexus-engine
+RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional
+
+# The engine checks every job against the catalog, the single source of truth for filters.
+COPY catalog catalog
 
 # Inside the container the engine listens on all interfaces.
 # compose.yaml publishes the port on 127.0.0.1 only.
 ENV PATH="/app/.venv/bin:${PATH}" \
     PIXELNEXUS_ENGINE_HOST=0.0.0.0 \
-    PIXELNEXUS_ENGINE_PORT=8765
+    PIXELNEXUS_ENGINE_PORT=8765 \
+    PIXELNEXUS_CATALOG_DIR=/app/catalog/filters
 
 RUN useradd --create-home --uid 10001 pixelnexus
 USER pixelnexus

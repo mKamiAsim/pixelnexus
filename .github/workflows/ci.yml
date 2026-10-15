@@ -59,4 +59,5 @@ jobs:
       - run: uv run python tools/lint_prose.py
       - run: uv run python tools/make_fixtures.py --check
       - run: uv run python tools/gen_docs.py --check
+      - run: uv run python tools/engine_docs.py --check
       - run: uv run mkdocs build --strict

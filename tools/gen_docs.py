@@ -155,6 +155,11 @@ def filter_fragments(entry: dict[str, Any], bundle: dict[str, Any]) -> dict[str,
     ]
     if entry.get("aliases"):
         facts.insert(0, ["Also called", ", ".join(entry["aliases"])])
+    if entry.get("dependencies"):
+        packages = [
+            d["name"] + (" (optional)" if d["optional"] else "") for d in entry["dependencies"]
+        ]
+        facts.append(["Packages", ", ".join(packages)])
     if entry.get("channelScopes"):
         scopes = {o["value"]: o["label"] for o in common["channelScope"]["options"]}
         facts.append(["Channels", ", ".join(scopes[s] for s in entry["channelScopes"])])

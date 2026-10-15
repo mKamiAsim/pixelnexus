@@ -20,6 +20,7 @@ import { runFilter } from "@/core/filters/run";
 import type { Params, Representation } from "@/core/filters/types";
 import { disks, hueSweep, ramp, siemensStar } from "@/core/image/synthetic";
 import type { RgbaImage } from "@/core/image/types";
+import { useEngineRepresentation, type EngineRepresentation } from "@/app/useEngineRepresentation";
 import { useFilterValues } from "@/app/useFilterValues";
 import { useFilters } from "@/state/filters";
 import { notify } from "@/state/notifications";
@@ -90,10 +91,14 @@ function Inspector({ entry }: { entry: Filter }) {
   const { values } = useFilterValues(entry);
   const [tab, setTab] = useState<string>("overview");
   const filter = browserFilter(entry.id);
-  const representation = useMemo<Representation | null>(
+  const engineOperator = useEngineRepresentation(entry, values);
+  const browserRepresentation = useMemo<Representation | null>(
     () => (filter && isRunnable(entry) ? filter.representation(values) : null),
     [filter, entry, values],
   );
+  const representation =
+    browserRepresentation ??
+    (engineOperator.status === "ready" ? engineOperator.representation : null);
   const familyName = catalog.families.find((f) => f.id === entry.family)?.name ?? entry.family;
 
   return (
@@ -124,7 +129,12 @@ function Inspector({ entry }: { entry: Filter }) {
           <FormulaTab entry={entry} values={values} />
         </Tabs.Content>
         <Tabs.Content value="operator" className="flex flex-col gap-3">
-          <OperatorTab entry={entry} representation={representation} values={values} />
+          <OperatorTab
+            entry={entry}
+            representation={representation}
+            engineOperator={engineOperator}
+            values={values}
+          />
         </Tabs.Content>
         <Tabs.Content value="parameters" className="flex flex-col gap-3">
           <ParametersTab entry={entry} values={values} />
@@ -227,7 +237,9 @@ function Overview({ entry, values }: { entry: Filter; values: Params }) {
         <Fact term="Engine">
           {entry.engine === "browser"
             ? "Browser engine, PixelNexus code in web/src/core"
-            : entry.engine}
+            : entry.engine === "science"
+              ? "Science engine, PixelNexus code in engine/ that runs on this computer"
+              : entry.engine}
         </Fact>
         {entry.implementation ? (
           <Fact term="Source">
@@ -298,13 +310,18 @@ function FormulaTab({ entry, values }: { entry: Filter; values: Params }) {
 function OperatorTab({
   entry,
   representation,
+  engineOperator,
   values,
 }: {
   entry: Filter;
   representation: Representation | null;
+  engineOperator: EngineRepresentation;
   values: Params;
 }) {
   const [order, setOrder] = useState("correlation");
+  if (!representation && engineOperator.status !== "none") {
+    return <EngineOperatorNote state={engineOperator} />;
+  }
   if (!representation) return <Planned entry={entry} />;
   const kernels = representation.kind === "kernels" ? representation.kernels : [];
   return (
@@ -376,6 +393,28 @@ function OperatorTab({
         </p>
       ) : null}
     </>
+  );
+}
+
+/** Why the operator of a science filter is not shown yet. */
+function EngineOperatorNote({ state }: { state: EngineRepresentation }) {
+  const text =
+    state.status === "offline"
+      ? "The operator comes from the PixelNexus engine, which is not running. Start it with: uv run pixelnexus-engine"
+      : state.status === "error"
+        ? state.message
+        : "Asking the PixelNexus engine for the operator.";
+  return (
+    <p
+      role="status"
+      className={
+        state.status === "loading"
+          ? "text-text-muted"
+          : "rounded-control border border-border bg-raised p-2.5 text-text-secondary"
+      }
+    >
+      {text}
+    </p>
   );
 }
 

@@ -127,7 +127,91 @@ test("the color control takes the neutral color from the probe pixel", async ({ 
   await expect(field).toHaveValue("#1e1e1e");
 });
 
+const ENGINE = "http://127.0.0.1:8765/api/v1";
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Expose-Headers": "X-Width, X-Height",
+};
+
+/**
+ * A stand-in for the local engine on its usual address. It keeps each upload, runs every job
+ * at once, and returns the uploaded image unchanged as the result. The representation is a
+ * fixed answer in the engine's format. Then the studio reloads, so it finds the engine.
+ */
+async function fakeEngine(page: Page) {
+  const images = new Map<string, { body: Buffer; width: string; height: string }>();
+  let last = "";
+  await page.route(`${ENGINE}/**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    const json = (body: unknown, status = 200) =>
+      route.fulfill({ status, headers: CORS, json: body });
+    if (path === "/info") return json({ version: "0.1.0" });
+    if (path === "/images") {
+      last = `image-${images.size}`;
+      const width = url.searchParams.get("width") ?? "0";
+      const height = url.searchParams.get("height") ?? "0";
+      images.set(last, { body: request.postDataBuffer() ?? Buffer.alloc(0), width, height });
+      return json({ id: last, width: Number(width), height: Number(height) });
+    }
+    if (path === "/jobs") return json({ id: last, state: "queued", progress: 0 }, 202);
+    if (path.endsWith("/events")) {
+      const done = { id: last, state: "done", progress: 1, error: null };
+      return route.fulfill({
+        headers: { ...CORS, "Content-Type": "text/event-stream" },
+        body: `event: status\ndata: ${JSON.stringify(done)}\n\n`,
+      });
+    }
+    if (path.endsWith("/result")) {
+      const image = images.get(path.split("/")[2] ?? "");
+      return route.fulfill({
+        headers: { ...CORS, "X-Width": image?.width ?? "0", "X-Height": image?.height ?? "0" },
+        contentType: "application/octet-stream",
+        body: image?.body ?? Buffer.alloc(0),
+      });
+    }
+    if (path.endsWith("/representation")) {
+      return json({
+        kind: "stages",
+        stages: [
+          { name: "Analysis", formula: "J = 3", note: "PyWavelets wavedec2 with sym4." },
+          { name: "Filter taps", formula: "f = (0.7071,\\ 0.7071)" },
+        ],
+      });
+    }
+    return json({ detail: "Not in the stand-in engine." }, 404);
+  });
+  await page.reload();
+}
+
+test("an engine filter runs in the local engine, with its operator and the Noise lab", async ({
+  page,
+}) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Noise patches");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "wavelet", "Wavelet thresholding");
+  await front(page, "Properties");
+  await expect(page.getByText("There is no live preview.")).toBeVisible();
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Wavelet thresholding");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText("Filter taps")).toBeVisible();
+  await expect(page.getByText("PyWavelets wavedec2 with sym4.")).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Noise lab" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Noise lab metrics" })).toContainText("dB");
+});
+
 test("the studio works with the local engine stopped", async ({ page }) => {
+  // Whatever runs on this machine, the studio must find no engine here.
+  await page.route(`${ENGINE}/**`, (route) => route.abort());
+  await page.reload();
   await openTestImage(page, "Disks");
   await expect(page.getByRole("button", { name: "Local engine: off" })).toBeVisible();
   await chooseFilter(page, "gaussian", "Gaussian filter");

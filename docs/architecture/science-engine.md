@@ -1,0 +1,81 @@
+# Science engine
+
+The science engine runs the filters that need Python libraries such as PyWavelets, SciPy, scikit-image and OpenCV. It is a small web server on your computer. The studio finds it at `http://127.0.0.1:8765` and sends it the image and the settings. The studio works without it. Filters that need it then show "Needs local engine" and cannot be applied.
+
+Start it from the repository folder:
+
+```bash
+uv run pixelnexus-engine
+```
+
+The settings are on the [configuration page](../getting-started/configuration.md#science-engine-settings).
+
+## How a job runs
+
+```mermaid
+sequenceDiagram
+  participant S as Studio
+  participant E as Engine
+  participant P as Job process
+  S->>E: POST /images (raw RGBA)
+  E-->>S: image id (content hash)
+  S->>E: POST /jobs (filter, image, values)
+  E->>E: check the values against the catalog
+  E->>P: start the filter in its own process
+  S->>E: GET /jobs/{id}/events
+  P-->>E: progress, then the result
+  E-->>S: status events until the job ends
+  S->>E: GET /jobs/{id}/result
+  E-->>S: raw RGBA with X-Width and X-Height
+```
+
+- **Images.** The studio uploads each image once, as raw RGBA bytes with its width and height. The engine names it by the SHA-256 hash of its size and pixels, so the same image always gets the same id. Images stay in memory until the cache limit is reached. Then the one used least recently is dropped. A job on a dropped image gets a "Upload it again" answer, and the studio uploads it again.
+- **Values.** The engine checks every value against the catalog entry of the filter, with the same rules as the studio. Numbers must be in their range, options must be in their list, and unknown keys are refused. Missing values get their catalog default. A wrong value gets an answer with status 422 and a sentence that names the parameter.
+- **Processes.** Each job runs in a new process. So a long job never blocks the server, and Cancel really stops the work: the engine ends the process. At most `PIXELNEXUS_MAX_WORKERS` jobs run at the same time. The others wait in a queue.
+- **Progress.** The studio follows a job through server-sent events. Each event holds the state (queued, running, done, failed or cancelled) and the progress from 0 to 1.
+- **Results.** An image comes back as raw RGBA bytes, with its size in the `X-Width` and `X-Height` headers. Tables come back as JSON.
+
+## Routes
+
+All routes start with `/api/v1`. The engine also serves an interactive description of them at `/api/v1/docs`.
+
+| Route | Purpose |
+|---|---|
+| `GET /info` | Version, Python and package versions, devices and limits. Never file paths. |
+| `GET /filters` | The catalog entries for this engine, and whether this engine can run each one. |
+| `GET /filters/{id}` | One of them. |
+| `POST /filters/{id}/representation` | The operator for the Inspector, for the values in the body. |
+| `POST /images?width=&height=` | Upload raw RGBA bytes. Answers with the image id. |
+| `GET /images/{id}/metadata` | The size of an uploaded image. |
+| `POST /jobs` | Start a filter on an uploaded image. |
+| `GET /jobs/{id}` | The status of a job. |
+| `GET /jobs/{id}/events` | The status as server-sent events, until the job ends. |
+| `GET /jobs/{id}/result` | The result of a finished job. |
+| `DELETE /jobs/{id}` | Cancel a job. |
+
+## In the studio
+
+- The status bar shows "Local engine: on" or "off". The studio checks at start, when its window gets the focus again, and when you click the light.
+- Science filters carry an "Engine" badge in the Library, or "Needs local engine" while the engine is off.
+- Science filters have no live preview, since each run starts a process. Click Apply to see the result, and Undo to go back.
+- The Inspector asks the engine for the operator each time the settings change, because the engine code builds it.
+- The Noise lab in the Learn panel repairs its patch in the engine for science filters.
+
+## Adding a science filter
+
+Every science filter follows the same steps. Wavelet thresholding was the first.
+
+1. Write the filter in a module in `engine/src/pixelnexus_engine/filters/`, and import the module in `filters/__init__.py`.
+2. Register it with `@register("<catalog id>", representation=...)`. The filter gets the RGBA image, the checked values and a progress function. `filter_by_scope` in `planes.py` applies the channel scope with the same rules as the browser filters. It also keeps alpha, and rounds and clips the result to 8 bits.
+3. Fill in the catalog entry with `engine: science` and `preview: on-demand`. The catalog check makes sure the module registers the id and is imported.
+4. Write tests in `engine/tests/` against an independent reference, such as scikit-image or a brute-force search, and run one job through the API.
+5. Add the figures and the worked example to `tools/engine_docs.py`. It runs the engine code on the studio's test images, copied to Python in `tools/synthetic.py`. A studio test checks that the copies give the same pixels. Then draw the figures with `tools/figures/make_figures.py`.
+
+## Optional packages
+
+Some catalog entries with the tier "optional" need packages that the engine does not always install. They are listed in the `optional` extra of `engine/pyproject.toml`. The repository installs them with `uv sync`. Without them, the engine still runs, and those filters show as not available.
+
+| Package | Version | Used by | Notes |
+|---|---|---|---|
+| pyrtools | 1.0.11 | Steerable pyramid filters | MIT license. Works with NumPy 2. |
+| dtcwt | not used | Dual-tree complex wavelet filtering | Version 0.14.0 requires NumPy below 2, so the filter stays planned. |

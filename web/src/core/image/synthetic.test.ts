@@ -1,7 +1,17 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { computeHistogram } from "@/core/image/histogram";
-import { SYNTHETIC_IMAGES, noisePatches, stepEdge, zonePlate } from "@/core/image/synthetic";
+import {
+  SYNTHETIC_IMAGES,
+  disks,
+  noisePatches,
+  siemensStar,
+  stepEdge,
+  zonePlate,
+} from "@/core/image/synthetic";
 import { createImage, fromGray, getChannel } from "@/core/image/types";
 
 describe("synthetic images", () => {
@@ -54,5 +64,25 @@ describe("image helpers and histogram", () => {
   it("clips the rectangle to the image", () => {
     const image = fromGray(3, 2, [0, 0, 10, 10, 10, 255]);
     expect(computeHistogram(image, { x: 2, y: 1, width: 10, height: 10 }).pixels).toBe(1);
+  });
+});
+
+describe("the Python copies of the test images in tools/synthetic.py", () => {
+  const studio = (
+    JSON.parse(
+      readFileSync(new URL("../../../tests/fixtures/synthetic.json", import.meta.url), "utf8"),
+    ) as { studio: Record<string, { width: number; height: number; sha256: string }> }
+  ).studio;
+  const makers = { disks, siemensStar };
+
+  it.each(Object.entries(makers))("%s gives the same pixels", (name, make) => {
+    const expected = studio[name];
+    if (!expected) throw new Error(`No fixture for ${name}.`);
+    const image = make(expected.width, expected.height);
+    const gray = Uint8Array.from(
+      { length: image.width * image.height },
+      (_, i) => image.data[i * 4] ?? 0,
+    );
+    expect(createHash("sha256").update(gray).digest("hex")).toBe(expected.sha256);
   });
 });

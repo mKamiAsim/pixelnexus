@@ -167,7 +167,10 @@ def _command_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
 
 
 def _registration_issues(entry: dict[str, Any], source: str, where: str) -> Iterator[Issue]:
-    """A browser filter declares its catalog id and is listed in the browser registry."""
+    """A filter is registered with its engine under its catalog id."""
+    if entry.get("engine") == "science":
+        yield from _engine_registration_issues(entry, source, where)
+        return
     if entry.get("engine") != "browser":
         return
     entry_id = entry.get("id", "")
@@ -177,6 +180,21 @@ def _registration_issues(entry: dict[str, Any], source: str, where: str) -> Iter
     registry = BROWSER_REGISTRY.read_text(encoding="utf-8") if BROWSER_REGISTRY.is_file() else ""
     if not re.search(rf"\b{re.escape(symbol)}\b", registry):
         yield Issue("error", where, f"'{symbol}' is not registered in {_rel(BROWSER_REGISTRY)}")
+
+
+ENGINE_FILTERS = ROOT / "engine" / "src" / "pixelnexus_engine" / "filters"
+
+
+def _engine_registration_issues(entry: dict[str, Any], source: str, where: str) -> Iterator[Issue]:
+    """A science filter registers its catalog id, in a module the filters package imports."""
+    entry_id = entry.get("id", "")
+    if f'register("{entry_id}"' not in source:
+        yield Issue("error", where, f'the implementation does not register "{entry_id}"')
+    path = ROOT / (entry.get("implementation") or {}).get("path", "")
+    package = ENGINE_FILTERS / "__init__.py"
+    imports = package.read_text(encoding="utf-8") if package.is_file() else ""
+    if path.parent != ENGINE_FILTERS or not re.search(rf"\bimport {path.stem}\b", imports):
+        yield Issue("error", where, f"'{path.stem}' is not imported in {_rel(package)}")
 
 
 def summary(catalog: Catalog) -> str:

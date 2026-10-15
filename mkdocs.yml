@@ -123,6 +123,7 @@ nav:
       - Processing pipeline: architecture/processing-pipeline.md
       - Selection and masking: architecture/selection-and-masking.md
       - Execution model: architecture/execution-model.md
+      - Science engine: architecture/science-engine.md
       - Learn panel architecture: architecture/learn-panel.md
   - Mathematics:
       - Foundations: mathematics/foundations.md
@@ -269,6 +270,7 @@ nav:
           - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
           - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
           - Scale-space filtering: filters/multiscale/scale-space.md
+          - Wavelet thresholding: filters/multiscale/wavelet-threshold.md
       - Enhancement:
           - Gamma correction: filters/enhancement/gamma.md
           - Grayscale conversion: filters/enhancement/grayscale.md

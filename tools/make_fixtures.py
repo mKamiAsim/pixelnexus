@@ -19,6 +19,7 @@ What it writes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
@@ -37,6 +38,7 @@ from skimage import color as skcolor
 
 from fixtures_filters import filter_cases
 from fixtures_geometry import geometry_cases
+from synthetic import disks, siemens_star
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "web" / "tests" / "fixtures"
@@ -370,6 +372,16 @@ def build() -> dict[str, str]:
         "generator": "tools/make_fixtures.py",
         "description": "Small synthetic inputs shared by browser and engine tests.",
         "images": {name: encode(make()) for name, make in SYNTHETIC.items()},
+        # SHA-256 of the gray values of the Python copies of the studio test images in
+        # tools/synthetic.py. The studio tests check that its own images give the same hashes.
+        "studio": {
+            name: {
+                "width": 96,
+                "height": 80,
+                "sha256": hashlib.sha256(make(96, 80).tobytes()).hexdigest(),
+            }
+            for name, make in (("disks", disks), ("siemensStar", siemens_star))
+        },
     }
     manifest = {
         "generator": "tools/make_fixtures.py",

@@ -635,5 +635,17 @@
     128
    ]
   }
+ },
+ "studio": {
+  "disks": {
+   "width": 96,
+   "height": 80,
+   "sha256": "f8f1dd273f4191006020a010b3eeef5c85df38bf55e731d7a6699a64fa791075"
+  },
+  "siemensStar": {
+   "width": 96,
+   "height": 80,
+   "sha256": "922a07170a5ed70b2404a46286764297dde469fa9e7de54909713efb2b9e66d3"
+  }
  }
 }

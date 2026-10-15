@@ -6,6 +6,7 @@
  * An abort cancels the job on the engine, which stops its process. Science filters work on the
  * whole image, so a region is cut out of the result.
  */
+import type { Params, Representation } from "@/core/filters/types";
 import { AbortedError } from "@/core/workers/pool";
 import type { RgbaImage } from "@/core/image/types";
 
@@ -30,6 +31,9 @@ interface JobStatus {
 }
 
 const TERMINAL = new Set(["done", "failed", "cancelled"]);
+
+/** The engine's answer for an image id it does not hold ends with these words. */
+const IMAGE_GONE = "Upload it again";
 
 /** Cut a region out of an image. */
 export function cropImage(
@@ -69,6 +73,7 @@ export class ScienceEngine implements EngineClient {
         .catch(() => null);
       throw new EngineError(
         typeof detail === "string" ? detail : `The engine answered with error ${response.status}.`,
+        response.status,
       );
     }
     return response;
@@ -94,11 +99,12 @@ export class ScienceEngine implements EngineClient {
   async run(job: FilterJob, options: JobOptions = {}): Promise<JobResult> {
     const started = performance.now();
     if (options.signal?.aborted) throw new AbortedError();
-    const image = await this.upload(job.image);
-    const created = await this.call("/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filter: job.filterId, image, params: job.params }),
+    const created = await this.start(job).catch((error: unknown) => {
+      // The engine drops the image used least recently when its cache is full. Upload it again.
+      const gone = error instanceof EngineError && error.status === 404;
+      if (!gone || !error.message.includes(IMAGE_GONE)) throw error;
+      this.uploads.delete(job.image);
+      return this.start(job);
     });
     const { id } = (await created.json()) as JobStatus;
     const cancel = () => {
@@ -135,6 +141,16 @@ export class ScienceEngine implements EngineClient {
     }
   }
 
+  /** Upload the image if needed and start the job. */
+  private async start(job: FilterJob): Promise<Response> {
+    const image = await this.upload(job.image);
+    return this.call("/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filter: job.filterId, image, params: job.params }),
+    });
+  }
+
   /** Follow the job's event stream until it ends. Falls back to one status read on errors. */
   private follow(id: string, options: JobOptions): Promise<JobStatus> {
     return new Promise((resolve, reject) => {
@@ -168,6 +184,21 @@ export class ScienceEngine implements EngineClient {
           .catch(reject);
       };
     });
+  }
+
+  /** The operator for the Inspector, built by the same engine code that runs the filter. */
+  async representation(
+    filterId: string,
+    params: Params,
+    signal?: AbortSignal,
+  ): Promise<Representation> {
+    const response = await this.call(`/filters/${encodeURIComponent(filterId)}/representation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+      ...(signal ? { signal } : {}),
+    });
+    return (await response.json()) as Representation;
   }
 
   /** Engine version and limits, or null when no engine answers. */
