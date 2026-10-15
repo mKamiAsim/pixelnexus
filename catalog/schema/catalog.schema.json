@@ -185,7 +185,8 @@
         "stage-viewer",
         "weight-viewer",
         "iteration-viewer",
-        "noise-lab"
+        "noise-lab",
+        "feature-viewer"
       ]
     },
     "channelScope": {

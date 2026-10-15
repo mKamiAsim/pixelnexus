@@ -40,6 +40,7 @@ Most demos look at one pixel. At first it is the center of the image. To use ano
 | Rank stepper | The window values, sorted, with the middle one marked. That value becomes the output. | Median |
 | Gradient explorer | The horizontal and vertical change at the pixel, the strength and the direction as an arrow. A small map shows the direction at every pixel as color and the strength as brightness. | Sobel |
 | Line profile | The brightness along the row or column through the pixel, before and after the filter. You see how the filter changes edges and noise. | Every Phase 3 filter except Sobel |
+| Feature viewer | The 128 x 128 patch around the pixel, with the features a detector finds there drawn on it, and the strongest in a small table. The detector runs in the PixelNexus engine. | Blob detectors |
 
 The catalog sets which demos each filter shows. Demos for later filter families, such as a frequency explorer or a morphology stepper, arrive with those families. The panel names the phase that brings them.
 

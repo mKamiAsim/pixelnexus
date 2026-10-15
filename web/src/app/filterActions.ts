@@ -5,6 +5,7 @@
 import { catalog, isRunnable, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
 import { composite } from "@/core/composite/compose";
+import { rowsInMask } from "@/core/features/table";
 import { fullRect } from "@/core/filters/run";
 import { processingRegion, scopeMask, type FilterScope } from "@/core/composite/scope";
 import type { ParamValue } from "@/core/filters/types";
@@ -16,6 +17,7 @@ import {
   useDocuments,
   type ImageDocument,
 } from "@/state/documents";
+import { useFeatures } from "@/state/features";
 import { useFilters } from "@/state/filters";
 import { announce, notify } from "@/state/notifications";
 import { useSettings } from "@/state/settings";
@@ -164,9 +166,16 @@ export async function applySelected(): Promise<void> {
   }
   const resizes = entry.changesSize === true;
   if (resizes && !fitsLimits(source, Number(values.scale))) return;
+  // Feature detectors look at the whole image. A selection only chooses which features to keep.
+  const finds = entry.output === "features";
   const scope = resizes ? "whole" : selectionScope(entry, doc);
   const mask = scopeMask(selection, scope);
-  const region = resizes ? fullRect(source) : processingRegion(source, mask, isGlobal(values));
+  const region =
+    resizes || finds ? fullRect(source) : processingRegion(source, mask, isGlobal(values));
+  if (finds && mask && !processingRegion(source, mask, false)) {
+    notify("info", "Nothing to search", "The selection is empty.");
+    return;
+  }
   if (!region) {
     notify(
       "info",
@@ -208,6 +217,21 @@ export async function applySelected(): Promise<void> {
       );
       return;
     }
+    const ms = Math.round(result.timing.totalMs);
+    if (result.features) {
+      const table = rowsInMask(result.features, mask);
+      useFeatures.getState().set(doc.id, { filterId: entry.id, label, source, table });
+      useFilters
+        .getState()
+        .setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
+      showPanel("features");
+      notify(
+        "success",
+        `${entry.name} found ${table.summary}`,
+        `${ms} ms. The image does not change. The Features panel lists them.`,
+      );
+      return;
+    }
     if (resizes) {
       // The result replaces the image, and the selection grows with it.
       const { width, height } = result.image;
@@ -226,7 +250,6 @@ export async function applySelected(): Promise<void> {
     useFilters.getState().setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
     // A preview of the new image would show the filter twice, so the preview turns off.
     useFilters.getState().setPreviewOn(false);
-    const ms = Math.round(result.timing.totalMs);
     notify(
       result.warnings.length ? "warning" : "success",
       `Applied ${label}`,

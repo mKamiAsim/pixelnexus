@@ -6,8 +6,11 @@
  * An abort cancels the job on the engine, which stops its process. Science filters work on the
  * whole image, so a region is cut out of the result. A selection that the filter reads goes up
  * as a gray image, and the job names it as its mask. A result of another size than the image,
- * such as an enlargement, comes back whole.
+ * such as an enlargement, comes back whole. Feature detectors send a table as JSON, and the
+ * image stays as it was.
  */
+import { isFeatureTable } from "@/core/features/table";
+import { fullRect } from "@/core/filters/run";
 import type { Params, Representation } from "@/core/filters/types";
 import { AbortedError } from "@/core/workers/pool";
 import type { RgbaImage } from "@/core/image/types";
@@ -122,7 +125,18 @@ export class ScienceEngine implements EngineClient {
       if (status.state === "failed") throw new EngineError(status.error ?? "The job failed.");
       const response = await this.call(`/jobs/${id}/result`);
       if (response.headers.get("content-type")?.includes("application/json")) {
-        throw new EngineError("This filter returns a table. Tables arrive in Phase 6d.");
+        const body: unknown = await response.json();
+        if (!isFeatureTable(body))
+          throw new EngineError("The engine sent a result of unknown kind.");
+        const region = job.region ?? fullRect(job.image);
+        const totalMs = performance.now() - started;
+        return {
+          region,
+          image: cropImage(job.image, region),
+          warnings: [],
+          timing: { totalMs, computeMs: totalMs, tiles: 1, workers: 1 },
+          features: body,
+        };
       }
       const width = Number(response.headers.get("X-Width"));
       const height = Number(response.headers.get("X-Height"));

@@ -108,3 +108,9 @@ def test_citations_keep_their_spelling_but_not_their_dashes() -> None:
     assert [level for level, _ in check_text(title, citation=True)] == []
     assert "error" in [level for level, _ in check_text(title)]
     assert "error" in [level for level, _ in check_text("A title — with a dash", True)]
+
+
+def test_citations_keep_robust_in_their_titles() -> None:
+    title = "Bay, H. et al. Speeded-up robust features (SURF)."
+    assert [level for level, _ in check_text(title, citation=True)] == []
+    assert "error" in [level for level, _ in check_text(title)]

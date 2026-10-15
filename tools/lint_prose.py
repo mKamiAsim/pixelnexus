@@ -271,7 +271,7 @@ def check_text(prose: str, citation: bool = False) -> Iterator[tuple[str, str]]:
     for pattern, message in BANNED_PATTERNS:
         if pattern.search(prose):
             yield "error", message
-    if ROBUST.search(prose):
+    if not citation and ROBUST.search(prose):
         yield "error", "'robust' is allowed only in its statistical meaning."
     british = None if citation else BRITISH.search(prose)
     if british:

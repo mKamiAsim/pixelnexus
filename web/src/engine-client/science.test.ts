@@ -109,6 +109,29 @@ describe("the science engine client", () => {
     expect(Array.from(out.image.data)).toEqual(Array.from(result));
   });
 
+  it("returns a feature table with the unchanged image", async () => {
+    const features = {
+      kind: "features",
+      columns: [{ key: "x", label: "x", unit: "px" }],
+      rows: [[1]],
+      summary: "1 blob",
+    };
+    const { fetchStub } = engineServer(new Uint8Array(24), 3, 2);
+    const stub = vi.fn(async (url: string, init?: RequestInit) =>
+      url.endsWith("/result") ? Response.json(features) : fetchStub(url, init),
+    );
+    vi.stubGlobal("fetch", stub);
+    vi.stubGlobal("EventSource", eventSourceWith([{ state: "done", progress: 1 }]));
+    const out = await new ScienceEngine("http://engine.test").run({
+      filterId: "x",
+      params: {},
+      image,
+    });
+    expect(out.features).toEqual(features);
+    expect(out.image.data).toEqual(image.data);
+    expect(out.region).toEqual({ x: 0, y: 0, width: 3, height: 2 });
+  });
+
   it("uploads the image again when the engine has dropped it", async () => {
     const { calls, fetchStub } = engineServer(new Uint8Array(24), 3, 2);
     let dropped = true;

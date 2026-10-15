@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from "react";
 
+import type { FeatureTable } from "@/core/features/table";
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
 import type { Mask } from "@/core/mask/mask";
@@ -21,6 +22,8 @@ export interface EngineInput {
 export interface EngineResults {
   /** One result per input, or null while there are none. */
   readonly images: readonly RgbaImage[] | null;
+  /** For feature detectors, one table per input, or null while there are none. */
+  readonly features: readonly (FeatureTable | null)[] | null;
   /** Why there are no results, or an error from the engine. Empty when all is well. */
   readonly note: string;
 }
@@ -33,6 +36,7 @@ export const ENGINE_OFF_NOTE =
 interface Answer {
   readonly inputs: readonly EngineInput[];
   readonly images?: readonly RgbaImage[];
+  readonly features?: readonly (FeatureTable | null)[];
   readonly message?: string;
 }
 
@@ -64,7 +68,13 @@ export function useEngineResults(
           ),
         ),
       )
-        .then((results) => setAnswer({ inputs, images: results.map((r) => r.image) }))
+        .then((results) =>
+          setAnswer({
+            inputs,
+            images: results.map((r) => r.image),
+            features: results.map((r) => r.features ?? null),
+          }),
+        )
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
           const message = error instanceof Error ? error.message : "The engine did not answer.";
@@ -76,10 +86,14 @@ export function useEngineResults(
       controller.abort();
     };
   }, [active, engine, filterId, inputs]);
-  if (!active) return { images: null, note: "" };
-  if (engine === "offline") return { images: null, note: ENGINE_OFF_NOTE };
+  if (!active) return { images: null, features: null, note: "" };
+  if (engine === "offline") return { images: null, features: null, note: ENGINE_OFF_NOTE };
   if (answer?.inputs !== inputs) {
-    return { images: null, note: "Running the filter in the PixelNexus engine." };
+    return { images: null, features: null, note: "Running the filter in the PixelNexus engine." };
   }
-  return { images: answer.images ?? null, note: answer.message ?? "" };
+  return {
+    images: answer.images ?? null,
+    features: answer.features ?? null,
+    note: answer.message ?? "",
+  };
 }

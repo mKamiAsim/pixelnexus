@@ -222,6 +222,9 @@ nav:
           - Hessian-based filter: filters/features/hessian.md
           - Sato filter: filters/features/sato.md
           - Meijering filter: filters/features/meijering.md
+          - LoG blob detection: filters/features/blob-log.md
+          - DoG blob detection: filters/features/blob-dog.md
+          - Determinant of Hessian: filters/features/blob-doh.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md

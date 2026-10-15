@@ -136,10 +136,27 @@ const CORS = {
 };
 
 interface FakeJob {
+  readonly filter: string;
   readonly image: string;
   readonly mask?: string;
   readonly params: Record<string, unknown>;
 }
+
+/** The table the stand-in engine returns for blob detectors: two disks of the Disks image. */
+const FAKE_BLOBS = {
+  kind: "features",
+  columns: [
+    { key: "x", label: "x", unit: "px" },
+    { key: "y", label: "y", unit: "px" },
+    { key: "radius", label: "Radius", unit: "px" },
+    { key: "score", label: "Score", unit: "" },
+  ],
+  rows: [
+    [96, 96, 47.6, 0.55],
+    [256, 96, 24.5, 0.54],
+  ],
+  summary: "2 blobs",
+};
 
 /** Enlarge raw RGBA by a whole factor, copying each pixel. */
 function enlarge(body: Buffer, width: number, height: number, scale: number): Buffer {
@@ -193,6 +210,7 @@ async function fakeEngine(page: Page) {
     }
     if (path.endsWith("/result")) {
       const job = jobs[Number((path.split("/")[2] ?? "").replace("job-", ""))];
+      if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
       const image = images.get(job?.image ?? "");
       if (!image) return json({ detail: "There is no job with this id." }, 404);
       const scale = Number(job?.params.scale ?? 1);
@@ -318,6 +336,33 @@ test("super-resolution replaces the image with the larger engine result", async 
   await expect(page.getByRole("img", { name: "Estimate after iteration 10" })).toBeVisible();
   await page.keyboard.press("Control+z");
   await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
+});
+
+test("a blob detector lists its features, draws them and exports CSV", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "LoG blob", "LoG blob detection");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(announcer(page)).toContainText("LoG blob detection found 2 blobs");
+  const table = page.getByRole("table", { name: "Features" });
+  await expect(table).toContainText("47.6");
+  // Each feature is drawn twice, dark under light.
+  const overlay = page.getByTestId("feature-overlay");
+  await expect(overlay.locator("circle")).toHaveCount(4);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export CSV" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/_blob-log\.csv$/);
+  await page.getByRole("switch", { name: "Show on the canvas" }).click();
+  await expect(overlay).toHaveCount(0);
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Feature viewer" })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Patch around the probe with 2 blobs/ }),
+  ).toBeVisible();
 });
 
 test("the studio works with the local engine stopped", async ({ page }) => {

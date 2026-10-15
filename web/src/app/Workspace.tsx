@@ -15,6 +15,7 @@ import {
   Radar,
   Sigma,
   SlidersHorizontal,
+  Target,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +39,7 @@ import { LibraryPanel } from "@/panels/LibraryPanel";
 import { MasksPanel } from "@/panels/MasksPanel";
 import { PropertiesPanel } from "@/panels/PropertiesPanel";
 import { HistogramPanel } from "@/panels/HistogramPanel";
+import { FeaturesPanel } from "@/panels/FeaturesPanel";
 import { MetricsPanel } from "@/panels/MetricsPanel";
 import { ImagesPanel } from "@/panels/ImagesPanel";
 import { InfoPanel } from "@/panels/InfoPanel";
@@ -82,6 +84,7 @@ const PANEL_ICONS: Record<PanelId, LucideIcon> = {
   masks: Layers,
   metrics: Gauge,
   spectrum: Radar,
+  features: Target,
 };
 
 /** Each panel gets its own error boundary, so one failing panel cannot blank the studio. */
@@ -115,6 +118,7 @@ const COMPONENTS = {
   spectrum: panel("Spectrum", <SpectrumPanel />),
   masks: panel("Masks", <MasksPanel />),
   metrics: panel("Metrics", <MetricsPanel />),
+  features: panel("Features", <FeaturesPanel />),
 };
 
 /** A panel tab with an icon. In a collapsed rail only the icon shows. */

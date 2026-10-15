@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { cssColor, ImageRenderer, type RenderMode } from "@/canvas/renderer";
+import { FeatureOverlay } from "@/canvas/FeatureOverlay";
 import { SelectionOverlay } from "@/canvas/SelectionOverlay";
 import {
   clampPan,
@@ -39,7 +40,9 @@ import {
 import { BRUSH_TOOLS, isSelectionTool } from "@/selection/ids";
 import { readySuperpixels } from "@/selection/superpixelCache";
 import { toolValues } from "@/selection/values";
+import { featurePoints } from "@/core/features/table";
 import { useDocuments, type ImageDocument } from "@/state/documents";
+import { useFeatures } from "@/state/features";
 import { useFilters } from "@/state/filters";
 import { useSelection } from "@/state/selection";
 import { useUi } from "@/state/ui";
@@ -116,6 +119,8 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   );
   const probe = useUi((s) => s.probe);
   const preview = useFilters((s) => s.preview);
+  const featureLayer = useFeatures((s) => s.layers[doc.id]);
+  const featuresVisible = useFeatures((s) => s.visible);
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
   const maskView = useSelection((s) => s.maskView);
@@ -137,6 +142,12 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const shownOutline = outline?.key === gestureKey ? outline.outline : null;
   const shownDraft = draft?.key === gestureKey ? draft : null;
   const shownMask = shownDraft?.mask ?? (doc.selectionEnabled ? doc.selection : null);
+  // Features found on this exact image, when they are switched on.
+  const features = useMemo(
+    () =>
+      featuresVisible && featureLayer?.source === image ? featurePoints(featureLayer.table) : null,
+    [featuresVisible, featureLayer, image],
+  );
   // A filter preview of this exact image, if there is one. It stays visible while a newer one runs.
   const previewShown = useMemo(
     () =>
@@ -554,6 +565,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         onKeyDown={onKeyDown}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {doc.view && features ? <FeatureOverlay points={features} view={doc.view} /> : null}
       {doc.view ? (
         <SelectionOverlay
           outline={shownOutline}

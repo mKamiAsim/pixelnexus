@@ -6,6 +6,7 @@ import {
   NeighborhoodStepper,
   RankStepper,
 } from "./widgets";
+import { FeatureViewer } from "./features";
 import { FrequencyExplorer } from "./frequency";
 import { IterationViewer } from "./iterations";
 import { MorphologyStepper } from "./morphology";
@@ -27,6 +28,7 @@ export const WIDGETS = {
   "frequency-explorer": { title: "Frequency explorer", component: FrequencyExplorer },
   "iteration-viewer": { title: "Iteration viewer", component: IterationViewer },
   "point-op-curve": { title: "Point-op curve", component: PointOpCurve },
+  "feature-viewer": { title: "Feature viewer", component: FeatureViewer },
 } as const;
 
 /** The phase that brings each demo that is not built yet. */

@@ -41,6 +41,7 @@ from pixelnexus_engine.filters.artifacts import (
     descreen,
     jpeg_cleanup,
 )
+from pixelnexus_engine.filters.blobs import blob_dog_filter, blob_doh_filter, blob_log_filter
 from pixelnexus_engine.filters.directional import (
     BANKS,
     directional_curvelet,
@@ -1432,6 +1433,94 @@ def ridge_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# Blob detectors ---------------------------------------------------------------------------------
+
+BLOB_FILTERS = {
+    "blob-log": ("LoG blob detection", blob_log_filter),
+    "blob-dog": ("DoG blob detection", blob_dog_filter),
+    "blob-doh": ("Determinant of Hessian", blob_doh_filter),
+}
+# The disks of the Disks test image at 512 x 512: center x, center y and radius.
+TEST_DISKS = [
+    (96, 96, 48),
+    (256, 96, 24),
+    (384, 96, 12),
+    (448, 96, 6),
+    (128, 320, 72),
+    (352, 320, 36),
+]
+
+
+def blob_rows(filter_id: str, gray: Gray, **values: Any) -> list[list[float]]:
+    function = BLOB_FILTERS[filter_id][1]
+    table = function(rgba(gray), catalog_values(filter_id, **values), lambda _: None)
+    assert isinstance(table, dict)
+    rows: list[list[float]] = table["rows"]
+    return rows
+
+
+def with_rings(gray: Gray, rows: list[list[float]]) -> Gray:
+    """Draw a ring of each blob's radius around its center: white on dark pixels, black on light."""
+    y, x = np.mgrid[0 : gray.shape[0], 0 : gray.shape[1]]
+    out = gray.copy()
+    for bx, by, radius, *_ in rows:
+        ring = np.abs(np.hypot(x - bx, y - by) - max(radius, 2.0)) < 0.7
+        out[ring] = np.where(gray[ring] < 128, 255, 0)
+    return out
+
+
+def blob_docs(out: dict[Path, str], filter_id: str) -> None:
+    name = BLOB_FILTERS[filter_id][0]
+    scene = disks(256, 256)
+    rough = noisy(scene.astype(np.float64), 12, seed=5)
+    panels = [
+        {"title": "Input", "image": picture(scene)},
+        {"title": "Defaults", "image": picture(with_rings(scene, blob_rows(filter_id, scene)))},
+        {
+            "title": "Smallest sigma 3",
+            "image": picture(with_rings(scene, blob_rows(filter_id, scene, minSigma=3))),
+        },
+        {
+            "title": "Noise of sigma 12",
+            "image": picture(with_rings(rough, blob_rows(filter_id, rough))),
+        },
+    ]
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": f"The Disks test image at 256 x 256, and the blobs {name} finds with the "
+            "defaults, with the smallest sigma at 3, and on a copy with Gaussian noise of sigma "
+            "12. Each blob is drawn as a ring of its radius.",
+            "panels": panels,
+        },
+        separators=(",", ":"),
+    )
+
+    full = disks(512, 512)
+    rows = blob_rows(filter_id, full)
+    cells = []
+    matched = 0
+    for cx, cy, radius in TEST_DISKS:
+        near = sorted(rows, key=lambda r: math.hypot(r[0] - cx, r[1] - cy))
+        best = near[0] if near else None
+        if best is None or math.hypot(best[0] - cx, best[1] - cy) > radius / 2:
+            cells.append([str(radius), "not found", "", ""])
+            continue
+        offset = math.hypot(best[0] - cx, best[1] - cy)
+        matched += 1
+        cells.append([str(radius), fix(best[2], 1), fix(offset, 1), fix(best[4], 4)])
+    noisy_count = len(blob_rows(filter_id, noisy(full.astype(np.float64), 12, seed=5)))
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Disk radius (px)", "Found radius (px)", "Center off by (px)", "Score"], cells)
+        + f"\nThe six disks of the Disks test image at 512 x 512, and the nearest blob that {name} "
+        "finds with the defaults. A disk counts as not found when no blob lies within half "
+        f"its radius. With the defaults it finds {len(rows)} blobs in all, and "
+        f"{len(rows) - matched} of them are not at a disk: the four single bright pixels, or "
+        f"false blobs. On a copy with Gaussian noise of sigma 12 it finds {noisy_count}.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1459,6 +1548,8 @@ def build() -> dict[Path, str]:
     sr_classical_docs(out)
     for filter_id in RIDGE_FILTERS:
         ridge_docs(out, filter_id)
+    for filter_id in BLOB_FILTERS:
+        blob_docs(out, filter_id)
     return out
 
 

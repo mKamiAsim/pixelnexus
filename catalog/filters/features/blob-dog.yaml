@@ -1,10 +1,159 @@
 id: blob-dog
 name: DoG blob detection
-aliases:
-- DoG keypoint detection
+aliases: [DoG keypoint detection, Difference of Gaussians blobs]
 family: features
+tags: [purpose:analysis, purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: DoG keypoint detection.
+
+summary: Finds round blobs and their sizes with differences of Gaussians, a fast stand-in for the Laplacian of Gaussian that SIFT also uses. Each blob comes with its center, radius and score.
+purpose: Find blobs faster than with the Laplacian of Gaussian, and see the scale space that SIFT keypoints come from.
+classification: {linearity: nonlinear, domain: spatial, operation: difference of Gaussians extrema}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the luma with the BT.709 weights, scaled to 0 to 1 as scikit-image
+  expects. Alpha is ignored. The image does not change. The features go to the Features panel
+  and are drawn on the canvas.
+boundary: The Gaussian blurs of scikit-image fill past the edge with reflect. Blobs near the edge are kept.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.blob_dog, with skimage.filters.gaussian.'}
+
+params:
+  - key: blobs
+    label: Blobs
+    type: select
+    default: bright
+    options:
+      - {value: bright, label: Bright blobs}
+      - {value: dark, label: Dark blobs}
+    description: Whether the blobs are brighter or darker than their surroundings. Dark blobs are found as bright blobs of the negated luma.
+    effect: The wrong choice finds the gaps between blobs instead.
+  - key: minSigma
+    label: Smallest sigma
+    type: number
+    min: 0.5
+    max: 50
+    step: 0.5
+    default: 1
+    unit: px
+    description: The smallest scale. Blobs smaller than the matching radius are missed.
+    effect: Larger values ignore small blobs and single bright pixels.
+  - key: maxSigma
+    label: Largest sigma
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 50
+    unit: px
+    description: The largest scale. scikit-image uses 50. If it is below the smallest sigma, only the smallest is used.
+    effect: Larger values also find big blobs, and take longer.
+  - key: sigmaRatio
+    label: Sigma ratio
+    type: number
+    min: 1.1
+    max: 3
+    step: 0.05
+    default: 1.6
+    description: The ratio k between neighboring scales. scikit-image uses 1.6 by default.
+    effect: Smaller ratios give finer sizes, more scales, and longer runs.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.2
+    description: The smallest response a blob needs, for an image from 0 to 1. scikit-image uses 0.5, which finds nothing on the Disks image. 0.2 finds its six disks.
+    effect: Lower values find weaker blobs, and more false ones.
+  - key: overlap
+    label: Overlap
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: Of two blobs whose areas overlap by more than this share, the smaller goes. 1 keeps all.
+    effect: Lower values keep fewer blobs that touch.
+formula: |
+  R_{\sigma_i}(x) = \frac{(G_{\sigma_i} - G_{\sigma_{i+1}}) * I}{k - 1}(x),
+  \qquad
+  \sigma_i = \sigma_{\min} k^i,
+  \qquad
+  r = \sqrt{2}\, \sigma_i,\quad k = {{sigmaRatio}}
+formulaExplanation: >-
+  The difference of two Gaussian blurs whose sigmas differ by the ratio k is close to the
+  scale-normalized Laplacian of Gaussian, times k - 1. So dividing by k - 1 gives a response
+  close to the one of LoG blob detection, at much less cost, since each blur is used twice. The
+  sigmas grow by the ratio k from the smallest sigma until they pass the largest. Then scikit-image
+  keeps the points that are the largest of their 3 x 3 x 3 neighbors in position and scale and
+  reach the threshold. Then it prunes blobs that overlap too much. The blob's sigma is the
+  smaller of the two sigmas of its difference. The score is R at the peak.
+symbols:
+  - {symbol: 'I', meaning: 'The luma from 0 to 1, or 1 minus it for dark blobs'}
+  - {symbol: 'G_\sigma', meaning: 'A Gaussian of sigma'}
+  - {symbol: 'k', meaning: 'The sigma ratio'}
+  - {symbol: 'r', meaning: 'The radius of the blob'}
+steps:
+  - Take the luma from 0 to 1, negated for dark blobs.
+  - Blur it with Gaussians whose sigmas grow by the ratio k.
+  - Subtract each blur from the one before and divide by k - 1.
+  - Keep the points that beat their 26 neighbors in position and scale and reach the threshold.
+  - Remove the smaller of two blobs that overlap too much, and report the rest.
+complexity:
+  time: O(S N sigma_max)
+  memory: O(S N)
+  notes: N is the number of pixels and S the number of scales, about log(sigma_max / sigma_min) / log(k).
+useCases:
+  - Fast blob counting on large images.
+  - Seeing the scale space behind SIFT.
+advantages:
+  - Faster than the Laplacian of Gaussian, since each blur is used twice.
+  - The scales grow by a fixed factor, which suits blobs of very different sizes.
+limitations:
+  - The sizes come in steps of the ratio k, so they are coarse for large blobs.
+  - On the Disks image it misses the single bright pixels, which the Laplacian of Gaussian finds.
+  - The threshold has another scale than in LoG blob detection.
+artifacts:
+  - A low threshold gives rings of false blobs around large bright shapes.
+references:
+  - kind: paper
+    text: Lowe, D. G. Distinctive image features from scale-invariant keypoints. International Journal of Computer Vision 60(2), 91 to 110, 2004.
+    doi: 10.1023/B:VISI.0000029664.99615.94
+  - kind: library
+    text: scikit-image documentation, skimage.feature.blob_dog.
+implementation: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_dog_filter}
+tests: [engine/tests/test_blobs.py]
+learn:
+  oneSentence: Find round spots by subtracting blurs of growing size from each other.
+  howItWorks:
+    - Blur the image more and more, each blur a fixed factor wider.
+    - Subtract each blur from the one before. Spots of the matching size stand out.
+    - Keep the points that stand out from their neighbors in place and size.
+    - Each one is a blob, with its center and radius.
+  academic: >-
+    Extrema of the difference of Gaussians over position and scale, an approximation of the
+    scale-normalized Laplacian, as in the scale space of SIFT.
+  paramNotes:
+    blobs: Bright or dark spots.
+    minSigma: The smallest spots to find.
+    maxSigma: The largest spots to find.
+    sigmaRatio: How fast the blur grows from one scale to the next.
+    threshold: How strong a spot must be.
+    overlap: How much two spots may overlap.
+  tryThis:
+    - Apply LoG and DoG blob detection to the Disks image and compare the radii in the Features panel.
+  pitfalls:
+    - Using the threshold of LoG blob detection. The two responses have different sizes.
+  demos: [feature-viewer]
+related: [blob-log, blob-doh, dog, sift]
+docsPage: filters/features/blob-dog.md

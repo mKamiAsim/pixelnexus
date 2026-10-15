@@ -2,7 +2,7 @@
 
 This page describes each panel of the studio. Open a closed panel from the **Window** menu. See [The workspace](workspace.md) to move and stack panels.
 
-More panels arrive with later phases, such as Pipeline and Metrics.
+More panels arrive with later phases, such as Pipeline.
 
 ## Library
 
@@ -101,6 +101,17 @@ The Histogram panel counts how many pixels have each value from 0 to 255.
 - **Logarithmic scale** makes rare values visible next to very common ones.
 
 Below the chart are the mean, the standard deviation, the median, the lowest and highest value, and the number of pixels. In RGB view these values are for luma. While you hold the original in view, the histogram shows the original.
+
+## Features
+
+Feature detectors, such as LoG blob detection, find things in the image instead of changing it. The Features panel lists what the last detector found on the active image.
+
+- **The table.** One row per feature, with the strongest first. x and y are the column and row of the center pixel, counted from 0 at the top left. Other columns depend on the detector, such as the radius, sigma and the score. The table shows the first 200 rows.
+- **Show on the canvas** draws each feature over the image: a circle of its radius, or a small cross when it has none. The canvas draws at most 2000 features.
+- **Export CSV** saves all rows as a CSV file, with the units in the header.
+- **Clear** forgets the features of this image.
+
+Features belong to the image they were found on. After the image changes, they stay in the panel but leave the canvas. With a selection, a detector still looks at the whole image, and only the features whose center lies in the selection are kept. Features never become a History step, since the pixels do not change.
 
 ## Masks
 

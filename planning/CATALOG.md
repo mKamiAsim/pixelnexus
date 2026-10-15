@@ -255,9 +255,9 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | sato | Sato filter | Done on 2026-10-15. | Advanced | Science | 6d |
 | meijering | Meijering filter | Done on 2026-10-15. | Advanced | Science | 6d |
 | hessian | Hessian-based filter | Hybrid Hessian filter of scikit-image. Done on 2026-10-15. | Advanced | Science | 6d |
-| blob-log | LoG blob detection | | Advanced | Science | 6d |
-| blob-dog | DoG blob detection | DoG keypoint detection. | Advanced | Science | 6d |
-| blob-doh | Determinant of Hessian | | Advanced | Science | 6d |
+| blob-log | LoG blob detection | Done on 2026-10-15. | Advanced | Science | 6d |
+| blob-dog | DoG blob detection | DoG keypoint detection. Done on 2026-10-15. | Advanced | Science | 6d |
+| blob-doh | Determinant of Hessian | Done on 2026-10-15. | Advanced | Science | 6d |
 | sift | SIFT | SIFT-inspired scale-space keypoints. OpenCV. | Advanced | Science | 6d |
 | surf-inspired | SURF-inspired detector | Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped. | Advanced | Science | 6d |
 | orb | ORB | ORB-inspired binary features. OpenCV. | Advanced | Science | 6d |

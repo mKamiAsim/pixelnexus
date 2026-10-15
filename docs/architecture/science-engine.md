@@ -35,6 +35,7 @@ sequenceDiagram
 - **Progress.** The studio follows a job through server-sent events. Each event holds the state (queued, running, done, failed or cancelled) and the progress from 0 to 1.
 - **Results.** An image comes back as raw RGBA bytes, with its size in the `X-Width` and `X-Height` headers. Tables come back as JSON.
 - **Selections as inputs.** Some filters read the selection, such as inpainting, which fills it. Their catalog entries set `needsSelection`. The studio uploads the selection as a gray image of the same size, and the job names it in its `mask` field. The engine refuses such a job without a mask, a mask of another size, and a mask for a filter that does not read one.
+- **Feature tables.** Feature detectors, such as the blob detectors, return a table as JSON instead of an image. It has columns with a key, a label and a unit, rows of numbers, and a summary such as "10 blobs". Rows with the keys x and y are points on the pixel grid, with an optional radius and angle. The studio keeps the table with the image it was found on, lists it in the Features panel and draws it on the canvas. Their catalog entries have the output `features`.
 - **Results of another size.** Some filters change the size, such as super-resolution, which enlarges the image. Their catalog entries set `changesSize` and have a `scale` parameter. The studio checks the new size against its image limits first, runs the filter on the whole image, and replaces the image with the result. The selection is scaled with it.
 
 ## Routes

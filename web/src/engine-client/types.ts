@@ -4,6 +4,7 @@
  */
 import type { Mask } from "@/core/composite/compose";
 import type { Rect } from "@/core/filters/run";
+import type { FeatureTable } from "@/core/features/table";
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
 
@@ -50,6 +51,11 @@ export interface JobResult {
   readonly image: RgbaImage;
   readonly warnings: readonly string[];
   readonly timing: JobTiming;
+  /**
+   * For feature detectors (catalog output "features"): the table of features found. The image
+   * is then the unchanged region, since the pixels do not change.
+   */
+  readonly features?: FeatureTable;
 }
 
 export interface EngineClient {
