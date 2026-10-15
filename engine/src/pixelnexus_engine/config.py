@@ -27,9 +27,12 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8765
     allowed_origins: tuple[str, ...] = _DEFAULT_ORIGINS
-    max_upload_mb: int = 30
+    max_upload_mb: int = 256
     max_pixels: int = 50_000_000
     models_dir: Path = field(default_factory=lambda: Path("models"))
+    max_workers: int = field(default_factory=lambda: max(1, (os.cpu_count() or 2) // 2))
+    cache_mb: int = 1024
+    catalog_dir: Path | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -44,4 +47,9 @@ class Settings:
             max_upload_mb=int(source.get("PIXELNEXUS_MAX_UPLOAD_MB", defaults.max_upload_mb)),
             max_pixels=int(source.get("PIXELNEXUS_MAX_PIXELS", defaults.max_pixels)),
             models_dir=Path(source.get("PIXELNEXUS_MODELS_DIR", str(defaults.models_dir))),
+            max_workers=int(source.get("PIXELNEXUS_MAX_WORKERS", defaults.max_workers)),
+            cache_mb=int(source.get("PIXELNEXUS_CACHE_MB", defaults.cache_mb)),
+            catalog_dir=Path(catalog)
+            if (catalog := source.get("PIXELNEXUS_CATALOG_DIR"))
+            else None,
         )
