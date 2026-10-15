@@ -1202,6 +1202,9 @@ try {
   const { painterlyDocs } = await import("./filter-docs/painterly.mjs");
   const { tiltSigma } = await load("/src/core/filters/artistic/lens.ts");
   painterlyDocs({ run, pic, figure, example, mdTable, fix, createImage, synthetic, tiltSigma });
+  const { distortDocs } = await import("./filter-docs/distort.mjs");
+  const distort = await load("/src/core/filters/artistic/distort.ts");
+  distortDocs({ run, pic, figure, example, mdTable, fix, synthetic, ...distort });
   const { regionDocs } = await import("./filter-docs/regions.mjs");
   const regions = await load("/src/core/filters/segmentation/regions.ts");
   const { toPlanes } = await load("/src/core/filters/planes.ts");

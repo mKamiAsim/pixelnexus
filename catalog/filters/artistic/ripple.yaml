@@ -1,7 +1,115 @@
 id: ripple
 name: Ripple distortion
+aliases: [Water ripple, Concentric waves]
 family: artistic
+tags: [purpose:geometry]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Moves pixels toward and away from the center in rings, like ripples spreading on water.
+purpose: Create water ripple effects.
+classification: {linearity: linear, domain: geometric, operation: concentric sine displacement}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/distort.ts, symbol: rippleMapping}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All channels move together, and alpha moves with them, so transparency stays with its colors.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. It fills positions that the
+  mapping reads from outside the image. With the constant border they are black and transparent.
+  The mapping depends on the position in the whole image, so the filter always runs on the whole
+  image.
+
+params:
+  - key: amplitude
+    label: Amplitude
+    type: number
+    min: 0
+    max: 50
+    step: 0.5
+    default: 4
+    unit: px
+    description: How far pixels move toward or away from the center.
+    effect: Larger values give stronger ripples.
+  - key: wavelength
+    label: Wavelength
+    type: number
+    min: 2
+    max: 200
+    step: 0.5
+    default: 24
+    unit: px
+    description: The distance between two ripple crests.
+    effect: Larger values give wider rings.
+  - key: phase
+    label: Phase
+    type: angle
+    min: 0
+    max: 360
+    step: 1
+    default: 0
+    unit: deg
+    description: The phase of the sine wave.
+    effect: Shifts the waves along their direction.
+  - ref: border
+formula: |
+  \rho_s = \rho + A \sin\left(\frac{2\pi \rho}{\lambda} + \phi\right),
+  \quad \theta_s = \theta,
+  \qquad A = {{amplitude}},\ \lambda = {{wavelength}},\ \phi = {{phase}}^{\circ}
+formulaExplanation: >-
+  rho and theta are the polar coordinates of an output pixel around the image center, in
+  pixels. It reads the source at the same angle, moved along the radius by a sine of its
+  distance. Rings where the sine rises are stretched and rings where it falls are pressed, which
+  looks like waves on water. This rule is PixelNexus's own. Each output pixel reads the source at the mapped position with bilinear interpolation, the inverse mapping of Gonzalez and Woods, so no holes appear.
+symbols:
+  - {symbol: '\rho, \theta', meaning: 'The polar coordinates around the image center, in pixels'}
+  - {symbol: 'A, \lambda, \phi', meaning: 'The amplitude, the wavelength and the phase'}
+steps:
+  - For each output pixel, find its distance from the center.
+  - Move the distance by the sine of the distance.
+  - Read the source there with bilinear interpolation, using the border mode outside the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each output pixel reads four source pixels.
+useCases:
+  - Water and drop effects.
+advantages:
+  - Simple, with three intuitive controls.
+limitations:
+  - Rings are centered on the image and do not fade with distance.
+  - Amplitudes above about lambda / (2 pi) make the mapping fold over.
+artifacts:
+  - Folded, repeated rings at large amplitudes and short wavelengths.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, geometric transformations and image interpolation.
+implementation: {path: web/src/core/filters/artistic/distort.ts, symbol: rippleFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Push pixels in and out in rings around the center, like ripples on water.
+  howItWorks:
+    - Measure each pixel's distance from the center.
+    - Move that distance up and down by a wave.
+    - Read the image at the moved position.
+  academic: >-
+    A radial displacement warp with a sinusoidal profile in the distance from the center.
+  paramNotes:
+    amplitude: How strong the ripples are.
+    wavelength: How far apart the rings are.
+    phase: Where the rings start.
+    border: How positions outside the image are filled.
+  tryThis:
+    - Use the checkerboard test image with amplitude 6 and wavelength 30.
+  pitfalls:
+    - A large amplitude with a short wavelength. The rings fold over and repeat.
+  demos: [line-profile]
+related: [wave, swirl]
+docsPage: filters/artistic/ripple.md

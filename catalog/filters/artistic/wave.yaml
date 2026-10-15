@@ -1,7 +1,126 @@
 id: wave
 name: Wave distortion
+aliases: [Sine wave warp, Waves]
 family: artistic
+tags: [purpose:geometry]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Shifts rows sideways, or columns up and down, by a sine wave, so straight lines become waves.
+purpose: Create wavy, flag-like or underwater effects.
+classification: {linearity: linear, domain: geometric, operation: axis sine displacement}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/distort.ts, symbol: waveMapping}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All channels move together, and alpha moves with them, so transparency stays with its colors.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. It fills positions that the
+  mapping reads from outside the image. With the constant border they are black and transparent.
+  The mapping depends on the position in the whole image, so the filter always runs on the whole
+  image.
+
+params:
+  - key: amplitude
+    label: Amplitude
+    type: number
+    min: 0
+    max: 50
+    step: 0.5
+    default: 6
+    unit: px
+    description: How far rows or columns move.
+    effect: Larger values give stronger waves.
+  - key: wavelength
+    label: Wavelength
+    type: number
+    min: 2
+    max: 400
+    step: 0.5
+    default: 40
+    unit: px
+    description: The distance between two wave crests.
+    effect: Larger values give longer waves.
+  - key: phase
+    label: Phase
+    type: angle
+    min: 0
+    max: 360
+    step: 1
+    default: 0
+    unit: deg
+    description: The phase of the sine wave.
+    effect: Shifts the waves along their direction.
+  - key: direction
+    label: Direction
+    type: select
+    default: horizontal
+    options:
+      - {value: horizontal, label: Rows move sideways}
+      - {value: vertical, label: Columns move up and down}
+      - {value: both, label: Both}
+    description: Which way the pixels move.
+    effect: Both gives a rippled glass look.
+  - ref: border
+formula: |
+  x_s = x + A \sin\left(\frac{2\pi y}{\lambda} + \phi\right),
+  \quad
+  y_s = y + A \sin\left(\frac{2\pi x}{\lambda} + \phi\right),
+  \qquad A = {{amplitude}},\ \lambda = {{wavelength}},\ \phi = {{phase}}^{\circ}
+formulaExplanation: >-
+  With rows moving sideways, each row reads the source shifted by a sine of its own row number,
+  so vertical lines become waves. With columns moving, the same happens with x and y swapped.
+  With both, both shifts apply. Positions are in pixels, counted from the top-left pixel. This
+  rule is PixelNexus's own. Each output pixel reads the source at the mapped position with bilinear interpolation, the inverse mapping of Gonzalez and Woods, so no holes appear.
+symbols:
+  - {symbol: 'x, y', meaning: 'The output pixel position in pixels'}
+  - {symbol: 'x_s, y_s', meaning: 'The source position it reads'}
+  - {symbol: 'A, \lambda, \phi', meaning: 'The amplitude, the wavelength and the phase'}
+steps:
+  - For each output pixel, shift its x by the sine of its row, its y by the sine of its column, or both.
+  - Read the source there with bilinear interpolation, using the border mode outside the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each output pixel reads four source pixels.
+useCases:
+  - Flag, heat haze and underwater looks.
+advantages:
+  - Simple, with direct control of the wave size.
+limitations:
+  - A single sine wave. Real water has many waves at once.
+artifacts:
+  - Edge pixels from the border fill along the sides that move inward.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, geometric transformations and image interpolation.
+implementation: {path: web/src/core/filters/artistic/distort.ts, symbol: waveFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Shift rows or columns back and forth by a wave, so straight lines turn wavy.
+  howItWorks:
+    - For each row, find how far the wave moves it.
+    - Shift the row sideways by that amount.
+    - Do the same for columns, if chosen.
+  academic: >-
+    A separable sinusoidal displacement warp along the image axes.
+  paramNotes:
+    amplitude: How far the rows or columns move.
+    wavelength: How long the waves are.
+    phase: Where the wave starts.
+    direction: Which way the pixels move.
+    border: How positions outside the image are filled.
+  tryThis:
+    - Use the checkerboard test image with both directions.
+  pitfalls:
+    - A large amplitude with a short wavelength. Lines break into zigzags.
+  demos: [line-profile]
+related: [ripple, swirl]
+docsPage: filters/artistic/wave.md

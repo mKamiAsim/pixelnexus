@@ -1,7 +1,103 @@
 id: barrel
 name: Barrel distortion
+aliases: [Barrel lens distortion]
 family: artistic
+tags: [purpose:geometry]
 tier: core
 engine: browser
 phase: 5f
-status: planned
+status: implemented-tested
+
+summary: Bows straight lines outward, as cheap wide-angle lenses do, by squeezing the image more toward its edges.
+purpose: Imitate the barrel distortion of a wide-angle lens.
+classification: {linearity: linear, domain: geometric, operation: radial polynomial mapping}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/distort.ts, symbol: polynomialSource}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All channels move together, and alpha moves with them, so transparency stays with its colors.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. It fills positions that the
+  mapping reads from outside the image. With the constant border they are black and transparent.
+  The mapping depends on the position in the whole image, so the filter always runs on the whole
+  image.
+
+params:
+  - key: strength
+    label: Strength
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.3
+    description: The coefficient k of the radial term.
+    effect: Higher values bow lines more.
+  - key: fit
+    label: Keep corners
+    type: boolean
+    default: true
+    description: Scale the mapping so the corners stay where they are.
+    effect: Off lets the edges move in or out.
+  - ref: border
+formula: |
+  r_s = \frac{r\, (1 + k\, r^2)}{1 + k},
+  \qquad k = {{strength}}
+formulaExplanation: >-
+  The source radius grows faster than the output radius toward the edges, so the outer part of
+  the image is squeezed inward and straight lines through it bow outward. The factor 1 + k r^2 is
+  the first radial term of the lens distortion model that camera calibration uses, as in
+  OpenCV. Keep corners divides by 1 + k so that the corners, at r = 1, read from the corners.
+  Without it, the divisor is 1 and the edges read from outside the image. Each output pixel reads the source at the mapped position with bilinear interpolation, the inverse mapping of Gonzalez and Woods, so no holes appear.
+symbols:
+  - {symbol: 'r', meaning: 'The distance of an output pixel from the image center, as a share of half the diagonal'}
+  - {symbol: 'r_s', meaning: 'The distance of the source position it reads, in the same unit'}
+  - {symbol: 'k', meaning: 'The strength of the radial term'}
+steps:
+  - For each output pixel, find its distance r from the center.
+  - Compute the source distance r (1 + k r^2), divided by 1 + k with Keep corners on.
+  - Read the source there with bilinear interpolation, using the border mode outside the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each output pixel reads four source pixels.
+useCases:
+  - Imitating wide-angle or toy-camera lenses.
+  - Teaching the radial distortion model of camera calibration.
+advantages:
+  - The same model as camera calibration, with one coefficient.
+limitations:
+  - One radial term only. Real lenses need more terms and a tangential part.
+artifacts:
+  - Soft corners at high strengths.
+references:
+  - kind: library
+    text: OpenCV documentation, camera calibration and the radial distortion coefficients.
+    url: https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, geometric transformations and image interpolation.
+implementation: {path: web/src/core/filters/artistic/distort.ts, symbol: barrelFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Bow straight lines outward, as a wide-angle lens does.
+  howItWorks:
+    - Measure how far each pixel is from the center.
+    - Read the image from further out, more so near the edges.
+    - Optionally keep the corners where they are.
+  academic: >-
+    Radial distortion by the polynomial model r_d = r (1 + k1 r^2), applied by inverse mapping.
+  paramNotes:
+    strength: How strongly lines bow outward.
+    fit: Keep the corners where they are.
+    border: How positions outside the image are filled.
+  tryThis:
+    - Use the checkerboard test image and compare barrel and pincushion.
+  pitfalls:
+    - Turning off Keep corners. The edges then show the border fill.
+  demos: [line-profile]
+related: [pincushion, fisheye]
+docsPage: filters/artistic/barrel.md

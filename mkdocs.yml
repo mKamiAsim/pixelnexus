@@ -316,6 +316,12 @@ nav:
           - Bloom and glow: filters/artistic/bloom.md
           - Bokeh blur: filters/artistic/bokeh.md
           - Tilt-shift blur: filters/artistic/tilt-shift.md
+          - Fisheye distortion: filters/artistic/fisheye.md
+          - Barrel distortion: filters/artistic/barrel.md
+          - Pincushion distortion: filters/artistic/pincushion.md
+          - Swirl distortion: filters/artistic/swirl.md
+          - Ripple distortion: filters/artistic/ripple.md
+          - Wave distortion: filters/artistic/wave.md
       - Restoration:
           - Dead-pixel correction: filters/restoration/dead-pixel.md
           - Inverse filtering: filters/restoration/inverse-filter.md
