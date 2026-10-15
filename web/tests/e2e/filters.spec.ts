@@ -208,6 +208,17 @@ test("an engine filter runs in the local engine, with its operator and the Noise
   await expect(page.getByRole("table", { name: "Noise lab metrics" })).toContainText("dB");
 });
 
+test("the Iteration viewer runs an engine filter at growing iteration counts", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "total variation", "Total variation restoration");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Iteration viewer" })).toBeVisible();
+  await expect(page.getByText("once for each of the 4 counts on the plot")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 100" })).toBeVisible();
+});
+
 test("the studio works with the local engine stopped", async ({ page }) => {
   // Whatever runs on this machine, the studio must find no engine here.
   await page.route(`${ENGINE}/**`, (route) => route.abort());

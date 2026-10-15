@@ -26,6 +26,7 @@ from typing import Any
 import numpy as np
 import pywt
 from numpy.typing import NDArray
+from scipy import ndimage
 
 from pixelnexus_engine.filters.directional import (
     BANKS,
@@ -34,6 +35,15 @@ from pixelnexus_engine.filters.directional import (
     frequency_grid,
 )
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
+from pixelnexus_engine.filters.restoration import (
+    blind_deconv,
+    blind_rl,
+    centered_grid,
+    psf_picture,
+    sparse_fista,
+    support_mask,
+    tv_deblur,
+)
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
@@ -48,8 +58,9 @@ from pixelnexus_engine.filters.wavelets import (
     wiener_gain,
 )
 from pixelnexus_engine.params import check_params, resolve_params
+from pixelnexus_engine.psf import extend, gaussian_kernel
 from pixelnexus_engine.registry import common_params, science_entries
-from synthetic import disks
+from synthetic import disks, siemens_star
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "catalog" / "filters"
@@ -619,6 +630,170 @@ def steerable_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Regularized and blind deconvolution ------------------------------------------------------
+
+
+def blurred(clean: Gray, sigma: float, noise: float, seed: int = 7) -> Gray:
+    """The image blurred with the Gaussian PSF of the deconvolution filters, with the reflect
+    border, plus Gaussian noise, rounded and clipped to 8 bits."""
+    values = ndimage.convolve(clean.astype(np.float64), gaussian_kernel(sigma), mode="reflect")
+    values += np.random.default_rng(seed).normal(0, noise, clean.shape)
+    out: Gray = np.clip(np.rint(values), 0, 255).astype(np.uint8)
+    return out
+
+
+def tv_deblur_docs(out: dict[Path, str]) -> None:
+    filter_id = "tv-deblur"
+    clean = disks(160, 160)
+    damaged = blurred(clean, 2, 5)
+
+    def tv(gray: Gray, **values: Any) -> Gray:
+        return run(tv_deblur, gray, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks blurred with a Gaussian of sigma 2 and Gaussian noise of sigma 5, "
+            "and total variation restoration with lambda 0.3, 3 and 30.",
+            "panels": [
+                {"title": "Blurred, noisy", "image": picture(damaged)},
+                *(
+                    {"title": f"Lambda {lam:g}", "image": picture(tv(damaged, **{"lambda": lam}))}
+                    for lam in (0.3, 3, 30)
+                ),
+            ],
+        },
+        separators=(",", ":"),
+    )
+    lambdas = (0.3, 1, 3, 10, 30)
+    rows = []
+    for label, image in (("Disks", clean), ("Siemens star", siemens_star(160, 160))):
+        dirty = blurred(image, 2, 5)
+        rows.append(
+            [
+                label,
+                fix(psnr(dirty, image), 2),
+                *(fix(psnr(tv(dirty, **{"lambda": lam}), image), 2) for lam in lambdas),
+                fix(psnr(tv(dirty, iterations=300), image), 2),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Image", "Blurred", *(f"Lambda {lam:g}" for lam in lambdas), "300 iterations"], rows
+        )
+        + "\nThe PSNR in dB against the sharp image. Both images are 160 by 160 pixels, "
+        "blurred with the Gaussian PSF of sigma 2 and the reflect border, with Gaussian noise of "
+        "sigma 5 from NumPy's default_rng with seed 7. The lambda columns use 100 iterations. "
+        "The last column uses the default lambda of 3 and 300 iterations, which still gains, "
+        "so 100 iterations stop short of the minimum. The disks are flat shapes, which total "
+        "variation suits, so they gain more than the fine spokes of the star.\n"
+    )
+
+
+def sparse_fista_docs(out: dict[Path, str]) -> None:
+    filter_id = "sparse-fista"
+    clean = disks(160, 160)
+    damaged = blurred(clean, 2, 5)
+
+    def sparse(gray: Gray, **values: Any) -> Gray:
+        return run(sparse_fista, gray, filter_id, **values)
+
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "Disks blurred with a Gaussian of sigma 2 and Gaussian noise of sigma 5, "
+            "the data term alone after 100 steps, sparse regularization with the defaults, and "
+            "with the Haar wavelet and lambda 4.",
+            "panels": [
+                {"title": "Blurred, noisy", "image": picture(damaged)},
+                {"title": "Lambda 0", "image": picture(sparse(damaged, **{"lambda": 0}))},
+                {"title": "Sym8, lambda 1", "image": picture(sparse(damaged))},
+                {
+                    "title": "Haar, lambda 4",
+                    "image": picture(sparse(damaged, wavelet="haar", **{"lambda": 4})),
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
+    lambdas = (0, 0.5, 1, 2, 4)
+    wavelets = ("haar", "db4", "sym8")
+    rows = [
+        [
+            w,
+            *(
+                fix(psnr(sparse(damaged, wavelet=w, **{"lambda": lam}), clean), 2)
+                for lam in lambdas
+            ),
+        ]
+        for w in wavelets
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Wavelet", *(f"Lambda {lam:g}" for lam in lambdas)], rows)
+        + "\nThe PSNR in dB against the sharp disks, 160 by 160 pixels, blurred with the "
+        "Gaussian PSF of sigma 2 and the reflect border, with Gaussian noise of sigma 5 from "
+        "NumPy's default_rng with seed 7. The blurred image itself has "
+        f"{fix(psnr(damaged, clean), 2)} dB. All rows use 3 levels and 100 iterations. Lambda 0 "
+        "is the data term alone, which raises the noise as it sharpens. Total variation "
+        f"restoration reaches {fix(psnr(run(tv_deblur, damaged, 'tv-deblur'), clean), 2)} dB "
+        "on the same image with its defaults, since the disks are flat shapes.\n"
+    )
+
+
+def blind_deconv_docs(out: dict[Path, str]) -> None:
+    filter_id = "blind-deconv"
+    clean = siemens_star(160, 160)
+    damaged = blurred(clean, 2, 1)
+
+    def blind(**values: Any) -> Gray:
+        return run(blind_deconv, damaged, filter_id, **values)
+
+    truth = centered_grid(gaussian_kernel(2), clean.shape) * support_mask(clean.shape, 7)
+    truth_picture = np.clip(np.rint(psf_picture(truth, 7, clean.shape)), 0, 255).astype(np.uint8)
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {
+            "filter": filter_id,
+            "message": "A Siemens star blurred with a Gaussian of sigma 2, the result of blind "
+            "deconvolution with the defaults, the PSF it found, and the true PSF.",
+            "panels": [
+                {"title": "Blurred", "image": picture(damaged)},
+                {"title": "Blind result", "image": picture(blind())},
+                {"title": "PSF found", "image": picture(blind(output="psf"))},
+                {"title": "True PSF", "image": picture(truth_picture)},
+            ],
+        },
+        separators=(",", ":"),
+    )
+    g, _ = extend(damaged.astype(np.float64), "reflect")
+    true_grid = centered_grid(gaussian_kernel(2), g.shape)
+    rows = []
+    for sigma in (0.5, 1, 2, 3, 5):
+        start = centered_grid(gaussian_kernel(sigma), g.shape) * support_mask(g.shape, 7)
+        start /= start.sum()
+        _, h = blind_rl(g, start, 7, 10, 5, 5)
+        rows.append(
+            [
+                fix(sigma, 1),
+                fix(float(np.abs(start - true_grid).sum()), 2),
+                fix(float(np.abs(h - true_grid).sum()), 2),
+                fix(psnr(blind(sigma=sigma), clean), 2),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["First guess sigma", "Start error", "Error after", "PSNR in dB"], rows)
+        + "\nA Siemens star of 160 by 160 pixels, blurred with the Gaussian PSF of sigma 2 and "
+        "the reflect border, with Gaussian noise of sigma 1 from NumPy's default_rng with seed "
+        f"7. The blurred image has {fix(psnr(damaged, clean), 2)} dB. The errors are the sum "
+        "of the absolute differences between the PSF and the true PSF, before and after the "
+        "default 10 cycles. A narrow first guess barely moves, since the sharp image with a "
+        "single bright point already fits the photo well. Wider guesses move toward the true "
+        "PSF.\n"
+    )
+
+
 def build() -> dict[Path, str]:
     out: dict[Path, str] = {}
     wavelet_threshold_docs(out)
@@ -629,6 +804,9 @@ def build() -> dict[Path, str]:
     directional_docs(out, "curvelet")
     directional_docs(out, "shearlet")
     steerable_docs(out)
+    tv_deblur_docs(out)
+    sparse_fista_docs(out)
+    blind_deconv_docs(out)
     return out
 
 

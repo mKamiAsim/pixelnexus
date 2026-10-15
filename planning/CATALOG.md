@@ -328,9 +328,9 @@ Restoration never claims to recover information the input does not contain. Each
 | landweber | Landweber iteration | | Core | Browser | 5e |
 | nnls-deconv | Non-negative least-squares deconvolution | Projected Landweber. Labeled with its method. | Core | Browser | 5e |
 | dead-pixel | Dead-pixel correction | Outlier against the local median, then repair. | Core | Browser | 5b |
-| tv-deblur | Total variation restoration | Chambolle-Pock primal-dual. | Advanced | Science | 6c |
-| blind-deconv | Blind deconvolution | Alternating Richardson-Lucy. Labeled experimental. | Advanced | Science | 6c |
-| sparse-fista | Sparse regularization | FISTA with a wavelet L1 prior. | Advanced | Science | 6c |
+| tv-deblur | Total variation restoration | Chambolle-Pock primal-dual. Done on 2026-10-15. | Advanced | Science | 6c |
+| blind-deconv | Blind deconvolution | Alternating Richardson-Lucy. Labeled experimental. Done on 2026-10-15. | Advanced | Science | 6c |
+| sparse-fista | Sparse regularization | FISTA with a wavelet L1 prior. Done on 2026-10-15. | Advanced | Science | 6c |
 | pnp-admm | Plug-and-play restoration | ADMM with a choice of denoiser. | Advanced | Science | 6c |
 | red | Regularization by Denoising | RED. | Advanced | Science | 6c |
 | inpaint | Image inpainting | Telea, Navier-Stokes and biharmonic. The selection is the mask. | Advanced | Science | 6c |
