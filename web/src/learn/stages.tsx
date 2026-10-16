@@ -41,6 +41,7 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
   const entry = catalog.filters.find((f) => f.id === filterId);
   const readsSelection = entry?.needsSelection === true;
   const template = readsSelection && entry?.selectionRole === "template";
+  const markers = readsSelection && entry?.selectionRole === "markers";
   const inputs = useMemo(() => {
     const hole = readsSelection ? demoHole(patch.width, patch.height) : undefined;
     return stages.map((stage) => ({
@@ -87,9 +88,11 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
         so results near it can differ from the whole image.
         {template
           ? ` In place of your selection, the template is the ${2 * DEMO_HOLE_RADIUS + 1} x ${2 * DEMO_HOLE_RADIUS + 1} square at the center of the patch.`
-          : readsSelection
-            ? ` In place of your selection, the hole is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
-            : ""}
+          : markers
+            ? ` In place of your selection, the marker is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
+            : readsSelection
+              ? ` In place of your selection, the hole is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
+              : ""}
       </p>
     </div>
   );

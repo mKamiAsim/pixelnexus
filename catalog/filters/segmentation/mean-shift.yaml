@@ -2,9 +2,150 @@ id: mean-shift
 name: Mean shift
 aliases:
 - Mean-shift segmentation
+- Mean-shift filtering
 family: segmentation
+tags: [purpose:segmentation, purpose:smoothing]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Mean-shift segmentation.
+
+summary: Moves each pixel in position and color to the nearest peak of the density of its neighbors, after Comaniciu and Meer. Pixels that end at the same peak take the same color, so the image becomes flat patches with sharp edges, and the patches are the regions.
+purpose: Flatten color within objects while keeping their edges, and split the image into those flat patches.
+classification: {linearity: nonlinear, domain: color, operation: mode seeking in position and color}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: mean_shift_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit RGB image. Regions go to the Features panel and are drawn over
+  the image. The filtered image, the boundaries and the mean colors are color images with the
+  alpha of the image.
+boundary: The search window is cut at the image edge.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.pyrMeanShiftFiltering.'}
+  - {name: SciPy, optional: false, note: 'The connected parts of similar color.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: filtered, label: Filtered image}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the mean-shift filtered image, which is flat inside each region. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: spatialRadius
+    label: Spatial radius
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 10
+    unit: px
+    description: How far in position the window reaches.
+    effect: Larger values smooth over larger areas.
+  - key: colorRadius
+    label: Color radius
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 20
+    unit: levels
+    description: How far in color the window reaches.
+    effect: Larger values join more different colors into one patch.
+  - key: levels
+    label: Pyramid levels
+    type: integer
+    min: 0
+    max: 3
+    step: 1
+    default: 1
+    description: OpenCV runs on a pyramid with this many smaller levels, and refines from the smallest. OpenCV uses 1.
+    effect: More levels are faster on large images and can shift small details.
+  - key: colorTolerance
+    label: Color tolerance
+    type: integer
+    min: 0
+    max: 20
+    step: 1
+    default: 2
+    unit: levels
+    description: Neighbors whose filtered colors differ by at most this in each channel join one region. 0 joins equal colors only.
+    effect: Higher values give fewer regions.
+formula: |
+  x \leftarrow \frac{1}{\lvert W(x) \rvert} \sum_{y \in W(x)} y,
+  \qquad
+  W(x) = \{y : \lvert y_s - x_s \rvert \le h_s,\ \lVert y_c - x_c \rVert \le h_c\}
+formulaExplanation: >-
+  Each pixel is a point x in a joint space of position x_s and color x_c. The window W(x) holds
+  the pixels within the spatial radius h_s and the color radius h_c. Mean shift moves x to the
+  mean of its window and repeats. The mean always points uphill on the density of the points,
+  so x climbs to a peak, a mode, as Comaniciu and Meer showed. OpenCV stops after 5 steps or
+  when the shift falls below 1, and gives the pixel the color where it stopped. Pixels in one
+  object climb to the same mode, so they get nearly the same color. Edges stay sharp, because a
+  pixel across an edge is outside the color radius. The regions are then the connected patches
+  of similar color.
+symbols:
+  - {symbol: 'x_s, x_c', meaning: 'The position and the color of a point'}
+  - {symbol: 'h_s, h_c', meaning: 'The spatial and color radii'}
+  - {symbol: 'W(x)', meaning: 'The window around x'}
+steps:
+  - Treat each pixel as a point in position and color.
+  - Move each point to the mean of its window, until it stops.
+  - Give each pixel the color where its point stopped.
+  - Group neighbors of similar filtered color into regions.
+complexity:
+  time: O(I N h_s^2)
+  memory: O(N)
+  notes: N is the number of pixels, I the number of steps, at most 5, and h_s the spatial radius.
+useCases:
+  - Flattening color for posterized or cartoon looks.
+  - A first step before grouping regions into objects.
+advantages:
+  - Keeps edges sharp while flattening areas.
+  - No number of regions to choose.
+limitations:
+  - Noise and gradual shading leave many small regions.
+  - Slow for large radii.
+artifacts:
+  - Thin bands of their own color along soft edges.
+references:
+  - kind: paper
+    text: Comaniciu, D., and Meer, P. Mean shift, a robust approach toward feature space analysis. IEEE Transactions on Pattern Analysis and Machine Intelligence 24(5), 603 to 619, 2002.
+    doi: 10.1109/34.1000236
+  - kind: library
+    text: OpenCV documentation, cv2.pyrMeanShiftFiltering.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: mean_shift}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Let every pixel drift toward the most typical color and place near it, then group the pixels that end up alike.
+  howItWorks:
+    - Look at the pixels near each pixel that also have a similar color.
+    - Move to their average, and repeat until it stops moving.
+    - Pixels in one object end up with nearly the same color.
+    - Group neighbors with the same color into regions.
+  academic: >-
+    Mean-shift filtering in the joint spatial and color domain after Comaniciu and Meer, with
+    connected patches of similar filtered color as regions.
+  paramNotes:
+    output: Regions, the filtered image, boundaries, or mean colors.
+    spatialRadius: How far in position to look.
+    colorRadius: How far in color to look.
+    levels: How many smaller copies OpenCV starts from.
+    colorTolerance: How alike neighbors must be to share a region.
+  tryThis:
+    - Show the filtered image and raise the color radius. Areas flatten, and strong edges stay.
+  pitfalls:
+    - A noisy image. Noise survives as many small patches.
+  demos: [stage-viewer]
+related: [quickshift, bilateral, kmeans-color]
+docsPage: filters/segmentation/mean-shift.md

@@ -1,8 +1,139 @@
 id: marker-watershed
 name: Marker-controlled watershed
+aliases: [Seeded watershed, Watershed from markers]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Markers from the selection or scribbles.
+
+summary: Floods the gradient of the image from markers you draw with the selection, after Meyer and Beucher. Each separate part of the selection grows into one region, and the image edge can be one more marker for the background. Regions meet at the edges between the markers.
+purpose: Cut out the objects you mark, with boundaries that follow their edges.
+classification: {linearity: nonlinear, domain: morphological, operation: flooding from markers}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: marker_watershed_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: markers
+preview: on-demand
+colorHandling: >-
+  The filter floods the gradient of the luma with the BT.709 weights. Regions go to the Features
+  panel and are drawn over the image. The boundaries and mean colors are color images and the
+  elevation a gray image, all with the alpha of the image.
+boundary: The blur repeats the edge pixels. Scikit-image's Sobel filter reflects at the edge. Regions end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.watershed and skimage.filters.sobel.'}
+  - {name: SciPy, optional: false, note: 'The Gaussian blur and the parts of the selection.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: elevation, label: Elevation (gradient)}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the elevation that is flooded, the Sobel gradient, stretched. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of a Gaussian blur of the luma before the Sobel gradient. 0 turns the blur off.
+    effect: A blur lowers the gradient of noise, so fewer false basins form.
+  - key: borderMarker
+    label: Border marker
+    type: boolean
+    default: true
+    description: The pixels on the image edge outside the selection are one more marker, for the background.
+    effect: Off, every pixel joins one of the selected parts, so one part needs no background.
+  - key: compactness
+    label: Compactness
+    type: number
+    min: 0
+    max: 10
+    step: 0.001
+    default: 0
+    description: Above 0, the compact watershed of Neubert and Protzel, which also weighs the distance from each marker. scikit-image uses 0, the classic watershed.
+    effect: Higher values give rounder regions of more equal size.
+formula: |
+  E = \lvert \nabla (G_\sigma * Y) \rvert,
+  \qquad
+  L(x) = \text{marker whose flood reaches } x \text{ first}
+formulaExplanation: >-
+  The elevation E is the gradient magnitude of the blurred luma Y, so edges are ridges. The
+  markers replace the minima of the plain watershed. Each 8-connected part of the selection is
+  one marker, and with the border marker, the edge of the image outside the selection is
+  another. Water rises from the markers only, so no region starts anywhere else. Each pixel
+  joins the flood that reaches it first, and floods meet on the ridges between the markers.
+  Meyer and Beucher made markers the way to tell the watershed which objects to find.
+symbols:
+  - {symbol: 'E', meaning: 'The elevation, the gradient magnitude'}
+  - {symbol: 'L(x)', meaning: 'The region of pixel x'}
+steps:
+  - Blur the luma and take its Sobel gradient as the elevation.
+  - Turn each separate part of the selection into a marker, and the image edge into one more.
+  - Flood the elevation from the markers, in order of height.
+  - Each pixel joins the flood that reaches it first.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Cutting out an object by marking it and its surroundings.
+  - Separating touching objects with one mark in each.
+advantages:
+  - You decide how many regions there are and where they start.
+  - Boundaries follow the edges between the marks.
+limitations:
+  - Each object needs its own separate mark.
+  - A weak edge lets a flood leak into a neighboring object.
+artifacts:
+  - Boundaries that jump to a stronger edge nearby.
+references:
+  - kind: paper
+    text: Meyer, F., and Beucher, S. Morphological segmentation. Journal of Visual Communication and Image Representation 1(1), 21 to 46, 1990.
+    doi: 10.1016/1047-3203(90)90014-M
+  - kind: paper
+    text: Vincent, L., and Soille, P. Watersheds in digital spaces, an efficient algorithm based on immersion simulations. IEEE Transactions on Pattern Analysis and Machine Intelligence 13(6), 583 to 598, 1991.
+    doi: 10.1109/34.87344
+  - kind: paper
+    text: Neubert, P., and Protzel, P. Compact watershed and preemptive SLIC, on improving trade-offs of superpixel segmentation algorithms. International Conference on Pattern Recognition (ICPR), 996 to 1001, 2014.
+    doi: 10.1109/ICPR.2014.181
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.watershed.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: marker_watershed}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Mark the objects, and let each mark grow until it meets an edge or another region.
+  howItWorks:
+    - Select a small area inside each object.
+    - Turn the edges of the image into hills.
+    - Let water rise from each selected area, and from the image border.
+    - Where the waters meet, a border forms.
+  academic: >-
+    Marker-controlled watershed of the gradient magnitude, with markers from the parts of the
+    selection and the image border, after Meyer and Beucher.
+  paramNotes:
+    output: Regions, boundaries, mean colors, or the elevation.
+    sigma: How much to blur before the gradient.
+    borderMarker: Use the image edge as the background.
+    compactness: How round the regions should be.
+  tryThis:
+    - Select small areas inside two touching objects, then apply. The boundary between them follows the edge.
+  pitfalls:
+    - One mark that touches two objects. They become one region.
+  demos: [stage-viewer]
+related: [watershed, region-growing, grabcut]
+docsPage: filters/segmentation/marker-watershed.md

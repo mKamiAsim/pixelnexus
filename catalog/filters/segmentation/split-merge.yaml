@@ -1,8 +1,125 @@
 id: split-merge
 name: Split-and-merge segmentation
+aliases: [Quadtree segmentation, Split and merge]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Quadtree.
+
+summary: Splits the image into quarters again and again until each block is uniform, then merges neighboring blocks while the result stays uniform, after Horowitz and Pavlidis. A region counts as uniform when its brightness spans at most a threshold.
+purpose: Split an image into uniform regions and see the quadtree that finds them.
+classification: {linearity: nonlinear, domain: spatial, operation: quadtree split and merge}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/split_merge.py, symbol: split_merge_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter tests the luma with the BT.709 weights in pixel levels. Regions go to the Features
+  panel and are drawn over the image. The boundaries and mean colors are color images with the
+  alpha of the image.
+boundary: Blocks end at the image edge. Odd sides split into halves of unequal size.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The quadtree and the merging.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: blocks, label: Blocks after the split}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the blocks of the quadtree before merging, as a label map. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 30
+    unit: levels
+    description: A region is uniform when its brightest and darkest pixels differ by at most this.
+    effect: Higher values give fewer, larger regions.
+  - key: smallest
+    label: Smallest block
+    type: integer
+    min: 1
+    max: 64
+    step: 1
+    default: 4
+    unit: px
+    description: A block with both sides at most this does not split further.
+    effect: Larger values are faster and give coarser borders.
+formula: |
+  H(R) = \left[\max_{R} Y - \min_{R} Y \le T\right],
+  \qquad
+  T = {{threshold}}
+formulaExplanation: >-
+  The predicate H says whether a region R is uniform: its luma Y spans at most the threshold
+  T. This predicate is our choice. Horowitz and Pavlidis allow any test of uniformity. The
+  split starts with the whole image and cuts every block that fails into four quarters, down
+  to the smallest block. The quadtree then over-segments, since a uniform area cut by the grid
+  stays in many blocks. The merge joins two neighboring regions when their union still passes
+  the test. Here the pairs with the closest mean brightness are tried first, which is also our
+  choice, and a merged region is tested again with its new neighbors.
+symbols:
+  - {symbol: 'H(R)', meaning: 'Whether region R is uniform'}
+  - {symbol: 'Y', meaning: 'The luma in pixel levels'}
+  - {symbol: 'T', meaning: 'The threshold'}
+steps:
+  - Take the luma.
+  - Split each block that is not uniform into four, down to the smallest block.
+  - Merge neighboring regions whose union is still uniform, closest means first.
+  - Number the regions.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. The split visits each pixel once per level of the quadtree.
+useCases:
+  - Teaching the quadtree and region merging.
+  - Splitting flat graphics or scans into uniform areas.
+advantages:
+  - Simple, with a clear rule for what a region is.
+  - Large uniform areas cost little.
+limitations:
+  - The range test is very sensitive to noise. One outlier pixel fails a whole block.
+  - Region borders follow the block grid where the merge cannot smooth them.
+  - Small blocks that straddle an edge are not uniform but cannot split, so they stay regions of their own.
+  - Gradual shading breaks into bands.
+artifacts:
+  - Blocky, staircase borders along curves and diagonals.
+references:
+  - kind: paper
+    text: Horowitz, S. L., and Pavlidis, T. Picture segmentation by a tree traversal algorithm. Journal of the ACM 23(2), 368 to 388, 1976.
+    doi: 10.1145/321941.321956
+implementation: {path: engine/src/pixelnexus_engine/filters/split_merge.py, symbol: split_merge}
+tests: [engine/tests/test_split_merge.py]
+learn:
+  oneSentence: Cut the image into quarters until each piece is uniform, then glue neighboring pieces back while they stay uniform.
+  howItWorks:
+    - Check whether the whole image is uniform.
+    - If not, cut it into four and check each quarter.
+    - Keep cutting until every piece is uniform or very small.
+    - Glue neighbors back together while the result stays uniform.
+  academic: >-
+    Quadtree split and merge with a range predicate on the luma, after Horowitz and Pavlidis.
+  paramNotes:
+    output: Regions, quadtree blocks, boundaries, or mean colors.
+    threshold: How much brightness may vary inside a region.
+    smallest: The smallest block.
+  tryThis:
+    - Show the blocks, then the regions, to see what the merge does.
+  pitfalls:
+    - A noisy image with a low threshold. Every pixel becomes its own block.
+  demos: [stage-viewer]
+related: [region-growing, felzenszwalb, watershed]
+docsPage: filters/segmentation/split-merge.md

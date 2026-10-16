@@ -393,6 +393,10 @@ nav:
           - SLIC superpixels: filters/segmentation/slic.md
           - Felzenszwalb-Huttenlocher segmentation: filters/segmentation/felzenszwalb.md
           - Quickshift: filters/segmentation/quickshift.md
+          - Watershed: filters/segmentation/watershed.md
+          - Marker-controlled watershed: filters/segmentation/marker-watershed.md
+          - Mean shift: filters/segmentation/mean-shift.md
+          - Split-and-merge segmentation: filters/segmentation/split-merge.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

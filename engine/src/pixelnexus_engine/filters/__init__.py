@@ -18,6 +18,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     restoration,
     ridges,
     segmentation,
+    split_merge,
     steerable,
     superresolution,
     surf,

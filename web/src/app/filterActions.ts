@@ -165,8 +165,11 @@ export async function applySelected(): Promise<void> {
     return;
   }
   const resizes = entry.changesSize === true;
-  // A template selection is only an input. The filter runs on, and changes, the whole image.
-  const template = entry.needsSelection === true && entry.selectionRole === "template";
+  // A template or markers selection is only an input. The filter runs on, and changes, the
+  // whole image.
+  const template =
+    entry.needsSelection === true &&
+    (entry.selectionRole === "template" || entry.selectionRole === "markers");
   if (resizes && !fitsLimits(source, Number(values.scale))) return;
   // Feature detectors and tables look at the whole image. A selection only chooses which
   // features to keep.

@@ -1,8 +1,146 @@
 id: watershed
 name: Watershed
+aliases: [Watershed transform, Watershed segmentation]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Markers from h-minima.
+
+summary: Treats the gradient of the image as a height map and floods it from its deepest valleys, after Vincent and Soille. Where floods from two valleys meet, a boundary forms, so regions end at edges. Only valleys at least h deep start a flood, which keeps noise from making many tiny regions.
+purpose: Split an image into regions that end at its edges, such as touching cells or grains.
+classification: {linearity: nonlinear, domain: morphological, operation: flooding from markers}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: watershed_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter floods the gradient of the luma with the BT.709 weights. Regions go to the Features
+  panel and are drawn over the image. The boundaries and mean colors are color images and the
+  elevation a gray image, all with the alpha of the image.
+boundary: The blur repeats the edge pixels. Scikit-image's Sobel filter reflects at the edge. Regions end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.watershed, skimage.morphology.h_minima and skimage.filters.sobel.'}
+  - {name: SciPy, optional: false, note: 'The Gaussian blur and the labels of the markers.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: elevation, label: Elevation (gradient)}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the elevation that is flooded, the Sobel gradient, stretched. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of a Gaussian blur of the luma before the Sobel gradient. 0 turns the blur off.
+    effect: A blur lowers the gradient of noise, so fewer false basins form.
+  - key: h
+    label: Depth h
+    type: number
+    min: 0.5
+    max: 200
+    step: 0.5
+    default: 10
+    description: A valley of the gradient starts a region only when it is at least this deep, in the units of the gradient. A ramp of 1 level per pixel has a gradient of about 1.4.
+    effect: Higher values give fewer, larger regions.
+  - key: compactness
+    label: Compactness
+    type: number
+    min: 0
+    max: 10
+    step: 0.001
+    default: 0
+    description: Above 0, the compact watershed of Neubert and Protzel, which also weighs the distance from each marker. scikit-image uses 0, the classic watershed.
+    effect: Higher values give rounder regions of more equal size.
+formula: |
+  E = \lvert \nabla (G_\sigma * Y) \rvert,
+  \qquad
+  M = \operatorname{HMIN}_h(E),
+  \qquad
+  h = {{h}}
+formulaExplanation: >-
+  The elevation E is the gradient magnitude of the blurred luma Y, so edges are ridges and flat
+  areas are valleys. Every regional minimum would start its own region, and noise makes very
+  many of them. The h-minima transform keeps only the minima at least h deep: a dip whose
+  floor is less than h below the lowest pass out of it does not count. Each kept minimum, as a
+  connected set of pixels, becomes a marker. The h-minima transform would count every minimum
+  that ties exactly with the lowest elevation, however shallow, so this filter first breaks
+  exact ties by adding at most 1e-6, our choice. Then water rises from all markers at once, in
+  order of elevation. Each pixel joins the flood that reaches it first, and floods from
+  different markers meet along the ridges, which become the boundaries.
+symbols:
+  - {symbol: 'E', meaning: 'The elevation, the gradient magnitude'}
+  - {symbol: 'G_\sigma * Y', meaning: 'The luma after a Gaussian blur'}
+  - {symbol: '\operatorname{HMIN}_h', meaning: 'The minima at least h deep'}
+steps:
+  - Blur the luma and take its Sobel gradient as the elevation.
+  - Keep the minima of the elevation that are at least h deep, as markers.
+  - Flood the elevation from the markers, in order of height.
+  - Each pixel joins the flood that reaches it first.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. The flooding keeps a priority queue of pixels.
+useCases:
+  - Separating touching cells, grains or coins.
+  - Splitting an image into regions bounded by its edges.
+advantages:
+  - Regions end exactly at the ridges of the gradient.
+  - Every pixel gets a region, with closed boundaries.
+limitations:
+  - Without a good depth h, noise gives very many small regions.
+  - Weak edges between two valleys can be crossed when one of the valleys is too shallow.
+artifacts:
+  - Small regions along strong edges, where the gradient has its own small dips.
+references:
+  - kind: paper
+    text: Vincent, L., and Soille, P. Watersheds in digital spaces, an efficient algorithm based on immersion simulations. IEEE Transactions on Pattern Analysis and Machine Intelligence 13(6), 583 to 598, 1991.
+    doi: 10.1109/34.87344
+  - kind: paper
+    text: Neubert, P., and Protzel, P. Compact watershed and preemptive SLIC, on improving trade-offs of superpixel segmentation algorithms. International Conference on Pattern Recognition (ICPR), 996 to 1001, 2014.
+    doi: 10.1109/ICPR.2014.181
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, Principles and Applications. Second edition, Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.watershed and skimage.morphology.h_minima.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: watershed_filter}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Treat the edges as hills, fill the valleys with water, and draw borders where the waters meet.
+  howItWorks:
+    - Turn the image into a height map where edges are high.
+    - Pick the deep valleys as sources.
+    - Let water rise from all of them at once.
+    - Where two floods meet, a border forms.
+  academic: >-
+    The watershed of the gradient magnitude with markers from the h-minima transform, flooded
+    by immersion after Vincent and Soille.
+  paramNotes:
+    output: Regions, boundaries, mean colors, or the elevation.
+    sigma: How much to blur before the gradient.
+    h: How deep a valley must be to start a region.
+    compactness: How round the regions should be.
+  tryThis:
+    - Raise h step by step and watch small regions disappear.
+  pitfalls:
+    - A depth of h near 0 on a noisy image. Every noise dip becomes a region.
+  demos: [stage-viewer]
+related: [marker-watershed, felzenszwalb, slic]
+docsPage: filters/segmentation/watershed.md

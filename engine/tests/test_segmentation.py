@@ -242,3 +242,132 @@ def test_the_engine_returns_the_label_map(client: TestClient) -> None:
     assert state == "done"
     result = client.get(f"{API}/jobs/{job_id}/result").json()
     np.testing.assert_array_equal(decoded(result), slic_labels(image, catalog_values("slic")))
+
+
+# Watershed and mean shift ---------------------------------------------------------------------
+
+
+def test_the_elevation_is_the_sobel_of_the_blurred_luma() -> None:
+    from scipy import ndimage
+    from skimage.filters import sobel
+
+    from pixelnexus_engine.filters.segmentation import elevation
+
+    gray = np.random.default_rng(3).integers(0, 256, (30, 34)).astype(np.uint8)
+    expected = sobel(ndimage.gaussian_filter(gray.astype(float), 1.5, mode="nearest"))
+    np.testing.assert_allclose(elevation(gray_rgba(gray), 1.5), expected, atol=1e-9)
+    np.testing.assert_allclose(elevation(gray_rgba(gray), 0), sobel(gray.astype(float)))
+
+
+def test_watershed_is_scikit_image_from_h_minima() -> None:
+    from scipy import ndimage
+    from skimage.morphology import h_minima
+    from skimage.segmentation import watershed
+
+    from pixelnexus_engine.filters.segmentation import elevation, watershed_labels
+
+    image = gray_rgba(disks(128, 128))
+    height = elevation(image, 1)
+    ramp = np.arange(height.size).reshape(height.shape) / height.size
+    markers, _ = ndimage.label(h_minima(height + 1e-6 * ramp, 10), structure=np.ones((3, 3)))
+    expected = watershed(height, markers)
+    labels = watershed_labels(image, catalog_values("watershed"))
+    pairs = {(int(a), int(b)) for a, b in zip(expected.ravel(), labels.ravel(), strict=True)}
+    assert len(pairs) == labels.max() == len(np.unique(expected))
+
+
+def test_minima_that_tie_with_the_lowest_level_need_depth_too() -> None:
+    from pixelnexus_engine.filters.segmentation import minima_markers
+
+    # Two minima at 0 joined by a pass of 1, and a basin 30 deep behind a ridge.
+    height = np.full((5, 9), 1.0)
+    height[2, 1] = height[2, 3] = 0
+    height[:, 5] = 40
+    height[:, 6:] = 20
+    height[2, 7] = 10
+    markers = minima_markers(height, 5)
+    assert markers.max() == 2
+    assert markers[2, 7] > 0
+
+
+def test_watershed_finds_the_noisy_disks_with_enough_depth() -> None:
+    from pixelnexus_engine.filters.segmentation import watershed_labels
+
+    noise = np.random.default_rng(1).normal(0, 8, (256, 256))
+    gray = np.clip(np.rint(disks(256, 256) + noise), 0, 255).astype(np.uint8)
+    labels = watershed_labels(gray_rgba(gray), catalog_values("watershed", h=20))
+    # Six disks and the ground.
+    assert labels.max() == 7
+
+
+def test_marker_watershed_grows_one_region_per_part_and_the_border() -> None:
+    from pixelnexus_engine.filters.segmentation import marker_watershed, selection_markers
+
+    gray = np.full((80, 80), 40, np.uint8)
+    gray[10:40, 10:40] = 200
+    gray[45:75, 45:75] = 120
+    mask = np.zeros((80, 80), np.uint8)
+    mask[20:25, 20:25] = 255
+    mask[55:60, 55:60] = 255
+    markers = selection_markers(mask, True)
+    assert markers.max() == 3 and (markers[0] == 3).all()
+    params = {**catalog_values("marker-watershed"), "mask": mask}
+    result = marker_watershed(gray_rgba(gray), params, NOTHING)
+    assert isinstance(result, dict)
+    labels = decoded(result)
+    assert (labels[12:38, 12:38] == 1).all()
+    assert (labels[47:73, 47:73] == 2).all()
+    assert labels[2, 60] == 3 and labels[60, 2] == 3
+
+
+def test_marker_watershed_needs_two_markers() -> None:
+    from pixelnexus_engine.filters.segmentation import marker_watershed_labels, selection_markers
+
+    mask = np.zeros((20, 20), np.uint8)
+    with pytest.raises(ValueError, match="empty"):
+        selection_markers(mask, True)
+    mask[5:10, 5:10] = 255
+    params = {**catalog_values("marker-watershed", borderMarker=False), "mask": mask}
+    with pytest.raises(ValueError, match="only one marker"):
+        marker_watershed_labels(gray_rgba(np.zeros((20, 20), np.uint8)), params)
+
+
+def test_mean_shift_is_opencv_and_groups_similar_colors() -> None:
+    import cv2
+
+    from pixelnexus_engine.filters.segmentation import (
+        mean_shift,
+        mean_shift_colors,
+        similar_color_labels,
+    )
+
+    image = colors(40)
+    params = catalog_values("mean-shift")
+    expected = cv2.pyrMeanShiftFiltering(np.ascontiguousarray(image[..., :3]), 10, 20, maxLevel=1)
+    np.testing.assert_array_equal(mean_shift_colors(image, params), expected)
+    filtered = mean_shift(image, catalog_values("mean-shift", output="filtered"), NOTHING)
+    assert isinstance(filtered, np.ndarray)
+    np.testing.assert_array_equal(filtered[..., :3], expected)
+    rgb = np.zeros((3, 4, 3), np.uint8)
+    rgb[:, 2:] = 10
+    rgb[0, 0] = 2
+    assert similar_color_labels(rgb, 0).tolist() == [[1, 2, 3, 3], [2, 2, 3, 3], [2, 2, 3, 3]]
+    assert similar_color_labels(rgb, 2).tolist() == [[1, 1, 2, 2], [1, 1, 2, 2], [1, 1, 2, 2]]
+
+
+def test_the_new_representations() -> None:
+    from pixelnexus_engine.filters.segmentation import (
+        marker_watershed_representation,
+        mean_shift_representation,
+        watershed_representation,
+    )
+
+    for representation, filter_id in (
+        (watershed_representation, "watershed"),
+        (marker_watershed_representation, "marker-watershed"),
+        (mean_shift_representation, "mean-shift"),
+    ):
+        stages = representation(catalog_values(filter_id))["stages"]
+        assert len(stages) == 3
+        for stage in stages:
+            assert all(ch >= " " for ch in stage["formula"] + stage["note"])

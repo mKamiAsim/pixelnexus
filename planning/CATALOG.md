@@ -360,19 +360,19 @@ Outputs include overlays, label maps, region statistics, object counts and mask 
 | kmeans-color | K-means color segmentation | | Core | Browser | 5f |
 | ccl | Connected-component labeling | Labels and statistics. | Core | Browser | 5f |
 | multi-otsu | Multi-level Otsu | Extra. Done on 2026-10-16. | Advanced | Science | 6e |
-| watershed | Watershed | Markers from h-minima. | Advanced | Science | 6e |
-| marker-watershed | Marker-controlled watershed | Markers from the selection or scribbles. | Advanced | Science | 6e |
+| watershed | Watershed | Markers from h-minima. Done on 2026-10-16. | Advanced | Science | 6e |
+| marker-watershed | Marker-controlled watershed | Markers from the selection or scribbles. Done on 2026-10-16. | Advanced | Science | 6e |
 | graph-cut | Graph cuts | Binary, with seeds. SciPy maximum flow. | Advanced | Science | 6e |
 | grabcut | GrabCut | GrabCut-inspired interactive segmentation. OpenCV. | Advanced | Science | 6e |
 | random-walker | Random walker | | Advanced | Science | 6e |
-| mean-shift | Mean shift | Mean-shift segmentation. | Advanced | Science | 6e |
+| mean-shift | Mean shift | Mean-shift segmentation. Done on 2026-10-16. | Advanced | Science | 6e |
 | slic | SLIC superpixels | Done on 2026-10-16. | Advanced | Science | 6e |
 | felzenszwalb | Felzenszwalb-Huttenlocher segmentation | Felzenszwalb graph-based segmentation. Done on 2026-10-16. | Advanced | Science | 6e |
 | quickshift | Quickshift | Extra. Done on 2026-10-16. | Advanced | Science | 6e |
 | active-contour | Active contours | Snakes. Starts from the selection boundary. | Advanced | Science | 6e |
 | level-set | Level sets | Morphological geodesic active contour. | Advanced | Science | 6e |
 | chan-vese | Chan-Vese segmentation | | Advanced | Science | 6e |
-| split-merge | Split-and-merge segmentation | Quadtree. | Advanced | Science | 6e |
+| split-merge | Split-and-merge segmentation | Quadtree. Done on 2026-10-16. | Advanced | Science | 6e |
 | crf | Conditional Random Fields | The common Python package is unmaintained. Revisit later. | Planned | none | |
 
 Morphological reconstruction is cross-listed here from section 4.

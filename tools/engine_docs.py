@@ -79,16 +79,26 @@ from pixelnexus_engine.filters.ridges import (
     sato_filter,
 )
 from pixelnexus_engine.filters.segmentation import (
+    elevation,
     felzenszwalb_filter,
     felzenszwalb_labels,
+    marker_watershed,
+    marker_watershed_labels,
+    mean_shift,
+    mean_shift_colors,
     multi_otsu,
     multi_otsu_labels,
     multi_otsu_thresholds,
     quickshift_filter,
     quickshift_labels,
+    similar_color_labels,
     slic_filter,
     slic_labels,
+    watershed_filter,
+    watershed_labels,
 )
+from pixelnexus_engine.filters.split_merge import luma as split_luma
+from pixelnexus_engine.filters.split_merge import merge_regions, split_blocks, split_merge
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
@@ -2321,6 +2331,22 @@ SEGMENTERS: dict[str, tuple[str, Callable[..., Any], Callable[..., Any]]] = {
     "slic": ("SLIC", slic_filter, slic_labels),
     "felzenszwalb": ("Felzenszwalb", felzenszwalb_filter, felzenszwalb_labels),
     "quickshift": ("Quickshift", quickshift_filter, quickshift_labels),
+    "mean-shift": (
+        "mean shift",
+        mean_shift,
+        lambda image, params: similar_color_labels(
+            mean_shift_colors(image, params), params["colorTolerance"]
+        ),
+    ),
+    "split-merge": (
+        "split-and-merge",
+        split_merge,
+        lambda image, params: merge_regions(
+            split_luma(image),
+            split_blocks(split_luma(image), params["threshold"], params["smallest"]),
+            params["threshold"],
+        ),
+    ),
 }
 SWEEPS: dict[str, tuple[list[str], list[dict[str, Any]]]] = {
     "slic": (
@@ -2334,6 +2360,18 @@ SWEEPS: dict[str, tuple[list[str], list[dict[str, Any]]]] = {
     "quickshift": (
         ["Kernel size", "Longest link"],
         [{"kernelSize": k, "maxDist": d} for k in (3, 5, 8) for d in (5, 10, 20)],
+    ),
+    "mean-shift": (
+        ["Spatial radius (px)", "Color radius", "Color tolerance"],
+        [
+            {"spatialRadius": r, "colorRadius": c, "colorTolerance": t}
+            for r, c in ((5, 20), (10, 20), (10, 40))
+            for t in (0, 2, 6)
+        ],
+    ),
+    "split-merge": (
+        ["Threshold", "Smallest block (px)"],
+        [{"threshold": t, "smallest": m} for t in (20, 30, 60) for m in (1, 4)],
     ),
 }
 
@@ -2434,6 +2472,126 @@ def multi_otsu_docs(out: dict[Path, str]) -> None:
     )
 
 
+def noisy_disks() -> Gray:
+    noise = np.random.default_rng(1).normal(0, 8, (256, 256))
+    return np.clip(np.rint(disks(256, 256) + noise), 0, 255).astype(np.uint8)
+
+
+def watershed_docs(out: dict[Path, str]) -> None:
+    filter_id = "watershed"
+    scene = noisy_disks()
+
+    def regions(**values: Any) -> dict[str, Any]:
+        return color_picture(
+            label_colors(watershed_labels(rgba(scene), catalog_values(filter_id, **values)))
+        )
+
+    figure(
+        out,
+        filter_id,
+        "The Disks test image at 256 x 256 with noise of sigma 8. Then the elevation, the Sobel "
+        "gradient after a blur of sigma 1, and the regions in their label colors with the "
+        "depth h at 2 and at 20.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {
+                "title": "Elevation",
+                "image": picture(run(watershed_filter, scene, filter_id, output="elevation")),
+            },
+            {"title": "h = 2", "image": regions(h=2)},
+            {"title": "h = 20", "image": regions(h=20)},
+        ],
+    )
+    rows = []
+    for h in (2, 5, 10, 20, 40):
+        for sigma in (0, 1):
+            found = watershed_labels(rgba(scene), catalog_values(filter_id, h=h, sigma=sigma))
+            rows.append([f"{h:g}", f"{sigma:g}", str(int(found.max()))])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Depth h", "Smoothing sigma", "Regions"], rows)
+        + "\nThe image of the figure, with six disks on a ground, so 7 regions would be "
+        f"ideal. Its elevation reaches {elevation(rgba(scene), 1).max():.0f} on the disk "
+        "edges after the default blur.\n"
+    )
+
+
+def touching_disks() -> Gray:
+    rows, cols = np.mgrid[0:160, 0:160]
+    gray = np.full((160, 160), 50.0)
+    gray[np.hypot(rows - 80, cols - 58) < 34] = 190
+    gray[np.hypot(rows - 80, cols - 104) < 30] = 160
+    gray = ndimage.gaussian_filter(gray, 1.5)
+    return noisy(gray, 6, seed=3)
+
+
+def touching_markers() -> NDArray[np.uint8]:
+    mask = np.zeros((160, 160), np.uint8)
+    mask[75:86, 50:61] = 255
+    mask[75:86, 100:111] = 255
+    return mask
+
+
+def marker_watershed_docs(out: dict[Path, str]) -> None:
+    filter_id = "marker-watershed"
+    scene = touching_disks()
+    mask = touching_markers()
+
+    def labels(**values: Any) -> NDArray[np.int64]:
+        params = {**catalog_values(filter_id, **values), "mask": mask}
+        return marker_watershed_labels(rgba(scene), params)
+
+    marked = with_box(with_box(scene, 75, 50, 11, 11), 75, 100, 11, 11)
+    params = {**catalog_values(filter_id, output="boundaries"), "mask": mask}
+    drawn = marker_watershed(rgba(scene), params, lambda _: None)
+    assert isinstance(drawn, np.ndarray)
+    figure(
+        out,
+        filter_id,
+        "Two touching disks of 190 and 160 on a ground of 50, slightly blurred, with noise of "
+        "sigma 6, and two square markers selected inside them. Then the regions in their label "
+        "colors with the border marker, the boundaries in yellow, and the regions without the "
+        "border marker.",
+        [
+            {"title": "Input and markers", "image": picture(marked)},
+            {"title": "Regions", "image": color_picture(label_colors(labels()))},
+            {
+                "title": "Boundaries",
+                "image": color_picture(np.asarray(drawn[..., :3], np.uint8)),
+            },
+            {
+                "title": "No border marker",
+                "image": color_picture(label_colors(labels(borderMarker=False))),
+            },
+        ],
+    )
+    rows, cols = np.mgrid[0:160, 0:160]
+    truth = [np.hypot(rows - 80, cols - 58) < 34, np.hypot(rows - 80, cols - 104) < 30]
+    truth[1] &= ~truth[0]
+    table = []
+    for border in (True, False):
+        found = labels(borderMarker=border)
+        for name, k, inside in (("Left disk", 1, truth[0]), ("Right disk", 2, truth[1])):
+            region = found == k
+            overlap = float((region & inside).sum() / (region | inside).sum())
+            table.append(
+                [
+                    "on" if border else "off",
+                    name,
+                    str(int(region.sum())),
+                    str(int(inside.sum())),
+                    fix(overlap, 3),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Border marker", "Region", "Area (px)", "Disk area (px)", "Overlap"], table)
+        + "\nThe image of the figure, with the defaults. The disk area counts the pixels "
+        "within the radius of each disk, where the right disk gives way to the left one. The "
+        "overlap is the area of both together divided by the area of either.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -2479,6 +2637,8 @@ def build() -> dict[Path, str]:
     for filter_id in SEGMENTERS:
         segmenter_docs(out, filter_id)
     multi_otsu_docs(out)
+    watershed_docs(out)
+    marker_watershed_docs(out)
     return out
 
 

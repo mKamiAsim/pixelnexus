@@ -717,9 +717,9 @@
           "type": "boolean"
         },
         "selectionRole": {
-          "description": "With needsSelection: what the selection is for. area (the default): the area the filter reads and changes, such as the hole to fill. template: only an input, such as a pattern to search for. The filter then runs on the whole image and its result covers the whole image.",
+          "description": "With needsSelection: what the selection is for. area (the default): the area the filter reads and changes, such as the hole to fill. template: only an input, a pattern to search for. markers: only an input, the seeds that regions grow from. With template or markers, the filter runs on the whole image and its result covers the whole image.",
           "type": "string",
-          "enum": ["area", "template"]
+          "enum": ["area", "template", "markers"]
         },
         "changesSize": {
           "description": "The result has another size than the image, such as an enlarged one. The entry needs a scale parameter, the factor for width and height, so the studio can check the new size first. The studio runs the filter on the whole image and scales the selection with it. Science engine only.",
