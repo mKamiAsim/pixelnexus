@@ -12,6 +12,8 @@ export type DialogId =
   | "palette"
   | "shortcuts"
   | "preferences"
+  | "ai-providers"
+  | "ai-log"
   | "select-modify"
   | "select-color-range"
   | "select-brightness"

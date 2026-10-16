@@ -64,6 +64,33 @@ def catalog_families(bundle: dict[str, Any]) -> str:
     return HEADER + table(["Family", "Entries", "What it covers"], rows, ["left", "right", "left"])
 
 
+AI_INPUTS = {
+    "image": "the image",
+    "mask": "the selection",
+    "points": "your clicks",
+    "box": "the box you drew",
+}
+
+
+def ai_tasks(bundle: dict[str, Any]) -> str:
+    """The AI router tasks with what they send and return, and their classical alternatives."""
+    names = {("tool", e["id"]): e["name"] for e in bundle["tools"]} | {
+        ("filter", e["id"]): e["name"] for e in bundle["filters"]
+    }
+    rows = []
+    for task in bundle["aiTasks"]:
+        parts = [AI_INPUTS[i] for i in task["inputs"]]
+        sends = " and ".join([", ".join(parts[:-1]), parts[-1]]) if len(parts) > 1 else parts[0]
+        sends = sends[0].upper() + sends[1:]
+        if task["crop"]:
+            sends += ". With a selection or a box, only that area plus a margin"
+        classical = names[(task["classical"]["kind"], task["classical"]["id"])]
+        returns = "A mask" if task["output"] == "mask" else "An image"
+        rows.append([task["name"], sends, returns, classical])
+    headers = ["Task", "Sends", "Returns", "Classical alternative"]
+    return HEADER + table(headers, rows, ["left", "left", "left", "left"])
+
+
 def resolve_params(entry: dict[str, Any], common: dict[str, Any]) -> list[dict[str, Any]]:
     """Expand shared parameters. The channel scope offers only the scopes the filter allows."""
     params = []
@@ -312,6 +339,7 @@ def build() -> dict[str, str]:
         "catalog-families.md": catalog_families(bundle),
         "filters-index.md": filters_index(bundle),
         "tools-index.md": tools_index(bundle),
+        "ai-tasks.md": ai_tasks(bundle),
     }
     for entry in bundle["filters"]:
         if entry.get("docsPage") and entry.get("formula"):

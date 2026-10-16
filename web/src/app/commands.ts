@@ -260,6 +260,22 @@ export function buildCommands(): Command[] {
       keywords: "settings limits size pixels",
       run: () => useUi.getState().setDialog("preferences"),
     },
+    {
+      id: "edit.ai-providers",
+      label: "AI providers...",
+      menu: "edit",
+      section: "preferences",
+      keywords: "ai model provider api key consent remote engine",
+      run: () => useUi.getState().setDialog("ai-providers"),
+    },
+    {
+      id: "edit.ai-log",
+      label: "AI request log...",
+      menu: "edit",
+      section: "preferences",
+      keywords: "ai privacy sent requests log",
+      run: () => useUi.getState().setDialog("ai-log"),
+    },
     // Image
     {
       id: "image.rotate-cw",

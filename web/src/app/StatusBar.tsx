@@ -1,8 +1,9 @@
-import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { LoaderCircle, Send, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { formatZoom } from "@/canvas/viewport";
 import { getChannel } from "@/core/image/types";
+import { requestLog } from "@/state/ai";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { useEngine, watchEngine } from "@/state/engine";
 import { useFilters } from "@/state/filters";
@@ -56,10 +57,7 @@ export function StatusBar() {
           {progress !== undefined ? ` ${Math.round(progress * 100)}%` : ""}
         </span>
       ) : null}
-      <span className="ml-auto flex items-center gap-1.5">
-        <ShieldCheck size={12} className="text-success" aria-hidden />
-        Images are processed locally in your browser.
-      </span>
+      <PrivacyNote />
     </footer>
   );
 }
@@ -97,5 +95,40 @@ function EngineLight() {
       <span className={`inline-block size-2 rounded-full ${color}`} aria-hidden />
       {ENGINE_TEXT[status]}
     </button>
+  );
+}
+
+const subscribeLog = (listener: () => void) => requestLog.subscribe(listener);
+const runningHosts = () =>
+  requestLog
+    .entries()
+    .filter((entry) => entry.outcome === "running")
+    .map((entry) => entry.host)
+    .join(", ");
+
+/**
+ * Where the images go. While a request to a remote engine or an external AI service runs, it
+ * names the host, and a click opens the request log.
+ */
+function PrivacyNote() {
+  const hosts = useSyncExternalStore(subscribeLog, runningHosts, runningHosts);
+  const setDialog = useUi((s) => s.setDialog);
+  if (hosts) {
+    return (
+      <button
+        type="button"
+        onClick={() => setDialog("ai-log")}
+        className="ml-auto flex items-center gap-1.5 rounded-control px-1 text-warning hover:bg-hover"
+      >
+        <Send size={12} aria-hidden />
+        Sending to {hosts}
+      </button>
+    );
+  }
+  return (
+    <span className="ml-auto flex items-center gap-1.5">
+      <ShieldCheck size={12} className="text-success" aria-hidden />
+      Images are processed locally in your browser.
+    </span>
   );
 }

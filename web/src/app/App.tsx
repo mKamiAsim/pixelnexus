@@ -10,6 +10,7 @@ import { useUi } from "@/state/ui";
 
 import { CommandPalette } from "./CommandPalette";
 import { runCommand } from "./commands";
+import { AiLogDialog, AiProvidersDialog, ConsentDialog } from "./AiDialogs";
 import { ExportDialog } from "./ExportDialog";
 import { ACCEPTED_FILES, openFiles, pastedImageFiles, registerFilePicker } from "./importer";
 import { applyPreset, currentPreset, onPanelsChange, PRESETS, type PresetId } from "./layout";
@@ -225,6 +226,9 @@ export function App() {
       <ShortcutSheet />
       <ExportDialog />
       <PreferencesDialog />
+      <AiProvidersDialog />
+      <AiLogDialog />
+      <ConsentDialog />
       <RefineDialog />
       <RangeSelectDialogs />
       <SaveSelectionDialog />
