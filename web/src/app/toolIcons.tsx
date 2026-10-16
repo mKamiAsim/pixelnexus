@@ -31,4 +31,5 @@ export const TOOL_ICONS: Record<ToolId, ReactNode> = {
   "magic-wand": <WandSparkles size={16} />,
   "quick-selection": <Sparkles size={16} />,
   "click-select-classical": <MousePointerClick size={16} />,
+  "ai-click-select": <Sparkles size={16} />,
 };

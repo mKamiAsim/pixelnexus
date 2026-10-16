@@ -5,6 +5,7 @@
  *
  * Catalog entries: catalog/tools/object-select-classical.yaml and click-select-classical.yaml.
  */
+import { catalog } from "@/catalog";
 import { labelMask } from "@/core/features/labels";
 import { fullRect } from "@/core/filters/run";
 import { isMaskEmpty, type Mask } from "@/core/mask/mask";
@@ -16,6 +17,7 @@ import { announce, notify } from "@/state/notifications";
 import { useSeeds } from "@/state/seeds";
 import { useUi } from "@/state/ui";
 
+import { runAiTask } from "./aiActions";
 import { commitSelection } from "./selectionActions";
 
 /** Run a segmentation filter with the selection or seed map, and return its object. */
@@ -87,6 +89,33 @@ export function addSeed(x: number, y: number, object: boolean): Promise<void> {
     const map = seedMap(doc.current.width, doc.current.height, seeds, Number(values.seedRadius));
     const mask = await objectFrom(doc, "random-walker", { seeds: "map", beta: values.beta }, map);
     return run === latest ? mask : null;
+  });
+}
+
+/**
+ * AI Click Select: add a click and send all clicks of this image to the provider of the
+ * click-select task, as positive and negative points. The answer replaces the selection. With
+ * no provider, the selection stays and the message names the classical Click Select.
+ */
+export function addAiSeed(x: number, y: number, object: boolean): Promise<void> {
+  const doc = activeDocument();
+  if (!doc) return Promise.resolve();
+  const task = catalog.aiTasks.find((t) => t.id === "click-select");
+  if (!task) return Promise.resolve();
+  const seeds = useSeeds.getState().add(doc.id, doc.current, { x, y, object });
+  const run = ++latest;
+  return engineSelection("AI Click Select", "Selecting from your clicks with AI", async () => {
+    const outcome = await runAiTask({
+      task,
+      image: doc.current,
+      points: seeds.map((s) => ({ x: s.x, y: s.y, positive: s.object })),
+      full: { width: doc.current.width, height: doc.current.height },
+    });
+    if (outcome.status !== "done" || outcome.result.kind !== "mask" || run !== latest) return null;
+    const now = activeDocument();
+    if (now?.id !== doc.id || now.current !== doc.current) return null;
+    notify("info", "AI Click Select", outcome.result.label);
+    return outcome.result.mask;
   });
 }
 

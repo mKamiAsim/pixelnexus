@@ -28,7 +28,7 @@ import {
   type Size,
   type ViewState,
 } from "@/canvas/viewport";
-import { addSeed } from "@/app/seedActions";
+import { addAiSeed, addSeed } from "@/app/seedActions";
 import { commitSelection } from "@/app/selectionActions";
 import { TOOLS } from "@/app/tools";
 import type { Rect } from "@/core/filters/run";
@@ -425,9 +425,10 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       return;
     }
     if (event.button !== 0 || !doc.view) return;
-    if (tool === "click-select-classical") {
+    if (tool === "click-select-classical" || tool === "ai-click-select") {
       const pixel = pixelAt(doc.view, doc.current, point.x, point.y);
-      if (pixel) void addSeed(pixel.x, pixel.y, !event.altKey);
+      const add = tool === "ai-click-select" ? addAiSeed : addSeed;
+      if (pixel) void add(pixel.x, pixel.y, !event.altKey);
       return;
     }
     if (isSelectionTool(tool)) {
@@ -582,7 +583,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         <LabelOverlay labels={shownLayer.labels} view={doc.view} />
       ) : null}
       {doc.view && features ? <FeatureOverlay points={features} view={doc.view} /> : null}
-      {doc.view && tool === "click-select-classical" ? (
+      {doc.view && (tool === "click-select-classical" || tool === "ai-click-select") ? (
         <SeedOverlay seeds={seeds} view={doc.view} />
       ) : null}
       {doc.view ? (

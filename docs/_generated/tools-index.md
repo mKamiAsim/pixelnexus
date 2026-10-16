@@ -19,3 +19,4 @@
 | [Object selection (classical)](seeds.md) | Automatic | Select > Object turns a rough box around an object into a selection of the object, with GrabCut and no AI. | Implemented and tested |
 | [Quick Selection](quick-selection.md) | Automatic | Paints a selection that grows to similar areas and stops at edges. | Implemented and tested |
 | [Subject selection (classical)](subject.md) | Automatic | Selects the main subject of the image, without AI. | Implemented and tested |
+| [AI Click Select](ai-selection.md) | AI | Click inside an object, and Alt-click outside it. A segmentation model selects the object from your clicks. | Implemented and tested |

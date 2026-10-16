@@ -106,4 +106,10 @@ export const TOOLS: readonly ToolInfo[] = [
     group: "color",
     hint: "Click inside the object and Alt-click outside it. Needs the local engine.",
   },
+  {
+    id: "ai-click-select",
+    label: toolName("ai-click-select"),
+    group: "color",
+    hint: "Click inside the object and Alt-click outside it. Uses your AI provider for Click to select.",
+  },
 ];

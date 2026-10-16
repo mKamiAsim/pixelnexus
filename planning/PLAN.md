@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 7: optional AI |
-| Next action | Phase 7f part 3: AI click select (positive and negative points), edge refinement, cached image encoder results. |
+| Next action | Phase 7f part 4: edge refinement (MODNet or the classical guided filter), cached image encoder results, catalog status of ai-subject. |
 | Last updated | 2026-10-16 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7f part 2: Image > AI denoising, AI JPEG cleanup and AI super-resolution through the router. |
+| Last finished step | Phase 7f part 3: the AI Click Select tool with positive and negative points. |
 | In progress | Phase 7: optional AI (7a to 7e done) |
 | Next steps | Phase 7f (AI features in the UI), then AI result labels, Learn and Inspector for models, the remaining docs and the Phase 7 exit (consent E2E test). |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -1006,3 +1006,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7e | Phase 7e done. The remote-engine kind runs the engine's own AI API at its base URL. The external-api kind uses a generic HTTP adapter (web/src/core/ai/http.ts) driven by presets in catalog/providers.yaml: Generic HTTP, PixelNexus's own multipart contract, and remove.bg for Select subject (checked against its API page). The key goes only in the preset's header. Mask answers use their transparency, else their gray value, resized to the image. The Add provider form has a service choice, and a service is offered only for its preset's tasks. 10 contract tests run against a mock server on 127.0.0.1, so CI makes no external call. 1 new E2E test. 3602 web tests. | Phase 7f: AI features in the UI. |
 | 2026-10-16 | 7f | Phase 7f part 1. Select > AI subject, AI background and AI object run their tasks through the router (web/src/app/aiSelectActions.ts). AI object sends only the box around the selection plus a margin (a quarter of the longer side, at least 16 px, our choice) and places the answer back. The history step names the provider, and a notice shows the AI result label. With no provider the selection stays and the classical tool is named. 5 unit tests. Docs: Using AI selections. | Phase 7f part 2: AI clicks, denoising, JPEG cleanup, super-resolution, edge refinement, encoder cache. |
 | 2026-10-16 | 7f | Phase 7f part 2. Image > AI denoising, AI JPEG cleanup and AI super-resolution run through the router (web/src/app/aiImageActions.ts). With a selection, denoising and JPEG cleanup send only its box and blend the answer back weighted by the selection. Each answer is a history step that names the provider, with the AI result label. 4 unit tests. | Phase 7f part 3: AI clicks, edge refinement, encoder cache. |
+| 2026-10-16 | 7f | Phase 7f part 3. The AI Click Select tool (catalog/tools/ai-click-select.yaml, now implemented-tested) sends all clicks of the image as positive and negative points through the router, and the answer replaces the selection with the AI result label. New docs page selection/ai-selection.md. Fixed the E2E test of planned filters, which still used DnCNN (no longer planned since 7c); it now uses the Kalman filter. 2 unit tests; 51 E2E tests pass. | Phase 7f part 4: edge refinement, encoder cache. |

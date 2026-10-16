@@ -1,9 +1,41 @@
 id: ai-click-select
-name: Click-to-select segmentation
+name: AI Click Select
 group: ai
 tier: optional
 engine: model
 phase: '7'
-status: planned
+status: implemented-tested
 planNotes: SAM-family model (SAM 2.1 small sizes, MobileSAM or EfficientSAM). Also powers AI Object Selection
   with a box prompt.
+params: []
+summary: "Click inside an object, and Alt-click outside it. A segmentation model selects the object from your clicks."
+steps:
+  - "Each click adds a positive point, and each Alt-click a negative point."
+  - "All points of this image go to the provider you chose for Click to select, with the whole image."
+  - "The provider's model, such as SAM 2.1 in the engine or EfficientSAM tiny in the browser, answers with a mask."
+  - "The mask replaces the selection. It is labeled as an AI result."
+  - "The points stay for this image until you clear them or change the image."
+implementation:
+  path: "web/src/app/seedActions.ts"
+  symbol: "addAiSeed"
+tests:
+  - "web/src/app/seedActions.test.ts"
+references:
+  - kind: "paper"
+    text: "Ravi, N., Gabeur, V., Hu, Y.-T., and others. SAM 2. Segment anything in images and videos. arXiv 2408.00714, 2024."
+    url: "https://arxiv.org/abs/2408.00714"
+  - kind: "paper"
+    text: "Xiong, Y., Varadarajan, B., Wu, L., Xiang, X., Xiao, F., Zhu, C., Dai, X., Wang, D., Sun, F., Iandola, F., Krishnamoorthi, R., and Chandra, V. EfficientSAM. Leveraged masked image pretraining for efficient segment anything. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 16111 to 16121, 2024."
+    doi: "10.1109/CVPR52733.2024.01525"
+learn:
+  oneSentence: "Click on the object and Alt-click on the background, and a learned model selects the object."
+  howItWorks:
+    - "An image encoder turns the image into a grid of features."
+    - "A prompt decoder reads your clicks and those features and predicts a mask."
+  academic: "A promptable segmentation model of the Segment Anything family. The engine uses SAM 2.1, and the browser EfficientSAM tiny, which takes no negative clicks."
+  tryThis:
+    - "Click once inside an object. Alt-click on a part that joined by mistake."
+  pitfalls:
+    - "The result is an AI result. Detail may not exist in the original scene."
+  demos: []
+docsPage: "selection/ai-selection.md"

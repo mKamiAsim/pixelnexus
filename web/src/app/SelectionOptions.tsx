@@ -132,7 +132,7 @@ export function SelectionOptions({ tool }: { tool: SelectionToolId }) {
         />
       ))}
       {tool === "quick-selection" ? <SuperpixelStatus /> : null}
-      {tool === "click-select-classical" ? <SeedStatus /> : null}
+      {tool === "click-select-classical" || tool === "ai-click-select" ? <SeedStatus /> : null}
       {params.length > 0 ? (
         <IconButton
           label="Reset tool settings"

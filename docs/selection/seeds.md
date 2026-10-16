@@ -10,7 +10,7 @@
 
 ## Overview
 
-**Select > Object** turns a rough box around an object into a selection of the object. The **Click Select** tool selects an object from clicks: click inside it, and Alt-click outside it where the selection goes too far. Both work without AI. They run the [GrabCut](../filters/segmentation/grabcut.md) and [random walker](../filters/segmentation/random-walker.md) filters in the PixelNexus engine, so the engine must be running. AI selection is planned for a later phase.
+**Select > Object** turns a rough box around an object into a selection of the object. The **Click Select** tool selects an object from clicks: click inside it, and Alt-click outside it where the selection goes too far. Both work without AI. They run the [GrabCut](../filters/segmentation/grabcut.md) and [random walker](../filters/segmentation/random-walker.md) filters in the PixelNexus engine, so the engine must be running. For AI selection, see [AI selection](ai-selection.md).
 
 ## How to use them
 

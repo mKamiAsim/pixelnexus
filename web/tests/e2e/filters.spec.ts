@@ -651,9 +651,9 @@ test("a click in the Spectrum panel places a notch for the notch-reject filter",
 
 test("planned filters are listed but cannot run", async ({ page }) => {
   await openTestImage(page, "Siemens star");
-  await chooseFilter(page, "dncnn", "DnCNN");
+  await chooseFilter(page, "kalman", "Kalman filter");
   await front(page, "Properties");
-  await expect(page.getByText(/This filter is planned for Phase/)).toBeVisible();
+  await expect(page.getByText(/This filter is planned and cannot run yet/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeDisabled();
 });
 
