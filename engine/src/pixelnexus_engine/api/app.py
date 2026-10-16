@@ -106,6 +106,7 @@ class AiTaskRequest(BaseModel):
 ENGINE_TASKS: dict[tuple[str, str], tuple[str, Any]] = {
     ("subject-select", "birefnet-lite"): ("_ai-subject-select", lambda r: {"model": r.model}),
     ("subject-select", "u2netp"): ("_ai-subject-select", lambda r: {"model": r.model}),
+    ("matting", "modnet"): ("_ai-matting", lambda r: {"model": r.model}),
     **{
         (task, model): (f"_ai-{task}", lambda r: {
             "model": r.model,

@@ -20,6 +20,10 @@ Pre- and post-processing follow each model's source:
   that size. Labels are 1 for positive and 0 for negative clicks. The low-resolution logits of
   the mask with the best IoU score are resized to the image with bilinear, and logits above 0 are
   inside.
+* modnet: as MODNet's ONNX demo (onnx/inference_onnx.py at commit 28165a4). Scale to -1 to 1.
+  When the longer side is under 512 or the shorter side over 512, scale so the shorter side is
+  512. Round both sides down to a multiple of 32 and resize with area interpolation. The matte,
+  from 0 to 1, is scaled to 255 and resized back with area interpolation.
 """
 
 from __future__ import annotations
@@ -97,6 +101,41 @@ def subject_select(image: Rgba, params: dict[str, Any], progress: Progress) -> R
         progress(1.0)
         return as_mask(image, mask * 255)
     raise ValueError(f"The model '{model_id}' does not do subject selection.")
+
+
+# Soft edges (matting) --------------------------------------------------------------------------
+
+
+def modnet_size(height: int, width: int, ref_size: int = 512) -> tuple[int, int]:
+    """The network size of MODNet's ONNX demo, as (height, width)."""
+    if max(height, width) < ref_size or min(height, width) > ref_size:
+        if width >= height:
+            rh, rw = ref_size, int(width / height * ref_size)
+        else:
+            rh, rw = int(height / width * ref_size), ref_size
+    else:
+        rh, rw = height, width
+    return rh - rh % 32, rw - rw % 32
+
+
+@register("_ai-matting")
+def matting(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
+    if params["model"] != "modnet":
+        raise ValueError(f"The model '{params['model']}' does not do matting.")
+    rgb = image[..., :3].astype(np.float32)
+    height, width = rgb.shape[:2]
+    rh, rw = modnet_size(height, width)
+    if rh < 32 or rw < 32:
+        raise ValueError("MODNet needs an image of at least 32 pixels on each side.")
+    small = cv2.resize((rgb - 127.5) / 127.5, (rw, rh), interpolation=cv2.INTER_AREA)
+    x = np.ascontiguousarray(small.transpose(2, 0, 1)[None], np.float32)
+    model = session(require("modnet"))
+    progress(0.3)
+    matte = model.run(None, {model.get_inputs()[0].name: x})[0]
+    matte8 = (np.squeeze(matte) * 255).astype(np.uint8)
+    big = cv2.resize(matte8, (width, height), interpolation=cv2.INTER_AREA)
+    progress(1.0)
+    return as_mask(image, big.astype(np.float32))
 
 
 # Click and box selection ------------------------------------------------------------------------

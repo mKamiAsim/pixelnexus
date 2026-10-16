@@ -106,6 +106,27 @@ def test_the_route_checks_the_task_and_the_model(tmp_path: Path) -> None:
         assert bad_box.status_code == 422
 
 
+@pytest.mark.parametrize(
+    ("size", "expected"),
+    [((240, 320), (512, 672)), ((1000, 600), (832, 512)), ((400, 700), (384, 672))],
+)
+def test_modnet_size_follows_the_onnx_demo(
+    size: tuple[int, int], expected: tuple[int, int]
+) -> None:
+    # Small images grow and large ones shrink so the shorter side is 512. Images in between keep
+    # their size. Both sides then round down to a multiple of 32.
+    assert ai.modnet_size(*size) == expected
+
+
+def test_matting_refuses_other_models_and_thin_images() -> None:
+    image, _ = disk_scene()
+    with pytest.raises(ValueError, match="does not do matting"):
+        ai.matting(image, {"model": "u2netp"}, NOTHING)
+    with pytest.raises(ValueError, match="at least 32 pixels"):
+        # A thin strip keeps its size, and 20 rounds down to 0.
+        ai.matting(np.zeros((600, 20, 4), np.uint8), {"model": "modnet"}, NOTHING)
+
+
 # Real models, where they are on disk ------------------------------------------------------------
 
 
@@ -124,6 +145,16 @@ def real_models(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_real_subject_models_find_the_disk(real_models: None, model: str) -> None:
     image, disk = disk_scene()
     assert iou(ai.subject_select(image, {"model": model}, NOTHING), disk) > 0.95
+
+
+@on_disk("modnet")
+def test_real_modnet_mattes_the_disk(real_models: None) -> None:
+    image, disk = disk_scene()
+    matte = ai.matting(image, {"model": "modnet"}, NOTHING)
+    assert matte.shape == image.shape
+    # A soft matte: measured 253 inside and 6 outside on this machine.
+    assert matte[..., 0][disk].mean() > 230
+    assert matte[..., 0][~disk].mean() < 20
 
 
 @on_disk("efficientsam-ti", "sam2-1-tiny")

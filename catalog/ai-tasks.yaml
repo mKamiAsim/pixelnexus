@@ -11,6 +11,14 @@ tasks:
     classical: {kind: tool, id: subject-heuristic}
     models: [birefnet-lite, u2netp]
     description: Finds the main subject of the image and returns it as a selection.
+  - id: matting
+    name: Soft edges
+    inputs: [image]
+    output: mask
+    crop: false
+    classical: {kind: tool, id: edge-assisted}
+    models: [modnet]
+    description: Finds the soft edge of a portrait, such as hair, and returns it as a soft selection.
   - id: click-select
     name: Click to select
     inputs: [image, points]

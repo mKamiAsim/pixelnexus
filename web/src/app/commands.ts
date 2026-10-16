@@ -503,6 +503,15 @@ export function buildCommands(): Command[] {
       run: () => void aiSelect("object-select"),
     },
     {
+      id: "select.ai-matting",
+      label: "AI soft edges",
+      menu: "select",
+      section: "ai",
+      keywords: "matting hair fur soft edge portrait alpha ai model modnet",
+      enabled: hasDocument,
+      run: () => void aiSelect("matting"),
+    },
+    {
       id: "select.modify.snap",
       label: "Snap to edges...",
       menu: "select",

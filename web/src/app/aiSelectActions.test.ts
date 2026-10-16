@@ -102,4 +102,21 @@ describe("AI selections through the router", () => {
       /^AI background \(/,
     );
   });
+
+  it("keeps a soft matte from AI soft edges as a soft selection", async () => {
+    openImage(4, 1);
+    const run = vi.fn(async () => {
+      const mask = createMask(4, 1);
+      mask.data.set([0, 64, 192, 255]);
+      return { kind: "mask" as const, mask };
+    });
+    const restore = registerAdapter("engine-model", () => ({ run }));
+    useAi.setState({ tasks: { matting: "local-engine" } });
+    try {
+      await aiSelect("matting");
+    } finally {
+      restore();
+    }
+    expect(Array.from(activeDocument()?.selection?.data ?? [])).toEqual([0, 64, 192, 255]);
+  });
 });

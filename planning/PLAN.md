@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 7: optional AI |
-| Next action | Phase 7f part 4: edge refinement with MODNet (check its pre- and post-processing against the upstream ONNX demo first), cached image encoder results. |
+| Next action | Phase 7f part 5: cache image encoder results per image (SAM 2.1 and EfficientSAM), then AI result labels everywhere, and Learn and Inspector for models. |
 | Last updated | 2026-10-16 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7 exit test: consent E2E test with a mocked external service. |
+| Last finished step | Phase 7f part 4: AI soft edges (MODNet matting) in the engine and the Select menu. |
 | In progress | Phase 7: optional AI (7a to 7e done) |
 | Next steps | Phase 7f (AI features in the UI), then AI result labels, Learn and Inspector for models, the remaining docs and the Phase 7 exit (consent E2E test). |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -1009,3 +1009,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7f | Phase 7f part 3. The AI Click Select tool (catalog/tools/ai-click-select.yaml, now implemented-tested) sends all clicks of the image as positive and negative points through the router, and the answer replaces the selection with the AI result label. New docs page selection/ai-selection.md. Fixed the E2E test of planned filters, which still used DnCNN (no longer planned since 7c); it now uses the Kalman filter. 2 unit tests; 51 E2E tests pass. | Phase 7f part 4: edge refinement, encoder cache. |
 | 2026-10-16 | 7f | Phase 7f part 3b. catalog/tools/ai-subject.yaml is filled in (steps, BiRefNet and U2-Net references, Learn text) and marked implemented-tested, pointing at aiSelect and its tests. The AI selection docs page shows the facts of both AI tools. | Phase 7f part 4: MODNet edge refinement, encoder cache. |
 | 2026-10-16 | 7 | Phase 7 exit test. An E2E test adds an external provider for Subject selection against a mocked service (Playwright route, no real call), and checks that consent appears before every request, that Cancel sends nothing, that Send once sends one request and selects, and that the classical Subject asks nothing. The router unit tests already prove that local providers never ask. | Phase 7f part 4: MODNet edge refinement, encoder cache. |
+| 2026-10-16 | 7f | Phase 7f part 4. New AI task matting (Soft edges) with MODNet, classical alternative Snap to edges. The engine's _ai-matting follows MODNet's ONNX demo at commit 28165a4 (checked by reading it): scale to -1 to 1, shorter side to 512 when outside that, sides down to a multiple of 32, area interpolation both ways. On the disk scene the matte averages 253 inside and 6 outside. Select > AI soft edges keeps the matte as a soft selection. catalog/tools/ai-matting.yaml is implemented-tested. 5 engine tests, 1 unit test. | Phase 7f part 5: encoder cache. |

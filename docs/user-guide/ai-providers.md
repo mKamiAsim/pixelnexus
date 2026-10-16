@@ -13,11 +13,12 @@ Choose **Edit > AI providers** to pick a provider for each task. The tasks and t
 
 ## Using AI in the studio
 
-The **Select** menu has three AI commands. Each uses the provider you chose for its task.
+The **Select** menu has four AI commands. Each uses the provider you chose for its task.
 
 - **AI subject** selects the main subject.
 - **AI background** selects everything except the subject.
 - **AI object** selects the object inside the box around your selection. Draw a rectangle first. Only the box plus a margin is sent, not the whole image.
+- **AI soft edges** selects a portrait with a soft edge, such as hair.
 
 The answer replaces the selection, and the history step names the provider. With no provider, the selection stays as it was, and the studio names the classical tool to use instead.
 

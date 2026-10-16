@@ -21,6 +21,12 @@ Every click sends all points of this image again, with the whole image. Efficien
 
 **Select > AI subject**, **AI background** and **AI object** work like their classical twins. AI object sends only the box around your selection plus a margin. See [AI providers and consent](../user-guide/ai-providers.md).
 
+## AI soft edges
+
+--8<-- "tools/ai-matting-facts.md"
+
+**Select > AI soft edges** selects a person with a soft edge, so hair and fur keep their fine strands. It uses MODNet through the provider you chose for Soft edges. The answer is a soft selection, where each pixel is selected from 0 to 100 percent. MODNet is trained on portraits, so other subjects may get a poor result. For a hard edge without AI, use [Snap to edges](snap-to-edges.md).
+
 ## Things to watch
 
 - An external provider asks for consent before each request, and each click is a request.

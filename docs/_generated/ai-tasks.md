@@ -3,6 +3,7 @@
 | Task | Sends | Returns | Classical alternative | Models, the default first |
 |---|---|---|---|---|
 | Subject selection | The image | A mask | Subject selection (classical) | BiRefNet lite or U2-Net small (u2netp) |
+| Soft edges | The image | A mask | Edge-assisted selection | MODNet portrait matting |
 | Click to select | The image and your clicks | A mask | Click Select (classical) | SAM 2.1 tiny or EfficientSAM tiny |
 | Object selection | The image and the box you drew. With a selection or a box, only that area plus a margin | A mask | Object selection (classical) | SAM 2.1 tiny or EfficientSAM tiny |
 | Denoising | The image. With a selection or a box, only that area plus a margin | An image | Non-local means | DnCNN color, blind or FFDNet color |

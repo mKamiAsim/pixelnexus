@@ -1,6 +1,6 @@
 /**
- * AI selections on top of the AI router (PLAN.md Phase 7f): Select > AI subject, AI background
- * and AI object. Each runs the task of catalog/ai-tasks.yaml with the provider you chose for it.
+ * AI selections on top of the AI router (PLAN.md Phase 7f): Select > AI subject, AI background,
+ * AI object and AI soft edges. Each runs the task of catalog/ai-tasks.yaml with the provider you chose for it.
  * With no provider, or when the provider fails, the message names the classical tool, and the
  * selection stays as it was. The router never falls back on its own.
  *
@@ -64,7 +64,7 @@ export function aiRequest(taskId: string, doc: ImageDocument): AiRequest | null 
 
 /** Run a mask task for the active document and make its answer the selection. */
 export async function aiSelect(
-  taskId: "subject-select" | "object-select",
+  taskId: "subject-select" | "object-select" | "matting",
   background = false,
 ): Promise<void> {
   const doc = activeDocument();
