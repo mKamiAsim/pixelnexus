@@ -65,6 +65,14 @@ from pixelnexus_engine.filters.hough import (
     segment_rows,
 )
 from pixelnexus_engine.filters.inpainting import inpaint
+from pixelnexus_engine.filters.interactive import (
+    grabcut,
+    grabcut_inside,
+    graph_cut,
+    graph_cut_inside,
+    random_walker_filter,
+    walker_probability,
+)
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
 from pixelnexus_engine.filters.matched import correlation_map, matched_filter, ncc_map
 from pixelnexus_engine.filters.mser import mser
@@ -2812,6 +2820,169 @@ def active_contour_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Segmentation from seeds ------------------------------------------------------------------------
+
+
+def seed_map() -> NDArray[np.uint8]:
+    """Unknown at 128, an object seed in the disk, background seeds on the image edge and in the
+    square."""
+    mask = np.full((160, 160), 128, np.uint8)
+    mask[76:85, 48:57] = 255
+    mask[[0, -1], :] = 0
+    mask[:, [0, -1]] = 0
+    mask[76:85, 116:125] = 0
+    return mask
+
+
+def with_seed_boxes(gray: Gray, square_too: bool) -> Gray:
+    out = with_box(gray, 76, 48, 9, 9)
+    return with_box(out, 76, 116, 9, 9) if square_too else out
+
+
+def seeded_docs(out: dict[Path, str], filter_id: str) -> None:
+    round_part, square = contour_truth()
+    scene = contour_scene()
+    spot = box_selection(76, 48, 9, 9)
+    function = graph_cut if filter_id == "graph-cut" else random_walker_filter
+
+    def object_of(mask: NDArray[np.uint8], **values: Any) -> NDArray[np.bool_]:
+        if filter_id == "graph-cut":
+            params = {**catalog_values(filter_id, **values), "mask": mask}
+            return graph_cut_inside(rgba(scene), params)
+        params = {**catalog_values(filter_id, **values), "mask": mask}
+        return walker_probability(rgba(scene), params) >= 0.5
+
+    def boundaries(mask: NDArray[np.uint8], **values: Any) -> dict[str, Any]:
+        params = {**catalog_values(filter_id, output="boundaries", **values), "mask": mask}
+        return shown(function(rgba(scene), params, lambda _: None))
+
+    if filter_id == "graph-cut":
+        third = {"title": "Region weight 0", "image": boundaries(spot, **{"lambda": 0})}
+        message = (
+            "A disk and a square with noise of sigma 10, and a small square selected inside the "
+            "disk. Then the object with the defaults, with a region weight of 0, and with a "
+            "seed map that also marks the square as background."
+        )
+    else:
+        params = {**catalog_values(filter_id, output="probability"), "mask": spot}
+        third = {
+            "title": "Probability",
+            "image": picture(
+                np.asarray(random_walker_filter(rgba(scene), params, lambda _: None))[..., 0]
+            ),
+        }
+        message = (
+            "A disk and a square with noise of sigma 10, and a small square selected inside the "
+            "disk. Then the object with the defaults, the probability of the object, and the "
+            "object with a seed map that also marks the square as background."
+        )
+    figure(
+        out,
+        filter_id,
+        message,
+        [
+            {"title": "Input and seed", "image": picture(with_seed_boxes(scene, False))},
+            {"title": "Object", "image": boundaries(spot)},
+            third,
+            {"title": "Square marked", "image": boundaries(seed_map(), seeds="map")},
+        ],
+    )
+    rows = []
+    if filter_id == "graph-cut":
+        settings = [{"sigma": s, "lambda": lam} for s in (5, 10, 20) for lam in (0, 1)]
+        headers = ["Edge contrast sigma", "Region weight lambda"]
+    else:
+        settings = [{"beta": b} for b in (30, 130, 500)]
+        headers = ["Edge strength beta"]
+    for values in settings:
+        for name, mask, extra in (("Spot", spot, {}), ("Map", seed_map(), {"seeds": "map"})):
+            found = object_of(mask, **values, **extra)
+            rows.append(
+                [f"{v:g}" for v in values.values()]
+                + [
+                    name,
+                    str(int(found.sum())),
+                    fix(iou(found, round_part), 3),
+                    fix(float((found & square).sum() / square.sum()), 2),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table([*headers, "Seeds", "Area (px)", "Overlap", "Share of the square"], rows)
+        + "\nThe image of the figure. Spot is the small square selected inside the disk, with "
+        "the image edge as background. Map also marks a small square inside the square as "
+        "background. The disk has 2453 pixels. The overlap is the area of the object and the "
+        "disk together divided by the area of either. The share of the square is the part of "
+        "the square inside the object.\n"
+    )
+
+
+def color_scene(noise: float) -> Color:
+    """A red disk and a green square on a blue ground. The disk and the square have about the same
+    luma, 90.4 and 90.0."""
+    round_part, square = contour_truth()
+    rgb = np.zeros((160, 160, 3))
+    rgb[...] = (40, 60, 150)
+    rgb[round_part] = (210, 60, 40)
+    rgb[square] = (40, 108, 60)
+    rng = np.random.default_rng(6)
+    return to_8bit(rgb + rng.normal(0, noise, rgb.shape))
+
+
+def grabcut_docs(out: dict[Path, str]) -> None:
+    filter_id = "grabcut"
+    round_part, _ = contour_truth()
+    box = box_selection(44, 16, 72, 72)
+
+    def boundaries(scene: Color) -> dict[str, Any]:
+        params = {**catalog_values(filter_id, output="boundaries"), "mask": box}
+        return shown(grabcut(rgba_color(scene), params, lambda _: None))
+
+    framed = color_scene(10).copy()
+    edge = np.zeros((160, 160), bool)
+    edge[44, 16:88] = edge[115, 16:88] = edge[44:116, 16] = edge[44:116, 87] = True
+    framed[edge] = 255
+    figure(
+        out,
+        filter_id,
+        "A red disk and a green square on a blue ground with noise of sigma 10, and a box "
+        "selected around the disk. Then the object with the defaults, and the same box on the "
+        "image with noise of sigma 30 and 60.",
+        [
+            {"title": "Input and box", "image": color_picture(framed)},
+            {"title": "Noise 10", "image": boundaries(color_scene(10))},
+            {"title": "Noise 30", "image": boundaries(color_scene(30))},
+            {"title": "Noise 60", "image": boundaries(color_scene(60))},
+        ],
+    )
+    rows = []
+    for kind in ("Color", "Gray"):
+        for noise in (10, 30, 60):
+            image = (
+                rgba_color(color_scene(noise)) if kind == "Color" else rgba(contour_scene(noise))
+            )
+            for iterations in (1, 5, 10):
+                params = {**catalog_values(filter_id, iterations=iterations), "mask": box}
+                found = grabcut_inside(image, params)
+                rows.append(
+                    [
+                        kind,
+                        f"{noise:g}",
+                        str(iterations),
+                        str(int(found.sum())),
+                        fix(iou(found, round_part), 3),
+                    ]
+                )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Image", "Noise sigma", "Iterations", "Area (px)", "Overlap"], rows)
+        + "\nThe box of the figure. Color is the image of the figure, with the noise added to each "
+        "color channel. Gray is a disk of 190 and a square of 160 on a ground of 50, slightly "
+        "blurred, with gray noise. The disk has 2453 pixels. The overlap is the area of the "
+        "object and the disk together divided by the area of either.\n"
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -2926,6 +3097,9 @@ def build() -> dict[Path, str]:
     chan_vese_docs(out)
     level_set_docs(out)
     active_contour_docs(out)
+    seeded_docs(out, "graph-cut")
+    seeded_docs(out, "random-walker")
+    grabcut_docs(out)
     structured_edge_docs(out)
     return out
 

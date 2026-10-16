@@ -401,6 +401,9 @@ nav:
           - Chan-Vese segmentation: filters/segmentation/chan-vese.md
           - Level sets: filters/segmentation/level-set.md
           - Active contours: filters/segmentation/active-contour.md
+          - Graph cuts: filters/segmentation/graph-cut.md
+          - Random walker: filters/segmentation/random-walker.md
+          - GrabCut: filters/segmentation/grabcut.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

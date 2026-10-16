@@ -362,9 +362,9 @@ Outputs include overlays, label maps, region statistics, object counts and mask 
 | multi-otsu | Multi-level Otsu | Extra. Done on 2026-10-16. | Advanced | Science | 6e |
 | watershed | Watershed | Markers from h-minima. Done on 2026-10-16. | Advanced | Science | 6e |
 | marker-watershed | Marker-controlled watershed | Markers from the selection or scribbles. Done on 2026-10-16. | Advanced | Science | 6e |
-| graph-cut | Graph cuts | Binary, with seeds. SciPy maximum flow. | Advanced | Science | 6e |
-| grabcut | GrabCut | GrabCut-inspired interactive segmentation. OpenCV. | Advanced | Science | 6e |
-| random-walker | Random walker | | Advanced | Science | 6e |
+| graph-cut | Graph cuts | Binary, with seeds. SciPy maximum flow. Done on 2026-10-16. | Advanced | Science | 6e |
+| grabcut | GrabCut | GrabCut-inspired interactive segmentation. OpenCV. Done on 2026-10-16. | Advanced | Science | 6e |
+| random-walker | Random walker | With seeds. Done on 2026-10-16. | Advanced | Science | 6e |
 | mean-shift | Mean shift | Mean-shift segmentation. Done on 2026-10-16. | Advanced | Science | 6e |
 | slic | SLIC superpixels | Done on 2026-10-16. | Advanced | Science | 6e |
 | felzenszwalb | Felzenszwalb-Huttenlocher segmentation | Felzenszwalb graph-based segmentation. Done on 2026-10-16. | Advanced | Science | 6e |
