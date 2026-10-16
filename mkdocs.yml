@@ -346,6 +346,7 @@ nav:
           - Chroma denoising: filters/enhancement/chroma-denoise.md
           - Demosaicing: filters/enhancement/demosaic.md
           - Color threshold: filters/enhancement/color-threshold.md
+          - Tone mapping: filters/enhancement/tone-mapping.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md

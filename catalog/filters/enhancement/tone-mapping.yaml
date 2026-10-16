@@ -1,8 +1,177 @@
 id: tone-mapping
 name: Tone mapping
+aliases: [Reinhard tone mapping, Drago tone mapping, Mantiuk tone mapping, HDR tone mapping]
 family: enhancement
+tags: [purpose:enhance]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: Reinhard, Drago and Mantiuk through OpenCV.
+
+summary: Compresses a wide range of brightness into the range a screen can show, with one of three operators from OpenCV. Reinhard and Devlin model the eye's photoreceptors, Drago et al. use a logarithm with an adaptive base, and Mantiuk et al. compress contrast in a pyramid of gradients. On an ordinary 8-bit image they mostly reshape the tone curve and the local contrast.
+purpose: Show detail in both shadows and highlights, and compare classic tone mapping operators.
+classification: {linearity: nonlinear, domain: point, operation: tone mapping}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/tone.py, symbol: tone_mapping_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The 8-bit RGB image is decoded with the sRGB curve to linear light, mapped by OpenCV in color,
+  and scaled back to 8 bits. The alpha stays.
+boundary: Reinhard and Drago are point operators with image statistics. Mantiuk's pyramid is handled inside OpenCV.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.createTonemapReinhard, createTonemapDrago and createTonemapMantiuk.'}
+
+params:
+  - key: operator
+    label: Operator
+    type: select
+    default: reinhard
+    options:
+      - {value: reinhard, label: Reinhard and Devlin}
+      - {value: drago, label: Drago}
+      - {value: mantiuk, label: Mantiuk}
+    description: The tone mapping operator.
+    effect: Reinhard keeps a natural look, Drago brightens shadows the most, and Mantiuk raises local contrast.
+  - key: gamma
+    label: Gamma
+    type: number
+    min: 0.5
+    max: 4
+    step: 0.1
+    default: 2.2
+    description: OpenCV raises the stretched result to 1 / gamma. OpenCV uses 1. 2.2 is our choice, close to the sRGB curve the input was decoded with.
+    effect: Higher values brighten the midtones.
+  - key: intensity
+    label: Intensity
+    type: number
+    min: -8
+    max: 8
+    step: 0.1
+    default: 0
+    description: For Reinhard only. The brightness of the result, from -8 to 8. OpenCV uses 0.
+    effect: Higher values brighten the result.
+  - key: lightAdapt
+    label: Light adaptation
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 1
+    description: For Reinhard only. 1 adapts to each pixel, 0 to the mean of the image. OpenCV uses 1.
+    effect: Lower values keep more global contrast.
+  - key: colorAdapt
+    label: Color adaptation
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0
+    description: For Reinhard only. 1 adapts each channel on its own, 0 adapts to the luminance. OpenCV uses 0.
+    effect: Higher values neutralize color casts.
+  - key: saturation
+    label: Saturation
+    type: number
+    min: 0
+    max: 2
+    step: 0.05
+    default: 1
+    description: For Drago and Mantiuk. The color saturation of the result. OpenCV uses 1.
+    effect: Higher values give stronger colors.
+  - key: bias
+    label: Bias
+    type: number
+    min: 0.5
+    max: 1
+    step: 0.01
+    default: 0.85
+    description: For Drago only. The bias b of the adaptive logarithm. The OpenCV documentation says 0.7 to 0.9 usually work best, and OpenCV uses 0.85.
+    effect: Lower values brighten dark areas more.
+  - key: scale
+    label: Contrast scale
+    type: number
+    min: 0.1
+    max: 1
+    step: 0.05
+    default: 0.7
+    description: For Mantiuk only. The factor that the contrast response is multiplied by. OpenCV uses 0.7.
+    effect: Lower values compress contrast more.
+formula: |
+  L = \text{sRGB}^{-1}\!\left(\frac{I}{255}\right),
+  \qquad
+  \text{out} = \left(\frac{T(L) - \min T}{\max T - \min T}\right)^{1/\gamma}
+formulaExplanation: >-
+  The 8-bit values are decoded to linear light L, since the operators expect radiance. T is the
+  chosen operator. Reinhard and Devlin map each value with a photoreceptor curve I / (I + (f
+  I_a)^m). The adaptation level I_a mixes the pixel, its channel and the image mean. Drago
+  et al. take a logarithm whose base changes with brightness. The bias sets how. Mantiuk et al.
+  turn the log luminance into a pyramid of gradients, multiply the contrast response by the
+  scale, and rebuild the image. OpenCV then stretches T from its minimum to its maximum and applies 1 / gamma.
+symbols:
+  - {symbol: 'L', meaning: 'Linear light from 0 to 1'}
+  - {symbol: 'T', meaning: 'The tone mapping operator'}
+  - {symbol: '\gamma', meaning: 'The display gamma'}
+steps:
+  - Decode the 8-bit values to linear light with the sRGB curve.
+  - Apply the chosen operator.
+  - Stretch the result and apply the gamma.
+  - Scale to 8 bits.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Comparing tone mapping operators on the same image.
+  - Recovering shadow detail in a high contrast photo.
+advantages:
+  - Three classic operators side by side.
+  - Each has few settings with a clear meaning.
+limitations:
+  - An 8-bit image has little dynamic range, so the effect is smaller than on true HDR data.
+  - Results differ in brightness, since each operator stretches its own way.
+artifacts:
+  - Halos around strong edges with Mantiuk at low contrast scale.
+  - Washed out colors with Drago at high bias.
+references:
+  - kind: paper
+    text: Reinhard, E., and Devlin, K. Dynamic range reduction inspired by photoreceptor physiology. IEEE Transactions on Visualization and Computer Graphics 11(1), 13 to 24, 2005.
+    doi: 10.1109/TVCG.2005.9
+  - kind: paper
+    text: Drago, F., Myszkowski, K., Annen, T., and Chiba, N. Adaptive logarithmic mapping for displaying high contrast scenes. Computer Graphics Forum 22(3), 419 to 426, 2003.
+    doi: 10.1111/1467-8659.00689
+  - kind: paper
+    text: Mantiuk, R., Myszkowski, K., and Seidel, H.-P. A perceptual framework for contrast processing of high dynamic range images. ACM Transactions on Applied Perception 3(3), 286 to 308, 2006.
+    doi: 10.1145/1166087.1166095
+  - kind: library
+    text: OpenCV documentation, cv::TonemapReinhard, cv::TonemapDrago and cv::TonemapMantiuk.
+implementation: {path: engine/src/pixelnexus_engine/filters/tone.py, symbol: tone_mapping}
+tests: [engine/tests/test_tone.py]
+learn:
+  oneSentence: Squeeze a wide range of brightness into what a screen can show, keeping detail in shadows and highlights.
+  howItWorks:
+    - Turn the pixel values into linear light.
+    - Compress bright and dark values with a curve, or compress contrast at each scale.
+    - Stretch the result to the screen's range.
+  academic: >-
+    Tone mapping on sRGB-decoded linear light, as in OpenCV. The operators are those of Reinhard
+    and Devlin, of Drago et al., and of Mantiuk et al.
+  paramNotes:
+    operator: Which operator.
+    gamma: The display gamma.
+    intensity: Reinhard brightness.
+    lightAdapt: Reinhard local or global adaptation.
+    colorAdapt: Reinhard color adaptation.
+    saturation: Drago and Mantiuk color strength.
+    bias: Drago shadow brightening.
+    scale: Mantiuk contrast scale.
+  tryThis:
+    - Run all three operators on a photo with deep shadows and bright sky, and compare.
+  pitfalls:
+    - Expecting HDR results from an 8-bit photo. The range is already small.
+  demos: [line-profile]
+related: [gamma, clahe, histogram-eq]
+docsPage: filters/enhancement/tone-mapping.md

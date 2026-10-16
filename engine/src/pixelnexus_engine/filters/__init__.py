@@ -30,6 +30,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     surf,
     susan,
     texture,
+    tone,
     tree_morphology,
     wavelets,
 )

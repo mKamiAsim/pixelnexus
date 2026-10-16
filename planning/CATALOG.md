@@ -307,7 +307,7 @@ The groups below follow requirements 1: point operations, color transformations,
 | demosaic | Demosaicing | Simulates a Bayer mosaic, then demosaics (bilinear and Malvar-He-Cutler). | Core | Browser | 5f |
 | color-threshold | Color threshold | Binary output from HSV ranges. | Core | Browser | 5f |
 | local-laplacian | Local Laplacian filtering | | Advanced | Science | 6f |
-| tone-mapping | Tone mapping | Reinhard, Drago and Mantiuk through OpenCV. | Advanced | Science | 6f |
+| tone-mapping | Tone mapping | Reinhard, Drago and Mantiuk through OpenCV. Done on 2026-10-16, figure still to add. | Advanced | Science | 6f |
 
 **Workflow options, not separate filters.** Luminance-only filtering, color-space filtering and per-channel filtering are a "Channel scope" option on every filter that supports it: RGB, per channel, luminance only, chroma only. They are built in Phase 3 and documented as options.
 
