@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 7: optional AI |
-| Next action | Phase 7f part 2: AI click select (positive and negative points), AI denoising, JPEG cleanup and super-resolution in the UI, edge refinement, cached image encoder results. |
+| Next action | Phase 7f part 3: AI click select (positive and negative points), edge refinement, cached image encoder results. |
 | Last updated | 2026-10-16 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7f part 1: Select > AI subject, AI background and AI object through the router. |
+| Last finished step | Phase 7f part 2: Image > AI denoising, AI JPEG cleanup and AI super-resolution through the router. |
 | In progress | Phase 7: optional AI (7a to 7e done) |
 | Next steps | Phase 7f (AI features in the UI), then AI result labels, Learn and Inspector for models, the remaining docs and the Phase 7 exit (consent E2E test). |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -1005,3 +1005,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7d | Phase 7d done. The AI providers dialog lists the on-device models with size and license; each downloads only on its Download button, with progress, and Remove deletes it. Checked in the studio: u2netp downloaded from its CORS copy in 2.2 s, passed its SHA-256, and selected a disk on-device through the router with IoU 0.998 (0.997 in the engine) in 1.2 s on WebGPU. The production build keeps ONNX Runtime Web and its 26.8 MB WebAssembly in their own lazy assets. Docs: On-device models in the AI providers guide. 3592 web tests. | Phase 7e: the remote engine and generic HTTP adapters, with a mock server for contract tests. |
 | 2026-10-16 | 7e | Phase 7e done. The remote-engine kind runs the engine's own AI API at its base URL. The external-api kind uses a generic HTTP adapter (web/src/core/ai/http.ts) driven by presets in catalog/providers.yaml: Generic HTTP, PixelNexus's own multipart contract, and remove.bg for Select subject (checked against its API page). The key goes only in the preset's header. Mask answers use their transparency, else their gray value, resized to the image. The Add provider form has a service choice, and a service is offered only for its preset's tasks. 10 contract tests run against a mock server on 127.0.0.1, so CI makes no external call. 1 new E2E test. 3602 web tests. | Phase 7f: AI features in the UI. |
 | 2026-10-16 | 7f | Phase 7f part 1. Select > AI subject, AI background and AI object run their tasks through the router (web/src/app/aiSelectActions.ts). AI object sends only the box around the selection plus a margin (a quarter of the longer side, at least 16 px, our choice) and places the answer back. The history step names the provider, and a notice shows the AI result label. With no provider the selection stays and the classical tool is named. 5 unit tests. Docs: Using AI selections. | Phase 7f part 2: AI clicks, denoising, JPEG cleanup, super-resolution, edge refinement, encoder cache. |
+| 2026-10-16 | 7f | Phase 7f part 2. Image > AI denoising, AI JPEG cleanup and AI super-resolution run through the router (web/src/app/aiImageActions.ts). With a selection, denoising and JPEG cleanup send only its box and blend the answer back weighted by the selection. Each answer is a history step that names the provider, with the AI result label. 4 unit tests. | Phase 7f part 3: AI clicks, edge refinement, encoder cache. |

@@ -11,7 +11,7 @@ Choose **Edit > AI providers** to pick a provider for each task. The tasks and t
 --8<-- "ai-tasks.md"
 
 
-## Using AI selections
+## Using AI in the studio
 
 The **Select** menu has three AI commands. Each uses the provider you chose for its task.
 
@@ -20,6 +20,14 @@ The **Select** menu has three AI commands. Each uses the provider you chose for 
 - **AI object** selects the object inside the box around your selection. Draw a rectangle first. Only the box plus a margin is sent, not the whole image.
 
 The answer replaces the selection, and the history step names the provider. With no provider, the selection stays as it was, and the studio names the classical tool to use instead.
+
+The **Image** menu has three more:
+
+- **AI denoising** removes noise.
+- **AI JPEG cleanup** removes the blocks and ringing of strong JPEG compression.
+- **AI super-resolution** enlarges the image.
+
+With a selection, denoising and JPEG cleanup send only the box around it. The answer is blended back with the selection as its weight, so soft edges stay soft. Super-resolution always sends the whole image. Each answer is a new history step that names the provider.
 ## Provider kinds
 
 | Kind | Where it runs | Asks before sending |

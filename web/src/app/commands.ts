@@ -41,6 +41,7 @@ import {
   toggleSelectionEnabled,
   type RefineKind,
 } from "./selectionActions";
+import { aiImage } from "./aiImageActions";
 import { aiSelect } from "./aiSelectActions";
 import { selectObject } from "./seedActions";
 import { TOOLS, type ToolInfo } from "./tools";
@@ -314,6 +315,21 @@ export function buildCommands(): Command[] {
       enabled: hasDocument,
       run: () => useUi.getState().setDialog("image-rotate"),
     },
+    ...(
+      [
+        ["denoise", "AI denoising", "noise grain clean ai model dncnn ffdnet learned"],
+        ["jpeg-cleanup", "AI JPEG cleanup", "jpeg blocks artifacts compression ai model learned"],
+        ["super-resolution", "AI super-resolution", "enlarge upscale ai model esrgan swin2sr"],
+      ] as const
+    ).map(([taskId, label, keywords]): Command => ({
+      id: `image.ai-${taskId}`,
+      label,
+      menu: "image",
+      section: "ai",
+      keywords,
+      enabled: hasDocument,
+      run: () => void aiImage(taskId),
+    })),
     {
       id: "image.resize",
       label: "Resize...",
