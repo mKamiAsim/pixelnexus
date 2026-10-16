@@ -12,6 +12,7 @@ import { GlossaryText } from "@/components/GlossaryText";
 import { ParamControl } from "@/components/params/ParamControl";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { EngineBadge } from "@/components/ui/EngineBadge";
+import { ModelCard } from "@/panels/ModelCard";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Select } from "@/components/ui/Select";
@@ -172,6 +173,7 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
 
       {runnable ? <ScopeRow /> : null}
       {runnable ? entry.engine === "browser" ? <PreviewRow /> : <EnginePreviewNote /> : null}
+      {runnable && entry.model ? <ModelCard entry={entry} /> : null}
 
       {warnings.length > 0 ? (
         <ul className="flex flex-col gap-1 border-b border-border-subtle px-3 py-2">

@@ -81,6 +81,19 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
             if entry.get("status") in FULL_STATUSES:
                 yield from _code_issues(entry, where, section)
 
+    model_ids = {m.get("id") for m in bundle["models"] if isinstance(m, dict)}
+    for index, entry in enumerate(bundle["filters"]):
+        if not isinstance(entry, dict):
+            continue
+        where = _rel(catalog.origin("filters", index))
+        model = entry.get("model")
+        if model is not None and model not in model_ids:
+            yield Issue("error", where, f"model '{model}' is not in models.yaml")
+        if (model is not None) != (entry.get("status") == "optional-model"):
+            yield Issue(
+                "error", where, "an entry has a model exactly when its status is optional-model"
+            )
+
     all_ids = set(seen)
     for section in ("filters", "tools"):
         for index, entry in enumerate(bundle[section]):

@@ -1,3 +1,24 @@
-# Optional AI models. Entries are added in Phase 7b, after a license review approved by the project owner.
-# Nothing in this file is downloaded automatically.
-models: []
+# Optional models. Each entry was checked for its license before it was added.
+# Nothing in this file is downloaded automatically. A model downloads only when you click
+# Download model in the studio, into the engine's models folder on your own machine, which git
+# ignores. The engine checks the SHA-256 of the file before it uses it.
+models:
+  - id: structured-edge-bsds500
+    name: Structured edge forest (BSDS500)
+    task: edges
+    license: >-
+      Microsoft Research License Agreement (MSR-LA), non-commercial use only, such as teaching,
+      research and personal experiments. The model comes from Piotr Dollar's Structured Edge
+      Detection Toolbox, converted for OpenCV.
+    licenseUrl: https://github.com/pdollar/edges/blob/master/license.txt
+    sourceUrl: https://raw.githubusercontent.com/opencv/opencv_extra/5e3a56880fb115e757855f8e01e744c154791144/testdata/cv/ximgproc/model.yml.gz
+    sha256: fe3586bca5ec124b73fa769c2b54e195e4526d6ceeddf161fad96bf68a65bf17
+    sizeMB: 6.39
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1.
+    outputs: An edge probability from 0 to 1 at every pixel.
+    reference:
+      kind: paper
+      text: Dollar, P., and Zitnick, C. L. Fast edge detection using structured forests. IEEE Transactions on Pattern Analysis and Machine Intelligence 37(8), 1558 to 1570, 2015.
+      doi: 10.1109/TPAMI.2014.2377715

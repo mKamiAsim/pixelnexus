@@ -17,6 +17,7 @@ import {
 
 export { EngineError } from "./types";
 export { OFFLINE_MESSAGE } from "./science";
+export type { ModelStatus } from "./science";
 export type { FilterJob, JobOptions, JobResult, JobTiming } from "./types";
 
 export const browserEngine = new BrowserEngine();

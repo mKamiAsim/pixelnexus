@@ -20,6 +20,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     segmentation,
     split_merge,
     steerable,
+    structured_edge,
     superresolution,
     surf,
     susan,

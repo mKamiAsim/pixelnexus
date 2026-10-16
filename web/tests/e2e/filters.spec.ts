@@ -190,6 +190,14 @@ function fakeRegions(width: number, height: number) {
   };
 }
 
+/** The optional model the stand-in engine knows, as the engine reports it. */
+const FAKE_MODEL = {
+  id: "structured-edge-bsds500",
+  name: "Structured edge forest (BSDS500)",
+  sizeMB: 6.39,
+  license: "Non-commercial use only.",
+};
+
 /** Raw RGBA with the color channels inverted and alpha kept. */
 function inverted(body: Buffer): Buffer {
   const out = Buffer.from(body);
@@ -219,6 +227,7 @@ async function fakeEngine(page: Page) {
   const images = new Map<string, { body: Buffer; width: string; height: string }>();
   const jobs: FakeJob[] = [];
   let last = "";
+  let modelDownloaded = false;
   await page.route(`${ENGINE}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -227,6 +236,11 @@ async function fakeEngine(page: Page) {
     const json = (body: unknown, status = 200) =>
       route.fulfill({ status, headers: CORS, json: body });
     if (path === "/info") return json({ version: "0.1.0" });
+    if (path === "/models") return json([{ ...FAKE_MODEL, downloaded: modelDownloaded }]);
+    if (path.startsWith("/models/") && request.method() === "POST") {
+      modelDownloaded = true;
+      return json({ ...FAKE_MODEL, downloaded: true });
+    }
     if (path === "/images") {
       last = `image-${images.size}`;
       const width = url.searchParams.get("width") ?? "0";
@@ -282,7 +296,7 @@ async function fakeEngine(page: Page) {
     return json({ detail: "Not in the stand-in engine." }, 404);
   });
   await page.reload();
-  return { images, jobs };
+  return { images, jobs, modelDownloaded: () => modelDownloaded };
 }
 
 const canvas = (page: Page) => page.locator('canvas[tabindex="0"]');
@@ -406,6 +420,23 @@ test("the matched filter sends the selection as its template and changes the who
   expect(after.pixels[0]).toBe(255 - (before.pixels[0] ?? 0));
   await front(page, "Learn");
   await expect(page.getByText("the template is the 17 x 17 square")).toBeVisible();
+});
+
+test("a filter with an optional model shows its license and downloads it only on a click", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "structured edge", "Structured Edge Detector");
+  await front(page, "Properties");
+  const card = page.getByRole("region", { name: "Model" });
+  await expect(card).toContainText("6.39 MB");
+  await expect(card).toContainText("non-commercial");
+  expect(engine.modelDownloaded()).toBe(false);
+  await card.getByRole("button", { name: "Download model" }).click();
+  await expect(card).toContainText("The model is downloaded and checked.");
+  expect(engine.modelDownloaded()).toBe(true);
 });
 
 test("super-resolution replaces the image with the larger engine result", async ({ page }) => {

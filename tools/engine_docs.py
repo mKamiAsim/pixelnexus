@@ -100,6 +100,7 @@ from pixelnexus_engine.filters.segmentation import (
 from pixelnexus_engine.filters.split_merge import luma as split_luma
 from pixelnexus_engine.filters.split_merge import merge_regions, split_blocks, split_merge
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
+from pixelnexus_engine.filters.structured_edge import MODEL_ID, structured_edge
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
 from pixelnexus_engine.filters.surf import surf_inspired
@@ -117,6 +118,7 @@ from pixelnexus_engine.filters.wavelets import (
     wavelet_wiener,
     wiener_gain,
 )
+from pixelnexus_engine.models import model_entry, model_path
 from pixelnexus_engine.params import check_params, resolve_params
 from pixelnexus_engine.psf import extend, gaussian_kernel
 from pixelnexus_engine.registry import common_params, science_entries
@@ -2592,6 +2594,70 @@ def marker_watershed_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Structured edges -------------------------------------------------------------------------------
+
+
+def structured_edge_model() -> Path | None:
+    """The downloaded model in the repository's models folder, or None. The docs material for
+    structured-edge is only made where the model is downloaded, and kept in git otherwise."""
+    entry = model_entry(MODEL_ID, CATALOG)
+    path = model_path(entry, ROOT / "models") if entry else None
+    return path if path and path.is_file() else None
+
+
+def structured_edge_docs(out: dict[Path, str]) -> None:
+    import os
+
+    from skimage import feature
+
+    # scikit-image has no type hints.
+    untyped: Any = feature
+    if structured_edge_model() is None:
+        return
+    os.environ["PIXELNEXUS_MODELS_DIR"] = str(ROOT / "models")
+    filter_id = "structured-edge"
+    scene = texture_scene()
+    canny_edges = untyped.canny(scene / 255.0).astype(np.uint8) * 255
+    figure(
+        out,
+        filter_id,
+        f"{TEXTURE_MESSAGE} Then the Canny edges of scikit-image with its defaults, and the "
+        "structured edges as a probability and thinned.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Canny", "image": picture(canny_edges)},
+            {"title": "Probability", "image": picture(run(structured_edge, scene, filter_id))},
+            {
+                "title": "Thin edges",
+                "image": picture(run(structured_edge, scene, filter_id, output="thin")),
+            },
+        ],
+    )
+    thin = run(structured_edge, scene, filter_id, output="thin")
+    rows = []
+    for name, (r, c) in zip(TEXTURE_PATCHES, [(0, 0), (0, 80), (80, 0), (80, 80)], strict=True):
+        inner = (slice(r + 4, r + 76), slice(c + 4, c + 76))
+        rows.append(
+            [name, str(int((thin[inner] > 50).sum())), str(int((canny_edges[inner] > 0).sum()))]
+        )
+    across = int((thin[78:82, :] > 50).sum() + (thin[:, 78:82] > 50).sum())
+    rows.append(
+        [
+            "Borders between the quarters",
+            str(across),
+            str(int((canny_edges[78:82, :] > 0).sum() + (canny_edges[:, 78:82] > 0).sum())),
+        ]
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Area", "Structured edges above 50", "Canny edge pixels"], rows)
+        + "\nThe test image of the figure. Each quarter is counted without a margin of 4 "
+        "pixels, so its border with the next quarter is left out. The border row counts the "
+        "bands 4 pixels wide along the two borders between the quarters. Structured edges "
+        "count when the thinned edge is above 50 of 255.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -2639,6 +2705,7 @@ def build() -> dict[Path, str]:
     multi_otsu_docs(out)
     watershed_docs(out)
     marker_watershed_docs(out)
+    structured_edge_docs(out)
     return out
 
 

@@ -179,6 +179,23 @@ describe("the science engine client", () => {
     ).rejects.toThrow("Bad input.");
   });
 
+  it("lists models and downloads one only through its own call", async () => {
+    const model = { id: "m", name: "M", sizeMB: 6.4, license: "Non-commercial", downloaded: false };
+    const stub = vi.fn(async (url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? url.endsWith("/models/m/download")
+          ? Response.json({ ...model, downloaded: true })
+          : Response.json({ detail: "The download failed: no network" }, { status: 502 })
+        : Response.json([model]),
+    );
+    vi.stubGlobal("fetch", stub);
+    const engine = new ScienceEngine("http://engine.test");
+    expect(await engine.models()).toEqual([model]);
+    expect(stub.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+    expect((await engine.downloadModel("m")).downloaded).toBe(true);
+    await expect(engine.downloadModel("other")).rejects.toThrow("no network");
+  });
+
   it("explains how to start the engine when it does not answer", async () => {
     vi.stubGlobal(
       "fetch",

@@ -3,14 +3,16 @@
 Images travel as raw RGBA bytes with their size, never as JSON arrays. Jobs run in their own
 processes (see jobs.py) and report progress as server-sent events. A job for a filter that
 reads the selection names a mask, uploaded like an image. Results may have another size than
-the image, and say their size in X-Width and X-Height. The selection and model routes arrive
-with Phase 6e and Phase 7.
+the image, and say their size in X-Width and X-Height. Optional models are listed under
+/models, and one downloads only when the studio posts to /models/{id}/download, after the user
+clicks Download model (see models.py).
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 import platform
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -28,6 +30,7 @@ from pixelnexus_engine import API_VERSION, __version__
 from pixelnexus_engine.config import Settings
 from pixelnexus_engine.images import ImageError, ImageStore, StoredImage, decode_rgba
 from pixelnexus_engine.jobs import TERMINAL, JobManager
+from pixelnexus_engine.models import download, model_entries, model_view
 from pixelnexus_engine.params import ParamError, check_params, resolve_params
 from pixelnexus_engine.registry import (
     FILTERS,
@@ -97,8 +100,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     images = ImageStore(settings.cache_mb * 1024 * 1024)
     managers: dict[str, JobManager] = {}
 
+    models_folder = settings.models_dir
+    models = {m["id"]: m for m in model_entries(catalog_dir)}
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Job processes find the models folder in the environment they inherit.
+        os.environ["PIXELNEXUS_MODELS_DIR"] = str(models_folder)
         managers["jobs"] = JobManager(settings.max_workers)
         yield
         managers.pop("jobs").shutdown()
@@ -187,6 +195,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if spec.representation is None:
             raise HTTPException(status_code=501, detail="This filter has no representation.")
         return spec.representation(checked_params(filter_id, params))
+
+    @router.get("/models")
+    def list_models() -> list[dict[str, Any]]:
+        """The optional models, with their license and whether they are downloaded."""
+        return [model_view(entry, models_folder) for entry in models.values()]
+
+    @router.post("/models/{model_id}/download")
+    def download_model(model_id: str) -> dict[str, Any]:
+        """Download one model on the user's request, and check its SHA-256."""
+        entry = models.get(model_id)
+        if entry is None:
+            raise _not_found("model with this id")
+        try:
+            download(entry, models_folder)
+        except ValueError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        except OSError as error:
+            raise HTTPException(status_code=502, detail=f"The download failed: {error}") from error
+        return model_view(entry, models_folder)
 
     @router.post("/images")
     async def upload(request: Request, width: int, height: int) -> dict[str, Any]:

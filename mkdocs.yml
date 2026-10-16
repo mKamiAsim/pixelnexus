@@ -216,6 +216,7 @@ nav:
           - Marr-Hildreth: filters/edges/marr-hildreth.md
           - Phase congruency: filters/edges/phase-congruency.md
           - Hough-based edge linking: filters/edges/hough-linking.md
+          - Structured Edge Detector: filters/edges/structured-edge.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md

@@ -55,6 +55,16 @@ export function cropImage(
   return { width: region.width, height: region.height, data };
 }
 
+/** An optional model as the engine reports it. */
+export interface ModelStatus {
+  readonly id: string;
+  readonly name: string;
+  readonly sizeMB: number;
+  readonly license: string;
+  readonly licenseUrl?: string;
+  readonly downloaded: boolean;
+}
+
 export class ScienceEngine implements EngineClient {
   readonly name = "science";
   private readonly uploads = new WeakMap<RgbaImage, Promise<string>>();
@@ -251,6 +261,23 @@ export class ScienceEngine implements EngineClient {
       ...(signal ? { signal } : {}),
     });
     return (await response.json()) as Representation;
+  }
+
+  /** The optional models the engine knows, and whether each is downloaded. */
+  async models(): Promise<ModelStatus[]> {
+    const response = await this.call("/models");
+    return (await response.json()) as ModelStatus[];
+  }
+
+  /**
+   * Download one model to the engine's models folder. Call this only from a click on Download
+   * model, after the studio has shown the size and license.
+   */
+  async downloadModel(modelId: string): Promise<ModelStatus> {
+    const response = await this.call(`/models/${encodeURIComponent(modelId)}/download`, {
+      method: "POST",
+    });
+    return (await response.json()) as ModelStatus;
   }
 
   /** Engine version and limits, or null when no engine answers. */
