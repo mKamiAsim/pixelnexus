@@ -717,12 +717,13 @@
           "type": "boolean"
         },
         "selectionRole": {
-          "description": "With needsSelection: what the selection is for. area (the default): the area the filter reads and changes, such as the hole to fill. template: only an input, a pattern to search for. markers: only an input, the seeds that regions grow from. With template or markers, the filter runs on the whole image and its result covers the whole image.",
+          "description": "With needsSelection: what the selection is for. area (the default): the area the filter reads and changes, such as the hole to fill. template: only an input, a pattern to search for. markers: only an input, the seeds that regions grow from. contour: only an input, the starting contour that moves to fit the image. With template, markers or contour, the filter runs on the whole image and its result covers the whole image.",
           "type": "string",
           "enum": [
             "area",
             "template",
-            "markers"
+            "markers",
+            "contour"
           ]
         },
         "changesSize": {

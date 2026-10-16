@@ -369,9 +369,9 @@ Outputs include overlays, label maps, region statistics, object counts and mask 
 | slic | SLIC superpixels | Done on 2026-10-16. | Advanced | Science | 6e |
 | felzenszwalb | Felzenszwalb-Huttenlocher segmentation | Felzenszwalb graph-based segmentation. Done on 2026-10-16. | Advanced | Science | 6e |
 | quickshift | Quickshift | Extra. Done on 2026-10-16. | Advanced | Science | 6e |
-| active-contour | Active contours | Snakes. Starts from the selection boundary. | Advanced | Science | 6e |
-| level-set | Level sets | Morphological geodesic active contour. | Advanced | Science | 6e |
-| chan-vese | Chan-Vese segmentation | | Advanced | Science | 6e |
+| active-contour | Active contours | Snakes. Starts from the selection boundary. Done on 2026-10-16. | Advanced | Science | 6e |
+| level-set | Level sets | Morphological geodesic active contour. Starts from the selection. Done on 2026-10-16. | Advanced | Science | 6e |
+| chan-vese | Chan-Vese segmentation | Two phases. Done on 2026-10-16. | Advanced | Science | 6e |
 | split-merge | Split-and-merge segmentation | Quadtree. Done on 2026-10-16. | Advanced | Science | 6e |
 | crf | Conditional Random Fields | The common Python package is unmaintained. Revisit later. | Planned | none | |
 

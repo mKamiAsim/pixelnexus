@@ -1,10 +1,213 @@
 id: active-contour
 name: Active contours
-aliases:
-- Snakes
+aliases: [Snakes, Snake]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Snakes. Starts from the selection boundary.
+
+summary: Places a chain of points on the outline of your selection and lets it slide onto the edges of the image, after Kass, Witkin and Terzopoulos. The chain acts like an elastic band that resists bending. It stays one closed curve.
+purpose: Fit a smooth closed outline to an object, starting from a selection around it.
+classification: {linearity: nonlinear, domain: iterative, operation: energy minimization}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: active_contour_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: contour
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, scaled from 0 to 1. The inside goes to the
+  Features panel and is drawn over the image. The contour output draws the starting snake in blue
+  and the final snake in yellow over the image, with the alpha of the image.
+boundary: The blur repeats the edge pixels. scikit-image interpolates the image with a spline.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.active_contour, skimage.measure.find_contours and skimage.draw.'}
+  - {name: SciPy, optional: false, note: 'The Gaussian blur and the parts of the selection.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Inside}
+      - {value: contour, label: Start and end over the image}
+    description: The inside of the final snake as a label map, drawn over the image and listed in the Features panel. Or the starting snake in blue and the final snake in yellow over the image.
+    effect: The inside can become the selection from the Features panel.
+  - key: alpha
+    label: Elasticity
+    type: number
+    min: 0
+    max: 1
+    step: 0.005
+    default: 0.05
+    description: The weight alpha of the length of the snake. scikit-image uses 0.01. We use 0.05, since at 0.01 a snake far from any edge barely shrank before it counted as settled in our tests.
+    effect: Higher values pull the snake tighter, so it shrinks faster.
+  - key: beta
+    label: Rigidity
+    type: number
+    min: 0
+    max: 50
+    step: 0.1
+    default: 0.1
+    description: The weight beta of the bending of the snake. scikit-image uses 0.1.
+    effect: Higher values keep the snake smooth and stop it from following sharp corners.
+  - key: wEdge
+    label: Edge weight
+    type: number
+    min: -5
+    max: 5
+    step: 0.1
+    default: 1
+    description: How strongly edges attract the snake. scikit-image uses 1.
+    effect: Negative values push the snake away from edges.
+  - key: wLine
+    label: Brightness weight
+    type: number
+    min: -5
+    max: 5
+    step: 0.1
+    default: 0
+    description: How strongly bright pixels attract the snake. Negative values attract it to dark pixels. scikit-image uses 0.
+    effect: Use it to follow a bright or dark line instead of an edge.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The sigma of a Gaussian blur of the luma first, our choice. 0 turns it off.
+    effect: A blur widens the pull of edges, so the snake finds them from farther away.
+  - key: gamma
+    label: Time step
+    type: number
+    min: 0.0001
+    max: 1
+    step: 0.0001
+    default: 0.01
+    description: The step size gamma. scikit-image uses 0.01.
+    effect: Smaller values give larger steps.
+  - key: maxMove
+    label: Largest move
+    type: number
+    min: 0.1
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The most a point moves in one step. scikit-image uses 1.
+    effect: Larger values move faster but can jump over thin edges.
+  - key: points
+    label: Points
+    type: integer
+    min: 20
+    max: 500
+    step: 1
+    default: 200
+    description: The number of points on the snake, evenly spaced along the selection outline. Our choice.
+    effect: More points follow finer detail and take longer.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10000
+    step: 1
+    default: 2500
+    description: The most steps. scikit-image uses 2500.
+    effect: The snake may stop sooner, when it settles.
+  - key: convergence
+    label: Settled at
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.1
+    unit: px
+    description: Every 11 steps, scikit-image compares the snake with its 10 saved positions. It stops when one of them is this close, measured as the largest move of any point in x plus y. scikit-image uses 0.1.
+    effect: Lower values let a slow snake keep moving.
+formula: |
+  E = \sum_i \left( \alpha \lvert v_{i+1} - v_i \rvert^2 + \beta \lvert v_{i+1} - 2 v_i + v_{i-1} \rvert^2 \right) + \sum_i P(v_i),
+  \qquad
+  P = -\left( w_{line} \, Y_\sigma + w_{edge} \, \lvert \nabla Y_\sigma \rvert \right)
+formulaExplanation: >-
+  The snake is a closed chain of points, called v. Its energy E has an internal part and an image part.
+  The alpha term is small when the points are close, so it pulls the chain tight. The beta term
+  is small when the chain is straight, so it resists bending. With a positive line weight, the
+  image energy P is low on bright pixels. With a positive edge weight, it is low on edges.
+  Y sigma is the blurred luma, and its gradient comes from the Sobel filter. Each step solves for
+  the internal forces with a fixed matrix, as Kass, Witkin and Terzopoulos did, and moves down
+  the image energy. The scikit-image code limits each move to the largest move. It stops when the snake
+  is within the settled distance of one of its 10 saved positions.
+symbols:
+  - {symbol: 'v_i', meaning: 'Point i of the snake'}
+  - {symbol: '\alpha', meaning: 'The elasticity'}
+  - {symbol: '\beta', meaning: 'The rigidity'}
+  - {symbol: 'P', meaning: 'The image energy'}
+  - {symbol: 'Y_\sigma', meaning: 'The luma after a Gaussian blur of sigma'}
+steps:
+  - Take the outline of the largest part of the selection, and space the points evenly on it.
+  - Blur the luma and find its edges with the Sobel filter.
+  - Move every point a little toward lower energy, keeping the chain tight and smooth.
+  - Stop when the snake settles, or after the most steps.
+complexity:
+  time: O(N + n^3 + K n)
+  memory: O(N + n^2)
+  notes: N is the number of pixels, n the number of points and K the number of steps. The n^3 is one matrix inversion.
+useCases:
+  - A smooth outline of a single object, such as a face or an organ.
+  - Teaching energy minimization on curves.
+advantages:
+  - Always one smooth, closed curve.
+  - Bridges small gaps in an edge.
+limitations:
+  - It finds only nearby edges, so the selection must be close.
+  - It cannot split to outline two objects.
+  - Many settings that interact.
+artifacts:
+  - Corners cut off when the rigidity is high.
+  - A snake that shrinks to a point when no edge stops it.
+references:
+  - kind: paper
+    text: Kass, M., Witkin, A., and Terzopoulos, D. Snakes, active contour models. International Journal of Computer Vision 1(4), 321 to 331, 1988.
+    doi: 10.1007/BF00133570
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.active_contour.
+implementation: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: active_contour_filter}
+tests: [engine/tests/test_contours.py]
+learn:
+  oneSentence: An elastic band around your selection tightens until it catches on the edges of the object.
+  howItWorks:
+    - Put a chain of points on the outline of your selection.
+    - The chain pulls itself tight and resists bending.
+    - Edges in the image hold the points back.
+    - It stops when the points stop moving.
+  academic: >-
+    Kass, Witkin and Terzopoulos snake with semi-implicit internal forces on the Gaussian
+    blurred luma, started from the selection outline, as in scikit-image.
+  paramNotes:
+    output: Inside, or the start and end snakes.
+    alpha: How tight the band pulls.
+    beta: How much it resists bending.
+    wEdge: How strongly edges hold it.
+    wLine: How strongly brightness holds it.
+    sigma: How much to blur first.
+    gamma: The step size.
+    maxMove: The most a point moves per step.
+    points: How many points.
+    iterations: The most steps.
+    convergence: When it counts as settled.
+  tryThis:
+    - Select a box around a round object and show the start and end. Then raise the rigidity and compare.
+  pitfalls:
+    - A selection far from the object. The snake settles on the wrong edge or shrinks away.
+  demos: [stage-viewer]
+related: [level-set, chan-vese, marker-watershed]
+docsPage: filters/segmentation/active-contour.md

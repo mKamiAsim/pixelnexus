@@ -398,6 +398,9 @@ nav:
           - Marker-controlled watershed: filters/segmentation/marker-watershed.md
           - Mean shift: filters/segmentation/mean-shift.md
           - Split-and-merge segmentation: filters/segmentation/split-merge.md
+          - Chan-Vese segmentation: filters/segmentation/chan-vese.md
+          - Level sets: filters/segmentation/level-set.md
+          - Active contours: filters/segmentation/active-contour.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

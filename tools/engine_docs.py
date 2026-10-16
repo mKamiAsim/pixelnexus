@@ -42,6 +42,14 @@ from pixelnexus_engine.filters.artifacts import (
     jpeg_cleanup,
 )
 from pixelnexus_engine.filters.blobs import blob_dog_filter, blob_doh_filter, blob_log_filter
+from pixelnexus_engine.filters.contours import (
+    active_contour_filter,
+    chan_vese_filter,
+    chan_vese_level_set,
+    level_set,
+    level_set_inside,
+    snake_result,
+)
 from pixelnexus_engine.filters.directional import (
     BANKS,
     directional_curvelet,
@@ -2594,6 +2602,216 @@ def marker_watershed_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Contours ---------------------------------------------------------------------------------------
+
+
+def contour_truth() -> tuple[NDArray[np.bool_], NDArray[np.bool_]]:
+    """A disk of radius 28 and a square of side 44, side by side in a 160 x 160 image."""
+    rows, cols = np.mgrid[0:160, 0:160]
+    round_part = np.hypot(rows - 80, cols - 52) <= 28
+    square = np.zeros((160, 160), bool)
+    square[58:102, 98:142] = True
+    return round_part, square
+
+
+def contour_scene(noise: float = 10) -> Gray:
+    round_part, square = contour_truth()
+    gray = np.full((160, 160), 50.0)
+    gray[round_part] = 190
+    gray[square] = 160
+    return noisy(np.asarray(ndimage.gaussian_filter(gray, 1.5)), noise, seed=5)
+
+
+def box_selection(top: int, left: int, height: int, width: int) -> NDArray[np.uint8]:
+    mask = np.zeros((160, 160), np.uint8)
+    mask[top : top + height, left : left + width] = 255
+    return mask
+
+
+def iou(found: NDArray[np.bool_], truth: NDArray[np.bool_]) -> float:
+    return float((found & truth).sum() / (found | truth).sum())
+
+
+def parts(found: NDArray[np.bool_]) -> int:
+    return int(ndimage.label(found, structure=np.ones((3, 3), bool))[1])
+
+
+def shown(result: Any) -> dict[str, Any]:
+    assert isinstance(result, np.ndarray)
+    return color_picture(np.asarray(result[..., :3], np.uint8))
+
+
+def chan_vese_docs(out: dict[Path, str]) -> None:
+    filter_id = "chan-vese"
+    round_part, square = contour_truth()
+    truth = round_part | square
+    scene = contour_scene(30)
+
+    def phases(gray: Gray, **values: Any) -> NDArray[np.int64]:
+        phi = chan_vese_level_set(rgba(gray), catalog_values(filter_id, **values))
+        return np.where(phi > 0, 1, 2).astype(np.int64)
+
+    figure(
+        out,
+        filter_id,
+        "A disk of 190 and a square of 160 on a ground of 50, slightly blurred, with noise of "
+        "sigma 30. Then the two phases in their label colors, each phase filled with its mean "
+        "color, and the final level set with 0 at middle gray.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Phases", "image": color_picture(label_colors(phases(scene)))},
+            {
+                "title": "Mean colors",
+                "image": shown(
+                    chan_vese_filter(
+                        rgba(scene), catalog_values(filter_id, output="mean"), lambda _: None
+                    )
+                ),
+            },
+            {
+                "title": "Level set",
+                "image": picture(run(chan_vese_filter, scene, filter_id, output="levelSet")),
+            },
+        ],
+    )
+    rows = []
+    for noise in (10, 30):
+        gray = contour_scene(noise)
+        for mu, tolerance in ((0, 0.001), (0.1, 0.001), (0.25, 0.001), (1, 0.001), (1, 0.0001)):
+            inside = phases(gray, mu=mu, tolerance=tolerance) == 1
+            rows.append(
+                [
+                    f"{noise:g}",
+                    f"{mu:g}",
+                    f"{tolerance:g}",
+                    str(parts(inside)),
+                    fix(iou(inside, truth), 3),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Noise sigma", "Length weight mu", "Tolerance", "Parts of phase 1", "Overlap"], rows
+        )
+        + "\nThe image of the figure, with two objects, and the other defaults. Phase 1 should be "
+        "the disk and the square, 2 parts. The parts are 8-connected. The overlap is the area of "
+        "phase 1 and both objects together divided by the area of either.\n"
+    )
+
+
+def level_set_docs(out: dict[Path, str]) -> None:
+    filter_id = "level-set"
+    round_part, square = contour_truth()
+    truth = round_part | square
+    scene = contour_scene()
+    box = box_selection(20, 12, 120, 140)
+    spots = box_selection(76, 48, 9, 9) | box_selection(76, 116, 9, 9)
+
+    def inside(mask: NDArray[np.uint8], **values: Any) -> NDArray[np.bool_]:
+        return level_set_inside(rgba(scene), {**catalog_values(filter_id, **values), "mask": mask})
+
+    def boundaries(mask: NDArray[np.uint8], **values: Any) -> dict[str, Any]:
+        params = {**catalog_values(filter_id, output="boundaries", **values), "mask": mask}
+        return shown(level_set(rgba(scene), params, lambda _: None))
+
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with noise of sigma 10, and a box selected around both. Then the "
+        "edge stopping image, the contour shrunk from the box, and the contour grown with a "
+        "balloon force of 1 from a small square selected inside each object.",
+        [
+            {"title": "Input and box", "image": picture(with_box(scene, 20, 12, 120, 140))},
+            {
+                "title": "Edge stopping",
+                "image": picture(run(level_set, scene, filter_id, output="edgeStopping")),
+            },
+            {"title": "Shrunk from the box", "image": boundaries(box)},
+            {"title": "Grown from spots", "image": boundaries(spots, balloon=1)},
+        ],
+    )
+    rows = []
+    runs = [(iterations, 1) for iterations in (10, 25, 50, 100, 200)] + [(100, 2)]
+    for iterations, smoothing in runs:
+        for name, mask, balloon in (("Box, shrink", box, -1), ("Spots, grow", spots, 1)):
+            found = inside(mask, iterations=iterations, balloon=balloon, smoothing=smoothing)
+            rows.append(
+                [
+                    name,
+                    str(iterations),
+                    str(smoothing),
+                    str(parts(found)),
+                    fix(iou(found, truth), 3),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Start", "Iterations", "Smoothing", "Parts", "Overlap"], rows)
+        + "\nThe image and selections of the figure, with the other defaults. The disk and the "
+        "square are 2 parts. The overlap is the area of the inside and both objects together "
+        "divided by the area of either.\n"
+    )
+
+
+def active_contour_docs(out: dict[Path, str]) -> None:
+    from skimage import draw
+
+    # scikit-image has no type hints.
+    untyped: Any = draw
+    filter_id = "active-contour"
+    round_part, _ = contour_truth()
+    scene = contour_scene()
+    both = box_selection(20, 12, 120, 140)
+    near = box_selection(40, 14, 80, 78)
+
+    def contour(mask: NDArray[np.uint8], **values: Any) -> dict[str, Any]:
+        params = {**catalog_values(filter_id, output="contour", **values), "mask": mask}
+        return shown(active_contour_filter(rgba(scene), params, lambda _: None))
+
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with noise of sigma 10. Then the snake from a box around both "
+        "objects, from a box around the disk, and from the same box with a rigidity of 10. Each "
+        "shows the start in blue and the end in yellow.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Around both", "image": contour(both)},
+            {"title": "Around the disk", "image": contour(near)},
+            {"title": "Rigidity 10", "image": contour(near, beta=10)},
+        ],
+    )
+    rows = []
+    for alpha in (0.01, 0.05, 0.1):
+        for beta in (0.1, 10):
+            params = {**catalog_values(filter_id, alpha=alpha, beta=beta), "mask": near}
+            _, end = snake_result(rgba(scene), params)
+            radius = np.hypot(end[:, 0] - 80, end[:, 1] - 52)
+            found = np.zeros((160, 160), bool)
+            rr, cc = untyped.polygon(end[:, 0], end[:, 1], shape=(160, 160))
+            found[rr, cc] = True
+            rows.append(
+                [
+                    f"{alpha:g}",
+                    f"{beta:g}",
+                    fix(float(radius.mean()), 1),
+                    fix(float(radius.std()), 2),
+                    fix(iou(found, round_part), 3),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Elasticity alpha", "Rigidity beta", "Mean radius (px)", "Spread (px)", "Overlap"],
+            rows,
+        )
+        + "\nThe image of the figure, from the box around the disk, with the other defaults. "
+        "The disk has a radius of 28 pixels. The mean radius and its spread, the standard "
+        "deviation, are the distances of the final points from the center of the disk. The "
+        "overlap is the area of the inside and the disk together divided by the area of either.\n"
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -2705,6 +2923,9 @@ def build() -> dict[Path, str]:
     multi_otsu_docs(out)
     watershed_docs(out)
     marker_watershed_docs(out)
+    chan_vese_docs(out)
+    level_set_docs(out)
+    active_contour_docs(out)
     structured_edge_docs(out)
     return out
 

@@ -266,7 +266,7 @@ async function fakeEngine(page: Page) {
       if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
       const image = images.get(job?.image ?? "");
       if (!image) return json({ detail: "There is no job with this id." }, 404);
-      if (job?.filter === "slic") {
+      if (job?.filter === "slic" || job?.filter === "level-set") {
         return json(fakeRegions(Number(image.width), Number(image.height)));
       }
       if (job?.filter === "matched-filter") {
@@ -474,6 +474,31 @@ test("a segmentation draws its regions and turns one into the selection", async 
   await expect(page.getByRole("contentinfo")).toContainText("Selection: the whole image");
   await page.getByRole("switch", { name: "Show on the canvas" }).click();
   await expect(page.getByTestId("label-overlay")).toHaveCount(0);
+});
+
+test("a level set starts from the selection and its inside becomes the selection", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "level set", "Level sets");
+  await front(page, "Properties");
+  await marquee(page, [-40, -40], [40, 40]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByTestId("label-overlay")).toBeVisible();
+  // The selection is the starting contour, sent as the mask of a job on the whole image. The
+  // Learn panel also runs small jobs on a patch, so look for the one on the whole image.
+  const whole = engine.jobs.filter(
+    (job) => job.filter === "level-set" && engine.images.get(job.image)?.width === "512",
+  );
+  expect(whole).toHaveLength(1);
+  expect(engine.images.get(whole[0]?.mask ?? "")?.width).toBe("512");
+  await page.getByRole("button", { name: "Select region 1" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  await front(page, "Learn");
+  await expect(page.getByText("the contour starts as the edge of a disk")).toBeVisible();
 });
 
 test("a blob detector lists its features, draws them and exports CSV", async ({ page }) => {

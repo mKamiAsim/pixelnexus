@@ -6,6 +6,7 @@
 from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     artifacts,
     blobs,
+    contours,
     directional,
     hough,
     inpainting,
