@@ -39,6 +39,8 @@ export default defineConfig({
   preview: { port: 4173, strictPort: true },
   test: {
     setupFiles: ["./tests/setup.ts"],
+    // The numeric tests run several times slower under coverage on the CI runners.
+    testTimeout: 30_000,
     projects: [
       {
         extends: true,
