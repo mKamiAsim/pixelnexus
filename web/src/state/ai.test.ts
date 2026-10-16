@@ -142,14 +142,17 @@ describe("running an AI task", () => {
 
   it("reports a kind with no adapter yet, with the classical alternative", async () => {
     useAi.setState({
-      providers: [{ id: "phone", kind: "on-device", name: "On device" }],
-      tasks: { "jpeg-cleanup": "phone" },
+      providers: [{ id: "lab", kind: "remote-engine", name: "Lab", baseUrl: "https://lab.test/" }],
+      tasks: { "jpeg-cleanup": "lab" },
     });
-    await runAiTask(request("jpeg-cleanup"));
+    const running = runAiTask(request("jpeg-cleanup"));
+    await vi.waitFor(() => expect(useAi.getState().pending).not.toBeNull());
+    useAi.getState().answerConsent("send");
+    await running;
     expect(lastNotice()).toMatchObject({
       tone: "error",
       title: "JPEG cleanup did not run",
-      detail: `On device failed: This kind of provider is not available in this version yet. Use ${classicalName(task("jpeg-cleanup"))} instead.`,
+      detail: `Lab failed: This kind of provider is not available in this version yet. Use ${classicalName(task("jpeg-cleanup"))} instead.`,
     });
   });
 

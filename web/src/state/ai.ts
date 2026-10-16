@@ -43,9 +43,11 @@ export function loadAi(): Saved {
       tasks: unknown;
     }>;
     const providers = Array.isArray(raw.providers)
-      ? raw.providers.filter((p) => isProvider(p) && p.id !== ENGINE_PROVIDER.id)
+      ? raw.providers.filter(
+          (p) => isProvider(p) && p.id !== ENGINE_PROVIDER.id && p.id !== ON_DEVICE_PROVIDER.id,
+        )
       : [];
-    const ids = new Set([ENGINE_PROVIDER.id, ...providers.map((p) => p.id)]);
+    const ids = new Set([ENGINE_PROVIDER.id, ON_DEVICE_PROVIDER.id, ...providers.map((p) => p.id)]);
     const tasks: Record<string, string> = {};
     if (typeof raw.tasks === "object" && raw.tasks !== null) {
       for (const [task, id] of Object.entries(raw.tasks)) {
@@ -101,9 +103,17 @@ export const ENGINE_PROVIDER: ProviderConfig = {
   name: "Local engine models",
 };
 
-/** The built-in provider, then the ones you added. */
+/** Models in this browser, always there too. They download only when you ask. */
+export const ON_DEVICE_PROVIDER: ProviderConfig = {
+  id: "on-device",
+  kind: "on-device",
+  name: "On-device models",
+};
+
+/** The built-in providers, then the ones you added. */
 export const allProviders = (providers: readonly ProviderConfig[]): ProviderConfig[] => [
   ENGINE_PROVIDER,
+  ON_DEVICE_PROVIDER,
   ...providers,
 ];
 

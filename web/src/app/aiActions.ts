@@ -21,11 +21,13 @@ import { scienceEngine } from "@/engine-client";
 import { allProviders, approvals, requestLog, useAi } from "@/state/ai";
 
 import { engineModelAdapter } from "./engineModelAdapter";
+import { onDeviceAdapter } from "./onDeviceAdapter";
 
 type AdapterFactory = (provider: ProviderConfig) => ProviderAdapter;
 
 const factories = new Map<ProviderKindId, AdapterFactory>([
   ["engine-model", (provider) => engineModelAdapter(scienceEngine, provider)],
+  ["on-device", (provider) => onDeviceAdapter(provider)],
 ]);
 
 /** Use this factory for a provider kind. The returned function puts back the one before. */

@@ -13,7 +13,7 @@ import { catalog } from "@/catalog";
 import { checkEndpoint } from "@/core/ai/endpoint";
 import { maskKey } from "@/core/ai/secrets";
 import type { ProviderKindId } from "@/core/ai/types";
-import { ENGINE_PROVIDER, requestLog, secrets, useAi } from "@/state/ai";
+import { ENGINE_PROVIDER, ON_DEVICE_PROVIDER, requestLog, secrets, useAi } from "@/state/ai";
 import { useUi } from "@/state/ui";
 
 import { classicalName } from "./aiActions";
@@ -73,6 +73,7 @@ export function AiProvidersDialog() {
                 options={[
                   { value: NONE, label: `None. Use ${classicalName(task)}` },
                   { value: ENGINE_PROVIDER.id, label: ENGINE_PROVIDER.name },
+                  { value: ON_DEVICE_PROVIDER.id, label: ON_DEVICE_PROVIDER.name },
                   ...providers.map((p) => ({ value: p.id, label: p.name })),
                 ]}
                 className="w-72"

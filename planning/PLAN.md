@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 7: optional AI |
-| Next action | Phase 7d part 2b: the on-device adapter (web/src/app), a built-in On-device models provider in state/ai.ts, and an On-device models list with size, license, Download and Remove in the AI providers dialog. |
+| Next action | Phase 7d part 3: an On-device models list in the AI providers dialog (size, license, Download with progress, Remove), then docs and a browser check. |
 | Last updated | 2026-10-16 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7d part 2a: the ONNX Runtime Web runner and the on-device tasks. |
+| Last finished step | Phase 7d part 2b: the on-device adapter and the built-in On-device models provider. |
 | In progress | Phase 7d: on-device models |
 | Next steps | Phase 7c, then 7d (on-device models) and 7e (remote engine and external API adapters). |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -1001,3 +1001,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7c | Phase 7c done. On a 1024 x 1024 image the RTX 5090 runs the model filters 6 to 25 times faster than the CPU (DnCNN 0.07 against 0.45 s, Real-ESRGAN 0.33 against 2.81 s, HED 0.09 against 0.47 s, style 0.05 against 0.55 s, BiRefNet lite 0.13 against 3.21 s), and CUDA and CPU results differ by at most 1 to 2 levels. | Phase 7d: on-device models with ONNX Runtime Web. |
 | 2026-10-16 | 7d | Phase 7d part 1. onnxruntime-web 1.30.0 added (the newest past the 14 day pnpm age rule). Model sources checked for CORS: Hugging Face, raw.githubusercontent and media.githubusercontent send it, GitHub release downloads do not, so u2netp gains a browserUrl, a Hugging Face copy whose server hash equals the pinned SHA-256 (schema field browserUrl). web/src/core/ai/ondevice/store.ts downloads a model only on request, checks every file's SHA-256 with crypto.subtle, and keeps it in Cache Storage keyed by the hash; only ONNX models marked on-device are offered. 3 unit tests. | Phase 7d part 2: the ONNX Runtime Web runner (WebGPU, else WebAssembly), the on-device tasks (u2netp subject, Swin2SR 2x, EfficientSAM clicks), the built-in On-device models provider and its download list. |
 | 2026-10-16 | 7d | Phase 7d part 2a. web/src/core/ai/ondevice/runtime.ts loads ONNX Runtime Web (the WebGPU bundle, which loads ort-wasm-simd-threaded.asyncify.wasm, 26.8 MB) only on first use, with WebGPU when an adapter exists and WebAssembly otherwise. tasks.ts holds the on-device tasks with each source's processing: u2netp subject as rembg, Swin2SR 2x as the Transformers processor (symmetric padding past the next multiple of 8, which always pads), EfficientSAM clicks and boxes as its ONNX example, refusing negative clicks. 9 unit tests with fake networks. | Phase 7d part 2b: the on-device adapter, the built-in On-device models provider, and the download list in the AI providers dialog. |
+| 2026-10-16 | 7d | Phase 7d part 2b. web/src/app/onDeviceAdapter.ts runs the on-device tasks with ONNX Runtime Web from the browser cache, picks the first model of the task that runs on the device (u2netp, EfficientSAM tiny, Swin2SR 2x), and never downloads: a missing model names itself and where to download it. A built-in On-device models provider joins Local engine models. The no-adapter test now uses a remote engine, which gets its adapter in 7e. 2 unit tests. | Phase 7d part 3: the On-device models list in the AI providers dialog (size, license, Download with progress, Remove), docs, and a browser check. |
