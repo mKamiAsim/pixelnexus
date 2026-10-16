@@ -8,6 +8,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     blobs,
     contours,
     directional,
+    edge_preserving,
     hough,
     inpainting,
     interactive,

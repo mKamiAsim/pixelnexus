@@ -1,11 +1,139 @@
 id: tv-denoise
 name: Total variation denoising
-aliases:
-- Rudin-Osher-Fatemi denoising
-- ROF denoising
+aliases: [Rudin-Osher-Fatemi denoising, ROF denoising, TV denoising]
 family: nonlinear
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers.
+
+summary: Finds the image closest to yours with the least total variation, the model of Rudin, Osher and Fatemi. Total variation adds up the size of the gradient, so noise costs a lot, while one sharp edge costs only its height. The result has flat areas with sharp edges between them.
+purpose: Remove noise while keeping edges sharp, and show how an energy defines a filter.
+classification: {linearity: nonlinear, domain: iterative, operation: total variation minimization}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: tv_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness
+  scope, only luma is filtered and the colors stay. With the color scope, only Cb and Cr are
+  filtered.
+boundary: The scikit-image solvers handle the image edge themselves. PixelNexus pads nothing.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.restoration.denoise_tv_chambolle and denoise_tv_bregman.'}
+
+params:
+  - key: weight
+    label: Smoothing weight
+    type: number
+    min: 0.001
+    max: 2
+    step: 0.001
+    default: 0.1
+    description: The weight w = 1 / lambda, on the image from 0 to 1. Chambolle gets w, and split Bregman gets 1 / (2 w). That is how the scikit-image docstrings relate the two. scikit-image uses 0.1 for Chambolle and 5 for split Bregman, the same lambda.
+    effect: Higher values give flatter areas and remove more detail.
+  - key: solver
+    label: Solver
+    type: select
+    default: chambolle
+    options:
+      - {value: chambolle, label: Chambolle}
+      - {value: bregman, label: Split Bregman}
+    description: Chambolle's dual projection, or the split Bregman method of Goldstein and Osher, both from scikit-image. They do not give the same image at the same weight, see the docs page.
+    effect: Split Bregman can also use the anisotropic total variation.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 2000
+    step: 1
+    default: 200
+    description: The most steps. scikit-image uses 200 for Chambolle and 100 for split Bregman. Each solver also stops at its own tolerance.
+    effect: More steps get closer to the minimum.
+  - key: isotropic
+    label: Isotropic
+    type: boolean
+    default: true
+    description: For split Bregman only. On, the gradient size is the square root of the sum of squares. Off, it is the sum of the absolute values, which favors edges along the axes. scikit-image uses isotropic.
+    effect: Off, round shapes turn slightly blocky.
+  - ref: channelScope
+    default: rgb
+formula: |
+  \min_u \ \sum_x \lvert \nabla u(x) \rvert + \frac{\lambda}{2} \sum_x \bigl(f(x) - u(x)\bigr)^2,
+  \qquad
+  \lambda = \frac{1}{w}
+formulaExplanation: >-
+  f is the noisy image and u the result. The first sum is the total variation of u, the size of
+  its gradient added over the image. The second sum keeps u close to f, weighed by lambda.
+  Rudin, Osher and Fatemi chose total variation because it charges an edge only for its height,
+  not its steepness. So the minimum keeps sharp edges and flattens small wiggles. Chambolle
+  solves the problem through its dual, a projection that repeats until the energy settles.
+  Goldstein and Osher split the gradient into its own variable and solve two simpler problems
+  in turn. Both run on the image from 0 to 1.
+symbols:
+  - {symbol: 'f', meaning: 'The noisy image'}
+  - {symbol: 'u', meaning: 'The result'}
+  - {symbol: '\lambda', meaning: 'The weight of closeness to f'}
+  - {symbol: 'w', meaning: 'The smoothing weight'}
+steps:
+  - Scale the channel from 0 to 1.
+  - Run the chosen solver until it settles or reaches the most steps.
+  - Scale back to pixel levels.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels and K the number of steps.
+useCases:
+  - Noisy images with flat areas and sharp edges, such as drawings and scans.
+  - Teaching variational methods.
+advantages:
+  - Keeps edges sharp while it removes noise.
+  - A single weight with a clear meaning.
+limitations:
+  - Turns smooth shading into steps.
+  - Removes small, low-contrast detail and texture.
+artifacts:
+  - Staircasing, flat terraces in smooth ramps.
+  - A slight loss of contrast in small objects.
+references:
+  - kind: paper
+    text: Rudin, L. I., Osher, S., and Fatemi, E. Nonlinear total variation based noise removal algorithms. Physica D, Nonlinear Phenomena 60(1 to 4), 259 to 268, 1992.
+    doi: 10.1016/0167-2789(92)90242-F
+  - kind: paper
+    text: Chambolle, A. An algorithm for total variation minimization and applications. Journal of Mathematical Imaging and Vision 20(1 to 2), 89 to 97, 2004.
+    doi: 10.1023/B:JMIV.0000011325.36760.1e
+  - kind: paper
+    text: Goldstein, T., and Osher, S. The split Bregman method for L1-regularized problems. SIAM Journal on Imaging Sciences 2(2), 323 to 343, 2009.
+    doi: 10.1137/080725891
+  - kind: library
+    text: scikit-image documentation, skimage.restoration.denoise_tv_chambolle and denoise_tv_bregman.
+implementation: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: tv_denoise}
+tests: [engine/tests/test_edge_preserving.py]
+learn:
+  oneSentence: Find the image closest to yours that has the least wiggle, which flattens noise but keeps edges.
+  howItWorks:
+    - Measure how much the image wiggles, as the sum of its gradient sizes.
+    - Look for an image that wiggles less but stays close to yours.
+    - Noise wiggles a lot, so it goes. An edge is one step, so it stays.
+  academic: >-
+    The Rudin-Osher-Fatemi model, solved with Chambolle's dual projection or the split Bregman
+    method, as in scikit-image.
+  paramNotes:
+    weight: How flat the result may get.
+    solver: Which algorithm solves the problem.
+    iterations: The most steps.
+    isotropic: Round or axis-favoring total variation.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Filter a smooth gradient with a high weight. It turns into steps.
+  pitfalls:
+    - Photos with fine texture. It looks like a painting at high weights.
+  demos: [line-profile, noise-lab]
+related: [nlm, tv-deblur, bilateral, anisotropic-diffusion]
+docsPage: filters/nonlinear/tv-denoise.md

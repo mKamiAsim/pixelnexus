@@ -5,4 +5,4 @@ tier: advanced
 engine: science
 phase: 6f
 status: planned
-planNotes: Treece.
+planNotes: Treece. Deferred on 2026-10-16, since the paper with the exact algorithm could not be reached. Implement from the paper, not from memory.

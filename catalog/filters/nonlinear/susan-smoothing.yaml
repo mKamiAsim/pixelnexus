@@ -1,8 +1,113 @@
 id: susan-smoothing
 name: SUSAN noise filter
+aliases: [SUSAN smoothing, SUSAN structure-preserving noise reduction]
 family: nonlinear
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: Smith and Brady.
+
+summary: Averages each pixel with neighbors of similar brightness, after Smith and Brady. The weights fall with distance and with the brightness difference, and the pixel itself is left out, so a single noisy pixel cannot keep its own value. Where no neighbor is similar, it takes the median of its 8 neighbors.
+purpose: Remove noise, including single bright or dark pixels, while keeping edges and corners.
+classification: {linearity: nonlinear, domain: spatial, operation: brightness-weighted averaging}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: susan_smoothing_representation}
+supportRadius: 'ceil(2 * sigma)'
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness
+  scope, only luma is filtered and the colors stay. With the color scope, only Cb and Cr are
+  filtered.
+boundary: The edge pixels repeat outward.
+dependencies: []
+
+params:
+  - key: threshold
+    label: Brightness threshold
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 20
+    unit: levels
+    description: The brightness threshold t. Neighbors that differ by much more than t barely count. It should be above the noise and below the contrast of the edges to keep. 20 is our choice.
+    effect: Higher values remove stronger noise and start to blur weak edges.
+  - key: sigma
+    label: Spatial sigma
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 2
+    unit: px
+    description: The sigma of the spatial Gaussian. The window reaches ceil(2 sigma) pixels in each direction, our choice. 2 is our choice.
+    effect: Larger values average over more pixels.
+  - ref: channelScope
+    default: rgb
+formula: |
+  J(x) = \frac{\sum_{d \ne 0} I(x + d) \, e^{-\frac{\lvert d \rvert^2}{2\sigma^2} - \frac{(I(x + d) - I(x))^2}{t^2}}}{\sum_{d \ne 0} e^{-\frac{\lvert d \rvert^2}{2\sigma^2} - \frac{(I(x + d) - I(x))^2}{t^2}}}
+formulaExplanation: >-
+  Each neighbor x + d gets a weight that falls with its distance, by a Gaussian of sigma. It also
+  falls with the brightness difference from the center, by a Gaussian of the threshold t. So the neighbors
+  that count are those on the same side of an edge, the univalue segment of Smith and Brady. The
+  sums leave out d = 0, the center itself. So a single noisy pixel is replaced by its similar
+  neighbors, or, when none is similar enough that a weight remains, by the median of its 8
+  neighbors.
+symbols:
+  - {symbol: 'J(x)', meaning: 'The result at pixel x'}
+  - {symbol: 'I', meaning: 'The image channel'}
+  - {symbol: 'd', meaning: 'The offset of a neighbor'}
+  - {symbol: '\sigma', meaning: 'The spatial sigma'}
+  - {symbol: 't', meaning: 'The brightness threshold'}
+steps:
+  - For each pixel, weigh every neighbor in the window by distance and by brightness difference.
+  - Leave out the pixel itself.
+  - Replace the pixel with the weighted mean.
+  - Where every weight is 0, use the median of the 8 neighbors.
+complexity:
+  time: O(N R^2)
+  memory: O(N)
+  notes: N is the number of pixels and R the window radius.
+useCases:
+  - Noise with single bright or dark pixels as well as Gaussian noise.
+  - Smoothing before the SUSAN edge and corner detectors.
+advantages:
+  - Keeps edges and corners, since it only averages within the same brightness.
+  - Leaving out the center removes single noisy pixels.
+limitations:
+  - Noise much stronger than the threshold stays.
+  - The threshold must fit both the noise and the edges, which is hard in images with mixed contrast.
+artifacts:
+  - Flat, cartoon-like areas at high thresholds.
+references:
+  - kind: paper
+    text: Smith, S. M., and Brady, J. M. SUSAN, a new approach to low level image processing. International Journal of Computer Vision 23(1), 45 to 78, 1997.
+    doi: 10.1023/A:1007963824710
+implementation: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: susan_smoothing}
+tests: [engine/tests/test_edge_preserving.py]
+learn:
+  oneSentence: Average each pixel with nearby pixels of similar brightness, but never with itself.
+  howItWorks:
+    - Look at the neighbors around a pixel.
+    - Count the ones with similar brightness the most, and close ones more than far ones.
+    - Replace the pixel with their weighted average, leaving the pixel itself out.
+  academic: >-
+    SUSAN structure-preserving noise reduction of Smith and Brady, with Gaussian weights in
+    space and brightness, the center excluded and a median fallback.
+  paramNotes:
+    threshold: How different a neighbor may be and still count.
+    sigma: How far the averaging reaches.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Add salt and pepper noise, then compare this filter with the bilateral filter.
+  pitfalls:
+    - A threshold below the noise level. The noise stays.
+  demos: [line-profile, noise-lab]
+related: [bilateral, susan-corner, susan-edge, median]
+docsPage: filters/nonlinear/susan-smoothing.md

@@ -171,6 +171,11 @@ nav:
           - Kuwahara filter: filters/nonlinear/kuwahara.md
           - Nagao-Matsuyama filter: filters/nonlinear/nagao-matsuyama.md
           - Bilateral filter: filters/nonlinear/bilateral.md
+          - Non-local means: filters/nonlinear/nlm.md
+          - Total variation denoising: filters/nonlinear/tv-denoise.md
+          - Domain transform filter: filters/nonlinear/domain-transform.md
+          - Rolling guidance filter: filters/nonlinear/rolling-guidance.md
+          - SUSAN noise filter: filters/nonlinear/susan-smoothing.md
           - Joint bilateral filter: filters/nonlinear/joint-bilateral.md
           - Guided filter: filters/nonlinear/guided.md
           - Anisotropic diffusion: filters/nonlinear/anisotropic-diffusion.md

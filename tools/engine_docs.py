@@ -56,6 +56,13 @@ from pixelnexus_engine.filters.directional import (
     directional_shearlet,
     frequency_grid,
 )
+from pixelnexus_engine.filters.edge_preserving import (
+    domain_transform,
+    nlm,
+    rolling_guidance,
+    susan_smoothing,
+    tv_denoise,
+)
 from pixelnexus_engine.filters.hough import (
     circle_rows,
     edges,
@@ -2983,6 +2990,137 @@ def grabcut_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Edge-preserving denoising ----------------------------------------------------------------------
+
+
+def denoise_clean() -> Gray:
+    """The disk and the square of the contour scene, slightly blurred, with no noise."""
+    round_part, square = contour_truth()
+    gray = np.full((160, 160), 50.0)
+    gray[round_part] = 190
+    gray[square] = 160
+    return to_8bit(np.asarray(ndimage.gaussian_filter(gray, 1.5)))
+
+
+def dotted_texture() -> Gray:
+    """The disk and the square on a ground with a grid of bright dots, 2 pixels wide, every 8."""
+    gray = denoise_clean().astype(np.float64)
+    for r in range(4, 160, 8):
+        for c in range(4, 160, 8):
+            gray[r : r + 2, c : c + 2] += 60
+    return to_8bit(gray)
+
+
+EDGE_PRESERVING: dict[str, tuple[Any, list[dict[str, Any]], list[str]]] = {
+    "nlm": (
+        nlm,
+        [{"h": h, "sigma": s} for h in (10, 16, 25.5) for s in (0, 20)],
+        ["h", "sigma"],
+    ),
+    "tv-denoise": (
+        tv_denoise,
+        [{"weight": w, "solver": s} for w in (0.05, 0.1, 0.2) for s in ("chambolle", "bregman")],
+        ["weight", "solver"],
+    ),
+    "domain-transform": (
+        domain_transform,
+        [{"sigmaSpatial": s, "sigmaColor": c} for s in (10, 30, 60) for c in (40, 80, 120)],
+        ["sigmaSpatial", "sigmaColor"],
+    ),
+    "rolling-guidance": (
+        rolling_guidance,
+        [{"start": s, "sigmaColor": c} for s in ("paper", "opencv") for c in (25, 50)],
+        ["start", "sigmaColor"],
+    ),
+    "susan-smoothing": (
+        susan_smoothing,
+        [{"threshold": t, "sigma": s} for t in (10, 20, 40) for s in (1, 2)],
+        ["threshold", "sigma"],
+    ),
+}
+FIGURE_SETTINGS: dict[str, list[tuple[str, dict[str, Any]]]] = {
+    "nlm": [("Defaults", {}), ("h = 10", {"h": 10}), ("h = 16, sigma 20", {"h": 16, "sigma": 20})],
+    "tv-denoise": [
+        ("Weight 0.1", {}),
+        ("Weight 0.4", {"weight": 0.4}),
+        ("Split Bregman", {"solver": "bregman"}),
+    ],
+    "domain-transform": [
+        ("Defaults", {}),
+        ("Color sigma 40", {"sigmaColor": 40}),
+        ("Recursive", {"mode": "rf"}),
+    ],
+    "rolling-guidance": [
+        ("Paper start", {}),
+        ("OpenCV start", {"start": "opencv"}),
+        ("Scale 1.5", {"sigmaSpace": 1.5}),
+    ],
+    "susan-smoothing": [
+        ("t = 20", {}),
+        ("t = 40", {"threshold": 40}),
+        ("t = 10", {"threshold": 10}),
+    ],
+}
+
+
+def edge_preserving_docs(out: dict[Path, str], filter_id: str) -> None:
+    function, settings, keys = EDGE_PRESERVING[filter_id]
+    textured = filter_id == "rolling-guidance"
+    clean = dotted_texture() if textured else denoise_clean()
+    noisy_image = noisy(clean, 20, seed=1)
+    source = clean if textured else noisy_image
+    reference = denoise_clean()
+    figure(
+        out,
+        filter_id,
+        (
+            "A disk and a square on a ground with a grid of small bright dots, and no noise. "
+            if textured
+            else "A disk and a square, slightly blurred, with noise of sigma 20. "
+        )
+        + "Then the filter with "
+        + ", ".join(label for label, _ in FIGURE_SETTINGS[filter_id])
+        + ".",
+        [{"title": "Input", "image": picture(source)}]
+        + [
+            {"title": label, "image": picture(run(function, source, filter_id, **values))}
+            for label, values in FIGURE_SETTINGS[filter_id]
+        ],
+    )
+    rows = []
+    for values in settings:
+        result = run(function, source, filter_id, **values)
+        rows.append(
+            [str(values[k]) if isinstance(values[k], str) else f"{values[k]:g}" for k in keys]
+            + [fix(psnr(result, reference), 2)]
+        )
+    labels = {
+        "h": "Strength h",
+        "sigma": "Sigma",
+        "weight": "Weight",
+        "solver": "Solver",
+        "sigmaSpatial": "Spatial sigma",
+        "sigmaColor": "Color sigma",
+        "start": "Start",
+        "threshold": "Threshold t",
+    }
+    if textured:
+        note = (
+            "\nThe image of the figure, with the other defaults. The PSNR compares the result with "
+            "the same image without the dots, so it is higher when more of the dots are gone. "
+            f"The input itself scores {fix(psnr(source, reference), 2)} dB.\n"
+        )
+    else:
+        note = (
+            "\nThe image of the figure, with the other defaults. The PSNR compares the result with "
+            f"the image before the noise. The noisy input scores {fix(psnr(source, reference), 2)} "
+            "dB.\n"
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id) + md_table([labels[k] for k in keys] + ["PSNR (dB)"], rows) + note
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -3100,6 +3238,8 @@ def build() -> dict[Path, str]:
     seeded_docs(out, "graph-cut")
     seeded_docs(out, "random-walker")
     grabcut_docs(out)
+    for filter_id in EDGE_PRESERVING:
+        edge_preserving_docs(out, filter_id)
     structured_edge_docs(out)
     return out
 

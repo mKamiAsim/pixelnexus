@@ -1,8 +1,152 @@
 id: nlm
 name: Non-local means
+aliases: [NL-means, Non-local means denoising, NLM]
 family: nonlinear
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: scikit-image.
+
+summary: Replaces each pixel with a weighted mean of pixels whose surrounding patches look alike, after Buades, Coll and Morel. The similar pixels can be anywhere in the search window, not only next to it, so repeated textures and edges average with copies of themselves.
+purpose: Remove Gaussian noise while keeping edges and repeated detail.
+classification: {linearity: nonlinear, domain: statistical, operation: patch similarity averaging}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: nlm_representation}
+supportRadius: patchDistance + patchSize
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness
+  scope, only luma is filtered and the colors stay. With the color scope, only Cb and Cr are
+  filtered.
+boundary: scikit-image pads the plane by reflection.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.restoration.denoise_nl_means.'}
+
+params:
+  - key: h
+    label: Filter strength
+    type: number
+    min: 1
+    max: 100
+    step: 0.5
+    default: 25.5
+    unit: levels
+    description: The cut-off distance h of the patch weights. scikit-image uses 0.1 of the range, which is 25.5 levels.
+    effect: Higher values average patches that differ more, so they remove more noise and more detail.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    unit: levels
+    description: The standard deviation of the noise, if you know it. Above 0, scikit-image subtracts the expected noise from the patch distances. scikit-image uses 0.
+    effect: With sigma set, a lower filter strength removes the same noise. scikit-image suggests a strength of about 0.8 sigma in the fast mode.
+  - key: patchSize
+    label: Patch size
+    type: integer
+    min: 3
+    max: 15
+    step: 1
+    default: 7
+    unit: px
+    description: The side of the square patches that are compared. scikit-image uses 7.
+    effect: Larger patches match structure more reliably and take longer.
+  - key: patchDistance
+    label: Search distance
+    type: integer
+    min: 1
+    max: 30
+    step: 1
+    default: 11
+    unit: px
+    description: How far from the pixel, in each direction, patches are searched. scikit-image uses 11.
+    effect: A larger window finds more similar patches and takes much longer.
+  - key: fastMode
+    label: Fast mode
+    type: boolean
+    default: true
+    description: The fast mode of Darbon et al. weighs every pixel of a patch the same. Off, scikit-image weighs the patch with a Gaussian, as Buades, Coll and Morel did. scikit-image uses the fast mode.
+    effect: The fast mode is much quicker and slightly less exact.
+  - ref: channelScope
+    default: rgb
+formula: |
+  u(x) = \frac{1}{C(x)} \sum_{y \in W(x)} e^{-\frac{d(x, y)^2}{h^2}} f(y),
+  \qquad
+  d(x, y)^2 = \frac{1}{\lvert P \rvert} \lVert P(x) - P(y) \rVert^2
+formulaExplanation: >-
+  P(x) is the patch around pixel x and d the distance between two patches, the mean squared
+  difference of their pixels. Each pixel y in the search window W(x) gets a weight that falls
+  with the patch distance, with the strength h. C(x) is the sum of the weights. So pixels whose
+  surroundings look like the surroundings of x count the most, wherever they are in the window.
+  Noise does not repeat, while edges and textures do. So averaging similar patches removes noise
+  and keeps structure. With the noise sigma set, scikit-image subtracts the noise expected in the
+  patch distance first.
+symbols:
+  - {symbol: 'P(x)', meaning: 'The patch around pixel x'}
+  - {symbol: 'd(x, y)', meaning: 'The distance between the patches of x and y'}
+  - {symbol: 'h', meaning: 'The filter strength'}
+  - {symbol: 'W(x)', meaning: 'The search window around x'}
+  - {symbol: 'C(x)', meaning: 'The sum of the weights'}
+steps:
+  - Take the patch around each pixel.
+  - Compare it with the patch around every pixel of the search window.
+  - Weigh each pixel by how alike the patches are.
+  - Replace the pixel with the weighted mean.
+complexity:
+  time: O(N D^2)
+  memory: O(N)
+  notes: N is the number of pixels and D the side of the search window. The fast mode does not depend on the patch size.
+useCases:
+  - Photos with Gaussian noise, such as high ISO shots.
+  - Textures and repeated patterns, which find many copies of themselves.
+advantages:
+  - Keeps edges and fine repeated detail better than local smoothing.
+  - Few settings, with a clear meaning.
+limitations:
+  - Slow for large search windows.
+  - Unique detail, with no similar patch, stays noisy or is smoothed away.
+artifacts:
+  - A slightly painted look at high strength.
+  - Faint noise left around edges, which find few similar patches.
+references:
+  - kind: paper
+    text: Buades, A., Coll, B., and Morel, J.-M. A non-local algorithm for image denoising. IEEE Conference on Computer Vision and Pattern Recognition (CVPR), volume 2, 60 to 65, 2005.
+    doi: 10.1109/CVPR.2005.38
+  - kind: paper
+    text: Darbon, J., Cunha, A., Chan, T. F., Osher, S., and Jensen, G. J. Fast nonlocal filtering applied to electron cryomicroscopy. IEEE International Symposium on Biomedical Imaging, 1331 to 1334, 2008.
+    doi: 10.1109/ISBI.2008.4541250
+  - kind: library
+    text: scikit-image documentation, skimage.restoration.denoise_nl_means.
+implementation: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: nlm}
+tests: [engine/tests/test_edge_preserving.py]
+learn:
+  oneSentence: Each pixel is averaged with pixels whose surroundings look the same, wherever they are nearby.
+  howItWorks:
+    - Look at the small patch around a pixel.
+    - Find patches nearby that look like it.
+    - Average the pixels at the centers of those patches, the most similar counting most.
+  academic: >-
+    Non-local means of Buades, Coll and Morel, with the fast mode of Darbon et al., as in
+    scikit-image.
+  paramNotes:
+    h: How different patches may be and still count.
+    sigma: The noise level, if known.
+    patchSize: The size of the compared patches.
+    patchDistance: How far to search.
+    fastMode: Faster, slightly less exact weighing.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Add Gaussian noise to a photo, then compare non-local means with a Gaussian blur.
+  pitfalls:
+    - A large search distance on a large image. It takes a long time.
+  demos: [line-profile, noise-lab]
+related: [bilateral, tv-denoise, wavelet-threshold, bm3d-lite]
+docsPage: filters/nonlinear/nlm.md

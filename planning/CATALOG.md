@@ -84,14 +84,14 @@ Requirements 1 also lists the ideal and Butterworth low-pass filters here. They 
 | guided | Guided filter | Box filters, linear cost. | Core | Browser | 5b |
 | anisotropic-diffusion | Anisotropic diffusion | Perona-Malik. | Core | Browser | 5b |
 | vector-anisotropic-diffusion | Vector anisotropic diffusion | Color version with shared diffusivity. | Core | Browser | 5b |
-| domain-transform | Domain transform filter | OpenCV ximgproc. | Advanced | Science | 6f |
-| rolling-guidance | Rolling guidance filter | OpenCV ximgproc. | Advanced | Science | 6f |
-| nlm | Non-local means | scikit-image. | Advanced | Science | 6f |
-| tv-denoise | Total variation denoising | Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers. | Advanced | Science | 6f |
+| domain-transform | Domain transform filter | OpenCV ximgproc. Done on 2026-10-16. | Advanced | Science | 6f |
+| rolling-guidance | Rolling guidance filter | OpenCV ximgproc. Done on 2026-10-16. | Advanced | Science | 6f |
+| nlm | Non-local means | scikit-image. Done on 2026-10-16. | Advanced | Science | 6f |
+| tv-denoise | Total variation denoising | Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers. Done on 2026-10-16. | Advanced | Science | 6f |
 | bm3d | BM3D | Optional `bm3d` package. License check before use. | Optional | Science | 6f |
 | bm3d-lite | BM3D-inspired denoising | Simplified two-stage version. Clearly labeled as simplified. | Advanced | Science | 6f |
-| susan-smoothing | SUSAN noise filter | Smith and Brady. | Advanced | Science | 6f |
-| bitonic | Bitonic filter | Treece. | Advanced | Science | 6f |
+| susan-smoothing | SUSAN noise filter | Smith and Brady. Done on 2026-10-16. | Advanced | Science | 6f |
+| bitonic | Bitonic filter | Treece. Deferred: the paper could not be reached. | Advanced | Science | 6f |
 | bilateral-solver | Bilateral solver | Large sparse solver. High effort for its teaching value. | Planned | none | |
 | bm4d | BM4D | Needs volumetric data. PixelNexus works on 2D images. | Unsupported | none | |
 

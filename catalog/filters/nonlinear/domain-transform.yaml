@@ -1,8 +1,132 @@
 id: domain-transform
 name: Domain transform filter
+aliases: [Domain transform, Edge-aware domain transform, Gastal-Oliveira filter]
 family: nonlinear
+tags: [purpose:smooth]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: OpenCV ximgproc.
+
+summary: Smooths the image while keeping edges, after Gastal and Oliveira, with OpenCV. Each row and column is stretched where the colors change, so pixels on two sides of an edge end up far apart. A fast 1-D filter in the stretched domain then smooths only within each side.
+purpose: Fast edge-aware smoothing, an alternative to the bilateral filter that does not slow down with large sigmas.
+classification: {linearity: nonlinear, domain: spatial, operation: edge-aware 1-D filtering in a transformed domain}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: domain_transform_representation}
+supportRadius: '3 * sigmaSpatial'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter smooths the 8-bit RGB image, guided by its own colors: the color change between
+  neighbors adds up over the three channels. The alpha stays.
+boundary: OpenCV handles the image edge inside the filter.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.ximgproc.dtFilter.'}
+
+params:
+  - key: sigmaSpatial
+    label: Spatial sigma
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 30
+    unit: px
+    description: The sigma H of the smoothing in the stretched domain, like the spatial sigma of a bilateral filter. 30 is our choice.
+    effect: Larger values smooth over larger areas.
+  - key: sigmaColor
+    label: Color sigma
+    type: number
+    min: 1
+    max: 255
+    step: 1
+    default: 80
+    unit: levels
+    description: The sigma r that says how large a color change counts as an edge. 80 is our choice.
+    effect: Smaller values keep weaker edges. Noise of a similar size also counts as edges then.
+  - key: mode
+    label: Mode
+    type: select
+    default: nc
+    options:
+      - {value: nc, label: Normalized convolution}
+      - {value: ic, label: Interpolated convolution}
+      - {value: rf, label: Recursive filter}
+    description: The 1-D filter of the paper. Normalized convolution averages a box in the stretched domain, interpolated convolution averages the interpolated signal, and the recursive filter is an exponential filter. OpenCV uses normalized convolution.
+    effect: The recursive filter is the fastest and smooths in a softer way.
+  - key: iterations
+    label: Passes
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 3
+    description: How many times the rows and columns are filtered, each pass with a smaller sigma. OpenCV uses 3.
+    effect: More passes remove the streaks that one pass along rows and columns leaves.
+formula: |
+  ct(u) = \int_0^u 1 + \frac{\sigma_s}{\sigma_r} \sum_{k=1}^{3} \lvert I_k'(x) \rvert \, dx
+formulaExplanation: >-
+  Gastal and Oliveira map each row, or column, to a new axis ct. A step of one pixel adds 1, plus
+  the color change between the two pixels times sigma s over sigma r. So in flat areas the new
+  axis looks like the old one, and at an edge it jumps far. A 1-D filter of sigma s along ct then
+  mixes pixels only when they are close on the new axis, which means close in space and in color.
+  Rows and columns take turns, and each pass uses a smaller sigma so that the passes together
+  smooth with sigma s. Every step is linear in the number of pixels, whatever the sigmas.
+symbols:
+  - {symbol: 'ct(u)', meaning: 'The position of pixel u on the stretched axis'}
+  - {symbol: '\sigma_s', meaning: 'The spatial sigma'}
+  - {symbol: '\sigma_r', meaning: 'The color sigma'}
+  - {symbol: 'I_k''', meaning: 'The change of channel k between neighbors'}
+steps:
+  - Stretch every row by the color changes along it.
+  - Filter each row in the stretched domain.
+  - Do the same along every column.
+  - Repeat with smaller sigmas for the given number of passes.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels and K the number of passes. It does not grow with the sigmas.
+useCases:
+  - Edge-aware smoothing of photos, for stylization or detail work.
+  - Fast previews where a bilateral filter is too slow.
+advantages:
+  - Very fast, at any sigma.
+  - Strong smoothing without blurring strong edges.
+limitations:
+  - Weak at removing noise, since noise also looks like edges at small color sigmas.
+  - Works along rows and columns, so diagonal edges can show faint streaks.
+artifacts:
+  - Streaks along rows and columns with few passes.
+references:
+  - kind: paper
+    text: Gastal, E. S. L., and Oliveira, M. M. Domain transform for edge-aware image and video processing. ACM Transactions on Graphics 30(4), 2011.
+    doi: 10.1145/2010324.1964964
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::dtFilter.
+implementation: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: domain_transform}
+tests: [engine/tests/test_edge_preserving.py]
+learn:
+  oneSentence: Stretch the image where colors change, so a blur cannot reach across edges.
+  howItWorks:
+    - Measure how much the color changes from pixel to pixel along a row.
+    - Put the pixels on a new line where a color change counts as a long distance.
+    - Blur along that line, so pixels across an edge barely mix.
+    - Do the same for columns, a few times.
+  academic: >-
+    The domain transform of Gastal and Oliveira, with normalized convolution, interpolated
+    convolution or recursive filtering, as in OpenCV.
+  paramNotes:
+    sigmaSpatial: How far the smoothing reaches.
+    sigmaColor: How large a color change counts as an edge.
+    mode: Which 1-D filter is used.
+    iterations: How many passes.
+  tryThis:
+    - Raise the spatial sigma to 100 on a photo. Areas turn flat while edges stay.
+  pitfalls:
+    - Strong noise. Lower color sigmas keep the noise as if it were detail.
+  demos: [line-profile, noise-lab]
+related: [bilateral, guided, rolling-guidance]
+docsPage: filters/nonlinear/domain-transform.md
