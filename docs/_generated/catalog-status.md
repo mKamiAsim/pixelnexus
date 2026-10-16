@@ -2,9 +2,9 @@
 
 | Status | Entries |
 |---|--:|
-| Implemented and tested | 289 |
+| Implemented and tested | 291 |
 | Available through an optional dependency | 1 |
 | Available through an optional pretrained model | 1 |
-| Planned but not implemented | 39 |
+| Planned but not implemented | 37 |
 | Unsupported or deprecated | 7 |
 | **Total** | **337** |

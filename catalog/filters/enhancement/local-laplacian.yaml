@@ -1,7 +1,147 @@
 id: local-laplacian
 name: Local Laplacian filtering
+aliases: [Local Laplacian filter, Local Laplacian filters, Fast local Laplacian filter]
 family: enhancement
+tags: [purpose:enhance, purpose:smooth]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
+planNotes: After Paris, Hasinoff and Kautz, with the fast algorithm of Aubry et al.
+
+summary: Raises or lowers fine detail without halos at strong edges, and can compress the edges themselves. It builds a Laplacian pyramid in which each coefficient comes from the image remapped around the local brightness, so small differences are treated as detail and large ones as edges. The fast algorithm of Aubry et al. samples the brightness at a fixed number of values and interpolates.
+purpose: Detail enhancement, detail smoothing and local tone compression that keep edges clean.
+classification: {linearity: nonlinear, domain: transform, operation: edge-aware detail manipulation}
+output: image
+representation: algorithm
+representationLabel: approximation
+representationSource: {path: engine/src/pixelnexus_engine/filters/local_laplacian.py, symbol: local_laplacian_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the intensity (20 R + 40 G + B) / 61, as Paris et al. do, and keeps the
+  color ratios R / I, G / I and B / I. Pure black pixels take the new intensity as gray. The
+  alpha stays.
+boundary: OpenCV's pyrDown and pyrUp reflect the image at its border (reflect 101).
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.pyrDown and cv2.pyrUp build the pyramids.'}
+
+params:
+  - key: sigmaR
+    label: Detail range sigma r
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.3
+    description: Brightness differences up to this size, on a scale from 0 to 1, count as detail, and larger ones as edges. 0.3 as in Figure 7 of Paris et al.
+    effect: Larger values let the filter change more of the image.
+  - key: alpha
+    label: Detail power alpha
+    type: number
+    min: 0.1
+    max: 4
+    step: 0.05
+    default: 0.5
+    description: The power of f_d(x) = x^alpha. Below 1, details grow, and above 1 they shrink. Our choice of 0.5.
+    effect: Lower values give stronger detail. 1 leaves details as they are.
+  - key: beta
+    label: Edge factor beta
+    type: number
+    min: 0
+    max: 2
+    step: 0.05
+    default: 1
+    description: The factor of f_e(a) = beta a. Below 1, edges are compressed. Paris et al. use 1 for detail manipulation.
+    effect: Lower values flatten large brightness changes, as in tone mapping.
+  - key: samples
+    label: Brightness samples
+    type: integer
+    min: 4
+    max: 64
+    step: 1
+    default: 16
+    description: How many values of g the fast algorithm samples from 0 to 1. Our choice of 16. On a small test image it came within 39 dB of the exact algorithm.
+    effect: More samples come closer to the exact algorithm and take longer.
+    advanced: true
+formula: |
+  r_g(i) = \begin{cases}
+    g + \operatorname{sign}(i - g)\, \sigma_r\, f_d\!\left(\frac{\lvert i - g \rvert}{\sigma_r}\right) & \lvert i - g \rvert \le \sigma_r \\
+    g + \operatorname{sign}(i - g) \left(f_e(\lvert i - g \rvert - \sigma_r) + \sigma_r\right) & \text{otherwise}
+  \end{cases},
+  \qquad
+  f_d(x) = x^{\alpha},\ f_e(a) = \beta a
+formulaExplanation: >-
+  Paris et al. compute each coefficient of the output's Laplacian pyramid on its own. g is the
+  value of the Gaussian pyramid at that place and level. They remap the image around g with r_g
+  and copy the coefficient from the Laplacian pyramid of the remapped image. Differences from g up to sigma_r
+  are details, scaled by f_d. Larger ones are edges, scaled by f_e. Because the remapping is
+  centered on the local brightness, an edge stays an edge and makes no halo. To stop noise from
+  growing when alpha is below 1, f_d blends back to x for differences under 1 to 2 percent of the
+  largest intensity. Aubry et al. compute the remapped pyramids only for a few values of g and
+  interpolate between them.
+symbols:
+  - {symbol: 'r_g', meaning: 'The remapping function around g'}
+  - {symbol: 'g', meaning: 'The Gaussian pyramid coefficient, the local brightness'}
+  - {symbol: '\sigma_r', meaning: 'The largest difference that counts as detail'}
+  - {symbol: '\alpha', meaning: 'The detail power'}
+  - {symbol: '\beta', meaning: 'The edge factor'}
+steps:
+  - Take the intensity of the image and its color ratios.
+  - Build the Gaussian pyramid of the intensity.
+  - For each sampled value of g, remap the intensity around it and build its Laplacian pyramid.
+  - For each coefficient, interpolate between the two pyramids whose g values bracket the Gaussian pyramid value.
+  - Keep the coarsest level of the Gaussian pyramid, and collapse the pyramid.
+  - Put the color back with the ratios.
+complexity:
+  time: O(K N)
+  memory: O(K N)
+  notes: N is the number of pixels and K the number of brightness samples.
+useCases:
+  - Bringing out texture and fine detail in photos without halos.
+  - Smoothing skin or noise-free texture while keeping edges.
+  - Local tone compression with beta below 1.
+advantages:
+  - No halos at strong edges, unlike unsharp masking.
+  - Three settings with a clear meaning each.
+limitations:
+  - The fast algorithm approximates the exact one, which would be far slower.
+  - Strong detail boosts can bring out noise and compression artifacts, despite the guard against small differences.
+artifacts:
+  - Grain in flat areas with a low alpha.
+  - Flat, cartoon-like areas with a high alpha.
+references:
+  - kind: paper
+    text: Paris, S., Hasinoff, S. W., and Kautz, J. Local Laplacian filters. Edge-aware image processing with a Laplacian pyramid. ACM Transactions on Graphics 30(4), article 68, 2011.
+    doi: 10.1145/2010324.1964963
+  - kind: paper
+    text: Aubry, M., Paris, S., Hasinoff, S. W., Kautz, J., and Durand, F. Fast local Laplacian filters. Theory and applications. ACM Transactions on Graphics 33(5), article 167, 2014.
+    doi: 10.1145/2629645
+  - kind: paper
+    text: Burt, P. J., and Adelson, E. H. The Laplacian pyramid as a compact image code. IEEE Transactions on Communications 31(4), 532 to 540, 1983.
+    doi: 10.1109/TCOM.1983.1095851
+implementation: {path: engine/src/pixelnexus_engine/filters/local_laplacian.py, symbol: local_laplacian}
+tests: [engine/tests/test_local_laplacian.py]
+learn:
+  oneSentence: Strengthen or soften fine detail at every scale while strong edges stay clean.
+  howItWorks:
+    - Split the image into layers of detail at each scale, from fine to coarse.
+    - At each place, treat small changes around the local brightness as detail and large ones as edges.
+    - Scale the detail up or down, leave the edges, and put the layers back together.
+  academic: >-
+    Local Laplacian filtering of Paris et al. on the intensity, with power-law detail remapping,
+    linear edge remapping, and the sampled fast algorithm of Aubry et al.
+  paramNotes:
+    sigmaR: What counts as detail.
+    alpha: Detail stronger or weaker.
+    beta: Edges kept or compressed.
+    samples: Accuracy of the fast algorithm.
+  tryThis:
+    - Set alpha to 0.25 on a photo with texture, then compare with unsharp masking at the edges.
+    - Set alpha to 4 to smooth texture while edges stay sharp.
+  pitfalls:
+    - A sigma r larger than the edges you want to keep. They are then treated as detail.
+  demos: [line-profile]
+related: [unsharp-mask, bilateral-tonemap, detail-enhance, laplacian-pyramid]
+docsPage: filters/enhancement/local-laplacian.md

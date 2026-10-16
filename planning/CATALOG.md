@@ -226,7 +226,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | hysteresis | Hysteresis thresholding | Works on any response map. | Core | Browser | 5c |
 | deriche | Deriche | OpenCV ximgproc gradients. Done on 2026-10-16. | Advanced | Science | 6f |
 | shen-castan | Shen-Castan | ISEF filter, with our simplified gradient and hysteresis stage. Done on 2026-10-16. | Advanced | Science | 6f |
-| susan-edge | SUSAN edge detector | | Advanced | Science | 6f |
+| susan-edge | SUSAN edge detector | Our own code after Smith and Brady; a minimum length replaces their thinning rules. Done on 2026-10-16. | Advanced | Science | 6f |
 | phase-congruency | Phase congruency | Kovesi method with log-Gabor filters. Cross-listed in texture. Our own code after phasecong3. Done on 2026-10-16. | Advanced | Science | 6d |
 | hough-linking | Hough-based edge linking | Canny then probabilistic Hough. Done on 2026-10-16. | Advanced | Science | 6d |
 | structured-edge | Structured Edge Detector | Needs a downloaded model file. License check first. Done on 2026-10-16 as an optional model (non-commercial license), downloaded on a click. | Optional | Science | 6d |
@@ -306,7 +306,7 @@ The groups below follow requirements 1: point operations, color transformations,
 | chroma-denoise | Chroma denoising | Denoises chroma only. | Core | Browser | 5f |
 | demosaic | Demosaicing | Simulates a Bayer mosaic, then demosaics (bilinear and Malvar-He-Cutler). | Core | Browser | 5f |
 | color-threshold | Color threshold | Binary output from HSV ranges. | Core | Browser | 5f |
-| local-laplacian | Local Laplacian filtering | | Advanced | Science | 6f |
+| local-laplacian | Local Laplacian filtering | After Paris et al., with the fast algorithm of Aubry et al. Done on 2026-10-16. | Advanced | Science | 6f |
 | tone-mapping | Tone mapping | Reinhard, Drago and Mantiuk through OpenCV. Done on 2026-10-16, figure still to add. | Advanced | Science | 6f |
 
 **Workflow options, not separate filters.** Luminance-only filtering, color-space filtering and per-channel filtering are a "Channel scope" option on every filter that supports it: RGB, per channel, luminance only, chroma only. They are built in Phase 3 and documented as options.

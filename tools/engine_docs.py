@@ -82,6 +82,7 @@ from pixelnexus_engine.filters.interactive import (
     walker_probability,
 )
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
+from pixelnexus_engine.filters.local_laplacian import local_laplacian
 from pixelnexus_engine.filters.matched import correlation_map, matched_filter, ncc_map
 from pixelnexus_engine.filters.mser import mser
 from pixelnexus_engine.filters.phase import phase_congruency, phase_congruency_filter
@@ -130,7 +131,7 @@ from pixelnexus_engine.filters.structured_edge import MODEL_ID, structured_edge
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
 from pixelnexus_engine.filters.surf import surf_inspired
-from pixelnexus_engine.filters.susan import susan_corner
+from pixelnexus_engine.filters.susan import susan_corner, susan_edge, susan_edge_stages
 from pixelnexus_engine.filters.texture import glcm, hog_filter, hog_view, lbp, ltp, ltp_codes
 from pixelnexus_engine.filters.tone import tone_mapping
 from pixelnexus_engine.filters.tree_morphology import (
@@ -3449,6 +3450,24 @@ def deriche_docs(out: dict[Path, str]) -> None:
 # Shen-Castan ------------------------------------------------------------------------------------
 
 
+def contour_outline() -> NDArray[np.bool_]:
+    """The border of the disk and the square of contour_scene, before the blur and the noise."""
+    round_part, square = contour_truth()
+    shapes = round_part | square
+    out: NDArray[np.bool_] = shapes & ~ndimage.binary_erosion(shapes)
+    return out
+
+
+def outline_scores(edges: NDArray[np.bool_], outline: NDArray[np.bool_]) -> tuple[float, float]:
+    """The percent of edge pixels within 2 px of the outline, and of the outline within 2 px of
+    an edge pixel."""
+    if not edges.any():
+        return 0.0, 0.0
+    near = float(np.mean(ndimage.distance_transform_edt(~outline)[edges] <= 2)) * 100
+    found = float(np.mean(ndimage.distance_transform_edt(~edges)[outline] <= 2)) * 100
+    return near, found
+
+
 def shen_castan_docs(out: dict[Path, str]) -> None:
     filter_id = "shen-castan"
     scene = contour_scene()
@@ -3467,17 +3486,12 @@ def shen_castan_docs(out: dict[Path, str]) -> None:
             {"title": "Edges, b 0.8", "image": picture(run(shen_castan, scene, filter_id))},
         ],
     )
-    round_part, square = contour_truth()
-    shapes = round_part | square
-    outline = shapes & ~ndimage.binary_erosion(shapes)
-    distance = ndimage.distance_transform_edt(~outline)
+    outline = contour_outline()
     rows = []
     for b in (0.5, 0.7, 0.8, 0.9, 0.95):
         stages = shen_castan_stages(rgba(contour_scene(20)), catalog_values(filter_id, b=b))
         edges = stages["edges"]
-        near = float(np.mean(distance[edges] <= 2)) * 100 if edges.any() else 0.0
-        reach = ndimage.distance_transform_edt(~edges) if edges.any() else np.full(edges.shape, 99)
-        found = float(np.mean(reach[outline] <= 2)) * 100
+        near, found = outline_scores(edges, outline)
         rows.append(
             [
                 f"{b:g}",
@@ -3503,6 +3517,139 @@ def shen_castan_docs(out: dict[Path, str]) -> None:
         "thresholds 2 and 5. The outline is the border of the two shapes before the blur and "
         "the noise, "
         f"{int(outline.sum())} pixels long.\n"
+    )
+
+
+# SUSAN edges ------------------------------------------------------------------------------------
+
+
+def susan_edge_docs(out: dict[Path, str]) -> None:
+    filter_id = "susan-edge"
+    scene = contour_scene()
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with noise of sigma 10. Then the SUSAN edge response with a "
+        "brightness threshold of 25, and the edges with thresholds of 25 and 40.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {
+                "title": "Response, t 25",
+                "image": picture(run(susan_edge, scene, filter_id, output="response")),
+            },
+            {"title": "Edges, t 25", "image": picture(run(susan_edge, scene, filter_id))},
+            {
+                "title": "Edges, t 40",
+                "image": picture(run(susan_edge, scene, filter_id, brightness=40)),
+            },
+        ],
+    )
+    outline = contour_outline()
+    rows = []
+    for t in (15, 25, 40, 60):
+        for length in (1, 5):
+            values = catalog_values(filter_id, brightness=t, minLength=length)
+            edges = susan_edge_stages(rgba(scene), values)["edges"]
+            near, found = outline_scores(edges, outline)
+            rows.append([str(t), str(length), str(int(edges.sum())), fix(near, 1), fix(found, 1)])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [
+                "Brightness t",
+                "Minimum length",
+                "Edge pixels",
+                "Edges within 2 px of the outline (%)",
+                "Outline within 2 px of an edge (%)",
+            ],
+            rows,
+        )
+        + "\nThe image of the figure, with noise of sigma 10 and the geometric threshold of "
+        "three quarters. The outline is the border of the two shapes before the blur and the "
+        f"noise, {int(outline.sum())} pixels long.\n"
+    )
+
+
+# Local Laplacian --------------------------------------------------------------------------------
+
+
+def textured_step() -> Gray:
+    """A dark left half of 60 and a bright right half of 190, both with a crossed sine texture of
+    amplitude 8 levels and a period of 8 pixels."""
+    rows, cols = np.mgrid[0:160, 0:160]
+    texture = 4 * np.sin(2 * np.pi * cols / 8) + 4 * np.sin(2 * np.pi * rows / 8)
+    return to_8bit(np.where(cols < 80, 60.0, 190.0) + texture)
+
+
+def local_laplacian_docs(out: dict[Path, str]) -> None:
+    filter_id = "local-laplacian"
+    scene = textured_step()
+    settings = (("Alpha 0.25", {"alpha": 0.25}), ("Alpha 4", {"alpha": 4}))
+    figure(
+        out,
+        filter_id,
+        "A dark and a bright half with the same fine texture. Then local Laplacian filtering with "
+        "sigma r 0.3 and alpha 0.25, alpha 4, and alpha 1 with beta 0.3.",
+        [{"title": "Input", "image": picture(scene)}]
+        + [
+            {"title": title, "image": picture(run(local_laplacian, scene, filter_id, **values))}
+            for title, values in settings
+        ]
+        + [
+            {
+                "title": "Beta 0.3",
+                "image": picture(run(local_laplacian, scene, filter_id, alpha=1, beta=0.3)),
+            }
+        ],
+    )
+    rows = []
+    cases = [(a, 1.0) for a in (0.25, 0.5, 1, 2, 4)] + [(1, 0.3)]
+    for alpha, beta in cases:
+        result = run(local_laplacian, scene, filter_id, alpha=alpha, beta=beta).astype(float)
+        dark, bright = result[40:120, 16:64], result[40:120, 96:144]
+        near = result[40:120, 80:88]
+        rows.append(
+            [
+                f"{alpha:g}",
+                f"{beta:g}",
+                fix(float(dark.std()), 1),
+                fix(float(bright.std()), 1),
+                fix(float(bright.mean() - dark.mean()), 1),
+                str(int(bright.max())),
+                str(int(near.max())),
+            ]
+        )
+    source = scene.astype(float)
+    rows.insert(
+        0,
+        [
+            "Input",
+            "",
+            fix(float(source[40:120, 16:64].std()), 1),
+            fix(float(source[40:120, 96:144].std()), 1),
+            fix(float(source[40:120, 96:144].mean() - source[40:120, 16:64].mean()), 1),
+            str(int(source[40:120, 96:144].max())),
+            str(int(source[40:120, 80:88].max())),
+        ],
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [
+                "Alpha",
+                "Beta",
+                "Texture, dark side (std)",
+                "Texture, bright side (std)",
+                "Step between the halves",
+                "Brightest pixel, bright side",
+                "Brightest pixel next to the edge",
+            ],
+            rows,
+        )
+        + "\nThe image of the figure, with sigma r 0.3 and 16 samples. The texture is measured "
+        "in columns 16 to 63 and 96 to 143, and the step as the difference of their means. The "
+        "last column is the brightest pixel in the 8 columns right of the edge, where a halo "
+        "would show.\n"
     )
 
 
@@ -3679,6 +3826,8 @@ def build() -> dict[Path, str]:
         tree_docs(out, filter_id)
     deriche_docs(out)
     shen_castan_docs(out)
+    susan_edge_docs(out)
+    local_laplacian_docs(out)
     tone_docs(out)
     structured_edge_docs(out)
     return out

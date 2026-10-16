@@ -14,6 +14,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     inpainting,
     interactive,
     keypoints,
+    local_laplacian,
     matched,
     mser,
     phase,

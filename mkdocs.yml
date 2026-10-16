@@ -227,6 +227,7 @@ nav:
           - Structured Edge Detector: filters/edges/structured-edge.md
           - Deriche: filters/edges/deriche.md
           - Shen-Castan: filters/edges/shen-castan.md
+          - SUSAN edge detector: filters/edges/susan-edge.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md
@@ -348,6 +349,7 @@ nav:
           - Demosaicing: filters/enhancement/demosaic.md
           - Color threshold: filters/enhancement/color-threshold.md
           - Tone mapping: filters/enhancement/tone-mapping.md
+          - Local Laplacian filtering: filters/enhancement/local-laplacian.md
       - Artistic:
           - Posterize: filters/artistic/posterize.md
           - Solarize: filters/artistic/solarize.md
