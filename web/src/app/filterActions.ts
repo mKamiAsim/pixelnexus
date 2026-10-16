@@ -165,14 +165,22 @@ export async function applySelected(): Promise<void> {
     return;
   }
   const resizes = entry.changesSize === true;
+  // A template selection is only an input. The filter runs on, and changes, the whole image.
+  const template = entry.needsSelection === true && entry.selectionRole === "template";
   if (resizes && !fitsLimits(source, Number(values.scale))) return;
   // Feature detectors and tables look at the whole image. A selection only chooses which
   // features to keep.
   const finds = entry.output === "features" || entry.output === "table";
-  const scope = resizes ? "whole" : selectionScope(entry, doc);
+  const scope = resizes || template ? "whole" : selectionScope(entry, doc);
   const mask = scopeMask(selection, scope);
+  // The selection the filter reads: the template itself, or the area it changes.
+  const input = template ? selection : mask;
   const region =
     resizes || finds ? fullRect(source) : processingRegion(source, mask, isGlobal(values));
+  if (template && selection && !processingRegion(source, selection, false)) {
+    notify("info", "Nothing to search for", "The selection is empty.");
+    return;
+  }
   if (finds && mask && !processingRegion(source, mask, false)) {
     notify("info", "Nothing to search", "The selection is empty.");
     return;
@@ -202,7 +210,7 @@ export async function applySelected(): Promise<void> {
         image: source,
         region,
         ...(guide ? { guide } : {}),
-        ...(entry.needsSelection && mask ? { hole: mask } : {}),
+        ...(entry.needsSelection && input ? { hole: input } : {}),
       },
       {
         signal: controller.signal,

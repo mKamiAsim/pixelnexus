@@ -38,7 +38,9 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
       }).image,
     }));
   }, [filter, stages, key, values, patch]);
-  const readsSelection = catalog.filters.find((f) => f.id === filterId)?.needsSelection === true;
+  const entry = catalog.filters.find((f) => f.id === filterId);
+  const readsSelection = entry?.needsSelection === true;
+  const template = readsSelection && entry?.selectionRole === "template";
   const inputs = useMemo(() => {
     const hole = readsSelection ? demoHole(patch.width, patch.height) : undefined;
     return stages.map((stage) => ({
@@ -83,9 +85,11 @@ export function StageViewer({ filterId, values, image, point }: WidgetProps) {
           : " Each result is shown as the engine returns it."}{" "}
         The one the filter applies now is in bold. Steps that follow edges stop at the patch edge,
         so results near it can differ from the whole image.
-        {readsSelection
-          ? ` In place of your selection, the hole is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
-          : ""}
+        {template
+          ? ` In place of your selection, the template is the ${2 * DEMO_HOLE_RADIUS + 1} x ${2 * DEMO_HOLE_RADIUS + 1} square at the center of the patch.`
+          : readsSelection
+            ? ` In place of your selection, the hole is a disk of radius ${DEMO_HOLE_RADIUS} pixels at the center of the patch.`
+            : ""}
       </p>
     </div>
   );

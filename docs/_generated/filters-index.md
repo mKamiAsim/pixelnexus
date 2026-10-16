@@ -14,6 +14,7 @@
 | [Laplacian of Gaussian](linear/log.md) | Linear spatial filters | Smooths with a Gaussian and takes the Laplacian, the sum of the second derivatives, in one kernel. | Implemented and tested |
 | [Laplacian sharpening](linear/laplacian-sharpen.md) | Linear spatial filters | Sharpens by subtracting a multiple of the Laplacian, which steepens every edge. | Implemented and tested |
 | [Low-pass FIR filter](linear/fir-lowpass.md) | Linear spatial filters | Removes detail above a chosen frequency, with taps designed by the window method. | Implemented and tested |
+| [Matched filter](linear/matched-filter.md) | Linear spatial filters | Searches the whole image for the pattern inside the selection. The plain matched filter correlates the image with the template. The normalized cross-correlation divides by the spread of each window, so it scores how alike the shapes are from -1 to 1, whatever their brightness and contrast. Matches above a threshold go to the Features panel. | Implemented and tested |
 | [Motion blur](linear/motion-blur.md) | Linear spatial filters | Blurs the image along a straight line, like a camera that moved during the exposure. | Implemented and tested |
 | [Steerable filters](linear/steerable.md) | Linear spatial filters | The first or second derivative of a Gaussian, turned to any angle by mixing two or three basis filters. | Implemented and tested |
 | [Triangular filter](linear/triangular.md) | Linear spatial filters | Blurs with weights that rise in equal steps to the center and fall again. | Implemented and tested |

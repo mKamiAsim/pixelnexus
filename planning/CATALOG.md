@@ -55,7 +55,7 @@ Entry ids are final unless a later session records a change in the PLAN.md progr
 | gabor | Gabor filter | Real, imaginary and magnitude outputs. Cross-listed in edges and texture. | Core | Browser | 5c |
 | steerable | Steerable filters | First and second derivative of Gaussian bases (Freeman and Adelson). | Core | Browser | 5c |
 | wiener-denoise | Wiener filter (global) | Wiener linear filter. Frequency domain with a power spectrum estimate. No blur model. | Core | Browser | 5e |
-| matched-filter | Matched filter | Matched frequency filter. Template taken from a selection. Normalized cross-correlation map. | Advanced | Science | 6d |
+| matched-filter | Matched filter | Matched frequency filter. Template taken from a selection. Normalized cross-correlation map. Done on 2026-10-16. | Advanced | Science | 6d |
 
 Requirements 1 also lists the ideal and Butterworth low-pass filters here. They are the same entries as in section 5. Sobel, Prewitt, Roberts, Scharr, Kirsch and Frei-Chen are in section 7.
 

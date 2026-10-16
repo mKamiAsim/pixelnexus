@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+
+import { readPng } from "./helpers";
 
 /** Bring a panel to the front: click its tab when it shows, otherwise use the Window menu. */
 async function front(page: Page, name: string) {
@@ -158,6 +162,13 @@ const FAKE_BLOBS = {
   summary: "2 blobs",
 };
 
+/** Raw RGBA with the color channels inverted and alpha kept. */
+function inverted(body: Buffer): Buffer {
+  const out = Buffer.from(body);
+  for (let i = 0; i < out.length; i++) if (i % 4 !== 3) out[i] = 255 - (out[i] ?? 0);
+  return out;
+}
+
 /** Enlarge raw RGBA by a whole factor, copying each pixel. */
 function enlarge(body: Buffer, width: number, height: number, scale: number): Buffer {
   const out = Buffer.alloc(width * height * scale * scale * 4);
@@ -213,6 +224,13 @@ async function fakeEngine(page: Page) {
       if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
       const image = images.get(job?.image ?? "");
       if (!image) return json({ detail: "There is no job with this id." }, 404);
+      if (job?.filter === "matched-filter") {
+        return route.fulfill({
+          headers: { ...CORS, "X-Width": image.width, "X-Height": image.height },
+          contentType: "application/octet-stream",
+          body: inverted(image.body),
+        });
+      }
       const scale = Number(job?.params.scale ?? 1);
       const [width, height] = [Number(image.width), Number(image.height)];
       return route.fulfill({
@@ -320,6 +338,43 @@ test("inpainting sends the selection to the engine as its mask", async ({ page }
   await expect(
     page.getByRole("img", { name: "Filled image, patch around the probe" }),
   ).toBeVisible();
+});
+
+async function exportPng(page: Page) {
+  await canvas(page).focus();
+  await page.keyboard.press("Control+s");
+  const dialog = page.getByRole("dialog", { name: "Export image" });
+  await dialog.getByRole("radio", { name: "PNG" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dialog.getByRole("button", { name: "Export PNG" }).click(),
+  ]);
+  await expect(dialog).toBeHidden();
+  return readPng(await readFile(await download.path()));
+}
+
+test("the matched filter sends the selection as its template and changes the whole image", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  const before = await exportPng(page);
+  await chooseFilter(page, "matched filter", "Matched filter");
+  await front(page, "Properties");
+  await marquee(page, [-30, -30], [30, 30]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Matched filter");
+  const job = engine.jobs.at(-1);
+  const mask = engine.images.get(job?.mask ?? "");
+  expect(mask?.width).toBe("512");
+  // The stand-in engine inverts the image. A template only reads the selection, so the
+  // result covers the whole image, the corner far from the selection included.
+  const after = await exportPng(page);
+  expect(after.pixels[0]).toBe(255 - (before.pixels[0] ?? 0));
+  await front(page, "Learn");
+  await expect(page.getByText("the template is the 17 x 17 square")).toBeVisible();
 });
 
 test("super-resolution replaces the image with the larger engine result", async ({ page }) => {

@@ -10,6 +10,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     hough,
     inpainting,
     keypoints,
+    matched,
     mser,
     phase,
     plugplay,

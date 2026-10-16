@@ -102,6 +102,8 @@ def _engine_rule_issues(entry: dict[str, Any], where: str) -> Iterator[Issue]:
     for flag in ("needsSelection", "changesSize"):
         if entry.get(flag) and entry.get("engine") != "science":
             yield Issue("error", where, f"{flag} needs the science engine")
+    if "selectionRole" in entry and not entry.get("needsSelection"):
+        yield Issue("error", where, "selectionRole needs needsSelection")
     if entry.get("changesSize") and "scale" not in _param_keys(entry):
         yield Issue("error", where, "an entry that sets changesSize needs a scale parameter")
     if entry.get("changesSize") and entry.get("command"):

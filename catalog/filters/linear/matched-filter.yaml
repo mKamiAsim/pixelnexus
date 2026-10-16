@@ -2,9 +2,136 @@ id: matched-filter
 name: Matched filter
 aliases:
 - Matched frequency filter
+- Template matching
+- Normalized cross-correlation
 family: linear
+alsoIn: [features]
+tags: [purpose:analysis]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Matched frequency filter. Template taken from a selection. Normalized cross-correlation map.
+
+summary: Searches the whole image for the pattern inside the selection. The plain matched filter correlates the image with the template. The normalized cross-correlation divides by the spread of each window, so it scores how alike the shapes are from -1 to 1, whatever their brightness and contrast. Matches above a threshold go to the Features panel.
+purpose: Find every place where a pattern appears, such as a part, a cell or a symbol, and see why normalizing the correlation matters.
+classification: {linearity: nonlinear, domain: frequency, operation: correlation with a template}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/matched.py, symbol: matched_filter_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: template
+preview: on-demand
+colorHandling: >-
+  The filter works on the luma with the BT.709 weights and gives a gray result. Alpha is kept.
+  The matches go to the Features panel as a table and are drawn on the canvas.
+boundary: Set by the Border mode parameter. The default is reflect 101. The image is padded by the template size on each side, so windows near the edge are filled.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.match_template and peak_local_max.'}
+  - {name: SciPy, optional: false, note: 'scipy.signal.fftconvolve for the plain matched filter.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: ncc
+    options:
+      - {value: ncc, label: Normalized cross-correlation}
+      - {value: correlation, label: Plain matched filter}
+      - {value: matches, label: Matches}
+    description: The normalized cross-correlation as an image, the plain correlation with the template as an image, or a table of the best matches.
+    effect: Compare the two maps to see how brightness and contrast mislead the plain filter.
+  - key: threshold
+    label: Match threshold
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.8
+    description: A match needs at least this normalized cross-correlation. 1 is a perfect match.
+    effect: Lower values find weaker and noisier matches, and more false ones.
+  - key: matches
+    label: Most matches
+    type: integer
+    min: 1
+    max: 500
+    step: 1
+    default: 20
+    description: At most this many matches, the best first.
+    effect: Limits the table on images with many matches.
+  - ref: border
+formula: |
+  \gamma(u, v) = \frac{\sum_{x, y} \big(I(u + x, v + y) - \bar I_{u,v}\big)\big(T(x, y) - \bar T\big)}{\sqrt{\sum_{x, y} \big(I(u + x, v + y) - \bar I_{u,v}\big)^2 \sum_{x, y} \big(T(x, y) - \bar T\big)^2}}
+formulaExplanation: >-
+  T is the template, the luma inside the rectangle around the selection, with its mean T bar.
+  For every position (u, v), the window of the image with the same size has the mean I bar.
+  The plain matched filter is the numerator alone, the correlation of the image with the
+  template less its mean. Turin showed that this filter is best for finding a known signal in
+  white noise. But it grows with the contrast of the window, so a faint copy of the pattern
+  scores low and the edge of a bright area can score high. The normalized cross-correlation
+  gamma divides by the spread of the window and of the template. It goes from -1 to 1. It is 1
+  where the window is the template up to brightness and contrast, and -1 where it is the
+  template with dark and light swapped. A window with no spread gives 0.
+symbols:
+  - {symbol: 'T, \bar T', meaning: 'The template and its mean'}
+  - {symbol: 'I, \bar I_{u,v}', meaning: 'The image and the mean of the window at (u, v)'}
+  - {symbol: '\gamma', meaning: 'The normalized cross-correlation, from -1 to 1'}
+steps:
+  - Cut the template from the luma, inside the rectangle around the selection.
+  - Correlate the image with the template less its mean, with the FFT.
+  - For the normalized form, divide by the spread of each window and of the template.
+  - Show the map, or find its peaks above the threshold as matches.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the padded image. The FFT makes the cost almost independent of the template size, and the window sums come from integral images.
+useCases:
+  - Finding parts, symbols, cells or other repeated patterns.
+  - Locating a known landmark in a series of images.
+advantages:
+  - The normalized form ignores the brightness and contrast of each window.
+  - Finds every copy in one pass.
+limitations:
+  - The template must have the same size and orientation as the copies. Turned or scaled copies score low.
+  - The template is a rectangle, so any background inside it counts too.
+  - A flat template has no spread and matches nothing. The filter then stops with a message.
+artifacts:
+  - Broad peaks around each match, about as wide as the template's details.
+references:
+  - kind: paper
+    text: Turin, G. L. An introduction to matched filters. IRE Transactions on Information Theory 6(3), 311 to 329, 1960.
+    doi: 10.1109/TIT.1960.1057571
+  - kind: paper
+    text: Lewis, J. P. Fast normalized cross-correlation. Industrial Light and Magic, 1995.
+  - kind: paper
+    text: Briechle, K., and Hanebeck, U. D. Template matching using fast normalized cross correlation. Proceedings of SPIE 4387, Optical Pattern Recognition XII, 95 to 102, 2001.
+    doi: 10.1117/12.421129
+  - kind: library
+    text: scikit-image documentation, skimage.feature.match_template.
+implementation: {path: engine/src/pixelnexus_engine/filters/matched.py, symbol: matched_filter}
+tests: [engine/tests/test_matched.py]
+learn:
+  oneSentence: Slide the selected pattern over the image and score how alike each place is.
+  howItWorks:
+    - Select the pattern you want to find.
+    - Slide it over every place in the image.
+    - At each place, compare the pattern with the image under it.
+    - The best scores are where the pattern appears again.
+  academic: >-
+    Template matching by the matched filter and by normalized cross-correlation, computed with
+    the FFT and integral images.
+  paramNotes:
+    output: The normalized map, the plain map, or the matches.
+    threshold: How alike a match must be.
+    matches: How many matches at most.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Select one object, then compare the plain matched filter with the normalized map. Faint copies only stand out in the normalized map.
+  pitfalls:
+    - A selection with much background around the pattern. The background then has to match too.
+  demos: [stage-viewer]
+related: [hough-circles, matched-vessel, wiener-deconv]
+docsPage: filters/linear/matched-filter.md

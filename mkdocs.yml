@@ -160,6 +160,7 @@ nav:
           - Gabor filter: filters/linear/gabor.md
           - Wiener filter (global): filters/linear/wiener-denoise.md
           - Steerable filters: filters/linear/steerable.md
+          - Matched filter: filters/linear/matched-filter.md
       - Nonlinear:
           - Median filter: filters/nonlinear/median.md
           - Weighted median filter: filters/nonlinear/weighted-median.md

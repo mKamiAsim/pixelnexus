@@ -58,6 +58,7 @@ from pixelnexus_engine.filters.hough import (
 )
 from pixelnexus_engine.filters.inpainting import inpaint
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
+from pixelnexus_engine.filters.matched import correlation_map, matched_filter, ncc_map
 from pixelnexus_engine.filters.mser import mser
 from pixelnexus_engine.filters.phase import phase_congruency, phase_congruency_filter
 from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
@@ -2177,6 +2178,108 @@ def hough_linking_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Matched filter ---------------------------------------------------------------------------------
+
+MATCH_OBJECTS = [
+    ("Template", (30, 30)),
+    ("Faint copy", (30, 90)),
+    ("Inverted copy", (90, 30)),
+    ("Full copy", (130, 120)),
+]
+
+
+def match_scene(noise: float = 0) -> Gray:
+    """A cross of 220 on 60, a faint copy (140 on 100), an inverted copy, a bright block and a
+    full copy, on a ground of 100, with Gaussian noise."""
+    gray = np.full((160, 160), 100.0)
+    looks = [(220, 60), (140, 100), (60, 220), (220, 60)]
+    for (_, (cy, cx)), (fg, bg) in zip(MATCH_OBJECTS, looks, strict=True):
+        if (cy, cx) == (130, 120):
+            gray[70:110, 70:150] = 250
+        gray[cy - 10 : cy + 11, cx - 10 : cx + 11] = bg
+        gray[cy - 8 : cy + 9, cx - 2 : cx + 3] = fg
+        gray[cy - 2 : cy + 3, cx - 8 : cx + 9] = fg
+    if noise:
+        gray += np.random.default_rng(4).normal(0, noise, gray.shape)
+    return np.clip(np.rint(gray), 0, 255).astype(np.uint8)
+
+
+def match_selection(shape: tuple[int, ...]) -> NDArray[np.uint8]:
+    mask = np.zeros(shape[:2], np.uint8)
+    mask[20:41, 20:41] = 255
+    return mask
+
+
+def run_matched(gray: Gray, **values: Any) -> Any:
+    params = {**catalog_values("matched-filter", **values), "mask": match_selection(gray.shape)}
+    return matched_filter(rgba(gray), params, lambda _: None)
+
+
+def with_box(gray: Gray, top: int, left: int, height: int, width: int) -> Gray:
+    """The outline of a rectangle, white on dark pixels and black on light ones."""
+    out = gray.copy()
+    edge = np.zeros(gray.shape, bool)
+    edge[top, left : left + width] = edge[top + height - 1, left : left + width] = True
+    edge[top : top + height, left] = edge[top : top + height, left + width - 1] = True
+    out[edge] = np.where(gray[edge] < 128, 255, 0)
+    return out
+
+
+def matched_filter_docs(out: dict[Path, str]) -> None:
+    filter_id = "matched-filter"
+    scene = match_scene(8)
+    matches = run_matched(scene, output="matches")
+    rings = [[r[0], r[1], r[2]] for r in matches["rows"]]
+    figure(
+        out,
+        filter_id,
+        "A test image of 160 x 160 with a cross, a faint copy, an inverted copy, a bright block "
+        "and a full copy, with noise of sigma 8. The selection is the 21 x 21 square around the "
+        "first cross. Then the normalized cross-correlation, the plain matched filter, and the "
+        "matches with the defaults, each drawn as a ring.",
+        [
+            {"title": "Input", "image": picture(with_box(scene, 19, 19, 23, 23))},
+            {"title": "Normalized", "image": picture(run_matched(scene)[..., 0])},
+            {"title": "Plain", "image": picture(run_matched(scene, output="correlation")[..., 0])},
+            {"title": "Matches", "image": picture(with_rings(scene, rings))},
+        ],
+    )
+    rows = []
+    for noise in (0, 8):
+        gray = match_scene(noise)
+        plane = gray.astype(np.float64)
+        template = plane[20:41, 20:41]
+        scores = ncc_map(plane, template, "reflect101")
+        plain = correlation_map(plane, template, "reflect101")
+        reference = plain[30, 30]
+        for name, (cy, cx) in MATCH_OBJECTS:
+            rows.append(
+                [
+                    str(noise),
+                    name,
+                    fix(float(scores[cy, cx]), 3),
+                    fix(float(plain[cy, cx] / reference), 2),
+                ]
+            )
+        corner = plain[60:120, 60:160]
+        rows.append(
+            [
+                str(noise),
+                "Bright block, best",
+                fix(float(scores[60:120, 60:160].max()), 3),
+                fix(float(corner.max() / reference), 2),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Noise sigma", "Place", "Normalized", "Plain, relative"], rows)
+        + "\nThe test image of the figure, with the template cut from the first cross. The "
+        "normalized value and the plain value are taken at the center of each object. The "
+        "plain value is divided by its value at the template itself. For the bright block, the "
+        "row gives the largest values anywhere on it or near it.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -2218,6 +2321,7 @@ def build() -> dict[Path, str]:
     hough_lines_docs(out)
     hough_circles_docs(out)
     hough_linking_docs(out)
+    matched_filter_docs(out)
     return out
 
 
