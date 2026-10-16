@@ -133,7 +133,7 @@ describe("engine client", () => {
   });
 
   it("explains how to start the science engine when it does not answer", async () => {
-    await expect(scienceEngine.run({ filterId: "bm3d", params: {}, image })).rejects.toThrow(
+    await expect(scienceEngine.run({ filterId: "m-estimator", params: {}, image })).rejects.toThrow(
       /uv run pixelnexus-engine/,
     );
   });

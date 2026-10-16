@@ -1,8 +1,7 @@
 id: bm3d
 name: BM3D
 family: nonlinear
-tier: optional
-engine: science
-phase: 6f
-status: planned
-planNotes: Optional `bm3d` package. License check before use.
+tier: unsupported
+engine: none
+status: unsupported
+reason: Left out on the owner's decision of 2026-10-16. The bm3d package on PyPI lists no license, so we do not ship it. bm3d-lite, our simplified two-stage version, shows the same idea.

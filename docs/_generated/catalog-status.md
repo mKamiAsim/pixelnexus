@@ -5,6 +5,6 @@
 | Implemented and tested | 288 |
 | Available through an optional dependency | 1 |
 | Available through an optional pretrained model | 1 |
-| Planned but not implemented | 41 |
-| Unsupported or deprecated | 6 |
+| Planned but not implemented | 40 |
+| Unsupported or deprecated | 7 |
 | **Total** | **337** |

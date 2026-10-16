@@ -88,7 +88,7 @@ Requirements 1 also lists the ideal and Butterworth low-pass filters here. They 
 | rolling-guidance | Rolling guidance filter | OpenCV ximgproc. Done on 2026-10-16. | Advanced | Science | 6f |
 | nlm | Non-local means | scikit-image. Done on 2026-10-16. | Advanced | Science | 6f |
 | tv-denoise | Total variation denoising | Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers. Done on 2026-10-16. | Advanced | Science | 6f |
-| bm3d | BM3D | Optional `bm3d` package. License check before use. | Optional | Science | 6f |
+| bm3d | BM3D | Left out on the owner's decision of 2026-10-16. The `bm3d` package lists no license. bm3d-lite shows the same idea. | Unsupported | none | |
 | bm3d-lite | BM3D-inspired denoising | Simplified two-stage version. Clearly labeled as simplified. | Advanced | Science | 6f |
 | susan-smoothing | SUSAN noise filter | Smith and Brady. Done on 2026-10-16. | Advanced | Science | 6f |
 | bitonic | Bitonic filter | Treece. Deferred: the paper could not be reached. | Advanced | Science | 6f |
@@ -506,10 +506,10 @@ Counts cover every row in sections 1 to 15. Aliases and the pointer row for AI s
 |---|---|---|
 | Core | Browser | 218 |
 | Advanced | Science | 78 |
-| Optional | Science (optional package) | 4 |
+| Optional | Science (optional package) | 3 |
 | Optional | Model | 14 |
 | Planned | none | 17 |
-| Unsupported | none | 6 |
+| Unsupported | none | 7 |
 | **Total entries** | | **337** |
 
 Every name in both requirement documents maps to an entry above, either by its own row or as an alias. Phase 9 adds an automated check of this mapping.
