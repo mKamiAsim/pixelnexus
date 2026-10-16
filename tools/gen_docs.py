@@ -86,9 +86,11 @@ def ai_tasks(bundle: dict[str, Any]) -> str:
             sends += ". With a selection or a box, only that area plus a margin"
         classical = names[(task["classical"]["kind"], task["classical"]["id"])]
         returns = "A mask" if task["output"] == "mask" else "An image"
-        rows.append([task["name"], sends, returns, classical])
-    headers = ["Task", "Sends", "Returns", "Classical alternative"]
-    return HEADER + table(headers, rows, ["left", "left", "left", "left"])
+        model_names = {m["id"]: m["name"] for m in bundle["models"]}
+        models = " or ".join(model_names.get(m, m) for m in task.get("models", []) or []) or "None"
+        rows.append([task["name"], sends, returns, classical, models])
+    headers = ["Task", "Sends", "Returns", "Classical alternative", "Models, the default first"]
+    return HEADER + table(headers, rows, ["left", "left", "left", "left", "left"])
 
 
 def resolve_params(entry: dict[str, Any], common: dict[str, Any]) -> list[dict[str, Any]]:

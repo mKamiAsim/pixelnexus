@@ -211,6 +211,52 @@ export class ScienceEngine implements EngineClient {
     }
   }
 
+  /**
+   * Run an AI task of catalog/ai-tasks.yaml with an engine model, for the AI router's engine
+   * model provider. Returns the result image: for a mask task, a gray image of the mask.
+   */
+  async aiTask(
+    taskId: string,
+    request: {
+      readonly image: RgbaImage;
+      readonly model?: string;
+      readonly points?: readonly { x: number; y: number; positive: boolean }[];
+      readonly box?: { x: number; y: number; width: number; height: number };
+    },
+    signal?: AbortSignal,
+  ): Promise<RgbaImage> {
+    if (signal?.aborted) throw new AbortedError();
+    const image = await this.upload(request.image);
+    const created = await this.call(`/ai/${encodeURIComponent(taskId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image,
+        ...(request.model ? { model: request.model } : {}),
+        points: request.points ?? [],
+        ...(request.box ? { box: request.box } : {}),
+      }),
+    });
+    const { id } = (await created.json()) as JobStatus;
+    const cancel = () => {
+      void fetch(this.url(`/jobs/${id}`), { method: "DELETE" }).catch(() => undefined);
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    try {
+      const status = await this.follow(id, signal ? { signal } : {});
+      if (status.state === "cancelled") throw new AbortedError();
+      if (status.state === "failed") throw new EngineError(status.error ?? "The job failed.");
+      const response = await this.call(`/jobs/${id}/result`);
+      return {
+        width: Number(response.headers.get("X-Width")),
+        height: Number(response.headers.get("X-Height")),
+        data: new Uint8ClampedArray(await response.arrayBuffer()),
+      };
+    } finally {
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
+
   /** The gray picture of a mask that goes to the engine, made once per mask. */
   private maskImage(mask: Mask): RgbaImage {
     let image = this.masks.get(mask);

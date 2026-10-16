@@ -245,6 +245,36 @@ describe("the science engine client", () => {
     ).rejects.toThrow("does not match the checksum");
   });
 
+  it("runs an AI task as an engine job and returns its result image", async () => {
+    const sent: { url: string; body?: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        sent.push({
+          url,
+          body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+        });
+        if (url.includes("/images")) return Response.json({ id: "img" });
+        if (url.endsWith("/ai/click-select")) return Response.json({ id: "j1", state: "queued" });
+        return new Response(new Uint8Array([255, 255, 255, 255, 0, 0, 0, 255]), {
+          headers: { "X-Width": "2", "X-Height": "1" },
+        });
+      }),
+    );
+    vi.stubGlobal("EventSource", eventSourceWith([{ state: "done", progress: 1 }]));
+    const engine = new ScienceEngine("http://engine.test");
+    const result = await engine.aiTask("click-select", {
+      image: { width: 2, height: 1, data: new Uint8ClampedArray(8) },
+      model: "sam2-1-tiny",
+      points: [{ x: 0, y: 0, positive: false }],
+    });
+    expect([result.width, result.height, result.data[0], result.data[4]]).toEqual([2, 1, 255, 0]);
+    expect(sent[1]).toEqual({
+      url: "http://engine.test/api/v1/ai/click-select",
+      body: { image: "img", model: "sam2-1-tiny", points: [{ x: 0, y: 0, positive: false }] },
+    });
+  });
+
   it("explains how to start the engine when it does not answer", async () => {
     vi.stubGlobal(
       "fetch",

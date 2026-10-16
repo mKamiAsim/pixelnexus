@@ -13,7 +13,7 @@ import { catalog } from "@/catalog";
 import { checkEndpoint } from "@/core/ai/endpoint";
 import { maskKey } from "@/core/ai/secrets";
 import type { ProviderKindId } from "@/core/ai/types";
-import { requestLog, secrets, useAi } from "@/state/ai";
+import { ENGINE_PROVIDER, requestLog, secrets, useAi } from "@/state/ai";
 import { useUi } from "@/state/ui";
 
 import { classicalName } from "./aiActions";
@@ -72,6 +72,7 @@ export function AiProvidersDialog() {
                 onChange={(value) => setTaskProvider(task.id, value === NONE ? null : value)}
                 options={[
                   { value: NONE, label: `None. Use ${classicalName(task)}` },
+                  { value: ENGINE_PROVIDER.id, label: ENGINE_PROVIDER.name },
                   ...providers.map((p) => ({ value: p.id, label: p.name })),
                 ]}
                 className="w-72"
@@ -83,8 +84,14 @@ export function AiProvidersDialog() {
           <h3 id="ai-list" className="text-xs font-semibold text-text-secondary">
             Providers
           </h3>
+          <p className="text-xs">
+            <span className="font-medium text-text">{ENGINE_PROVIDER.name}</span>{" "}
+            <span className="text-text-muted">
+              Built in. Runs on this computer with the models you download, so nothing is sent.
+            </span>
+          </p>
           {providers.length === 0 ? (
-            <p className="text-xs text-text-muted">None yet. Add one below.</p>
+            <p className="text-xs text-text-muted">No other providers yet. Add one below.</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {providers.map((p) => {

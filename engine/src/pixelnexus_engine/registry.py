@@ -89,3 +89,14 @@ def science_entries(catalog_dir: Path | None) -> list[dict[str, Any]]:
         if isinstance(entry, dict) and entry.get("engine") == "science":
             entries.append(entry)
     return sorted(entries, key=lambda e: str(e.get("id")))
+
+
+def ai_tasks(catalog_dir: Path | None) -> list[dict[str, Any]]:
+    """The AI router tasks of catalog/ai-tasks.yaml, next to the filters folder."""
+    if catalog_dir is None:
+        return []
+    path = catalog_dir.parent / "ai-tasks.yaml"
+    if not path.is_file():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return list(data.get("tasks") or [])

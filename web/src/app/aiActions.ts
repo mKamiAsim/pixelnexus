@@ -17,15 +17,25 @@ import type {
   ProviderKindId,
 } from "@/core/ai/types";
 import { notify } from "@/state/notifications";
-import { approvals, requestLog, useAi } from "@/state/ai";
+import { scienceEngine } from "@/engine-client";
+import { allProviders, approvals, requestLog, useAi } from "@/state/ai";
+
+import { engineModelAdapter } from "./engineModelAdapter";
 
 type AdapterFactory = (provider: ProviderConfig) => ProviderAdapter;
 
-const factories = new Map<ProviderKindId, AdapterFactory>();
+const factories = new Map<ProviderKindId, AdapterFactory>([
+  ["engine-model", (provider) => engineModelAdapter(scienceEngine, provider)],
+]);
 
+/** Use this factory for a provider kind. The returned function puts back the one before. */
 export function registerAdapter(kind: ProviderKindId, factory: AdapterFactory): () => void {
+  const previous = factories.get(kind);
   factories.set(kind, factory);
-  return () => factories.delete(kind);
+  return () => {
+    if (previous) factories.set(kind, previous);
+    else factories.delete(kind);
+  };
 }
 
 function adapterFor(provider: ProviderConfig): ProviderAdapter {
@@ -67,7 +77,7 @@ export async function runAiTask(request: AiRequest, signal?: AbortSignal): Promi
   const state = useAi.getState();
   const outcome = await route(request, {
     settings: state.tasks,
-    providers: state.providers,
+    providers: allProviders(state.providers),
     kinds: catalog.providers,
     adapter: adapterFor,
     askConsent: state.askConsent,

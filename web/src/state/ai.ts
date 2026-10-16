@@ -42,8 +42,10 @@ export function loadAi(): Saved {
       providers: unknown;
       tasks: unknown;
     }>;
-    const providers = Array.isArray(raw.providers) ? raw.providers.filter(isProvider) : [];
-    const ids = new Set(providers.map((p) => p.id));
+    const providers = Array.isArray(raw.providers)
+      ? raw.providers.filter((p) => isProvider(p) && p.id !== ENGINE_PROVIDER.id)
+      : [];
+    const ids = new Set([ENGINE_PROVIDER.id, ...providers.map((p) => p.id)]);
     const tasks: Record<string, string> = {};
     if (typeof raw.tasks === "object" && raw.tasks !== null) {
       for (const [task, id] of Object.entries(raw.tasks)) {
@@ -88,6 +90,22 @@ const guardedStorage: KeyStorage = {
     }
   },
 };
+
+/**
+ * The local engine, always there as a provider. It is not saved and cannot be removed. Its model
+ * for each task is the first of the task's list in catalog/ai-tasks.yaml.
+ */
+export const ENGINE_PROVIDER: ProviderConfig = {
+  id: "local-engine",
+  kind: "engine-model",
+  name: "Local engine models",
+};
+
+/** The built-in provider, then the ones you added. */
+export const allProviders = (providers: readonly ProviderConfig[]): ProviderConfig[] => [
+  ENGINE_PROVIDER,
+  ...providers,
+];
 
 export const secrets = new SecretStore(typeof window === "undefined" ? undefined : guardedStorage);
 export const approvals = new SessionApprovals();

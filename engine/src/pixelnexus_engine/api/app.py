@@ -38,6 +38,7 @@ from pixelnexus_engine.models import delete, download, is_downloaded, model_entr
 from pixelnexus_engine.params import ParamError, check_params, resolve_params
 from pixelnexus_engine.registry import (
     FILTERS,
+    ai_tasks,
     common_params,
     find_catalog,
     load_filters,
@@ -76,6 +77,51 @@ class EngineInfo(BaseModel):
     # The model runtime and the device it chose, from a check in a child process. None until
     # that check has finished, a few seconds after the engine starts.
     inference: dict[str, Any] | None = None
+
+
+class PromptPoint(BaseModel):
+    x: float
+    y: float
+    positive: bool = True
+
+
+class PromptBox(BaseModel):
+    x: float
+    y: float
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+
+class AiTaskRequest(BaseModel):
+    image: str
+    # A model from the task's list in catalog/ai-tasks.yaml. The first one when left out.
+    model: str | None = None
+    points: list[PromptPoint] = Field(default_factory=list)
+    box: PromptBox | None = None
+    # The noise level for FFDNet, on the 0 to 255 scale.
+    sigma: float | None = Field(default=None, ge=0, le=75)
+
+
+# How the engine runs each task with each model: the job id, and its settings from the request.
+ENGINE_TASKS: dict[tuple[str, str], tuple[str, Any]] = {
+    ("subject-select", "birefnet-lite"): ("_ai-subject-select", lambda r: {"model": r.model}),
+    ("subject-select", "u2netp"): ("_ai-subject-select", lambda r: {"model": r.model}),
+    **{
+        (task, model): (f"_ai-{task}", lambda r: {
+            "model": r.model,
+            "points": [p.model_dump() for p in r.points],
+            "box": r.box.model_dump() if r.box else None,
+        })
+        for task in ("click-select", "object-select")
+        for model in ("sam2-1-tiny", "efficientsam-ti")
+    },
+    ("denoise", "dncnn-color-blind"): ("dncnn", lambda r: {"task": "denoise"}),
+    ("denoise", "ffdnet-color"): (
+        "ffdnet", lambda r: {"sigma": 25 if r.sigma is None else r.sigma}
+    ),
+    ("jpeg-cleanup", "dncnn3"): ("dncnn", lambda r: {"task": "jpeg"}),
+    ("super-resolution", "realesr-general-x4v3"): ("real-esrgan", lambda r: {}),
+}  # fmt: skip
 
 
 class JobRequest(BaseModel):
@@ -311,6 +357,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if stored is None:
             raise _not_found("image with this id. Upload it again")
         return {"id": stored.id, "width": stored.width, "height": stored.height, "channels": 4}
+
+    tasks = {t["id"]: t for t in ai_tasks(catalog_dir)}
+
+    @router.post("/ai/{task_id}", status_code=202)
+    def run_ai_task(task_id: str, request: AiTaskRequest) -> dict[str, Any]:
+        """Run an AI task with an engine model, for the AI router's engine model provider. The
+        result is a job: a mask as a gray image, or an image."""
+        task = tasks.get(task_id)
+        if task is None:
+            raise _not_found(f'AI task "{task_id}"')
+        choices = task.get("models") or []
+        model_id = str(request.model or (choices[0] if choices else ""))
+        if model_id not in choices:
+            raise HTTPException(
+                status_code=422, detail=f'"{model_id}" is not a model for {task["name"]}.'
+            )
+        plan = ENGINE_TASKS.get((task_id, model_id))
+        if plan is None:
+            raise HTTPException(
+                status_code=501, detail=f"The engine cannot run {task['name']} with {model_id} yet."
+            )
+        entry = models.get(model_id)
+        if entry is None or not is_downloaded(entry, models_folder):
+            name = entry["name"] if entry else model_id
+            raise HTTPException(status_code=409, detail=f"Download the model {name} first.")
+        stored = images.get(request.image)
+        if stored is None:
+            raise _not_found("image with this id. Upload it again")
+        filter_id, settings = plan
+        params = settings(request.model_copy(update={"model": model_id}))
+        if not filter_id.startswith("_"):
+            params = checked_params(filter_id, params)
+        return jobs().submit(filter_id, stored, params, None).status()
 
     @router.post("/jobs", status_code=202)
     def submit(request: JobRequest) -> dict[str, Any]:

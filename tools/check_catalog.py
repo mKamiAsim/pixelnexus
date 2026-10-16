@@ -128,6 +128,9 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
             None,
         )
         where = f"catalog/ai-tasks.yaml:{task.get('id', index)}"
+        for model in task.get("models", []) or []:
+            if model not in model_ids:
+                yield Issue("error", where, f"model '{model}' is not in models.yaml")
         if target is None:
             yield Issue(
                 "error",

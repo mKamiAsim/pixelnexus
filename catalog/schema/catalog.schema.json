@@ -1479,6 +1479,14 @@
         },
         "description": {
           "type": "string"
+        },
+        "models": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Models from models.yaml that can do this task, the default first. The engine model and on-device providers choose from them.",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         }
       }
     }

@@ -19,7 +19,15 @@ Choose **Edit > AI providers** to pick a provider for each task. The tasks and t
 | Remote PixelNexus engine | An engine you run on another machine | Once per session for each host |
 | External AI service | A service you set up with a base URL and a key | Every time |
 
-The first two kinds keep the image on your device. The local engine models arrive in Phase 7c and the on-device models in Phase 7d. Until then, a task set to one of them says that the kind is not available yet.
+The first two kinds keep the image on your device. The on-device models arrive in Phase 7d. Until then, a task set to one says that the kind is not available yet.
+
+## Local engine models
+
+**Local engine models** is always in the list. It runs the task on the PixelNexus engine on this computer, so nothing is sent and nothing is asked. It uses the default model of each task, the first in the last column of the task table above.
+
+Each model downloads only when you ask, in the Properties panel of a filter that uses it, or with `uv run pixelnexus-engine models download <id>`. A task whose model is not downloaded says which one to download. EfficientSAM has no negative clicks, so a request with them is refused, not changed. SAM 2.1 takes them.
+
+The engine runs models with ONNX Runtime. With the `cuda` extra, it uses an NVIDIA GPU when a test model really runs on it, and the CPU otherwise. The status bar shows GPU or CPU next to the engine light.
 
 ## Adding a provider
 

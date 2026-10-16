@@ -1,6 +1,7 @@
 # AI tasks that go through the AI router. See planning/PLAN.md section 3.11.
 # Each task names the classical tool or filter that the studio offers when a provider fails,
-# or when no provider is set. The router never switches provider on its own.
+# or when no provider is set. The router never switches provider on its own. models lists the
+# approved models that can do the task, the default first.
 tasks:
   - id: subject-select
     name: Subject selection
@@ -8,6 +9,7 @@ tasks:
     output: mask
     crop: false
     classical: {kind: tool, id: subject-heuristic}
+    models: [birefnet-lite, u2netp]
     description: Finds the main subject of the image and returns it as a selection.
   - id: click-select
     name: Click to select
@@ -15,6 +17,7 @@ tasks:
     output: mask
     crop: false
     classical: {kind: tool, id: click-select-classical}
+    models: [sam2-1-tiny, efficientsam-ti]
     description: Selects the object under positive clicks and leaves out the areas under negative clicks.
   - id: object-select
     name: Object selection
@@ -22,6 +25,7 @@ tasks:
     output: mask
     crop: true
     classical: {kind: tool, id: object-select-classical}
+    models: [sam2-1-tiny, efficientsam-ti]
     description: Selects the object inside a rough box. Only the box and a margin around it need to be sent.
   - id: denoise
     name: Denoising
@@ -29,6 +33,7 @@ tasks:
     output: image
     crop: true
     classical: {kind: filter, id: nlm}
+    models: [dncnn-color-blind, ffdnet-color]
     description: Removes noise. With a selection, only its bounding box and a margin need to be sent.
   - id: jpeg-cleanup
     name: JPEG cleanup
@@ -36,6 +41,7 @@ tasks:
     output: image
     crop: true
     classical: {kind: filter, id: jpeg-cleanup}
+    models: [dncnn3]
     description: Removes blocking and ringing from JPEG compression. With a selection, only its bounding box and a margin need to be sent.
   - id: super-resolution
     name: Super-resolution
@@ -43,4 +49,5 @@ tasks:
     output: image
     crop: true
     classical: {kind: filter, id: sr-classical}
+    models: [realesr-general-x4v3, swin2sr-lightweight-x2]
     description: Enlarges the image by 2 or 4 times and adds plausible detail. With a selection, only its bounding box and a margin need to be sent.

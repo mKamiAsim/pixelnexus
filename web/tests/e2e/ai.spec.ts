@@ -26,7 +26,7 @@ test("with no provider, every AI task uses its classical tool", async ({ page })
   await expect(dialog.getByRole("combobox", { name: "Provider for Denoising" })).toContainText(
     "None. Use Non-local means",
   );
-  await expect(dialog.getByText("None yet. Add one below.")).toBeVisible();
+  await expect(dialog.getByText("No other providers yet. Add one below.")).toBeVisible();
 });
 
 test("an external provider needs HTTPS, and its key stays out of storage", async ({ page }) => {
