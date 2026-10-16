@@ -94,6 +94,32 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
                 "error", where, "an entry has a model exactly when its status is optional-model"
             )
 
+    sections = {"tool": "tools", "filter": "filters"}
+    for index, task in enumerate(bundle.get("aiTasks", [])):
+        classical = task.get("classical") if isinstance(task, dict) else None
+        if not isinstance(classical, dict):
+            continue
+        section = sections.get(str(classical.get("kind")), "")
+        target = next(
+            (
+                e
+                for e in bundle.get(section, [])
+                if isinstance(e, dict) and e.get("id") == classical.get("id")
+            ),
+            None,
+        )
+        where = f"catalog/ai-tasks.yaml:{task.get('id', index)}"
+        if target is None:
+            yield Issue(
+                "error",
+                where,
+                f"classical {classical.get('kind')} '{classical.get('id')}' does not exist",
+            )
+        elif target.get("status") not in FULL_STATUSES:
+            yield Issue(
+                "error", where, f"classical alternative '{classical.get('id')}' is not runnable"
+            )
+
     all_ids = set(seen)
     for section in ("filters", "tools"):
         for index, entry in enumerate(bundle[section]):

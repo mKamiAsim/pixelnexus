@@ -1,0 +1,46 @@
+# AI tasks that go through the AI router. See planning/PLAN.md section 3.11.
+# Each task names the classical tool or filter that the studio offers when a provider fails,
+# or when no provider is set. The router never switches provider on its own.
+tasks:
+  - id: subject-select
+    name: Subject selection
+    inputs: [image]
+    output: mask
+    crop: false
+    classical: {kind: tool, id: subject-heuristic}
+    description: Finds the main subject of the image and returns it as a selection.
+  - id: click-select
+    name: Click to select
+    inputs: [image, points]
+    output: mask
+    crop: false
+    classical: {kind: tool, id: click-select-classical}
+    description: Selects the object under positive clicks and leaves out the areas under negative clicks.
+  - id: object-select
+    name: Object selection
+    inputs: [image, box]
+    output: mask
+    crop: true
+    classical: {kind: tool, id: object-select-classical}
+    description: Selects the object inside a rough box. Only the box and a margin around it need to be sent.
+  - id: denoise
+    name: Denoising
+    inputs: [image]
+    output: image
+    crop: true
+    classical: {kind: filter, id: nlm}
+    description: Removes noise. With a selection, only its bounding box and a margin need to be sent.
+  - id: jpeg-cleanup
+    name: JPEG cleanup
+    inputs: [image]
+    output: image
+    crop: true
+    classical: {kind: filter, id: jpeg-cleanup}
+    description: Removes blocking and ringing from JPEG compression. With a selection, only its bounding box and a margin need to be sent.
+  - id: super-resolution
+    name: Super-resolution
+    inputs: [image]
+    output: image
+    crop: true
+    classical: {kind: filter, id: sr-classical}
+    description: Enlarges the image by 2 or 4 times and adds plausible detail. With a selection, only its bounding box and a margin need to be sent.

@@ -157,3 +157,17 @@ def test_selection_inputs_and_size_changes_need_the_science_engine(catalog: Any)
     assert "changesSize needs the science engine" in messages
     assert "an entry with a command must not also set changesSize" in messages
     assert "an entry that sets changesSize needs a scale parameter" in messages
+
+
+def test_ai_tasks_name_runnable_classical_alternatives(catalog: Any) -> None:
+    tasks = {task["id"]: task for task in catalog.bundle["aiTasks"]}
+    assert set(tasks) >= {"subject-select", "click-select", "object-select", "denoise"}
+    broken = copy.deepcopy(catalog)
+    for task in broken.bundle["aiTasks"]:
+        if task["id"] == "denoise":
+            task["classical"] = {"kind": "filter", "id": "no-such-filter"}
+        if task["id"] == "jpeg-cleanup":
+            task["classical"] = {"kind": "tool", "id": "ai-subject"}
+    messages = [i.message for i in structure_issues(broken)]
+    assert "classical filter 'no-such-filter' does not exist" in messages
+    assert "classical alternative 'ai-subject' is not runnable" in messages

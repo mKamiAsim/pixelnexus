@@ -82,6 +82,7 @@ def load_catalog(catalog_dir: Path = CATALOG_DIR) -> Catalog:
         "commonParams": ("common-params.yaml", "params"),
         "models": ("models.yaml", "models"),
         "providers": ("providers.yaml", "providers"),
+        "aiTasks": ("ai-tasks.yaml", "tasks"),
     }
     for section, (filename, key) in single_files.items():
         path = catalog_dir / filename

@@ -11,7 +11,8 @@
     "glossary",
     "commonParams",
     "models",
-    "providers"
+    "providers",
+    "aiTasks"
   ],
   "properties": {
     "families": {
@@ -54,6 +55,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/providerKind"
+      }
+    },
+    "aiTasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/aiTask"
       }
     }
   },
@@ -1342,6 +1349,74 @@
         "string",
         "boolean"
       ]
+    },
+    "aiTask": {
+      "title": "AiTask",
+      "description": "A task that goes through the AI router, with the classical tool or filter offered when a provider fails. See PLAN.md section 3.11.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "inputs",
+        "output",
+        "crop",
+        "classical",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "image",
+              "mask",
+              "points",
+              "box"
+            ]
+          }
+        },
+        "output": {
+          "enum": [
+            "mask",
+            "image"
+          ]
+        },
+        "crop": {
+          "type": "boolean",
+          "description": "True when the router may send only the selection's bounding box plus a margin."
+        },
+        "classical": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "tool",
+                "filter"
+              ]
+            },
+            "id": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      }
     }
   }
 }
