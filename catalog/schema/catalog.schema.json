@@ -12,7 +12,8 @@
     "commonParams",
     "models",
     "providers",
-    "aiTasks"
+    "aiTasks",
+    "providerPresets"
   ],
   "properties": {
     "families": {
@@ -55,6 +56,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/providerKind"
+      }
+    },
+    "providerPresets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/providerPreset"
       }
     },
     "aiTasks": {
@@ -1491,6 +1498,96 @@
           "description": "Models from models.yaml that can do this task, the default first. The engine model and on-device providers choose from them.",
           "items": {
             "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "providerPreset": {
+      "title": "ProviderPreset",
+      "description": "How the generic HTTP adapter talks to one external AI service: its base URL, how the key is sent, and the request for each task. See PLAN.md Phase 7e.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description",
+        "keyHeader",
+        "imageField",
+        "tasks"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "baseUrl": {
+          "description": "The service's base URL. Without one, you type it in.",
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "docsUrl": {
+          "description": "The service's API documentation.",
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "keyHeader": {
+          "description": "The HTTP header that carries the API key.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+$"
+        },
+        "keyPrefix": {
+          "description": "Text put before the key in the header, such as 'Bearer '.",
+          "type": "string"
+        },
+        "imageField": {
+          "description": "The multipart form field of the image, sent as PNG.",
+          "type": "string"
+        },
+        "maskField": {
+          "description": "The form field of the selection, sent as a gray PNG, when the service takes one.",
+          "type": "string"
+        },
+        "promptsField": {
+          "description": "The form field of the clicks and box, sent as JSON, when the service takes them.",
+          "type": "string"
+        },
+        "modelField": {
+          "description": "The form field of the model name, when the service takes one.",
+          "type": "string"
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "task",
+              "path"
+            ],
+            "properties": {
+              "task": {
+                "description": "An AI task id from ai-tasks.yaml.",
+                "$ref": "#/$defs/id"
+              },
+              "path": {
+                "description": "The path after the base URL. The request is a POST there.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._~/-]+$"
+              },
+              "fields": {
+                "description": "Fixed form fields sent with every request.",
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

@@ -6,9 +6,16 @@
  *
  * Adapters register per provider kind. The engine model adapter arrives in Phase 7c, on-device
  * models in 7d, and the remote engine and external API adapters in 7e.
+ *
+ * An external API provider names a preset from catalog/providers.yaml, and the generic preset
+ * when it names none. Only its adapter reads its key, at the moment of the request.
  */
 import { catalog } from "@/catalog";
+import { httpAdapter } from "@/core/ai/http";
 import { route, type RouteOutcome } from "@/core/ai/router";
+import { decodeImageBytes } from "@/core/image/decode";
+import { readImageHeader } from "@/core/image/format";
+import { encodePng } from "@/core/image/png";
 import type {
   AiRequest,
   AiTask,
@@ -18,7 +25,8 @@ import type {
 } from "@/core/ai/types";
 import { notify } from "@/state/notifications";
 import { scienceEngine } from "@/engine-client";
-import { allProviders, approvals, requestLog, useAi } from "@/state/ai";
+import { ScienceEngine } from "@/engine-client/science";
+import { allProviders, approvals, requestLog, secrets, useAi } from "@/state/ai";
 
 import { engineModelAdapter } from "./engineModelAdapter";
 import { onDeviceAdapter } from "./onDeviceAdapter";
@@ -28,7 +36,34 @@ type AdapterFactory = (provider: ProviderConfig) => ProviderAdapter;
 const factories = new Map<ProviderKindId, AdapterFactory>([
   ["engine-model", (provider) => engineModelAdapter(scienceEngine, provider)],
   ["on-device", (provider) => onDeviceAdapter(provider)],
+  // A remote PixelNexus engine speaks the same API as the local one, at its own base URL.
+  [
+    "remote-engine",
+    (provider) =>
+      engineModelAdapter(new ScienceEngine((provider.baseUrl ?? "").replace(/\/+$/, "")), provider),
+  ],
+  ["external-api", (provider) => externalAdapter(provider)],
 ]);
+
+/** The preset of an external API provider. */
+export const presetFor = (provider: ProviderConfig) =>
+  catalog.providerPresets.find((p) => p.id === (provider.preset ?? "generic-http"));
+
+function externalAdapter(provider: ProviderConfig): ProviderAdapter {
+  const preset = presetFor(provider);
+  if (!preset) {
+    return { run: () => Promise.reject(new Error(`The preset ${provider.preset} is not known`)) };
+  }
+  const key = secrets.get(provider.id);
+  return httpAdapter(preset, {
+    baseUrl: provider.baseUrl ?? preset.baseUrl ?? "",
+    ...(key ? { key } : {}),
+    ...(provider.model ? { model: provider.model } : {}),
+    fetch: (input, init) => fetch(input, init),
+    encodePng,
+    decode: async (bytes) => (await decodeImageBytes(bytes, readImageHeader(bytes))).image,
+  });
+}
 
 /** Use this factory for a provider kind. The returned function puts back the one before. */
 export function registerAdapter(kind: ProviderKindId, factory: AdapterFactory): () => void {

@@ -25,6 +25,7 @@ const LIST_FILES = {
   commonParams: ["common-params.yaml", "params"],
   models: ["models.yaml", "models"],
   providers: ["providers.yaml", "providers"],
+  providerPresets: ["providers.yaml", "presets"],
   aiTasks: ["ai-tasks.yaml", "tasks"],
 } as const;
 

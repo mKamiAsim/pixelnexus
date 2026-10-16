@@ -39,13 +39,26 @@ Subject selection uses U2-Net small, click and box selection EfficientSAM tiny, 
 
 ## Adding a provider
 
-In **Edit > AI providers**, under **Add a provider**, choose the kind, a name and the base URL. An external service also takes an API key and, if it needs one, a model name.
+In **Edit > AI providers**, under **Add a provider**, choose the kind, a name and the base URL. An external service also takes a service preset, an API key and, if the preset takes one, a model name. A remote engine takes no key, so run it only on a network you trust.
 
 The base URL must follow these rules:
 
 - External hosts must use HTTPS.
 - Plain HTTP is allowed only for this computer and private networks, such as `127.0.0.1` or `192.168.1.20`. The studio warns you that it is not encrypted.
 - The URL may not hold a user name, a password, a query or a fragment. Keys go in the key field, never in the URL.
+
+## Remote engines
+
+A remote engine is a PixelNexus engine on another machine, such as a computer with a large GPU. It speaks the same API as the engine on this computer, so it runs the same tasks with the models downloaded there. On that machine, set `PIXELNEXUS_ENGINE_HOST=0.0.0.0` so it listens on the network, and add your studio's address to `PIXELNEXUS_ALLOWED_ORIGINS`. Then add its base URL here, such as `http://192.168.1.20:8765`.
+
+## External services
+
+An external service is called through a preset from `catalog/providers.yaml`. A preset says the path of each task, the form fields and the header that carries the key. The studio offers a service only for the tasks its preset lists.
+
+- **Generic HTTP** is PixelNexus's own simple contract, for a service you build or wrap. Each task is a POST to the base URL plus the task id, such as `/denoise`. The request is a multipart form. The image goes as PNG in `image` and the selection as a gray PNG in `mask`. The clicks and box go as JSON in `prompts`, and the model name in `model`. The key goes in the `Authorization` header as `Bearer` and the key. The answer must be an image.
+- **remove.bg** calls the [remove.bg API](https://www.remove.bg/api) for Select subject. You need your own key from remove.bg, and its own terms and prices apply.
+
+For a mask task, the transparency of the answer is the selection when it has any. Otherwise its gray value is. A selection of another size is resized to the image. An error answer is shown with the reason the service gave. Some services do not accept requests from a web page. The request then fails with a message that names the host.
 
 ## Consent
 

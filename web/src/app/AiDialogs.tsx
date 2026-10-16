@@ -23,7 +23,7 @@ import type { ProviderKindId } from "@/core/ai/types";
 import { ENGINE_PROVIDER, ON_DEVICE_PROVIDER, requestLog, secrets, useAi } from "@/state/ai";
 import { useUi } from "@/state/ui";
 
-import { classicalName } from "./aiActions";
+import { classicalName, presetFor } from "./aiActions";
 import { openModelCache } from "./onDeviceAdapter";
 import { formatBytes } from "./format";
 
@@ -82,7 +82,13 @@ export function AiProvidersDialog() {
                   { value: NONE, label: `None. Use ${classicalName(task)}` },
                   { value: ENGINE_PROVIDER.id, label: ENGINE_PROVIDER.name },
                   { value: ON_DEVICE_PROVIDER.id, label: ON_DEVICE_PROVIDER.name },
-                  ...providers.map((p) => ({ value: p.id, label: p.name })),
+                  ...providers
+                    .filter(
+                      (p) =>
+                        p.kind !== "external-api" ||
+                        presetFor(p)?.tasks.some((t) => t.task === task.id),
+                    )
+                    .map((p) => ({ value: p.id, label: p.name })),
                 ]}
                 className="w-72"
               />
@@ -238,15 +244,19 @@ function OnDeviceModels() {
 function AddProvider({ onAdded }: { onAdded: () => void }) {
   const addProvider = useAi((s) => s.addProvider);
   const [kind, setKind] = useState<ProviderKindId>("external-api");
+  const [presetId, setPresetId] = useState("generic-http");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [model, setModel] = useState("");
   const [key, setKey] = useState("");
   const [remember, setRemember] = useState(false);
   const ids = { name: useId(), url: useId(), model: useId(), key: useId(), note: useId() };
-  const check = url.trim() ? checkEndpoint(url) : null;
   const external = kind === "external-api";
-  const ready = name.trim() !== "" && check?.ok === true;
+  const preset = external ? catalog.providerPresets.find((p) => p.id === presetId) : undefined;
+  // A preset with its own base URL needs none typed in.
+  const typed = preset?.baseUrl ?? url;
+  const check = typed.trim() ? checkEndpoint(typed) : null;
+  const ready = name.trim() !== "" && check?.ok === true && (!external || key !== "");
 
   const add = () => {
     if (!ready || !check.ok) return;
@@ -255,6 +265,7 @@ function AddProvider({ onAdded }: { onAdded: () => void }) {
       name: name.trim(),
       baseUrl: check.url.href,
       ...(external && model.trim() ? { model: model.trim() } : {}),
+      ...(preset ? { preset: preset.id } : {}),
     });
     if (key) secrets.set(created.id, key, remember);
     setName("");
@@ -292,25 +303,51 @@ function AddProvider({ onAdded }: { onAdded: () => void }) {
           onChange={(e) => setName(e.target.value)}
         />
       </label>
-      <label htmlFor={ids.url} className="flex flex-col gap-1 text-xs text-text-secondary">
-        Base URL
-        <input
-          id={ids.url}
-          className={FIELD}
-          value={url}
-          placeholder={external ? "https://api.example.com/v1" : "http://192.168.1.20:8765"}
-          aria-describedby={ids.note}
-          aria-invalid={check?.ok === false}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-      </label>
+      {external ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-text-secondary">Service</span>
+          <Select
+            label="Service preset"
+            value={presetId}
+            onChange={setPresetId}
+            options={catalog.providerPresets.map((p) => ({ value: p.id, label: p.name }))}
+            className="w-72"
+          />
+        </div>
+      ) : null}
+      {preset ? (
+        <p className="text-xs text-text-muted">
+          {preset.description}{" "}
+          {preset.docsUrl ? (
+            <a className="underline" href={preset.docsUrl} target="_blank" rel="noreferrer">
+              API documentation
+            </a>
+          ) : null}
+        </p>
+      ) : null}
+      {preset?.baseUrl ? (
+        <p className="text-xs text-text-secondary">Base URL: {preset.baseUrl}</p>
+      ) : (
+        <label htmlFor={ids.url} className="flex flex-col gap-1 text-xs text-text-secondary">
+          Base URL
+          <input
+            id={ids.url}
+            className={FIELD}
+            value={url}
+            placeholder={external ? "https://api.example.com/v1" : "http://192.168.1.20:8765"}
+            aria-describedby={ids.note}
+            aria-invalid={check?.ok === false}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+        </label>
+      )}
       <p
         id={ids.note}
         className={check?.ok === false ? "text-xs text-danger" : "text-xs text-warning"}
       >
         {check === null ? "" : check.ok ? (check.warning ?? "") : check.reason}
       </p>
-      {external ? (
+      {preset?.modelField ? (
         <label htmlFor={ids.model} className="flex flex-col gap-1 text-xs text-text-secondary">
           Model name (optional)
           <input
@@ -321,22 +358,34 @@ function AddProvider({ onAdded }: { onAdded: () => void }) {
           />
         </label>
       ) : null}
-      <label htmlFor={ids.key} className="flex flex-col gap-1 text-xs text-text-secondary">
-        API key {external ? "" : "(optional)"}
-        <input
-          id={ids.key}
-          type="password"
-          autoComplete="off"
-          className={FIELD}
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-        />
-      </label>
-      <Switch label="Remember the key on this device" checked={remember} onChange={setRemember} />
-      <p className="text-xs text-text-muted">
-        Without this, the key is forgotten when you close the tab. Keys are never logged, never put
-        in URLs and never saved in projects.
-      </p>
+      {external ? (
+        <>
+          <label htmlFor={ids.key} className="flex flex-col gap-1 text-xs text-text-secondary">
+            API key
+            <input
+              id={ids.key}
+              type="password"
+              autoComplete="off"
+              className={FIELD}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
+          </label>
+          <Switch
+            label="Remember the key on this device"
+            checked={remember}
+            onChange={setRemember}
+          />
+          <p className="text-xs text-text-muted">
+            Without this, the key is forgotten when you close the tab. Keys are never logged, never
+            put in URLs and never saved in projects.
+          </p>
+        </>
+      ) : (
+        <p className="text-xs text-text-muted">
+          A remote engine needs no key. Run it only on a network you trust.
+        </p>
+      )}
       <div>
         <Button variant="primary" disabled={!ready} onClick={add}>
           Add provider

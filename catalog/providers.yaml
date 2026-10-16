@@ -24,3 +24,39 @@ providers:
     consent: every-time
     platforms: [desktop, pages, phone]
     description: A service that you configure with a base URL and an API key. Images are sent to that service, and its own privacy terms apply.
+
+# Presets for the generic HTTP adapter of the external-api kind. Each one says how to call one
+# service. The generic preset is PixelNexus's own simple contract, for a service you build or wrap.
+presets:
+  - id: generic-http
+    name: Generic HTTP
+    description: >-
+      PixelNexus's own simple contract. Each task is a POST to the base URL plus the task id. It
+      sends a multipart form with the image, the selection, and the clicks and box. The answer is
+      an image.
+    keyHeader: Authorization
+    keyPrefix: "Bearer "
+    imageField: image
+    maskField: mask
+    promptsField: prompts
+    modelField: model
+    tasks:
+      - { task: subject-select, path: subject-select }
+      - { task: click-select, path: click-select }
+      - { task: object-select, path: object-select }
+      - { task: denoise, path: denoise }
+      - { task: jpeg-cleanup, path: jpeg-cleanup }
+      - { task: super-resolution, path: super-resolution }
+  - id: remove-bg
+    name: remove.bg
+    description: >-
+      The remove.bg background removal service, for Select subject. It returns the cutout as a
+      PNG, and its transparency becomes the selection. You need your own API key from remove.bg.
+    baseUrl: https://api.remove.bg/v1.0
+    docsUrl: https://www.remove.bg/api
+    keyHeader: X-Api-Key
+    imageField: image_file
+    tasks:
+      - task: subject-select
+        path: removebg
+        fields: { size: auto, format: png }

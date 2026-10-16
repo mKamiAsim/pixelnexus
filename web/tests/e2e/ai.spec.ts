@@ -56,6 +56,24 @@ test("an external provider needs HTTPS, and its key stays out of storage", async
   );
 });
 
+test("a service preset fills the base URL and is offered only for its tasks", async ({ page }) => {
+  await openProviders(page);
+  const dialog = page.getByRole("dialog", { name: "AI providers" });
+  await dialog.getByRole("combobox", { name: "Service preset" }).click();
+  await page.getByRole("option", { name: "remove.bg" }).click();
+  await expect(dialog.getByText("Base URL: https://api.remove.bg/v1.0")).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Base URL" })).toHaveCount(0);
+  await dialog.getByLabel("Name", { exact: true }).fill("Cutouts");
+  await expect(dialog.getByRole("button", { name: "Add provider" })).toBeDisabled();
+  await dialog.getByLabel("API key").fill("test-key-1111");
+  await dialog.getByRole("button", { name: "Add provider" }).click();
+  await dialog.getByRole("combobox", { name: "Provider for Denoising" }).click();
+  await expect(page.getByRole("option", { name: "Cutouts" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await dialog.getByRole("combobox", { name: "Provider for Subject selection" }).click();
+  await expect(page.getByRole("option", { name: "Cutouts" })).toBeVisible();
+});
+
 test("the request log starts empty and says it stays on the device", async ({ page }) => {
   await page.goto("/");
   await expect(

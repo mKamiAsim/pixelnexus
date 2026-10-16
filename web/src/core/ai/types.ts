@@ -50,6 +50,8 @@ export interface ProviderConfig {
   /** For remote engines and external APIs. */
   readonly baseUrl?: string;
   readonly model?: string;
+  /** For external APIs: the preset from catalog/providers.yaml that says how to call it. */
+  readonly preset?: string;
 }
 
 /** One adapter per provider kind. It throws an Error with a plain message when it fails. */

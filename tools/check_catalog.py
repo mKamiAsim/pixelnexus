@@ -142,6 +142,18 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
                 "error", where, f"classical alternative '{classical.get('id')}' is not runnable"
             )
 
+    task_ids = {t.get("id") for t in bundle.get("aiTasks", []) if isinstance(t, dict)}
+    for preset in bundle.get("providerPresets", []):
+        if not isinstance(preset, dict):
+            continue
+        where = f"catalog/providers.yaml:{preset.get('id')}"
+        named = [t.get("task") for t in preset.get("tasks", []) if isinstance(t, dict)]
+        for task_id in named:
+            if task_id not in task_ids:
+                yield Issue("error", where, f"task '{task_id}' is not in ai-tasks.yaml")
+        if len(named) != len(set(named)):
+            yield Issue("error", where, "a task is listed twice")
+
     all_ids = set(seen)
     for section in ("filters", "tools"):
         for index, entry in enumerate(bundle[section]):

@@ -140,7 +140,18 @@ describe("running an AI task", () => {
     unregister();
   });
 
-  it("reports a kind with no adapter yet, with the classical alternative", async () => {
+  it("runs a remote engine at its own base URL, after consent", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        urls.push(url);
+        return Response.json(
+          { detail: "Download the model DnCNN-3, gray first." },
+          { status: 409 },
+        );
+      }),
+    );
     useAi.setState({
       providers: [{ id: "lab", kind: "remote-engine", name: "Lab", baseUrl: "https://lab.test/" }],
       tasks: { "jpeg-cleanup": "lab" },
@@ -149,11 +160,13 @@ describe("running an AI task", () => {
     await vi.waitFor(() => expect(useAi.getState().pending).not.toBeNull());
     useAi.getState().answerConsent("send");
     await running;
+    expect(urls[0]).toMatch(/^https:\/\/lab\.test\/api\/v1\/images/);
     expect(lastNotice()).toMatchObject({
       tone: "error",
       title: "JPEG cleanup did not run",
-      detail: `Lab failed: This kind of provider is not available in this version yet. Use ${classicalName(task("jpeg-cleanup"))} instead.`,
+      detail: `Lab failed: Download the model DnCNN-3, gray first. Use ${classicalName(task("jpeg-cleanup"))} instead.`,
     });
+    vi.unstubAllGlobals();
   });
 
   it("ends a failure message with one period", () => {

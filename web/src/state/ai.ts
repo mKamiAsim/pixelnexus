@@ -31,7 +31,8 @@ function isProvider(value: unknown): value is ProviderConfig {
     typeof item.name === "string" &&
     KINDS.includes(item.kind as ProviderKindId) &&
     (item.baseUrl === undefined || typeof item.baseUrl === "string") &&
-    (item.model === undefined || typeof item.model === "string")
+    (item.model === undefined || typeof item.model === "string") &&
+    (item.preset === undefined || typeof item.preset === "string")
   );
 }
 
