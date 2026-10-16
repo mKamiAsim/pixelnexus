@@ -5,7 +5,7 @@
 import { catalog, isRunnable, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
 import { composite } from "@/core/composite/compose";
-import { rowsInMask } from "@/core/features/table";
+import { hasPoints, rowsInMask } from "@/core/features/table";
 import { fullRect } from "@/core/filters/run";
 import { processingRegion, scopeMask, type FilterScope } from "@/core/composite/scope";
 import type { ParamValue } from "@/core/filters/types";
@@ -166,8 +166,9 @@ export async function applySelected(): Promise<void> {
   }
   const resizes = entry.changesSize === true;
   if (resizes && !fitsLimits(source, Number(values.scale))) return;
-  // Feature detectors look at the whole image. A selection only chooses which features to keep.
-  const finds = entry.output === "features";
+  // Feature detectors and tables look at the whole image. A selection only chooses which
+  // features to keep.
+  const finds = entry.output === "features" || entry.output === "table";
   const scope = resizes ? "whole" : selectionScope(entry, doc);
   const mask = scopeMask(selection, scope);
   const region =
@@ -225,11 +226,22 @@ export async function applySelected(): Promise<void> {
         .getState()
         .setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
       showPanel("features");
-      notify(
-        "success",
-        `${entry.name} found ${table.summary}`,
-        `${ms} ms. The image does not change. The Features panel lists them.`,
-      );
+      if (hasPoints(table)) {
+        notify(
+          "success",
+          `${entry.name} found ${table.summary}`,
+          `${ms} ms. The image does not change. The Features panel lists them.`,
+        );
+      } else {
+        notify(
+          "success",
+          `${entry.name} made a table of ${table.summary}`,
+          [
+            `${ms} ms. The image does not change. The Features panel shows the table.`,
+            ...(mask ? ["The table describes the whole image, not only the selection."] : []),
+          ].join(" "),
+        );
+      }
       return;
     }
     if (resizes) {

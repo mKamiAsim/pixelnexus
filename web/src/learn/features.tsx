@@ -4,7 +4,7 @@
  */
 import { useMemo } from "react";
 
-import { featurePoints } from "@/core/features/table";
+import { featurePoints, hasPoints } from "@/core/features/table";
 
 import { patchAt } from "./common";
 import { useEngineResults } from "./engine";
@@ -81,9 +81,12 @@ export function FeatureViewer({ filterId, values, image, point }: WidgetProps) {
       ) : null}
       <p className="text-text-secondary">
         The detector runs in the PixelNexus engine with the current settings on the {PATCH} x{" "}
-        {PATCH} patch around the probe. {table ? `It finds ${table.summary}.` : ""} Each circle
-        shows the size of a feature. The table lists the strongest, with x and y counted from the
-        top left of the patch.
+        {PATCH} patch around the probe.{" "}
+        {!table
+          ? ""
+          : hasPoints(table)
+            ? `It finds ${table.summary}. Each circle shows the size of a feature. The table lists the strongest, with x and y counted from the top left of the patch.`
+            : `It gives ${table.summary} for the patch. The table lists the first rows.`}
       </p>
     </div>
   );

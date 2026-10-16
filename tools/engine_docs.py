@@ -73,6 +73,7 @@ from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
 from pixelnexus_engine.filters.surf import surf_inspired
 from pixelnexus_engine.filters.susan import susan_corner
+from pixelnexus_engine.filters.texture import glcm, hog_filter, hog_view, lbp, ltp, ltp_codes
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -1767,6 +1768,183 @@ def mser_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Texture ----------------------------------------------------------------------------------------
+
+TEXTURE_PATCHES = ["Stripes", "Fine noise", "Coarse", "Flat"]
+
+
+def texture_scene(size: int = 160) -> Gray:
+    """Four textures in the quarters: vertical stripes with a period of 8 pixels, uniform noise
+    from 60 to 196, Gaussian noise blurred with sigma 3, and 112 with noise of sigma 2."""
+    half = size // 2
+    rng = np.random.default_rng(11)
+    out = np.empty((size, size))
+    out[:half, :half] = 128 + 70 * np.sin(2 * np.pi * np.arange(half) / 8)[None, :]
+    out[:half, half:] = rng.uniform(60, 196, (half, half))
+    coarse = ndimage.gaussian_filter(rng.normal(0, 1, (half, half)), 3)
+    out[half:, :half] = 128 + coarse / coarse.std() * 35
+    out[half:, half:] = 112 + rng.normal(0, 2, (half, half))
+    return np.clip(np.rint(out), 0, 255).astype(np.uint8)
+
+
+def texture_patches(scene: Gray) -> list[Gray]:
+    half = scene.shape[0] // 2
+    return [scene[:half, :half], scene[:half, half:], scene[half:, :half], scene[half:, half:]]
+
+
+TEXTURE_MESSAGE = (
+    "A test image of 160 x 160 with four textures: vertical stripes with a period of 8 pixels, "
+    "fine uniform noise, coarse blurred noise, and a flat gray of 112 with faint noise of "
+    "sigma 2."
+)
+
+
+def figure(out: dict[Path, str], filter_id: str, message: str, panels: list[Any]) -> None:
+    out[DATA / f"{filter_id}.json"] = json.dumps(
+        {"filter": filter_id, "message": message, "panels": panels}, separators=(",", ":")
+    )
+
+
+def lbp_docs(out: dict[Path, str]) -> None:
+    scene = texture_scene()
+    figure(
+        out,
+        "lbp",
+        f"{TEXTURE_MESSAGE} Then the codes with 8 points at radius 1, by the default and the "
+        "uniform method, and the variance method.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Default", "image": picture(run(lbp, scene, "lbp"))},
+            {"title": "Uniform", "image": picture(run(lbp, scene, "lbp", method="uniform"))},
+            {"title": "Variance", "image": picture(run(lbp, scene, "lbp", method="var"))},
+        ],
+    )
+    rows = []
+    for name, patch in zip(TEXTURE_PATCHES, texture_patches(scene), strict=True):
+        default = table_rows(lbp, "lbp", patch, output="histogram")
+        uniform = table_rows(lbp, "lbp", patch, output="histogram", method="uniform")
+        top = max(uniform[:-1], key=lambda r: r["count"])
+        rows.append(
+            [
+                name,
+                str(sum(1 for r in default if r["count"] > 0)),
+                f"{int(top['code'])} ({top['share']:.2f})",
+                fix(uniform[-1]["share"], 2),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / "lbp.md"] = (
+        header("lbp")
+        + md_table(
+            ["Quarter", "Default codes used", "Most common uniform label", "Non-uniform share"],
+            rows,
+        )
+        + "\nEach quarter of the test image of the figure, 80 x 80, on its own, with 8 points at "
+        "radius 1. The default method has 256 codes. The uniform method has the labels 0 to 8 by "
+        "the number of 1s, and label 9 for all codes that are not uniform. The share is that of "
+        "the pixels of the quarter.\n"
+    )
+
+
+def ltp_docs(out: dict[Path, str]) -> None:
+    scene = texture_scene()
+    figure(
+        out,
+        "ltp",
+        f"{TEXTURE_MESSAGE} Then the upper code with the thresholds 0 and 5, and the lower code "
+        "with the threshold 5.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Upper, t = 0", "image": picture(run(ltp, scene, "ltp", threshold=0))},
+            {"title": "Upper, t = 5", "image": picture(run(ltp, scene, "ltp"))},
+            {"title": "Lower, t = 5", "image": picture(run(ltp, scene, "ltp", output="lower"))},
+        ],
+    )
+    thresholds = [0, 2, 5, 10]
+    rows = []
+    for name, patch in zip(TEXTURE_PATCHES, texture_patches(scene), strict=True):
+        cells = []
+        for t in thresholds:
+            upper, lower = ltp_codes(patch, t, "reflect101")
+            cells.append(fix(float(((upper == 0) & (lower == 0)).mean()), 2))
+        rows.append([name, *cells])
+    out[ROOT / "docs" / "_generated" / "examples" / "ltp.md"] = (
+        header("ltp")
+        + md_table(["Quarter", *(f"t = {t}" for t in thresholds)], rows)
+        + "\nThe share of pixels whose upper and lower codes are both 0, so that no neighbor "
+        "counts as brighter or darker. Each quarter of the test image of the figure, 80 x 80, on "
+        "its own.\n"
+    )
+
+
+def glcm_docs(out: dict[Path, str]) -> None:
+    scene = texture_scene()
+
+    def mapped(prop: str) -> dict[str, Any]:
+        return picture(run(glcm, scene, "glcm", output="map", property=prop))
+
+    figure(
+        out,
+        "glcm",
+        f"{TEXTURE_MESSAGE} Then three maps with the defaults: 8 levels, distance 1, angle 0 "
+        "and a window of 15. Each map is stretched to the full gray range.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Contrast", "image": mapped("contrast")},
+            {"title": "Homogeneity", "image": mapped("homogeneity")},
+            {"title": "Correlation", "image": mapped("correlation")},
+        ],
+    )
+    keys = ["contrast", "homogeneity", "energy", "correlation"]
+    rows = []
+    for name, patch in zip(TEXTURE_PATCHES, texture_patches(scene), strict=True):
+        found = table_rows(glcm, "glcm", patch)
+        for angle in (0, 90):
+            row = next(r for r in found if r["angle"] == angle)
+            rows.append([name, str(angle), *(fix(row[k], 3) for k in keys)])
+    out[ROOT / "docs" / "_generated" / "examples" / "glcm.md"] = (
+        header("glcm")
+        + md_table(
+            ["Quarter", "Angle (deg)", "Contrast", "Homogeneity", "Energy", "Correlation"], rows
+        )
+        + "\nThe table output with the defaults, 8 levels and distance 1, for each quarter of the "
+        "test image of the figure, 80 x 80, on its own. The table lists four angles. Two are "
+        "shown here.\n"
+    )
+
+
+def hog_docs(out: dict[Path, str]) -> None:
+    star = siemens_star(128, 128, spokes=12)
+    scene = texture_scene(128)
+    figure(
+        out,
+        "hog",
+        "A Siemens star with 12 spokes, 128 x 128, and its HOG view with cells of 8 and 16 "
+        "pixels. Then the view of the texture test image at 128 x 128 with cells of 8 pixels. "
+        "The other settings are the defaults.",
+        [
+            {"title": "Star", "image": picture(star)},
+            {"title": "Cells of 8", "image": picture(run(hog_filter, star, "hog"))},
+            {"title": "Cells of 16", "image": picture(run(hog_filter, star, "hog", cellSize=16))},
+            {"title": "Textures, 8", "image": picture(run(hog_filter, scene, "hog"))},
+        ],
+    )
+    big = siemens_star(256, 256)
+    rows = []
+    for cell in (8, 16, 32):
+        for block in (2, 3):
+            params = catalog_values("hog", cellSize=cell, blockSize=block)
+            features, _ = hog_view(big, params)
+            rows.append([str(cell), str(block), str((256 // cell) ** 2), str(features.size)])
+    out[ROOT / "docs" / "_generated" / "examples" / "hog.md"] = (
+        header("hog")
+        + md_table(["Cell size (px)", "Block size", "Cells", "Descriptor length"], rows)
+        + "\nThe Siemens star at 256 x 256 with 9 orientation bins. The descriptor has one "
+        "histogram of 9 bins for each cell of each block, and blocks overlap by all but one "
+        "cell, so most cells count in several blocks. The view is the same for both block "
+        "sizes.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1800,6 +1978,10 @@ def build() -> dict[Path, str]:
         keypoint_docs(out, filter_id)
     susan_docs(out)
     mser_docs(out)
+    lbp_docs(out)
+    ltp_docs(out)
+    glcm_docs(out)
+    hog_docs(out)
     return out
 
 

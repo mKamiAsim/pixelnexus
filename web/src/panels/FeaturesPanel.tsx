@@ -5,7 +5,7 @@
 import { download } from "@/app/download";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
-import { tableToCsv } from "@/core/features/table";
+import { hasPoints, tableToCsv } from "@/core/features/table";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { useFeatures } from "@/state/features";
 import { announce } from "@/state/notifications";
@@ -29,6 +29,7 @@ export function FeaturesPanel() {
     );
   }
   const { table } = layer;
+  const points = hasPoints(table);
   const stale = layer.source !== doc.current;
   const exportCsv = () => {
     const blob = new Blob([tableToCsv(table)], { type: "text/csv" });
@@ -45,12 +46,13 @@ export function FeaturesPanel() {
       </div>
       {stale ? (
         <p className="text-text-secondary">
-          The image has changed since these features were found, so the canvas no longer shows them.
-          Run the detector again to update them.
+          {points
+            ? "The image has changed since these features were found, so the canvas no longer shows them. Run the detector again to update them."
+            : "The image has changed since this table was made. Run the filter again to update it."}
         </p>
-      ) : (
+      ) : points ? (
         <Switch label="Show on the canvas" checked={visible} onChange={setVisible} />
-      )}
+      ) : null}
       <div className="flex gap-2">
         <Button size="sm" onClick={exportCsv} disabled={table.rows.length === 0}>
           Export CSV
@@ -90,13 +92,14 @@ export function FeaturesPanel() {
       ) : null}
       {table.rows.length > SHOWN_ROWS ? (
         <p className="text-text-muted">
-          The table shows the first {SHOWN_ROWS} of {table.rows.length} rows, with the strongest
-          first. The CSV file has all of them.
+          The table shows the first {SHOWN_ROWS} of {table.rows.length} rows
+          {points ? ", with the strongest first" : ""}. The CSV file has all of them.
         </p>
       ) : null}
       <p className="text-text-muted">
-        x and y give the position of each feature in pixels, with the center of the top-left pixel
-        at 0, 0.
+        {points
+          ? "x and y give the position of each feature in pixels, with the center of the top-left pixel at 0, 0."
+          : "The table describes the whole image."}
       </p>
     </div>
   );

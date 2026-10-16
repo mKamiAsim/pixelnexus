@@ -232,6 +232,10 @@ nav:
           - SURF-inspired detector: filters/features/surf-inspired.md
           - SUSAN corner detector: filters/features/susan-corner.md
           - MSER region detector: filters/features/mser.md
+          - Local Binary Pattern: filters/features/lbp.md
+          - Local Ternary Pattern: filters/features/ltp.md
+          - GLCM features: filters/features/glcm.md
+          - Histogram of Oriented Gradients: filters/features/hog.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md

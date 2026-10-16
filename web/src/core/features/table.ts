@@ -46,6 +46,12 @@ export function isFeatureTable(value: unknown): value is FeatureTable {
 
 const column = (table: FeatureTable, key: string) => table.columns.findIndex((c) => c.key === key);
 
+/** True when the rows are points: the table has x and y columns. Other tables, such as texture
+ * measures or histograms, describe the image as a whole. */
+export function hasPoints(table: FeatureTable): boolean {
+  return column(table, "x") >= 0 && column(table, "y") >= 0;
+}
+
 /** The rows as points, or an empty list when the table has no x and y columns. */
 export function featurePoints(table: FeatureTable): FeaturePoint[] {
   const [x, y, radius, angle] = ["x", "y", "radius", "angle"].map((key) => column(table, key));

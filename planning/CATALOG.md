@@ -247,10 +247,10 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | shi-tomasi | Shi-Tomasi | | Core | Browser | 5c |
 | moravec | Moravec corner detector | | Core | Browser | 5c |
 | fast | FAST | With non-maximum suppression. | Core | Browser | 5c |
-| lbp | Local Binary Pattern | scikit-image. | Advanced | Science | 6d |
-| ltp | Local Ternary Pattern | | Advanced | Science | 6d |
-| glcm | GLCM features | Global table and an optional sliding-window map. | Advanced | Science | 6d |
-| hog | Histogram of Oriented Gradients | With visualization. | Advanced | Science | 6d |
+| lbp | Local Binary Pattern | scikit-image. Done on 2026-10-16. | Advanced | Science | 6d |
+| ltp | Local Ternary Pattern | Our own code on the 8 neighbors. Done on 2026-10-16. | Advanced | Science | 6d |
+| glcm | GLCM features | Global table and an optional sliding-window map. Done on 2026-10-16. | Advanced | Science | 6d |
+| hog | Histogram of Oriented Gradients | With visualization. Done on 2026-10-16. | Advanced | Science | 6d |
 | frangi | Frangi vesselness | Ridge filters are cross-listed here. Done on 2026-10-15. | Advanced | Science | 6d |
 | sato | Sato filter | Done on 2026-10-15. | Advanced | Science | 6d |
 | meijering | Meijering filter | Done on 2026-10-15. | Advanced | Science | 6d |

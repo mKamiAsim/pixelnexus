@@ -1,8 +1,177 @@
 id: glcm
 name: GLCM features
+aliases: [Gray-level co-occurrence matrix, Haralick texture features, Co-occurrence matrix]
 family: features
+tags: [purpose:texture, purpose:analysis]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Global table and an optional sliding-window map.
+
+summary: Measures texture from how often pairs of gray levels occur next to each other, after Haralick and coworkers. The table gives contrast, dissimilarity, homogeneity, energy, correlation and entropy for the whole image, and the map shows one of them in a window around every pixel.
+purpose: Put numbers on texture, such as how rough, regular or uniform a surface is, and see where in the image it changes.
+classification: {linearity: nonlinear, domain: statistical, operation: co-occurrence statistics}
+output: table
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: glcm_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit luma with the BT.709 weights, quantized to the chosen number of
+  levels. The table goes to the Features panel. The map is a gray image, stretched to the full
+  range, with the alpha of the image.
+boundary: Only pairs with both pixels inside the image count. In the map, windows are cut at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.graycomatrix and graycoprops for the table.'}
+  - {name: NumPy, optional: false, note: 'The window sums of the map.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: table
+    options:
+      - {value: table, label: Table for the whole image}
+      - {value: map, label: Map of one property}
+    description: All properties for the whole image as a table, or one property in a sliding window as an image.
+    effect: The map shows where the texture changes.
+  - key: levels
+    label: Gray levels
+    type: integer
+    min: 2
+    max: 16
+    step: 1
+    default: 8
+    description: The luma is quantized to this many levels, so the matrix has levels x levels entries.
+    effect: More levels see finer differences, and need larger windows to fill the matrix.
+  - key: distance
+    label: Distance
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 1
+    unit: px
+    description: How far apart the two pixels of a pair are. The table also lists distance 1.
+    effect: Larger distances describe coarser texture.
+  - key: angle
+    label: Angle
+    type: select
+    default: '0'
+    options:
+      - {value: '0', label: 0 degrees (right)}
+      - {value: '45', label: 45 degrees (up right)}
+      - {value: '90', label: 90 degrees (up)}
+      - {value: '135', label: 135 degrees (up left)}
+    description: The direction from the first pixel of a pair to the second, counterclockwise from the right. Used by the map. The table lists all four.
+    effect: Texture with a direction gives different values at different angles.
+  - key: symmetric
+    label: Symmetric
+    type: boolean
+    default: true
+    description: Count each pair both ways, so the matrix is symmetric and opposite directions give the same values.
+    effect: Off tells a step up from a step down.
+  - key: property
+    label: Map property
+    type: select
+    default: contrast
+    options:
+      - {value: contrast, label: Contrast}
+      - {value: dissimilarity, label: Dissimilarity}
+      - {value: homogeneity, label: Homogeneity}
+      - {value: ASM, label: Angular second moment}
+      - {value: energy, label: Energy}
+      - {value: correlation, label: Correlation}
+      - {value: entropy, label: Entropy}
+    description: The property the map shows.
+    effect: Contrast is high on rough texture, homogeneity and energy on smooth, uniform areas.
+  - key: window
+    label: Window
+    type: integer
+    min: 3
+    max: 63
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side of the square window of the map.
+    effect: Larger windows give steadier values and blur the borders between textures.
+formula: |
+  P(i, j) = \frac{\#\{p : q(p) = i,\ q(p + d) = j\}}{\#\{p\}},
+  \qquad
+  \text{contrast} = \sum_{i,j} P(i, j)\, (i - j)^2,
+  \qquad
+  \text{energy} = \sqrt{\sum_{i,j} P(i, j)^2}
+formulaExplanation: >-
+  The luma is quantized to q, from 0 to levels - 1. For an offset d, the gray-level
+  co-occurrence matrix P counts how often level i has level j at the offset d. It is divided
+  by the number of pairs. Symmetric counting adds each pair both ways.
+  Each property sums P with a weight. Contrast weights the squared difference of levels, so it
+  is high on rough texture. Dissimilarity uses the absolute difference. Homogeneity weights
+  1 / (1 + (i - j)^2), high where neighbors match. The angular second moment sums P^2, and
+  energy is its square root, high where few pairs dominate. Correlation measures how linearly
+  neighboring levels depend on each other. Entropy is high where many pairs are equally
+  common. All follow scikit-image's graycoprops. The map computes P of the window around each
+  pixel, counting the pairs with both pixels inside it, and stretches the property to the
+  full gray range.
+symbols:
+  - {symbol: 'q', meaning: 'The quantized luma'}
+  - {symbol: 'd', meaning: 'The offset of the pair'}
+  - {symbol: 'P', meaning: 'The normalized co-occurrence matrix'}
+steps:
+  - Quantize the 8-bit luma to the chosen number of levels.
+  - Count the pairs of levels at the chosen offset, in the image or in each window.
+  - Normalize the counts to the matrix P.
+  - Compute the properties, as a table, or one property as a map.
+complexity:
+  time: O(N) for the table, O(L^2 N) for the map
+  memory: O(N)
+  notes: N is the number of pixels and L the number of levels. The map counts each pair of levels with window sums on an integral image.
+useCases:
+  - Comparing textures in medical, satellite and material images.
+  - Finding where texture changes, with the map.
+advantages:
+  - Simple numbers with a clear meaning.
+  - The map is fast, since window sums do not depend on the window size.
+limitations:
+  - Few levels lose detail, many levels need large windows to fill the matrix.
+  - The map has at most 16 levels, since it counts each pair of levels separately.
+  - The map is stretched to the full gray range, so its gray values are only comparable within one image.
+artifacts:
+  - Soft borders in the map, about half a window wide.
+references:
+  - kind: paper
+    text: Haralick, R. M., Shanmugam, K., and Dinstein, I. Textural features for image classification. IEEE Transactions on Systems, Man, and Cybernetics SMC-3(6), 610 to 621, 1973.
+    doi: 10.1109/TSMC.1973.4309314
+  - kind: library
+    text: scikit-image documentation, skimage.feature.graycomatrix and graycoprops.
+implementation: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: glcm}
+tests: [engine/tests/test_texture.py]
+learn:
+  oneSentence: Count which gray levels sit next to each other, and turn the counts into texture numbers.
+  howItWorks:
+    - Reduce the image to a few gray levels.
+    - Count how often each level has each other level as its neighbor.
+    - Rough texture puts many counts far from the diagonal of the table, smooth texture on it.
+    - Sum the counts with weights to get contrast, energy and the other measures.
+  academic: >-
+    Haralick features of the normalized gray-level co-occurrence matrix, for the whole image or
+    in a sliding window.
+  paramNotes:
+    output: A table for the whole image, or a map of one property.
+    levels: How many gray levels are counted.
+    distance: How far apart the pixels of a pair are.
+    angle: The direction of the pairs.
+    symmetric: Count each pair both ways.
+    property: What the map shows.
+    window: The size of the window of the map.
+  tryThis:
+    - Choose the map with Contrast on the Siemens star. It is brightest near the center, where the spokes are fine.
+  pitfalls:
+    - Many levels with a small window. Most entries of the matrix stay empty.
+  demos: [feature-viewer]
+related: [lbp, ltp, laws, local-entropy]
+docsPage: filters/features/glcm.md

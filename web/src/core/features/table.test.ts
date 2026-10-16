@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { createMask } from "@/core/mask/mask";
 
-import { featurePoints, isFeatureTable, rowsInMask, tableToCsv, type FeatureTable } from "./table";
+import {
+  featurePoints,
+  hasPoints,
+  isFeatureTable,
+  rowsInMask,
+  tableToCsv,
+  type FeatureTable,
+} from "./table";
 
 const table: FeatureTable = {
   kind: "features",
@@ -52,6 +59,22 @@ describe("feature tables", () => {
     expect(rowsInMask(table, null)).toBe(table);
     const subpixel = { ...table, rows: [[2.6, 0.6, 1, 1]] };
     expect(rowsInMask(subpixel, mask).rows).toEqual(subpixel.rows);
+  });
+
+  it("tells point tables from tables of the whole image", () => {
+    const texture: FeatureTable = {
+      kind: "features",
+      columns: [
+        { key: "distance", label: "Distance", unit: "px" },
+        { key: "contrast", label: "contrast", unit: "" },
+      ],
+      rows: [[1, 0.5]],
+      summary: "1 offsets",
+    };
+    expect(hasPoints(table)).toBe(true);
+    expect(hasPoints(texture)).toBe(false);
+    const mask = createMask(8, 8);
+    expect(rowsInMask(texture, mask)).toBe(texture);
   });
 
   it("writes CSV with units in the header", () => {
