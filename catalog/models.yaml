@@ -32,6 +32,7 @@ models:
     license: Apache License 2.0, from the U-2-Net project. The file is the copy in the rembg project's model release.
     licenseUrl: https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE
     sourceUrl: https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx
+    browserUrl: https://huggingface.co/BritishWerewolf/U-2-Netp/resolve/7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8/onnx/model.onnx
     sha256: 309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
     sizeMB: 4.57
     format: onnx

@@ -1346,6 +1346,11 @@
         "nonCommercial": {
           "type": "boolean",
           "description": "True when the license allows research and non-commercial use only. The studio says so before the download."
+        },
+        "browserUrl": {
+          "type": "string",
+          "pattern": "^https://",
+          "description": "A copy of the main file with the same SHA-256, for browsers, when the source sends no CORS header. The SHA-256 is checked either way."
         }
       }
     },
