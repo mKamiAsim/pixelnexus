@@ -42,3 +42,19 @@ export function countBy<T, K>(items: readonly T[], key: (item: T) => K): Map<K, 
   }
   return counts;
 }
+
+/**
+ * The model a filter needs for these settings. With modelChoices, a select parameter picks the
+ * model, as the style of the fast neural style filter does. Undefined when it needs none.
+ */
+export function modelFor(
+  entry: Pick<Filter, "model" | "modelChoices">,
+  values: Readonly<Record<string, unknown>>,
+): string | undefined {
+  const choices = entry.modelChoices;
+  if (choices) {
+    const value = values[choices.param];
+    if (typeof value === "string" && value in choices.models) return choices.models[value];
+  }
+  return entry.model;
+}

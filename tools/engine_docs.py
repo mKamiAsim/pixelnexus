@@ -44,7 +44,7 @@ from pixelnexus_engine.filters.artifacts import (
 from pixelnexus_engine.filters.bitonic import bitonic_parts
 from pixelnexus_engine.filters.bitonic import disk as bitonic_disk
 from pixelnexus_engine.filters.blobs import blob_dog_filter, blob_doh_filter, blob_log_filter
-from pixelnexus_engine.filters.bm3d_lite import bm3d_lite_plane
+from pixelnexus_engine.filters.bm3d_lite import bm3d_lite, bm3d_lite_plane
 from pixelnexus_engine.filters.contours import (
     active_contour_filter,
     chan_vese_filter,
@@ -85,6 +85,16 @@ from pixelnexus_engine.filters.interactive import (
     walker_probability,
 )
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
+from pixelnexus_engine.filters.learned import (
+    dncnn,
+    edsr,
+    fast_style,
+    ffdnet,
+    learned_edges,
+    model_file,
+    real_esrgan,
+    srcnn,
+)
 from pixelnexus_engine.filters.local_laplacian import local_laplacian
 from pixelnexus_engine.filters.matched import correlation_map, matched_filter, ncc_map
 from pixelnexus_engine.filters.mser import mser
@@ -3859,6 +3869,274 @@ def bitonic_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Learned filters --------------------------------------------------------------------------------
+
+
+def models_on_disk(*model_ids: str) -> bool:
+    """True when every model is downloaded, and exported where it needs that. The docs material
+    of learned filters is only made where the models are, and kept in git otherwise."""
+    import os
+
+    os.environ["PIXELNEXUS_MODELS_DIR"] = str(ROOT / "models")
+    try:
+        for model_id in model_ids:
+            model_file(model_id)
+    except ValueError:
+        return False
+    return True
+
+
+def db(image: NDArray[Any], clean: NDArray[Any]) -> str:
+    error = np.mean((image.astype(np.float64) - clean.astype(np.float64)) ** 2)
+    return fix(float(10 * np.log10(255**2 / error)), 2)
+
+
+def jpeg_copy(gray: Gray, quality: int) -> Gray:
+    buffer = io.BytesIO()
+    Image.fromarray(gray).save(buffer, format="JPEG", quality=quality)
+    return np.asarray(Image.open(io.BytesIO(buffer.getvalue())).convert("L"), np.uint8)
+
+
+def color_noise(clean: Gray, sigma: float, seed: int) -> Color:
+    """Gray image as RGB with independent Gaussian noise in each channel, rounded and clipped."""
+    rgb = np.dstack([clean] * 3).astype(np.float64)
+    noise = np.random.default_rng(seed).normal(0, sigma, rgb.shape)
+    out: Color = np.clip(np.rint(rgb + noise), 0, 255).astype(np.uint8)
+    return out
+
+
+def denoise_docs(out: dict[Path, str]) -> None:
+    if not models_on_disk("dncnn-color-blind", "dncnn3", "ffdnet-color"):
+        return
+    clean = lines_scene().astype(np.uint8)
+    reference = np.dstack([clean] * 3)
+    observed = color_noise(clean, 25, seed=9)
+
+    def bm3d(rgb: Color, sigma: float) -> Color:
+        return run_color(bm3d_lite, rgb, "bm3d-lite", sigma=sigma, channelScope="rgb")
+
+    figure(
+        out,
+        "dncnn",
+        "A step and three thin lines with noise of sigma 25 in each color channel. Then DnCNN, "
+        "FFDNet with the noise level set to 25, and BM3D-lite with sigma 25. The figure shows "
+        "the red channel.",
+        [
+            {"title": "Noisy", "image": picture(observed[..., 0])},
+            {"title": "DnCNN", "image": picture(run_color(dncnn, observed, "dncnn")[..., 0])},
+            {
+                "title": "FFDNet",
+                "image": picture(run_color(ffdnet, observed, "ffdnet", sigma=25)[..., 0]),
+            },
+            {"title": "BM3D-lite", "image": picture(bm3d(observed, 25)[..., 0])},
+        ],
+    )
+    rows = []
+    for sigma in (15, 25, 50):
+        seen = color_noise(clean, sigma, seed=9)
+        rows.append(
+            [
+                f"{sigma}, in each channel",
+                db(seen, reference),
+                db(run_color(dncnn, seen, "dncnn"), reference),
+                db(run_color(ffdnet, seen, "ffdnet", sigma=sigma), reference),
+                db(bm3d(seen, sigma), reference),
+            ]
+        )
+    gray_seen = np.dstack([noisy(clean, 25, seed=9)] * 3)
+    rows.append(
+        [
+            "25, the same in all channels",
+            db(gray_seen, reference),
+            db(run_color(dncnn, gray_seen, "dncnn"), reference),
+            db(run_color(ffdnet, gray_seen, "ffdnet", sigma=25), reference),
+            db(bm3d(gray_seen, 25), reference),
+        ]
+    )
+    blocky = [
+        [
+            str(q),
+            db(jpeg_copy(clean, q), clean),
+            db(run(dncnn, jpeg_copy(clean, q), "dncnn", task="jpeg"), clean),
+        ]
+        for q in (10, 20, 40)
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / "dncnn.md"] = (
+        header("dncnn")
+        + md_table(
+            ["Noise sigma", "Noisy (dB)", "DnCNN (dB)", "FFDNet, level set (dB)", "BM3D-lite (dB)"],
+            rows,
+        )
+        + "\nJPEG artifacts, the gray image saved by Pillow at each quality:\n\n"
+        + md_table(["JPEG quality", "JPEG (dB)", "DnCNN-3 on Y (dB)"], blocky)
+        + "\nPSNR against the clean image of the figure, 120 x 120, over the three channels. "
+        "Gaussian noise is rounded and clipped to 8 bits. BM3D-lite runs on each channel.\n"
+    )
+    seen = color_noise(clean, 25, seed=9)
+    levels = [
+        [str(level), db(run_color(ffdnet, seen, "ffdnet", sigma=level), reference)]
+        for level in (5, 15, 25, 35, 50)
+    ]
+    figure(
+        out,
+        "ffdnet",
+        "The image of the DnCNN figure with noise of sigma 25 in each channel. Then FFDNet with "
+        "the noise level set to 5, 25 and 50. The figure shows the red channel.",
+        [{"title": "Noisy", "image": picture(seen[..., 0])}]
+        + [
+            {
+                "title": f"Level {level}",
+                "image": picture(run_color(ffdnet, seen, "ffdnet", sigma=level)[..., 0]),
+            }
+            for level in (5, 25, 50)
+        ],
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / "ffdnet.md"] = (
+        header("ffdnet")
+        + md_table(["Noise level set", "FFDNet (dB)"], levels)
+        + "\nThe image of the figure, with noise of sigma 25 in each channel, "
+        f"{db(seen, reference)} dB before. PSNR against the clean image over the three channels.\n"
+    )
+
+
+def pil_shrink(gray: Gray, factor: int) -> Gray:
+    """Pillow's bicubic resize, which filters before it samples."""
+    small = Image.fromarray(gray).resize(
+        (gray.shape[1] // factor, gray.shape[0] // factor), Image.Resampling.BICUBIC
+    )
+    return np.asarray(small, np.uint8)
+
+
+def bicubic_up(gray: Gray, factor: int) -> Gray:
+    big = Image.fromarray(gray).resize(
+        (gray.shape[1] * factor, gray.shape[0] * factor), Image.Resampling.BICUBIC
+    )
+    return np.asarray(big, np.uint8)
+
+
+def super_resolution_docs(out: dict[Path, str]) -> None:
+    if not models_on_disk("realesr-general-x4v3", "edsr-x4", "fsrcnn-x2"):
+        return
+    clean = texture_scene()
+    small4, small2 = pil_shrink(clean, 4), pil_shrink(clean, 2)
+    results4 = {
+        "Bicubic": bicubic_up(small4, 4),
+        "Real-ESRGAN": run(real_esrgan, small4, "real-esrgan"),
+        "EDSR": run(edsr, small4, "edsr"),
+    }
+    results2 = {"Bicubic": bicubic_up(small2, 2), "FSRCNN": run(srcnn, small2, "srcnn")}
+    caption4 = (
+        f"{TEXTURE_MESSAGE} Shrunk four times with bicubic, then enlarged four times with bicubic, "
+        "Real-ESRGAN and EDSR."
+    )
+    panels4 = [{"title": "Original", "image": picture(clean)}] + [
+        {"title": name, "image": picture(image)} for name, image in results4.items()
+    ]
+    figure(out, "real-esrgan", caption4, panels4)
+    figure(out, "edsr", caption4, panels4)
+    figure(
+        out,
+        "srcnn",
+        f"{TEXTURE_MESSAGE} Shrunk two times with bicubic, then enlarged two times with bicubic "
+        "and FSRCNN.",
+        [{"title": "Original", "image": picture(clean)}]
+        + [{"title": name, "image": picture(image)} for name, image in results2.items()],
+    )
+    quarters = (
+        ("Stripes", np.s_[:80, :80]),
+        ("Noise", np.s_[:80, 80:]),
+        ("Blobs", np.s_[80:, :80]),
+        ("Flat", np.s_[80:, 80:]),
+    )
+
+    def table(results: dict[str, Gray]) -> str:
+        rows = [
+            [name, db(image, clean), *(db(image[area], clean[area]) for _, area in quarters)]
+            for name, image in results.items()
+        ]
+        return md_table(["Method", "Whole (dB)", *(f"{q} (dB)" for q, _ in quarters)], rows)
+
+    note = (
+        "\nPSNR against the original, 160 x 160, gray. The small copy was made with Pillow's "
+        "bicubic resize, which filters before it samples.\n"
+    )
+    for filter_id, text in (
+        ("real-esrgan", table(results4)),
+        ("edsr", table(results4)),
+        ("srcnn", table(results2)),
+    ):
+        out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+            header(filter_id) + text + note
+        )
+
+
+def learned_edges_docs(out: dict[Path, str]) -> None:
+    from skimage import feature
+
+    # scikit-image has no type hints.
+    untyped: Any = feature
+    if not models_on_disk("hed-bsds", "pidinet"):
+        return
+    filter_id = "learned-edges"
+    scene = texture_scene()
+    results = {
+        "Canny": untyped.canny(scene / 255.0).astype(np.uint8) * 255,
+        "HED": run(learned_edges, scene, filter_id),
+        "PiDiNet": run(learned_edges, scene, filter_id, network="pidinet"),
+    }
+    figure(
+        out,
+        filter_id,
+        f"{TEXTURE_MESSAGE} Then the Canny edges of scikit-image with its defaults, and the edge "
+        "probability of HED and of PiDiNet.",
+        [{"title": "Input", "image": picture(scene)}]
+        + [{"title": name, "image": picture(image)} for name, image in results.items()],
+    )
+    rows_, cols_ = np.mgrid[0:160, 0:160]
+    border = (np.abs(rows_ - 79.5) < 3) | (np.abs(cols_ - 79.5) < 3)
+    inside = {
+        "Stripes": (rows_ < 70) & (cols_ < 70),
+        "Noise": (rows_ < 70) & (cols_ > 90),
+        "Blobs": (rows_ > 90) & (cols_ < 70),
+        "Flat": (rows_ > 90) & (cols_ > 90),
+    }
+    table_rows = [
+        [
+            name,
+            fix(float(image[border].mean()), 1),
+            *(fix(float(image[m].mean()), 1) for m in inside.values()),
+        ]
+        for name, image in results.items()
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Detector", "Borders", *(f"Inside {q}" for q in inside)], table_rows)
+        + "\nThe mean output, from 0 to 255, in a band 6 pixels wide along the borders between the "
+        "quarters, and inside each quarter 10 pixels away from the borders.\n"
+    )
+
+
+def style_docs(out: dict[Path, str]) -> None:
+    styles = ("mosaic", "candy", "udnie")
+    if not models_on_disk(*(f"style-{s}" for s in styles)):
+        return
+    scene = textured_step()
+    figure(
+        out,
+        "fast-style",
+        "A dark and a bright half with a fine texture, then styled as mosaic, candy and udnie at "
+        "full strength. The figure shows the red channel.",
+        [{"title": "Input", "image": picture(scene)}]
+        + [
+            {
+                "title": s.capitalize(),
+                "image": picture(run(fast_style, scene, "fast-style", style=s)),
+            }
+            for s in styles
+        ],
+    )
+
+
 # Tone mapping -----------------------------------------------------------------------------------
 
 
@@ -4037,6 +4315,10 @@ def build() -> dict[Path, str]:
     steering_kernel_docs(out)
     bm3d_lite_docs(out)
     bitonic_docs(out)
+    denoise_docs(out)
+    super_resolution_docs(out)
+    style_docs(out)
+    learned_edges_docs(out)
     tone_docs(out)
     structured_edge_docs(out)
     return out

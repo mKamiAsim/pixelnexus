@@ -196,6 +196,55 @@ describe("the science engine client", () => {
     await expect(engine.downloadModel("other")).rejects.toThrow("no network");
   });
 
+  it("follows a background download until every file is checked, and deletes a model", async () => {
+    const model = { id: "m", name: "M", sizeMB: 2, license: "MIT", downloaded: false };
+    const states = [
+      { ...model, download: { state: "downloading", done: 0, total: 0 } },
+      { ...model, download: { state: "downloading", done: 1, total: 4 } },
+      { ...model, download: { state: "downloading", done: 3, total: 4 } },
+      { ...model, downloaded: true },
+    ];
+    let step = 0;
+    const stub = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") return Response.json(model);
+      if (init?.method === "POST") return Response.json(states[0], { status: 202 });
+      step += 1;
+      return Response.json(states[Math.min(step, states.length - 1)]);
+    });
+    vi.stubGlobal("fetch", stub);
+    const engine = new ScienceEngine("http://engine.test");
+    const shares: number[] = [];
+    const done = await engine.downloadModel("m", (share) => shares.push(share), 0);
+    expect(done.downloaded).toBe(true);
+    expect(shares).toEqual([0, 0.25, 0.75, 1]);
+    expect((await engine.deleteModel("m")).downloaded).toBe(false);
+    expect(stub.mock.calls.at(-1)?.[0]).toBe("http://engine.test/api/v1/models/m");
+  });
+
+  it("reports a background download that failed its checksum", async () => {
+    const failed = {
+      id: "m",
+      name: "M",
+      sizeMB: 2,
+      license: "MIT",
+      downloaded: false,
+      download: {
+        state: "failed",
+        done: 2,
+        total: 2,
+        error:
+          "The downloaded file m.onnx does not match the checksum in the catalog, so it was not kept.",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(failed, { status: 202 })),
+    );
+    await expect(
+      new ScienceEngine("http://engine.test").downloadModel("m", undefined, 0),
+    ).rejects.toThrow("does not match the checksum");
+  });
+
   it("explains how to start the engine when it does not answer", async () => {
     vi.stubGlobal(
       "fetch",

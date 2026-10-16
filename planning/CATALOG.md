@@ -383,16 +383,16 @@ Every model is checked for license, size and source before it enters `catalog/mo
 
 | ID | Name | Aliases and notes | Tier | Engine | Phase |
 |---|---|---|---|---|---|
-| dncnn | DnCNN | CNN denoiser. DnCNN-based deblocking is a model variant. | Optional | Model | 7 |
-| ffdnet | FFDNet | Noise level as an input. | Optional | Model | 7 |
+| dncnn | DnCNN | CNN denoiser. DnCNN-based deblocking is a model variant (DnCNN-3). Done on 2026-10-16 in the science engine with ONNX Runtime, KAIR weights exported once. | Optional | Science (model) | 7 |
+| ffdnet | FFDNet | Noise level as an input. Done on 2026-10-16 in the science engine, KAIR weights exported once. | Optional | Science (model) | 7 |
 | swinir | SwinIR | Denoising, JPEG and super-resolution variants. Transformer-based denoising alias. | Optional | Model | 7 |
-| real-esrgan | Real-ESRGAN | Super-resolution. | Optional | Model | 7 |
-| srcnn | SRCNN | Three layers. Good for teaching. Weights license: check. | Optional | Model | 7 |
-| edsr | EDSR | Super-resolution. | Optional | Model | 7 |
+| real-esrgan | Real-ESRGAN | Super-resolution, the compact general model. Done on 2026-10-16 in the science engine, weights exported once. | Optional | Science (model) | 7 |
+| srcnn | SRCNN and FSRCNN | Runs FSRCNN x2, the faster successor by the same authors, through OpenCV dnn_superres. SRCNN has no weights with a clear license. Done on 2026-10-16. | Optional | Science (model) | 7 |
+| edsr | EDSR | Super-resolution through OpenCV dnn_superres. Done on 2026-10-16. | Optional | Science (model) | 7 |
 | nafnet | NAFNet | Denoising and deblurring. | Optional | Model | 7 |
 | restormer | Restormer | License: check. Attention-based restoration alias. | Optional | Model | 7 |
-| fast-style | Neural style and texture filters | Fast neural style models. License: check. | Optional | Model | 7 |
-| learned-edges | Learned edge detector | HED or PiDiNet. License: check. | Optional | Model | 7 |
+| fast-style | Neural style and texture filters | Five fast neural style models of the ONNX model zoo. Done on 2026-10-16. | Optional | Science (model) | 7 |
+| learned-edges | Learned edge detector | HED, exported from its Caffe weights, or PiDiNet (non-commercial). Done on 2026-10-16. | Optional | Science (model) | 7 |
 | low-light | Neural relighting and enhancement | Zero-DCE family. License: check. | Optional | Model | 7 |
 | mprnet | MPRNet | Overlaps with NAFNet and Restormer. Added only if there is a clear reason. | Planned | none | |
 | noise2noise | Noise2Noise | A training method. Needs a training loop on your own data. | Planned | none | |
@@ -507,7 +507,8 @@ Counts cover every row in sections 1 to 15. Aliases and the pointer row for AI s
 | Core | Browser | 218 |
 | Advanced | Science | 78 |
 | Optional | Science (optional package) | 3 |
-| Optional | Model | 14 |
+| Optional | Science (model) | 7 |
+| Optional | Model | 7 |
 | Planned | none | 17 |
 | Unsupported | none | 7 |
 | **Total entries** | | **337** |

@@ -1,8 +1,96 @@
 id: srcnn
-name: SRCNN
+name: SRCNN and FSRCNN
+aliases: [SRCNN, FSRCNN, Fast super-resolution CNN]
 family: learned
+tags: [purpose:enhance]
 tier: optional
-engine: model
+engine: science
 phase: '7'
-status: planned
-planNotes: 'Three layers. Good for teaching. Weights license: check.'
+status: optional-model
+model: fsrcnn-x2
+changesSize: true
+planNotes: Runs FSRCNN, the faster successor of SRCNN by the same authors, through OpenCV's dnn_superres module. SRCNN itself has no weights with a clear license.
+
+summary: Enlarges an image two times with FSRCNN, the fast successor of SRCNN, the first convolutional network for super-resolution. It is tiny, under 0.1 MB, so it shows the idea in a few layers. OpenCV's dnn_superres module runs it. It needs a downloaded model.
+purpose: Teach how a small convolutional network learns to enlarge images.
+classification: {linearity: nonlinear, domain: learned, operation: CNN super-resolution}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: srcnn}
+supportRadius: '6'
+supportsMask: false
+preview: on-demand
+colorHandling: >-
+  Colors are premultiplied by alpha first, as Resize does, and alpha is enlarged with bicubic
+  (OpenCV INTER_CUBIC).
+boundary: OpenCV handles the border inside the network.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.dnn_superres.DnnSuperResImpl, model fsrcnn.'}
+
+params:
+  - key: scale
+    label: Scale
+    type: integer
+    min: 2
+    max: 2
+    step: 1
+    default: 2
+    unit: x
+    description: How many times larger the image becomes in each direction. The model was trained for 2 times only.
+    effect: Fixed by the model.
+formula: |
+  \hat{x} = D\big(m(s(e(y)))\big)
+formulaExplanation: >-
+  FSRCNN works at the small size. The layer e extracts features with a 5 x 5 convolution, and s
+  shrinks them to fewer channels. The layers m map them with a few 3 x 3 convolutions. D, a
+  transposed convolution, enlarges them to the output. SRCNN, its predecessor, first enlarged with bicubic and then ran three
+  convolutions, which was slower.
+symbols:
+  - {symbol: 'e', meaning: 'Feature extraction'}
+  - {symbol: 's, m', meaning: 'Shrinking and mapping layers'}
+  - {symbol: 'D', meaning: 'The transposed convolution that enlarges'}
+steps:
+  - Premultiply the colors by alpha.
+  - Run FSRCNN through OpenCV.
+  - Enlarge alpha with bicubic.
+complexity:
+  time: O(N)
+  memory: O(4 N)
+  notes: N is the number of input pixels. About 12 thousand weights.
+useCases:
+  - Teaching learned super-resolution with a model small enough to inspect.
+advantages:
+  - Very small and fast.
+limitations:
+  - Only slightly sharper than bicubic.
+artifacts:
+  - Mild ringing at strong edges.
+references:
+  - kind: paper
+    text: Dong, C., Loy, C. C., and Tang, X. Accelerating the super-resolution convolutional neural network. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 391 to 407, 2016.
+    doi: 10.1007/978-3-319-46475-6_25
+  - kind: paper
+    text: Dong, C., Loy, C. C., He, K., and Tang, X. Image super-resolution using deep convolutional networks. IEEE Transactions on Pattern Analysis and Machine Intelligence 38(2), 295 to 307, 2016.
+    doi: 10.1109/TPAMI.2015.2439281
+  - kind: library
+    text: OpenCV documentation, dnn_superres module.
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: srcnn}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A tiny network learns to enlarge an image two times.
+  howItWorks:
+    - A few convolutions find edge and texture patterns in the small image.
+    - A last layer spreads each pattern onto a larger grid.
+    - The network learned its weights from pairs of small and large images.
+  academic: >-
+    FSRCNN of Dong et al., the accelerated SRCNN, through OpenCV dnn_superres.
+  paramNotes:
+    scale: Two times.
+  tryThis:
+    - Compare with Resize at bicubic, at 400 percent zoom.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [line-profile]
+related: [edsr, real-esrgan, sr-classical]
+docsPage: filters/learned/srcnn.md

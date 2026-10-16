@@ -3,7 +3,7 @@ import { AlertTriangle, ChevronRight, Copy, Info, LoaderCircle, Save, Trash2 } f
 import { Collapsible } from "radix-ui";
 import { useState } from "react";
 
-import { isRunnable, type Filter } from "@/catalog";
+import { isRunnable, modelFor, type Filter } from "@/catalog";
 import { entryParams } from "@/catalog/params";
 import { applySelected, cancelApply, filterById, stepLabel } from "@/app/filterActions";
 import { runEntryCommand } from "@/app/geometryActions";
@@ -109,6 +109,7 @@ function FilterProperties({ entry }: { entry: Filter }) {
 function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
   const needsEngine = useNeedsEngine(entry);
   const { values, warnings } = useFilterValues(entry);
+  const modelId = modelFor(entry, values);
   const setValue = useFilters((s) => s.setValue);
   const resetValues = useFilters((s) => s.resetValues);
   const doc = useDocuments((s) => activeDocument(s));
@@ -173,7 +174,7 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
 
       {runnable ? <ScopeRow /> : null}
       {runnable ? entry.engine === "browser" ? <PreviewRow /> : <EnginePreviewNote /> : null}
-      {runnable && entry.model ? <ModelCard entry={entry} /> : null}
+      {runnable && modelId ? <ModelCard key={modelId} modelId={modelId} /> : null}
 
       {warnings.length > 0 ? (
         <ul className="flex flex-col gap-1 border-b border-border-subtle px-3 py-2">

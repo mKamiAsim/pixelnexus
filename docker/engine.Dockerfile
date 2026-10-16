@@ -16,11 +16,11 @@ WORKDIR /app
 # Install dependencies first, so code changes do not reinstall them.
 COPY pyproject.toml uv.lock .python-version ./
 COPY engine/pyproject.toml engine/pyproject.toml
-RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional \
+RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional --extra models \
     --no-install-workspace
 
 COPY engine engine
-RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional
+RUN uv sync --frozen --no-default-groups --package pixelnexus-engine --extra optional --extra models
 
 # The engine checks every job against the catalog, the single source of truth for filters.
 COPY catalog catalog

@@ -1,8 +1,100 @@
 id: learned-edges
 name: Learned edge detector
+aliases: [HED, Holistically-nested edge detection, PiDiNet, Pixel difference network]
 family: learned
+tags: [purpose:edge]
 tier: optional
-engine: model
+engine: science
 phase: '7'
-status: planned
-planNotes: 'HED or PiDiNet. License: check.'
+status: optional-model
+model: hed-bsds
+modelChoices:
+  param: network
+  models: {hed: hed-bsds, pidinet: pidinet}
+planNotes: HED or PiDiNet. HED is exported from its Caffe weights, since OpenCV 5 dropped its Caffe importer. PiDiNet is for research and non-commercial use.
+
+summary: Finds the edges that people draw, with a network trained on hand-drawn outlines in the BSDS500 photos. HED, by Xie and Tu, adds up edge predictions from five scales of a VGG16 network. PiDiNet, by Su and colleagues, is a small network whose convolutions work on differences of neighboring pixels, as classic edge operators do. Each needs a downloaded model.
+purpose: Find object outlines rather than every change in brightness, and compare learned and classical edge detectors.
+classification: {linearity: nonlinear, domain: learned, operation: CNN edge detection}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: edges_representation}
+supportRadius: '128'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  HED reads BGR from 0 to 255 minus the mean of its training images. PiDiNet reads RGB normalized
+  with the ImageNet mean and deviation. The result is a gray edge probability with the alpha of
+  the image.
+boundary: >-
+  The networks pad with zeros. Large images run in tiles of 768 pixels that start at multiples of
+  16, so the pooling grid stays the same, with 128 pixels of margin.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: network
+    label: Network
+    type: select
+    default: hed
+    options:
+      - {value: hed, label: HED}
+      - {value: pidinet, label: 'PiDiNet (research and non-commercial use)'}
+    description: Which network runs. Each downloads on its own. PiDiNet's license is for research and non-commercial use.
+    effect: HED gives thicker, smoother edges. PiDiNet gives thinner ones and is much smaller.
+formula: |
+  E = \sigma\Big(\sum_{k} a_k\, s_k(x) + b\Big)
+formulaExplanation: >-
+  Both networks make several side outputs s_k, edge maps at different scales, upsampled to the
+  image size. A learned weighting a_k fuses them, and a sigmoid gives the edge probability. HED
+  takes its side outputs from the five stages of VGG16. PiDiNet builds its convolutions from
+  differences between neighbors, so they act like learned gradient operators.
+symbols:
+  - {symbol: 's_k', meaning: 'The side output at one scale'}
+  - {symbol: 'a_k, b', meaning: 'The learned fusion weights'}
+  - {symbol: 'E', meaning: 'The edge probability'}
+steps:
+  - Normalize the pixels as the network was trained.
+  - Run the network, which predicts edges at several scales.
+  - Fuse the scales into one edge probability, shown as gray.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. HED has about 15 million weights, PiDiNet about 0.7 million.
+useCases:
+  - Object outlines for selection and segmentation.
+  - Comparing learned and classical edge detectors.
+advantages:
+  - Quiet on texture, where Canny marks every change.
+limitations:
+  - Trained on natural photos, so drawings and diagrams may look odd.
+  - The edge probability is not thinned.
+artifacts:
+  - Thick, blurred edges from HED.
+references:
+  - kind: paper
+    text: Xie, S., and Tu, Z. Holistically-nested edge detection. IEEE International Conference on Computer Vision, 1395 to 1403, 2015.
+    doi: 10.1109/ICCV.2015.164
+  - kind: paper
+    text: Su, Z., Liu, W., Yu, Z., Hu, D., Liao, Q., Tian, Q., Pietikainen, M., and Liu, L. Pixel difference networks for efficient edge detection. IEEE/CVF International Conference on Computer Vision, 5097 to 5107, 2021.
+    doi: 10.1109/ICCV48922.2021.00507
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: learned_edges}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A network trained on hand-drawn outlines marks the edges people see.
+  howItWorks:
+    - The network looks at the image at several scales.
+    - Each scale predicts where outlines are.
+    - A learned mix of the scales gives the final edge map.
+  academic: >-
+    HED of Xie and Tu, and PiDiNet of Su et al., both trained on BSDS500.
+  paramNotes:
+    network: HED or PiDiNet.
+  tryThis:
+    - Compare with Canny and the Structured Edge Detector on a photo with texture.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [line-profile]
+related: [structured-edge, canny, sobel]
+docsPage: filters/learned/learned-edges.md

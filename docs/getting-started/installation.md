@@ -35,11 +35,19 @@ Install the studio packages:
 pnpm install
 ```
 
-Install Python and the engine packages:
+Install Python and the engine packages, with the model runtime for this computer. On any computer:
 
 ```bash
-uv sync
+uv sync --extra cpu
 ```
+
+On a Linux or Windows computer with an NVIDIA GPU, use the CUDA build instead. It brings NVIDIA's CUDA 13 and cuDNN libraries as Python packages, about 1.5 GB, so a system CUDA install is not needed:
+
+```bash
+uv sync --extra cuda
+```
+
+The two cannot be installed together. Later `uv run` commands keep the one you chose. Without either, the engine still runs, and its AI model filters say how to add one. The AI models themselves download only when you click Download model, or with `uv run pixelnexus-engine models download <id>`.
 
 ## Run the studio
 
@@ -57,7 +65,7 @@ The science engine is optional. Advanced filters need it from Phase 6 on.
 uv run pixelnexus-engine
 ```
 
-Check that it works at <http://127.0.0.1:8765/api/v1/info>. The page lists the engine version, the library versions and the limits. The engine listens on `127.0.0.1` only, so other computers cannot reach it.
+Check that it works at <http://127.0.0.1:8765/api/v1/info>. The page lists the engine version, the library versions, the limits, and where AI models run. `uv run pixelnexus-engine device` shows the same in the terminal. The engine listens on `127.0.0.1` only, so other computers cannot reach it.
 
 ## Read the docs locally
 

@@ -28,7 +28,7 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 ## Commands (run from the repository root)
 
 - Studio: `pnpm dev`, `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm format`, `pnpm e2e`
-- Python: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`, `uv run mypy`
+- Python: `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU), `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`, `uv run mypy`
 - Engine: `uv run pixelnexus-engine`
 - Catalog: `uv run python tools/check_catalog.py --summary`
 - Prose: `uv run python tools/lint_prose.py`
@@ -41,6 +41,8 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 - TypeScript stays on 6.0.x. typescript-eslint does not support TypeScript 7 yet.
 - MkDocs must stay below 2.0, and the docs must not use extra plugins or theme overrides (PLAN.md risk R4).
 - OpenCV 5 moved BRISK and AKAZE to `cv2.xfeatures2d`.
+- A plain `uv sync` removes ONNX Runtime. Always pass `--extra cpu` or `--extra cuda`. The two extras conflict, and the engine never requires CUDA.
+- ONNX models built with the onnx package must set `ir_version=10`, or ONNX Runtime 1.30 rejects them.
 - Tool parameters pass through JSON. Write special characters in Python source as `\N{EM DASH}` style escapes, not `\u` escapes.
 
 ## Setting up a new machine
@@ -48,7 +50,7 @@ A web-based image processing studio for teaching and everyday use. Classical fil
 Needs Git, Node.js 22 or newer, uv, and optionally Docker and the GitHub CLI (`gh`).
 
 1. `git clone https://github.com/mKamiAsim/pixelnexus.git`, then `git checkout Development`.
-2. `corepack enable pnpm`, then `pnpm install` and `uv sync`.
+2. `corepack enable pnpm`, then `pnpm install` and `uv sync --extra cpu` (`--extra cuda` with an NVIDIA GPU).
 3. `pnpm --filter @pixelnexus/web exec playwright install chromium` (browser tests and E2E need it).
 4. Run the full check list in `.github/workflows/ci.yml` to confirm the machine is ready.
 5. Read "Current status" in `planning/PLAN.md` and continue from "Next action".

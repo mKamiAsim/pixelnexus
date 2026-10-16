@@ -41,3 +41,6 @@ models/
 
 # Claude Code session worktrees
 .claude/worktrees/
+
+# The environment of tools/export_models.py, with PyTorch from the system Python
+.venv-export/

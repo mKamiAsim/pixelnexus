@@ -861,6 +861,27 @@
         "model": {
           "description": "The id of the model in models.yaml that the filter needs. The studio shows its size and license and offers to download it. The entry's status is then optional-model.",
           "$ref": "#/$defs/id"
+        },
+        "modelChoices": {
+          "description": "When a select parameter chooses between models: the parameter key and the model id for each of its values. model must then be the model of the default value.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "param",
+            "models"
+          ],
+          "properties": {
+            "param": {
+              "type": "string"
+            },
+            "models": {
+              "type": "object",
+              "minProperties": 2,
+              "additionalProperties": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          }
         }
       },
       "allOf": [

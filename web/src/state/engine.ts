@@ -8,21 +8,42 @@ import { create } from "zustand";
 
 import { isRunnable, type Filter } from "@/catalog";
 import { scienceEngine } from "@/engine-client";
+import type { InferenceInfo } from "@/engine-client/science";
 
 export type EngineStatus = "checking" | "online" | "offline";
 
 interface EngineState {
   readonly status: EngineStatus;
   readonly version: string | null;
+  /** The model runtime and its device, or null while the engine still checks it. */
+  readonly inference: InferenceInfo | null;
   check(): Promise<void>;
 }
 
-export const useEngine = create<EngineState>((set) => ({
+/** How often to ask again while the engine checks its device, a few seconds after it starts. */
+const DEVICE_RETRY_MS = 2000;
+const DEVICE_RETRIES = 15;
+let retries = 0;
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+export const useEngine = create<EngineState>((set, get) => ({
   status: "checking",
   version: null,
+  inference: null,
   check: async () => {
     const info = await scienceEngine.info();
-    set(info ? { status: "online", version: info.version } : { status: "offline", version: null });
+    set(
+      info
+        ? { status: "online", version: info.version, inference: info.inference ?? null }
+        : { status: "offline", version: null, inference: null },
+    );
+    clearTimeout(retryTimer);
+    if (info && !info.inference && retries < DEVICE_RETRIES) {
+      retries += 1;
+      retryTimer = setTimeout(() => void get().check(), DEVICE_RETRY_MS);
+    } else {
+      retries = 0;
+    }
   },
 }));
 

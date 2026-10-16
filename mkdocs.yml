@@ -425,6 +425,14 @@ nav:
           - Graph cuts: filters/segmentation/graph-cut.md
           - Random walker: filters/segmentation/random-walker.md
           - GrabCut: filters/segmentation/grabcut.md
+      - Learned:
+          - DnCNN: filters/learned/dncnn.md
+          - FFDNet: filters/learned/ffdnet.md
+          - Real-ESRGAN: filters/learned/real-esrgan.md
+          - EDSR: filters/learned/edsr.md
+          - SRCNN and FSRCNN: filters/learned/srcnn.md
+          - Neural style and texture filters: filters/learned/fast-style.md
+          - Learned edge detector: filters/learned/learned-edges.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

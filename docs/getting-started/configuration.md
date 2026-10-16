@@ -31,6 +31,7 @@ uv run --env-file .env pixelnexus-engine
 | `PIXELNEXUS_MAX_UPLOAD_MB` | `256` | Largest accepted upload, in megabytes. Images travel as raw pixels, 4 bytes each, so a 50 megapixel image needs 200 MB. |
 | `PIXELNEXUS_MAX_PIXELS` | `50000000` | Largest accepted image, as width times height. This blocks images that are small as files but huge when decoded. |
 | `PIXELNEXUS_MODELS_DIR` | `./models` | Folder for AI models that you choose to download. Used from Phase 7. |
+| `PIXELNEXUS_DEVICE` | `auto` | Where AI models run: `auto`, `cpu` or `cuda`. With `auto`, the engine uses CUDA when a test model really runs on it, and the CPU otherwise. |
 | `PIXELNEXUS_MAX_WORKERS` | half the processor cores, at least 1 | How many filter jobs run at the same time. Each job runs in its own process. |
 | `PIXELNEXUS_CACHE_MB` | `1024` | Memory for uploaded images, in megabytes. The image used least recently is dropped first. |
 | `PIXELNEXUS_CATALOG_DIR` | found from the working folder | The `catalog/filters` folder. The engine checks every job against the catalog. When you start it from the repository, it finds the folder by itself. |

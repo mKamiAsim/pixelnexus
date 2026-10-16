@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import multiprocessing as mp
 import os
 import platform
+import threading
 from collections.abc import AsyncIterator
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
@@ -29,8 +32,9 @@ from pydantic import BaseModel, Field
 from pixelnexus_engine import API_VERSION, __version__
 from pixelnexus_engine.config import Settings
 from pixelnexus_engine.images import ImageError, ImageStore, StoredImage, decode_rgba
+from pixelnexus_engine.inference import describe
 from pixelnexus_engine.jobs import TERMINAL, JobManager
-from pixelnexus_engine.models import download, model_entries, model_view
+from pixelnexus_engine.models import delete, download, is_downloaded, model_entries, model_view
 from pixelnexus_engine.params import ParamError, check_params, resolve_params
 from pixelnexus_engine.registry import (
     FILTERS,
@@ -51,6 +55,8 @@ REPORTED_DISTRIBUTIONS = (
     "pillow",
     "fastapi",
     "pyrtools",
+    "onnxruntime",
+    "onnxruntime-gpu",
 )
 
 
@@ -67,6 +73,9 @@ class EngineInfo(BaseModel):
     dependencies: dict[str, str | None]
     devices: list[str]
     limits: Limits
+    # The model runtime and the device it chose, from a check in a child process. None until
+    # that check has finished, a few seconds after the engine starts.
+    inference: dict[str, Any] | None = None
 
 
 class JobRequest(BaseModel):
@@ -103,11 +112,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     models_folder = settings.models_dir
     models = {m["id"]: m for m in model_entries(catalog_dir)}
 
+    runtime: dict[str, Any] = {}
+    downloads: dict[str, dict[str, Any]] = {}
+    lock = threading.Lock()
+
+    def check_runtime() -> None:
+        """Choose the device in a child process, as the job processes do, so the API process
+        never holds a GPU context."""
+        try:
+            with ProcessPoolExecutor(1, mp_context=mp.get_context("spawn")) as pool:
+                runtime.update(pool.submit(describe).result(timeout=120))
+        except Exception as error:
+            runtime.update({"runtime": None, "device": "none", "providers": [], "note": str(error)})
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Job processes find the models folder in the environment they inherit.
         os.environ["PIXELNEXUS_MODELS_DIR"] = str(models_folder)
         managers["jobs"] = JobManager(settings.max_workers)
+        threading.Thread(target=check_runtime, daemon=True).start()
         yield
         managers.pop("jobs").shutdown()
 
@@ -143,8 +166,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             api_version=API_VERSION,
             python=platform.python_version(),
             dependencies={name: _installed_version(name) for name in REPORTED_DISTRIBUTIONS},
-            devices=["cpu"],
+            devices=["cpu"] if runtime.get("device") != "cuda" else ["cpu", "cuda"],
             limits=Limits(max_upload_mb=settings.max_upload_mb, max_pixels=settings.max_pixels),
+            inference=dict(runtime) or None,
         )
 
     def checked_params(filter_id: str, values: dict[str, Any]) -> dict[str, Any]:
@@ -196,24 +220,70 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=501, detail="This filter has no representation.")
         return spec.representation(checked_params(filter_id, params))
 
-    @router.get("/models")
-    def list_models() -> list[dict[str, Any]]:
-        """The optional models, with their license and whether they are downloaded."""
-        return [model_view(entry, models_folder) for entry in models.values()]
+    def view(entry: dict[str, Any]) -> dict[str, Any]:
+        with lock:
+            state = downloads.get(entry["id"])
+        result = model_view(entry, models_folder)
+        if state is not None and not result["downloaded"]:
+            result["download"] = dict(state)
+        return result
 
-    @router.post("/models/{model_id}/download")
-    def download_model(model_id: str) -> dict[str, Any]:
-        """Download one model on the user's request, and check its SHA-256."""
+    def run_download(entry: dict[str, Any]) -> None:
+        def progress(done: int, total: int) -> None:
+            with lock:
+                downloads[entry["id"]].update(done=done, total=total)
+
+        try:
+            download(entry, models_folder, progress)
+            with lock:
+                downloads.pop(entry["id"], None)
+        except (ValueError, OSError) as error:
+            message = (
+                str(error) if isinstance(error, ValueError) else f"The download failed: {error}"
+            )
+            with lock:
+                downloads[entry["id"]].update(state="failed", error=message)
+
+    def known(model_id: str) -> dict[str, Any]:
         entry = models.get(model_id)
         if entry is None:
             raise _not_found("model with this id")
-        try:
-            download(entry, models_folder)
-        except ValueError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
-        except OSError as error:
-            raise HTTPException(status_code=502, detail=f"The download failed: {error}") from error
-        return model_view(entry, models_folder)
+        return entry
+
+    @router.get("/models")
+    def list_models() -> list[dict[str, Any]]:
+        """The optional models, with their license and whether they are downloaded."""
+        return [view(entry) for entry in models.values()]
+
+    @router.get("/models/{model_id}")
+    def get_model(model_id: str) -> dict[str, Any]:
+        """One model, with the progress of a download that runs."""
+        return view(known(model_id))
+
+    @router.post("/models/{model_id}/download", status_code=202)
+    def download_model(model_id: str) -> dict[str, Any]:
+        """Start downloading one model on the user's request. Every file is checked against its
+        SHA-256. Ask GET /models/{id} for the progress."""
+        entry = known(model_id)
+        with lock:
+            running = downloads.get(model_id, {}).get("state") == "downloading"
+            start = not running and not is_downloaded(entry, models_folder)
+            if start:
+                downloads[model_id] = {"state": "downloading", "done": 0, "total": 0}
+        if start:
+            threading.Thread(target=run_download, args=(entry,), daemon=True).start()
+        return view(entry)
+
+    @router.delete("/models/{model_id}")
+    def delete_model(model_id: str) -> dict[str, Any]:
+        """Remove a downloaded model and its files."""
+        entry = known(model_id)
+        with lock:
+            if downloads.get(model_id, {}).get("state") == "downloading":
+                raise HTTPException(status_code=409, detail="The model is still downloading.")
+            downloads.pop(model_id, None)
+        delete(entry, models_folder)
+        return view(entry)
 
     @router.post("/images")
     async def upload(request: Request, width: int, height: int) -> dict[str, Any]:

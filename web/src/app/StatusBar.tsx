@@ -75,13 +75,16 @@ const ENGINE_TEXT = {
 function EngineLight() {
   const status = useEngine((s) => s.status);
   const version = useEngine((s) => s.version);
+  const inference = useEngine((s) => s.inference);
   const check = useEngine((s) => s.check);
   useEffect(() => watchEngine(), []);
   const color =
     status === "online" ? "bg-success" : status === "offline" ? "bg-text-muted" : "bg-warning";
+  const device =
+    inference?.device === "cuda" ? ", GPU" : inference?.device === "cpu" ? ", CPU" : "";
   const title =
     status === "online"
-      ? `The PixelNexus engine ${version ?? ""} runs on this computer. Advanced filters can run.`
+      ? `The PixelNexus engine ${version ?? ""} runs on this computer. Advanced filters can run.${inference ? ` ${inference.note}` : ""}`
       : status === "offline"
         ? "The PixelNexus engine is not running. Browser filters work. Start the engine with: uv run pixelnexus-engine"
         : "Looking for the PixelNexus engine on this computer.";
@@ -94,6 +97,7 @@ function EngineLight() {
     >
       <span className={`inline-block size-2 rounded-full ${color}`} aria-hidden />
       {ENGINE_TEXT[status]}
+      {status === "online" ? device : ""}
     </button>
   );
 }

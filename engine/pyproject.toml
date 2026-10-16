@@ -22,6 +22,16 @@ dependencies = [
 # Packages for the catalog entries with tier "optional". The engine runs without them, and
 # their filters then show as not available.
 optional = ["pyrtools>=1.0.11"]
+# ONNX Runtime for the AI models of Phase 7. "models" is the CPU build, which runs on every
+# platform. "cuda" is the GPU build with NVIDIA's CUDA 13 and cuDNN libraries, for Linux and
+# Windows machines with an NVIDIA GPU. The two cannot be installed together. Without either, the
+# engine runs and its model filters say how to add one. onnx lets the engine relax the fixed
+# input size of some published models in memory, without changing the downloaded file.
+models = ["onnxruntime>=1.30", "onnx>=1.19"]
+cuda = [
+  "onnxruntime-gpu[cuda,cudnn]>=1.30; sys_platform == 'linux' or sys_platform == 'win32'",
+  "onnx>=1.19",
+]
 
 [project.scripts]
 pixelnexus-engine = "pixelnexus_engine.__main__:main"

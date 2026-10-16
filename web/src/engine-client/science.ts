@@ -60,9 +60,33 @@ export interface ModelStatus {
   readonly id: string;
   readonly name: string;
   readonly sizeMB: number;
+  /** All files of the model together. */
+  readonly totalMB?: number;
   readonly license: string;
   readonly licenseUrl?: string;
   readonly downloaded: boolean;
+  /** A download that runs or failed. */
+  readonly download?: {
+    readonly state: "downloading" | "failed";
+    readonly done: number;
+    readonly total: number;
+    readonly error?: string;
+  };
+}
+
+/** The model runtime of the engine and the device it chose (Phase 7c). */
+export interface InferenceInfo {
+  readonly runtime: string | null;
+  readonly preference: string;
+  readonly device: "cuda" | "cpu" | "none";
+  readonly providers: readonly string[];
+  readonly note: string;
+}
+
+export interface EngineInfo {
+  readonly version: string;
+  /** Null for a few seconds after the engine starts, while it checks the device. */
+  readonly inference?: InferenceInfo | null;
 }
 
 export class ScienceEngine implements EngineClient {
@@ -269,24 +293,53 @@ export class ScienceEngine implements EngineClient {
     return (await response.json()) as ModelStatus[];
   }
 
+  async model(modelId: string): Promise<ModelStatus> {
+    const response = await this.call(`/models/${encodeURIComponent(modelId)}`);
+    return (await response.json()) as ModelStatus;
+  }
+
   /**
-   * Download one model to the engine's models folder. Call this only from a click on Download
-   * model, after the studio has shown the size and license.
+   * Download one model to the engine's models folder, and wait until every file is checked.
+   * Call this only from a click on Download model, after the studio has shown the size and
+   * license. `onProgress` gets the share done, from 0 to 1.
    */
-  async downloadModel(modelId: string): Promise<ModelStatus> {
-    const response = await this.call(`/models/${encodeURIComponent(modelId)}/download`, {
-      method: "POST",
+  async downloadModel(
+    modelId: string,
+    onProgress?: (share: number) => void,
+    pollMs = 500,
+  ): Promise<ModelStatus> {
+    const path = `/models/${encodeURIComponent(modelId)}`;
+    let status = (await (
+      await this.call(`${path}/download`, { method: "POST" })
+    ).json()) as ModelStatus;
+    while (!status.downloaded) {
+      const progress = status.download;
+      if (!progress) throw new EngineError("The download stopped without an answer.");
+      if (progress.state === "failed")
+        throw new EngineError(progress.error ?? "The download failed.");
+      onProgress?.(progress.total > 0 ? progress.done / progress.total : 0);
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+      status = await this.model(modelId);
+    }
+    onProgress?.(1);
+    return status;
+  }
+
+  /** Remove a downloaded model from the engine's models folder. */
+  async deleteModel(modelId: string): Promise<ModelStatus> {
+    const response = await this.call(`/models/${encodeURIComponent(modelId)}`, {
+      method: "DELETE",
     });
     return (await response.json()) as ModelStatus;
   }
 
   /** Engine version and limits, or null when no engine answers. */
-  async info(timeoutMs = 1500): Promise<{ version: string } | null> {
+  async info(timeoutMs = 1500): Promise<EngineInfo | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(this.url("/info"), { signal: controller.signal });
-      return response.ok ? ((await response.json()) as { version: string }) : null;
+      return response.ok ? ((await response.json()) as EngineInfo) : null;
     } catch {
       return null;
     } finally {

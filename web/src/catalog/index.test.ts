@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { catalog, countBy, isRunnable, STATUS_LABELS } from "@/catalog";
+import { catalog, countBy, isRunnable, modelFor, STATUS_LABELS } from "@/catalog";
 
 describe("catalog module", () => {
   it("loads every planned entry", () => {
@@ -27,5 +27,24 @@ describe("catalog module", () => {
       ["a", 2],
       ["b", 1],
     ]);
+  });
+});
+
+describe("modelFor", () => {
+  const find = (id: string) => {
+    const entry = catalog.filters.find((f) => f.id === id);
+    if (!entry) throw new Error(`Missing ${id}`);
+    return entry;
+  };
+
+  it("picks the model by the setting that chooses it", () => {
+    expect(modelFor(find("fast-style"), { style: "candy" })).toBe("style-candy");
+    expect(modelFor(find("dncnn"), { task: "jpeg" })).toBe("dncnn3");
+  });
+
+  it("falls back to the default model, and to none", () => {
+    expect(modelFor(find("fast-style"), {})).toBe("style-mosaic");
+    expect(modelFor(find("ffdnet"), {})).toBe("ffdnet-color");
+    expect(modelFor(find("gaussian"), {})).toBeUndefined();
   });
 });

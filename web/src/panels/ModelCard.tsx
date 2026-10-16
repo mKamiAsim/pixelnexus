@@ -6,7 +6,7 @@
 import { Download, ExternalLink, LoaderCircle, PackageCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { catalog, type Filter } from "@/catalog";
+import { catalog } from "@/catalog";
 import { Button } from "@/components/ui/Button";
 import { scienceEngine } from "@/engine-client";
 import { useEngine } from "@/state/engine";
@@ -15,12 +15,12 @@ import { announce } from "@/state/notifications";
 type State =
   | { readonly kind: "unknown" }
   | { readonly kind: "missing" }
-  | { readonly kind: "downloading" }
+  | { readonly kind: "downloading"; readonly share: number }
   | { readonly kind: "ready" }
   | { readonly kind: "failed"; readonly message: string };
 
-export function ModelCard({ entry }: { entry: Filter }) {
-  const model = catalog.models.find((m) => m.id === entry.model);
+export function ModelCard({ modelId }: { modelId: string }) {
+  const model = catalog.models.find((m) => m.id === modelId);
   const online = useEngine((s) => s.status === "online");
   const [state, setState] = useState<State>({ kind: "unknown" });
 
@@ -42,10 +42,10 @@ export function ModelCard({ entry }: { entry: Filter }) {
 
   if (!model) return null;
   const download = () => {
-    setState({ kind: "downloading" });
+    setState({ kind: "downloading", share: 0 });
     announce(`Downloading ${model.name}.`);
     scienceEngine
-      .downloadModel(model.id)
+      .downloadModel(model.id, (share) => setState({ kind: "downloading", share }))
       .then(() => {
         setState({ kind: "ready" });
         announce(`${model.name} is downloaded and checked.`);
@@ -58,15 +58,34 @@ export function ModelCard({ entry }: { entry: Filter }) {
       );
   };
 
+  const remove = () => {
+    scienceEngine
+      .deleteModel(model.id)
+      .then(() => {
+        setState({ kind: "missing" });
+        announce(`${model.name} was deleted from the engine's models folder.`);
+      })
+      .catch((error: unknown) =>
+        setState({
+          kind: "failed",
+          message: error instanceof Error ? error.message : "The model could not be deleted.",
+        }),
+      );
+  };
+  const totalMB =
+    Math.round(
+      (model.sizeMB + (model.extraFiles ?? []).reduce((sum, file) => sum + file.sizeMB, 0)) * 100,
+    ) / 100;
+
   return (
     <section
       aria-label="Model"
       className="flex flex-col gap-2 border-b border-border-subtle px-3 py-2.5 text-xs"
     >
       <p>
-        This filter needs the model <span className="font-medium">{model.name}</span>,{" "}
-        {model.sizeMB} MB. It downloads to the engine's models folder on this computer, only when
-        you click Download model.
+        This filter needs the model <span className="font-medium">{model.name}</span>, {totalMB} MB.
+        It downloads to the engine's models folder on this computer, only when you click Download
+        model.
       </p>
       <p className="text-text-secondary">
         License: {model.license}{" "}
@@ -82,11 +101,21 @@ export function ModelCard({ entry }: { entry: Filter }) {
           </a>
         ) : null}
       </p>
-      {state.kind === "ready" ? (
-        <p className="flex items-center gap-1.5 text-success">
-          <PackageCheck size={14} aria-hidden />
-          The model is downloaded and checked.
+      {model.nonCommercial ? (
+        <p className="text-warning">
+          For study and other non-commercial use only, as its license says.
         </p>
+      ) : null}
+      {state.kind === "ready" ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-success">
+            <PackageCheck size={14} aria-hidden />
+            The model is downloaded and checked.
+          </p>
+          <Button size="sm" variant="ghost" onClick={remove}>
+            Delete model
+          </Button>
+        </div>
       ) : !online ? (
         <p className="text-text-muted">Start the engine to download the model.</p>
       ) : (
@@ -105,7 +134,9 @@ export function ModelCard({ entry }: { entry: Filter }) {
             ) : (
               <Download size={13} aria-hidden />
             )}
-            Download model
+            {state.kind === "downloading"
+              ? `Downloading ${Math.round(state.share * 100)}%`
+              : "Download model"}
           </Button>
           {state.kind === "failed" ? (
             <p role="alert" className="text-danger">

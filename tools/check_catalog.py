@@ -89,6 +89,25 @@ def structure_issues(catalog: Catalog) -> Iterator[Issue]:
         model = entry.get("model")
         if model is not None and model not in model_ids:
             yield Issue("error", where, f"model '{model}' is not in models.yaml")
+        choices = entry.get("modelChoices")
+        if isinstance(choices, dict):
+            param = next(
+                (p for p in entry.get("params", []) or [] if p.get("key") == choices.get("param")),
+                None,
+            )
+            values = {o.get("value") for o in (param or {}).get("options", []) or []}
+            mapped = choices.get("models", {}) or {}
+            if param is None:
+                yield Issue(
+                    "error", where, f"modelChoices names no parameter '{choices.get('param')}'"
+                )
+            elif set(mapped) != values:
+                yield Issue("error", where, "modelChoices must give a model for every option")
+            elif mapped.get(param.get("default")) != model:
+                yield Issue("error", where, "model must be the modelChoices model of the default")
+            for choice in mapped.values():
+                if choice not in model_ids:
+                    yield Issue("error", where, f"model '{choice}' is not in models.yaml")
         if (model is not None) != (entry.get("status") == "optional-model"):
             yield Issue(
                 "error", where, "an entry has a model exactly when its status is optional-model"
