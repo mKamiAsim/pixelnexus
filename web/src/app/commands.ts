@@ -41,6 +41,7 @@ import {
   toggleSelectionEnabled,
   type RefineKind,
 } from "./selectionActions";
+import { aiSelect } from "./aiSelectActions";
 import { selectObject } from "./seedActions";
 import { TOOLS, type ToolInfo } from "./tools";
 import {
@@ -457,6 +458,33 @@ export function buildCommands(): Command[] {
       keywords: "background sky backdrop automatic",
       enabled: hasDocument,
       run: () => void selectSubject(true),
+    },
+    {
+      id: "select.ai-subject",
+      label: "AI subject",
+      menu: "select",
+      section: "ai",
+      keywords: "subject ai model learned u2net isnet cut out",
+      enabled: hasDocument,
+      run: () => void aiSelect("subject-select"),
+    },
+    {
+      id: "select.ai-background",
+      label: "AI background",
+      menu: "select",
+      section: "ai",
+      keywords: "background ai model learned",
+      enabled: hasDocument,
+      run: () => void aiSelect("subject-select", true),
+    },
+    {
+      id: "select.ai-object",
+      label: "AI object",
+      menu: "select",
+      section: "ai",
+      keywords: "object ai model sam box prompt",
+      enabled: hasSelection,
+      run: () => void aiSelect("object-select"),
     },
     {
       id: "select.modify.snap",
