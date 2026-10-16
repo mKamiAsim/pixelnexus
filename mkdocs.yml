@@ -206,6 +206,8 @@ nav:
           - Entropy filter: filters/adaptive/local-entropy.md
           - MAD thresholding: filters/adaptive/mad-outlier.md
           - Savitzky-Golay filter: filters/adaptive/savgol.md
+          - Robust M-estimator filter: filters/adaptive/m-estimator.md
+          - RANSAC surface fit: filters/adaptive/ransac-surface.md
       - Edges:
           - Sobel: filters/edges/sobel.md
           - Sobel with non-maximum suppression: filters/edges/sobel-nms.md
@@ -275,6 +277,10 @@ nav:
           - Pruning: filters/morphology/pruning.md
           - Convex hull: filters/morphology/convex-hull.md
           - Connected-component filtering: filters/morphology/ccl-filter.md
+          - Medial axis: filters/morphology/medial-axis.md
+          - Area opening: filters/morphology/area-opening.md
+          - Area closing: filters/morphology/area-closing.md
+          - Attribute opening: filters/morphology/attribute-opening.md
       - Frequency:
           - Ideal low-pass: filters/frequency/ideal-lowpass.md
           - Ideal high-pass: filters/frequency/ideal-highpass.md

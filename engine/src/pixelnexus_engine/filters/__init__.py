@@ -20,6 +20,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     radon,
     restoration,
     ridges,
+    robust,
     segmentation,
     split_merge,
     steerable,
@@ -28,5 +29,6 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     surf,
     susan,
     texture,
+    tree_morphology,
     wavelets,
 )

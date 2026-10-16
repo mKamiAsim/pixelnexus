@@ -1,8 +1,124 @@
 id: attribute-opening
 name: Attribute opening
+aliases: [Diameter opening, Connected attribute opening]
 family: morphology
+tags: [purpose:morphology]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: Area and diameter attributes. Max-tree.
+
+summary: Removes bright components that fail a size test, after Breen and Jones, while keeping all others exactly. The test can be the area, as in the area opening, or the diameter, the longer side of the bounding box. A diameter opening removes small blobs but keeps long thin lines.
+purpose: Remove bright structures by size or by extent, with no fixed shape.
+classification: {linearity: nonlinear, domain: morphological, operation: connected attribute filter}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: attribute_stages}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Each plane of the channel scope is rounded to 8 bits and filtered on its own. By default these
+  are the red, green and blue channels.
+boundary: Components end at the image edge. Nothing is padded.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.morphology.diameter_opening and area_opening.'}
+
+params:
+  - key: attribute
+    label: Attribute
+    type: select
+    default: diameter
+    options:
+      - {value: diameter, label: Diameter}
+      - {value: area, label: Area}
+    description: The diameter is the longer side of the bounding box of a component, as scikit-image measures it. The area is its number of pixels.
+    effect: The diameter keeps long thin structures that the area would remove.
+  - key: threshold
+    label: Threshold
+    type: integer
+    min: 1
+    max: 10000
+    step: 1
+    default: 8
+    description: Components whose attribute is below this are removed, in pixels across for the diameter or pixels for the area. scikit-image uses 8 for the diameter.
+    effect: Larger values remove larger structures.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: "8 (sides and corners)"}
+      - {value: "4", label: "4 (sides only)"}
+    description: Which neighbors join a component. scikit-image uses 4, its connectivity 1. 8 is our choice, as for connected-component labeling.
+    effect: With 8 neighbors, diagonal touches join components.
+  - ref: channelScope
+    default: rgb
+formula: |
+  \gamma_\Lambda(I)(p) = \max \{ t : p \in C,\ C \text{ a component of } \{ I \ge t \},\ \Lambda(C) \}
+formulaExplanation: >-
+  Threshold the image at every level t. Each bright component C of a level passes when its
+  attribute meets the test Lambda, here an area or a diameter of at least the threshold. A pixel
+  keeps the highest level at which it still lies in a passing component. Breen and Jones showed
+  that an increasing attribute, one that only grows as a component grows, gives an opening. Area
+  and diameter both grow with the component. scikit-image builds a max-tree of the components,
+  after Salembier, Oliveras and Garrido, and checks each node once.
+symbols:
+  - {symbol: '\Lambda', meaning: 'The attribute test'}
+  - {symbol: 'C', meaning: 'A bright connected component of a threshold level'}
+  - {symbol: 't', meaning: 'A threshold level'}
+steps:
+  - Build the tree of the bright components of all threshold levels.
+  - Measure each component's diameter or area.
+  - Remove the components below the threshold.
+  - Give each pixel the level of the nearest component that is kept.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels, for building the tree.
+useCases:
+  - Removing small bright blobs while keeping thin bright lines, such as vessels or cracks.
+  - Sorting structures by extent rather than area.
+advantages:
+  - Keeps the shape of every structure it does not remove.
+  - The diameter separates compact blobs from elongated structures.
+limitations:
+  - The diameter comes from the bounding box, so a diagonal line counts as wide in both directions.
+  - Noise can join small structures to large ones, which then survive.
+artifacts:
+  - Flat plateaus where peaks were cut.
+references:
+  - kind: paper
+    text: Breen, E. J., and Jones, R. Attribute openings, thinnings, and granulometries. Computer Vision and Image Understanding 64(3), 377 to 389, 1996.
+    doi: 10.1006/cviu.1996.0066
+  - kind: paper
+    text: Salembier, P., Oliveras, A., and Garrido, L. Antiextensive connected operators for image and sequence processing. IEEE Transactions on Image Processing 7(4), 555 to 570, 1998.
+    doi: 10.1109/83.663500
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.diameter_opening and area_opening.
+implementation: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: attribute_opening}
+tests: [engine/tests/test_tree_morphology.py]
+learn:
+  oneSentence: Remove bright structures that are too small by a measure you choose, and keep the rest exactly.
+  howItWorks:
+    - Find the bright connected areas at every brightness level.
+    - Measure each one, by its extent or its number of pixels.
+    - Remove the ones below the threshold, and leave the others untouched.
+  academic: >-
+    Connected attribute opening of Breen and Jones with the diameter or area attribute, on the
+    max-tree, as in scikit-image.
+  paramNotes:
+    attribute: Extent or number of pixels.
+    threshold: The smallest size to keep.
+    connectivity: Which neighbors join a component.
+    channelScope: Which channels to filter.
+  tryThis:
+    - On an image with dots and thin lines, compare the diameter and the area attributes at the same threshold.
+  pitfalls:
+    - Diagonal lines. Their bounding box is wide in both directions, so a diameter opening keeps them.
+  demos: [line-profile]
+related: [area-opening, area-closing, opening]
+docsPage: filters/morphology/attribute-opening.md

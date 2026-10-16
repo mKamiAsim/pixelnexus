@@ -1,8 +1,112 @@
 id: area-opening
 name: Area opening
+aliases: [Area opening filter, Grayscale area opening]
 family: morphology
+tags: [purpose:morphology]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: Max-tree.
+
+summary: Removes bright spots smaller than a given area, whatever their shape, after Vincent. Unlike an opening with a structuring element, it keeps thin long structures whose area is large, and it never changes the shape of what it keeps.
+purpose: Remove small bright specks and peaks by size, while keeping every larger structure exactly.
+classification: {linearity: nonlinear, domain: morphological, operation: connected attribute filter}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: attribute_stages}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Each plane of the channel scope is rounded to 8 bits and filtered on its own. By default these
+  are the red, green and blue channels.
+boundary: Components end at the image edge. Nothing is padded.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.morphology.area_opening.'}
+
+params:
+  - key: area
+    label: Area
+    type: integer
+    min: 1
+    max: 100000
+    step: 1
+    default: 64
+    unit: px
+    description: Bright components with fewer pixels than this are removed. scikit-image uses 64.
+    effect: Larger values remove larger spots.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: "8 (sides and corners)"}
+      - {value: "4", label: "4 (sides only)"}
+    description: Which neighbors join a component. scikit-image uses 4, its connectivity 1. 8 is our choice, as for connected-component labeling.
+    effect: With 8 neighbors, diagonal touches join components, so fewer of them count as small.
+  - ref: channelScope
+    default: rgb
+formula: |
+  \gamma_a(I) = \bigvee \{ \gamma_B(I) : B \text{ connected},\ \lvert B \rvert \ge a \}
+formulaExplanation: >-
+  Threshold the image at every level. At each level, the bright pixels split into connected
+  components. The area opening removes every component with fewer than a pixels, so a pixel
+  drops to the highest level at which it still belongs to a large enough
+  component. Vincent showed this equals the supremum of all openings with connected structuring
+  elements of at least a pixels. So no fixed shape is imposed, and what is kept is kept
+  exactly. scikit-image computes it on a max-tree, after Salembier, Oliveras and Garrido.
+symbols:
+  - {symbol: 'a', meaning: 'The area'}
+  - {symbol: 'B', meaning: 'A connected structuring element'}
+steps:
+  - Build the tree of the bright components of all threshold levels.
+  - Mark the components with fewer pixels than the area.
+  - Give each pixel the level of the nearest component that is kept.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels, for building the tree.
+useCases:
+  - Removing small bright specks and dust from scans and microscope images.
+  - Cleaning a gray image before a threshold, without rounding the edges of objects.
+advantages:
+  - Keeps the shape of every structure it does not remove.
+  - Thin long structures survive if their area is large.
+limitations:
+  - Only size counts, so a small but important feature goes.
+  - Noise can join a small spot to a large region, which then survives.
+artifacts:
+  - Flat plateaus where peaks were cut.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological area openings and closings for grey-scale images. In Shape in Picture, Springer, 197 to 208, 1994.
+    doi: 10.1007/978-3-662-03039-4_13
+  - kind: paper
+    text: Salembier, P., Oliveras, A., and Garrido, L. Antiextensive connected operators for image and sequence processing. IEEE Transactions on Image Processing 7(4), 555 to 570, 1998.
+    doi: 10.1109/83.663500
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.area_opening.
+implementation: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: area_opening_filter}
+tests: [engine/tests/test_tree_morphology.py]
+learn:
+  oneSentence: Remove every bright spot smaller than a size, and leave the rest exactly as it was.
+  howItWorks:
+    - Find the bright connected areas at every brightness level.
+    - Remove the areas with fewer pixels than the limit.
+    - Large structures, thin or not, stay untouched.
+  academic: >-
+    Grayscale area opening of Vincent on the max-tree, as in scikit-image.
+  paramNotes:
+    area: The smallest area to keep.
+    connectivity: Which neighbors join an area.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Compare it with an opening of a similar size on thin lines. The lines survive here.
+  pitfalls:
+    - An area larger than the objects you want. They go too.
+  demos: [line-profile]
+related: [opening, area-closing, attribute-opening]
+docsPage: filters/morphology/area-opening.md

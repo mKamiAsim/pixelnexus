@@ -1,8 +1,97 @@
 id: medial-axis
 name: Medial axis
+aliases: [Medial axis transform, Blum skeleton, Medial axis with distance]
 family: morphology
+tags: [purpose:morphology]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
+status: implemented-tested
 planNotes: scikit-image, with distance values.
+
+summary: Finds the medial axis of the white shapes, the centers of the largest disks that fit inside them, with scikit-image. Each axis pixel also carries its distance to the background, so the axis together with the distances describes the width of the shape everywhere.
+purpose: Reduce shapes to a one pixel line that keeps their topology, with the local width.
+classification: {linearity: nonlinear, domain: morphological, operation: medial axis transform}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: medial_axis_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The image is read as binary, with a luma of at least 128 as foreground, as for the skeleton
+  filter. The outputs are gray, or the axis in yellow over the darkened image. The alpha stays.
+boundary: Pixels outside the image count as background for the distance.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.morphology.medial_axis.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: axis
+    options:
+      - {value: axis, label: Axis}
+      - {value: distance, label: Distance on the axis}
+      - {value: overlay, label: Axis over the image}
+    description: The axis in white on black, each axis pixel with its distance to the background stretched so the largest is white, or the axis in yellow over the darkened image.
+    effect: The distance shows how wide the shape is around each axis pixel.
+formula: |
+  D(p) = \min_{q \notin X} \lVert p - q \rVert,
+  \qquad
+  M(X) = \{ p \in X : \text{the disk of radius } D(p) \text{ at } p \text{ is maximal in } X \}
+formulaExplanation: >-
+  X is the foreground and D the Euclidean distance to the background. Blum defined the medial
+  axis as the centers of the maximal disks, those that fit in X and lie in no larger disk that
+  fits. Together with D, the axis describes X completely. On a pixel grid the exact axis breaks
+  into pieces. The scikit-image code thins the foreground instead, removing pixels in order of increasing
+  distance as long as connectivity is kept, so the axis stays connected and one pixel wide. Ties
+  are broken in a random order, which the filter fixes with the seed 0.
+symbols:
+  - {symbol: 'X', meaning: 'The foreground'}
+  - {symbol: 'D(p)', meaning: 'The distance of p to the background'}
+  - {symbol: 'M(X)', meaning: 'The medial axis'}
+steps:
+  - Make the image binary at a luma of 128.
+  - Compute the distance of each foreground pixel to the background.
+  - Thin the foreground in order of distance, keeping it connected.
+  - Show the axis, its distances, or the axis over the image.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels, with the sort by distance.
+useCases:
+  - Measuring the width of roads, vessels or letters along their length.
+  - Shape description and matching.
+advantages:
+  - Keeps the topology, so holes and branches stay.
+  - The distances give the width at every point.
+limitations:
+  - Small bumps on the outline make spurious branches.
+  - Needs a clean binary image.
+artifacts:
+  - Short side branches at noisy edges.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.medial_axis.
+implementation: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: medial_axis_filter}
+tests: [engine/tests/test_tree_morphology.py]
+learn:
+  oneSentence: The line through the middle of a shape, where each point knows how far the edge is.
+  howItWorks:
+    - Measure how far each white pixel is from the nearest black pixel.
+    - Peel the shape from the outside in, keeping it in one piece.
+    - What is left is a thin line in the middle, with the distances on it.
+  academic: >-
+    The medial axis transform: the skeleton of maximal disk centers with the Euclidean distance
+    transform, by distance-ordered thinning in scikit-image.
+  paramNotes:
+    output: Axis, distances, or overlay.
+  tryThis:
+    - Show the distances on a shape whose width changes. The axis gets brighter where it is wider.
+  pitfalls:
+    - Noisy outlines. Clean them with an opening first.
+  demos: [line-profile]
+related: [skeleton, thinning]
+docsPage: filters/morphology/medial-axis.md

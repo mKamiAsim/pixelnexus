@@ -101,6 +101,7 @@ from pixelnexus_engine.filters.ridges import (
     meijering_filter,
     sato_filter,
 )
+from pixelnexus_engine.filters.robust import fit_surface, m_estimator, ransac_surface
 from pixelnexus_engine.filters.segmentation import (
     elevation,
     felzenszwalb_filter,
@@ -129,6 +130,13 @@ from pixelnexus_engine.filters.superresolution import back_project as sr_back_pr
 from pixelnexus_engine.filters.surf import surf_inspired
 from pixelnexus_engine.filters.susan import susan_corner
 from pixelnexus_engine.filters.texture import glcm, hog_filter, hog_view, lbp, ltp, ltp_codes
+from pixelnexus_engine.filters.tree_morphology import (
+    area_closing_filter,
+    area_opening_filter,
+    attribute_opening,
+    axis_and_distance,
+    medial_axis_filter,
+)
 from pixelnexus_engine.filters.wavelets import (
     WINDOWS,
     estimate_sigma,
@@ -3121,6 +3129,287 @@ def edge_preserving_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# Robust estimation ------------------------------------------------------------------------------
+
+
+def mixed_noise() -> Gray:
+    """The disk and the square with Gaussian noise of sigma 10 and 10 percent impulses."""
+    rng = np.random.default_rng(8)
+    gray = denoise_clean().astype(np.float64) + rng.normal(0, 10, (160, 160))
+    hits = rng.random((160, 160)) < 0.1
+    gray[hits] = rng.choice([0.0, 255.0], int(hits.sum()))
+    return to_8bit(gray)
+
+
+def m_estimator_docs(out: dict[Path, str]) -> None:
+    filter_id = "m-estimator"
+    scene = mixed_noise()
+    reference = denoise_clean()
+    median = to_8bit(np.asarray(ndimage.median_filter(scene.astype(np.float64), 5, mode="nearest")))
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with Gaussian noise of sigma 10 and 10 percent of pixels set to "
+        "black or white. Then a 5 x 5 median, and the M-estimator with Tukey and with Huber "
+        "weights, both with a scale of 10.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Median 5 x 5", "image": picture(median)},
+            {
+                "title": "Tukey",
+                "image": picture(run(m_estimator, scene, filter_id, scale=10, estimator="tukey")),
+            },
+            {
+                "title": "Huber",
+                "image": picture(run(m_estimator, scene, filter_id, scale=10, estimator="huber")),
+            },
+        ],
+    )
+    rows = [["Median 5 x 5", "", fix(psnr(median, reference), 2)]]
+    for estimator in ("tukey", "huber"):
+        for scale in (0, 5, 10, 20, 40):
+            result = run(m_estimator, scene, filter_id, estimator=estimator, scale=scale)
+            rows.append(
+                [
+                    estimator.capitalize(),
+                    "auto" if scale == 0 else f"{scale:g}",
+                    fix(psnr(result, reference), 2),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Weights", "Scale", "PSNR (dB)"], rows)
+        + "\nThe image of the figure, with a 5 x 5 window and 5 steps. The PSNR compares the "
+        f"result with the image before the noise. The noisy input scores "
+        f"{fix(psnr(scene, reference), 2)} dB.\n"
+    )
+
+
+def lit_scene() -> tuple[Gray, NDArray[np.float64]]:
+    """Two rectangles, one brighter and one darker, on a background lit from one side, with
+    noise of sigma 3."""
+    rows, cols = np.mgrid[0:120, 0:160]
+    background = 80 + 0.4 * cols + 0.2 * rows + 0.002 * (cols - 80) ** 2
+    gray = background.copy()
+    gray[30:60, 30:70] += 100
+    gray[70:100, 90:140] -= 50
+    return noisy(to_8bit(gray), 3, seed=3), background
+
+
+def ransac_surface_docs(out: dict[Path, str]) -> None:
+    filter_id = "ransac-surface"
+    scene, background = lit_scene()
+    figure(
+        out,
+        filter_id,
+        "Two rectangles on a background that brightens to the right, with a slight bend. Then "
+        "the corrected image, the fitted background, and the grid samples taken as background "
+        "in yellow.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Corrected", "image": picture(run(ransac_surface, scene, filter_id))},
+            {
+                "title": "Background",
+                "image": picture(run(ransac_surface, scene, filter_id, output="background")),
+            },
+            {
+                "title": "Inliers",
+                "image": shown(
+                    ransac_surface(
+                        rgba(scene),
+                        catalog_values(filter_id, output="inliers"),
+                        lambda _: None,
+                    )
+                ),
+            },
+        ],
+    )
+    rows = []
+    for degree in (1, 2, 3):
+        for threshold in (5, 10, 30):
+            params = catalog_values(filter_id, degree=degree, threshold=threshold)
+            fitted, inliers = fit_surface(rgba(scene), params)
+            rows.append(
+                [
+                    str(degree),
+                    f"{threshold:g}",
+                    str(int(inliers.sum())),
+                    fix(float(np.abs(fitted - background).max()), 1),
+                ]
+            )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Degree", "Threshold", "Inliers", "Largest error (levels)"], rows)
+        + "\nThe image of the figure, with a grid step of 8 (300 samples) and 200 trials. The "
+        "background is 80 + 0.4 x + 0.2 y + 0.002 (x - 80)^2, a surface of degree 2. The "
+        "largest error compares the fitted surface with it over the whole image.\n"
+    )
+
+
+# Morphology with distances and max-trees --------------------------------------------------------
+
+
+def shapes_scene() -> Gray:
+    """White shapes on black: a rectangle 24 pixels wide, a disk of radius 26 and an L of
+    width 12."""
+    rows, cols = np.mgrid[0:160, 0:160]
+    gray = np.zeros((160, 160), np.uint8)
+    gray[20:140, 14:38] = 255
+    gray[np.hypot(rows - 50, cols - 100) <= 26] = 255
+    gray[96:144, 70:82] = 255
+    gray[132:144, 70:140] = 255
+    return gray
+
+
+def medial_axis_docs(out: dict[Path, str]) -> None:
+    filter_id = "medial-axis"
+    scene = shapes_scene()
+    figure(
+        out,
+        filter_id,
+        "A rectangle 24 pixels wide, a disk of radius 26 and an L of width 12, white on black. "
+        "Then the medial axis, its distances to the background, and the axis over the image.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Axis", "image": picture(run(medial_axis_filter, scene, filter_id))},
+            {
+                "title": "Distance",
+                "image": picture(run(medial_axis_filter, scene, filter_id, output="distance")),
+            },
+            {
+                "title": "Overlay",
+                "image": shown(
+                    medial_axis_filter(
+                        rgba(scene), catalog_values(filter_id, output="overlay"), lambda _: None
+                    )
+                ),
+            },
+        ],
+    )
+    axis, distance = axis_and_distance(rgba(scene))
+    parts, _ = ndimage.label(scene > 0, structure=np.ones((3, 3), bool))
+    rows = []
+    for k, name in enumerate(("Rectangle", "Disk", "L shape"), start=1):
+        part = parts == k
+        on = axis & part
+        rows.append(
+            [name, str(int(part.sum())), str(int(on.sum())), fix(float(distance[on].max()), 2)]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Shape", "Pixels", "Axis pixels", "Largest distance (px)"], rows)
+        + "\nThe image of the figure. The largest distance is half the width of the shape, "
+        "or its radius, measured from a pixel center to the nearest background pixel center.\n"
+    )
+
+
+SPECK_SIZES = (1, 2, 3, 4)
+
+
+def specks() -> list[tuple[int, int, int]]:
+    """The top-left corners and sides of 40 bright specks, 10 of each side from 1 to 4 pixels."""
+    rng = np.random.default_rng(9)
+    corners: list[tuple[int, int, int]] = []
+    while len(corners) < 40:
+        r, c = (int(v) for v in rng.integers(5, 150, 2))
+        near_disk = np.hypot(r - 50, c - 50) < 32
+        near_lines = abs(r - 110) < 6 or abs(c - 120) < 6
+        if (
+            not near_disk
+            and not near_lines
+            and all(abs(r - a) + abs(c - b) > 8 for a, b, _ in corners)
+        ):
+            corners.append((r, c, SPECK_SIZES[len(corners) % 4]))
+    return corners
+
+
+def specks_scene() -> Gray:
+    """A ground of 60 with a bright disk of radius 25, a bright line 1 x 70, a bright line
+    80 x 1, 40 small bright specks, and dark pits of 3 x 3 where the ground is plain (22)."""
+    rows, cols = np.mgrid[0:160, 0:160]
+    gray = np.full((160, 160), 60.0)
+    gray[np.hypot(rows - 50, cols - 50) <= 25] = 200
+    gray[110, 10:80] = 210
+    gray[20:100, 120] = 210
+    for r, c, size in specks():
+        gray[r : r + size, c : c + size] = 230
+    rng = np.random.default_rng(10)
+    for r, c in rng.integers(5, 155, (25, 2)):
+        if gray[r : r + 3, c : c + 3].max() == 60:
+            gray[r : r + 3, c : c + 3] = 10
+    return to_8bit(gray)
+
+
+TREE_FILTERS: dict[str, tuple[Any, list[dict[str, Any]]]] = {
+    "area-opening": (
+        area_opening_filter,
+        [{"area": a} for a in (4, 16, 64, 256)],
+    ),
+    "area-closing": (
+        area_closing_filter,
+        [{"area": a} for a in (4, 16, 64, 256)],
+    ),
+    "attribute-opening": (
+        attribute_opening,
+        [
+            {"attribute": attribute, "threshold": t}
+            for attribute in ("diameter", "area")
+            for t in (4, 8, 32)
+        ],
+    ),
+}
+
+
+def tree_docs(out: dict[Path, str], filter_id: str) -> None:
+    function, settings = TREE_FILTERS[filter_id]
+    scene = specks_scene()
+    panels: list[tuple[str, dict[str, Any]]]
+    if filter_id == "attribute-opening":
+        panels = [
+            ("Diameter 8", {"threshold": 8}),
+            ("Area 32", {"attribute": "area", "threshold": 32}),
+            ("Diameter 32", {"threshold": 32}),
+        ]
+    else:
+        panels = [(f"Area {a}", {"area": a}) for a in (16, 64, 256)]
+    figure(
+        out,
+        filter_id,
+        "A bright disk, two thin bright lines, small bright specks and small dark pits on a gray "
+        "ground. Then the filter with " + ", ".join(label.lower() for label, _ in panels) + ".",
+        [{"title": "Input", "image": picture(scene)}]
+        + [
+            {"title": label, "image": picture(run(function, scene, filter_id, **values))}
+            for label, values in panels
+        ],
+    )
+    rows = []
+    for values in settings:
+        result = run(function, scene, filter_id, **values)
+        left = [
+            sum(int(result[r, c]) > 150 for r, c, s in specks() if s == size)
+            for size in SPECK_SIZES
+        ]
+        pits = int((result <= 30).sum()) // 9
+        rows.append(
+            [f"{v}" if isinstance(v, str) else f"{v:g}" for v in values.values()]
+            + [" / ".join(str(n) for n in left), str(pits)]
+            + ["yes" if (result[110, 10:80] > 150).all() else "no"]
+        )
+    headers = ["Attribute", "Threshold"] if filter_id == "attribute-opening" else ["Area"]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [*headers, "Specks left (1 / 2 / 3 / 4 px)", "Dark pits left", "Line kept"], rows
+        )
+        + "\nThe image of the figure, with 8 neighbors. There are 10 bright specks of each side "
+        "from 1 to 4 pixels, so of 1, 4, 9 and 16 pixels. A speck is left when its corner pixel "
+        "stays above 150. The dark pits are 3 x 3, and are counted by their pixels at or below 30. "
+        "The line kept column says whether the horizontal line, 1 pixel thick and 70 long, stays "
+        "above 150 along its whole length.\n"
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -3240,6 +3529,11 @@ def build() -> dict[Path, str]:
     grabcut_docs(out)
     for filter_id in EDGE_PRESERVING:
         edge_preserving_docs(out, filter_id)
+    m_estimator_docs(out)
+    ransac_surface_docs(out)
+    medial_axis_docs(out)
+    for filter_id in TREE_FILTERS:
+        tree_docs(out, filter_id)
     structured_edge_docs(out)
     return out
 

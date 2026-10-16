@@ -115,9 +115,9 @@ Requirements 1 also lists the ideal and Butterworth low-pass filters here. They 
 | local-entropy | Entropy filter | Feature map output. | Core | Browser | 5b |
 | mad-outlier | Median absolute deviation thresholding | Marks or repairs pixels far from the local median. | Core | Browser | 5b |
 | savgol | Savitzky-Golay filter | Regression-based filters. Local polynomial fit. Has a fixed kernel. | Core | Browser | 5b |
-| m-estimator | Robust M-estimator filter | Huber and Tukey weights, iteratively reweighted. | Advanced | Science | 6f |
+| m-estimator | Robust M-estimator filter | Huber and Tukey weights, iteratively reweighted. Done on 2026-10-16. | Advanced | Science | 6f |
 | steering-kernel | Steering kernel regression | Takeda, Farsiu and Milanfar. | Advanced | Science | 6f |
-| ransac-surface | RANSAC surface fit | RANSAC-based robust estimation. Fits a background surface and removes it. | Advanced | Science | 6f |
+| ransac-surface | RANSAC surface fit | RANSAC-based robust estimation. Fits a background surface and removes it. Done on 2026-10-16. | Advanced | Science | 6f |
 | lms-2d | LMS adaptive filter | Needs a reference signal. A 2D LMS predictor may be added later with an honest label. | Planned | none | |
 | rls-2d | RLS adaptive filter | Same reason as LMS. | Planned | none | |
 | kalman | Kalman filter | Needs a state model and an image sequence. A reduced update Kalman filter may be added later. | Planned | none | |
@@ -151,10 +151,10 @@ All morphology entries share a structuring-element editor: rectangle, ellipse, d
 | asf | Alternating sequential filter | | Core | Browser | 5d |
 | leveling | Morphological leveling | | Core | Browser | 5d |
 | ccl-filter | Connected-component filtering | Keep components by area range. | Core | Browser | 5d |
-| medial-axis | Medial axis | scikit-image, with distance values. | Advanced | Science | 6f |
-| attribute-opening | Attribute opening | Area and diameter attributes. Max-tree. | Advanced | Science | 6f |
-| area-opening | Area opening | Max-tree. | Advanced | Science | 6f |
-| area-closing | Area closing | Max-tree. | Advanced | Science | 6f |
+| medial-axis | Medial axis | scikit-image, with distance values. Done on 2026-10-16. | Advanced | Science | 6f |
+| attribute-opening | Attribute opening | Area and diameter attributes. Max-tree. Done on 2026-10-16. | Advanced | Science | 6f |
+| area-opening | Area opening | Max-tree. Done on 2026-10-16. | Advanced | Science | 6f |
+| area-closing | Area closing | Max-tree. Done on 2026-10-16. | Advanced | Science | 6f |
 
 ## 5. Frequency-domain filters
 
