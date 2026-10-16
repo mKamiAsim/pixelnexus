@@ -23,6 +23,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     ridges,
     robust,
     segmentation,
+    shen_castan,
     split_merge,
     steerable,
     structured_edge,

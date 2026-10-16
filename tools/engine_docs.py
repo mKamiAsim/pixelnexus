@@ -122,6 +122,7 @@ from pixelnexus_engine.filters.segmentation import (
     watershed_filter,
     watershed_labels,
 )
+from pixelnexus_engine.filters.shen_castan import shen_castan, shen_castan_stages
 from pixelnexus_engine.filters.split_merge import luma as split_luma
 from pixelnexus_engine.filters.split_merge import merge_regions, split_blocks, split_merge
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
@@ -3445,6 +3446,66 @@ def deriche_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Shen-Castan ------------------------------------------------------------------------------------
+
+
+def shen_castan_docs(out: dict[Path, str]) -> None:
+    filter_id = "shen-castan"
+    scene = contour_scene()
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with noise of sigma 10. Then the binary Laplacian with b 0.8, and "
+        "the edges with b 0.6 and 0.8.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {
+                "title": "Binary, b 0.8",
+                "image": picture(run(shen_castan, scene, filter_id, output="binary")),
+            },
+            {"title": "Edges, b 0.6", "image": picture(run(shen_castan, scene, filter_id, b=0.6))},
+            {"title": "Edges, b 0.8", "image": picture(run(shen_castan, scene, filter_id))},
+        ],
+    )
+    round_part, square = contour_truth()
+    shapes = round_part | square
+    outline = shapes & ~ndimage.binary_erosion(shapes)
+    distance = ndimage.distance_transform_edt(~outline)
+    rows = []
+    for b in (0.5, 0.7, 0.8, 0.9, 0.95):
+        stages = shen_castan_stages(rgba(contour_scene(20)), catalog_values(filter_id, b=b))
+        edges = stages["edges"]
+        near = float(np.mean(distance[edges] <= 2)) * 100 if edges.any() else 0.0
+        reach = ndimage.distance_transform_edt(~edges) if edges.any() else np.full(edges.shape, 99)
+        found = float(np.mean(reach[outline] <= 2)) * 100
+        rows.append(
+            [
+                f"{b:g}",
+                str(int(stages["crossings"].sum())),
+                str(int(edges.sum())),
+                fix(near, 1),
+                fix(found, 1),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [
+                "b",
+                "Zero crossings",
+                "Edge pixels",
+                "Edges within 2 px of the outline (%)",
+                "Outline within 2 px of an edge (%)",
+            ],
+            rows,
+        )
+        + "\nThe disk and the square of the figure with noise of sigma 20, and the default "
+        "thresholds 2 and 5. The outline is the border of the two shapes before the blur and "
+        "the noise, "
+        f"{int(outline.sum())} pixels long.\n"
+    )
+
+
 # Tone mapping -----------------------------------------------------------------------------------
 
 
@@ -3617,6 +3678,7 @@ def build() -> dict[Path, str]:
     for filter_id in TREE_FILTERS:
         tree_docs(out, filter_id)
     deriche_docs(out)
+    shen_castan_docs(out)
     tone_docs(out)
     structured_edge_docs(out)
     return out

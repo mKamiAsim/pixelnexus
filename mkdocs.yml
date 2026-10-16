@@ -226,6 +226,7 @@ nav:
           - Hough-based edge linking: filters/edges/hough-linking.md
           - Structured Edge Detector: filters/edges/structured-edge.md
           - Deriche: filters/edges/deriche.md
+          - Shen-Castan: filters/edges/shen-castan.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md
