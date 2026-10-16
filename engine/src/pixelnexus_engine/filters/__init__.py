@@ -5,7 +5,9 @@
 
 from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     artifacts,
+    bitonic,
     blobs,
+    bm3d_lite,
     contours,
     deriche,
     directional,
@@ -27,6 +29,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     shen_castan,
     split_merge,
     steerable,
+    steering_kernel,
     structured_edge,
     superresolution,
     surf,

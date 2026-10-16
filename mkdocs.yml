@@ -173,6 +173,8 @@ nav:
           - Bilateral filter: filters/nonlinear/bilateral.md
           - Non-local means: filters/nonlinear/nlm.md
           - Total variation denoising: filters/nonlinear/tv-denoise.md
+          - BM3D-inspired denoising: filters/nonlinear/bm3d-lite.md
+          - Bitonic filter: filters/nonlinear/bitonic.md
           - Domain transform filter: filters/nonlinear/domain-transform.md
           - Rolling guidance filter: filters/nonlinear/rolling-guidance.md
           - SUSAN noise filter: filters/nonlinear/susan-smoothing.md
@@ -207,6 +209,7 @@ nav:
           - MAD thresholding: filters/adaptive/mad-outlier.md
           - Savitzky-Golay filter: filters/adaptive/savgol.md
           - Robust M-estimator filter: filters/adaptive/m-estimator.md
+          - Steering kernel regression: filters/adaptive/steering-kernel.md
           - RANSAC surface fit: filters/adaptive/ransac-surface.md
       - Edges:
           - Sobel: filters/edges/sobel.md

@@ -1,8 +1,137 @@
 id: bm3d-lite
 name: BM3D-inspired denoising
+aliases: [BM3D lite, Simplified BM3D, Block-matching and 3D filtering]
 family: nonlinear
+tags: [purpose:denoise]
 tier: advanced
 engine: science
 phase: 6f
-status: planned
-planNotes: Simplified two-stage version. Clearly labeled as simplified.
+status: implemented-tested
+planNotes: Simplified two-stage version. Clearly labeled as simplified. Our own code, after Dabov et al. and Lebrun's IPOL analysis.
+
+summary: A simplified version of BM3D, in PixelNexus's own code. For each small patch it gathers similar patches from nearby, stacks them, and removes noise from the stack together. A first pass uses a hard threshold, and a second pass a Wiener filter guided by the first. The full BM3D package is left out because its license is unclear.
+purpose: Show how collaborative filtering of similar patches removes noise, with the two steps of BM3D.
+classification: {linearity: nonlinear, domain: transform, operation: collaborative filtering}
+output: image
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/bm3d_lite.py, symbol: bm3d_lite_representation}
+supportRadius: search radius + 7
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  Set by the Channel scope parameter. Each channel is processed on its own. The paper instead
+  groups on the luminance of an opponent color space and filters all channels with those groups.
+boundary: Patches stay inside the image. The grid of reference patches always includes the last row and column, so every pixel is covered.
+dependencies:
+  - {name: SciPy, optional: false, note: 'scipy.fft.dctn and idctn, orthonormal.'}
+  - {name: scikit-image, optional: false, note: 'skimage.restoration.estimate_sigma when sigma is 0.'}
+
+params:
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    unit: levels
+    description: The standard deviation of the noise. 0 estimates it with scikit-image's estimate_sigma, our choice.
+    effect: Larger values remove more and smooth more.
+  - key: output
+    label: Output
+    type: select
+    default: final
+    options:
+      - {value: final, label: Final (after Wiener)}
+      - {value: basic, label: Basic (after hard threshold)}
+    description: The final estimate, or the basic estimate of the first step.
+    effect: The basic estimate shows what the second step adds.
+  - key: searchRadius
+    label: Search radius
+    type: integer
+    min: 4
+    max: 19
+    step: 1
+    default: 19
+    unit: px
+    description: Similar patches are searched in a window of 2 radius + 1 pixels. 19 gives the 39 x 39 window of Lebrun's study.
+    effect: Smaller values run faster and find fewer distant matches.
+    advanced: true
+  - ref: channelScope
+formula: |
+  \hat{P}^{\text{hard}} = T_{3D}^{-1}\!\left(\gamma(T_{3D}(\mathbf{P}))\right),
+  \qquad
+  \hat{P}^{\text{wien}} = T_{3D}^{-1}\!\left(\omega \cdot T_{3D}(\mathbf{P})\right),
+  \quad
+  \omega = \frac{\lvert T_{3D}(\mathbf{B}) \rvert^2}{\lvert T_{3D}(\mathbf{B}) \rvert^2 + \sigma^2}
+formulaExplanation: >-
+  P is a 3D group: patches of 8 x 8 pixels similar to a reference patch, stacked. T_3D is the
+  orthonormal 3D DCT. In the first step, gamma sets every coefficient with |x| <= 2.7 sigma to 0.
+  Similar patches share their structure, so the stack's signal gathers in a few large
+  coefficients while the noise spreads over all of them. In the second step, B is the same
+  group taken from the basic estimate, and omega is an empirical Wiener filter. Every patch
+  estimate is put back in place and averaged with a weight that favors groups with less left
+  after filtering.
+symbols:
+  - {symbol: '\mathbf{P}', meaning: 'A 3D group of similar noisy patches'}
+  - {symbol: '\mathbf{B}', meaning: 'The same group from the basic estimate'}
+  - {symbol: 'T_{3D}', meaning: 'The orthonormal 3D DCT'}
+  - {symbol: '\gamma', meaning: 'The hard threshold at 2.7 sigma'}
+  - {symbol: '\omega', meaning: 'The empirical Wiener coefficients'}
+  - {symbol: '\sigma', meaning: 'The noise standard deviation'}
+steps:
+  - For reference patches of 8 x 8 every 3 pixels, find up to 16 similar patches in the search window.
+  - Stack them, take the 3D DCT, set small coefficients to 0, and transform back.
+  - Average all patch estimates into the basic estimate, weighting groups by how few coefficients they kept.
+  - Match again on the basic estimate, up to 32 patches, and stack the noisy and the basic patches.
+  - Scale the noisy group by the Wiener coefficients from the basic group, and transform back.
+  - Average all patch estimates into the final estimate.
+complexity:
+  time: O(N R^2)
+  memory: O(N)
+  notes: N is the number of pixels and R the side of the search window. The code loops over the reference patches in Python, so it is slow on large images.
+useCases:
+  - Removing Gaussian noise while keeping repeated texture and edges.
+  - Comparing patch-based denoising with nonlocal means.
+advantages:
+  - Similar patches anywhere in the window help each other, so texture survives.
+  - The second step restores detail that the first step removes.
+limitations:
+  - Simplified, so it falls short of the full BM3D, which uses other transforms, a Kaiser window and an opponent color space.
+  - Slow in Python on large images.
+  - Assumes white Gaussian noise of one known level.
+artifacts:
+  - Faint blocky patterns in flat areas at high noise.
+  - Smoothed fine texture when sigma is set too high.
+references:
+  - kind: paper
+    text: Dabov, K., Foi, A., Katkovnik, V., and Egiazarian, K. Image denoising by sparse 3-D transform-domain collaborative filtering. IEEE Transactions on Image Processing 16(8), 2080 to 2095, 2007.
+    doi: 10.1109/TIP.2007.901238
+  - kind: paper
+    text: Lebrun, M. An analysis and implementation of the BM3D image denoising method. Image Processing On Line 2, 175 to 213, 2012.
+    doi: 10.5201/ipol.2012.l-bm3d
+implementation: {path: engine/src/pixelnexus_engine/filters/bm3d_lite.py, symbol: bm3d_lite}
+tests: [engine/tests/test_bm3d_lite.py]
+learn:
+  oneSentence: Find patches that look alike, stack them, and clean the whole stack at once.
+  howItWorks:
+    - For each small patch, collect similar patches from nearby.
+    - Stack them and remove the noise from the stack together, since they share their real content.
+    - Do it twice, the second time guided by the first result.
+  academic: >-
+    A simplified BM3D with block matching, a hard-thresholded orthonormal 3D DCT, weighted
+    aggregation, and a second empirical Wiener step, after Dabov et al. and Lebrun.
+  paramNotes:
+    sigma: The noise level, or 0 to estimate it.
+    output: Final or basic estimate.
+    searchRadius: How far to look for similar patches.
+    channelScope: Which channels.
+  tryThis:
+    - Add noise in the Noise lab, then compare the basic and the final estimate.
+    - Compare with nonlocal means at the same noise.
+  pitfalls:
+    - A sigma far above the real noise. Detail is lost.
+  demos: [line-profile, noise-lab]
+related: [nlm, wavelet-threshold, steering-kernel, bm3d]
+docsPage: filters/nonlinear/bm3d-lite.md

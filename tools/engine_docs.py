@@ -41,7 +41,10 @@ from pixelnexus_engine.filters.artifacts import (
     descreen,
     jpeg_cleanup,
 )
+from pixelnexus_engine.filters.bitonic import bitonic_parts
+from pixelnexus_engine.filters.bitonic import disk as bitonic_disk
 from pixelnexus_engine.filters.blobs import blob_dog_filter, blob_doh_filter, blob_log_filter
+from pixelnexus_engine.filters.bm3d_lite import bm3d_lite_plane
 from pixelnexus_engine.filters.contours import (
     active_contour_filter,
     chan_vese_filter,
@@ -127,6 +130,8 @@ from pixelnexus_engine.filters.shen_castan import shen_castan, shen_castan_stage
 from pixelnexus_engine.filters.split_merge import luma as split_luma
 from pixelnexus_engine.filters.split_merge import merge_regions, split_blocks, split_merge
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
+from pixelnexus_engine.filters.steering_kernel import regression as kernel_regression
+from pixelnexus_engine.filters.steering_kernel import steering_kernel_plane
 from pixelnexus_engine.filters.structured_edge import MODEL_ID, structured_edge
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
@@ -3653,6 +3658,207 @@ def local_laplacian_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Steering kernel regression ---------------------------------------------------------------------
+
+
+def lines_scene() -> NDArray[np.float64]:
+    """A diagonal step from 60 to 160 and three bright lines, 1 pixel wide, at 0, 30 and 60
+    degrees, before noise."""
+    rows, cols = np.mgrid[0:120, 0:120].astype(float)
+    clean = np.where(cols + 0.6 * rows > 100, 160.0, 60.0)
+    for angle, offset in ((0, 20), (30, 40), (60, 70)):
+        theta = np.radians(angle)
+        distance = np.abs(-np.sin(theta) * (cols - 10) + np.cos(theta) * (rows - offset))
+        clean = np.where(distance < 0.5, 230.0, clean)
+    return clean
+
+
+def no_progress(_: float) -> None:
+    return None
+
+
+def steering_kernel_docs(out: dict[Path, str]) -> None:
+    filter_id = "steering-kernel"
+    clean = lines_scene()
+    observed = noisy(clean.astype(np.uint8), 20, seed=6).astype(np.float64)
+    params = catalog_values(filter_id)
+    classic, _, _ = kernel_regression(observed, None, {"h": 2.0, "order": 2, "radius": 5})
+    figure(
+        out,
+        filter_id,
+        "A step and three thin lines with noise of sigma 20. Then classic kernel regression of "
+        "order 2 with h 2, and steering kernel regression with 1 and 3 iterations.",
+        [
+            {"title": "Noisy", "image": picture(to_8bit(observed))},
+            {"title": "Classic", "image": picture(to_8bit(classic))},
+            {
+                "title": "Steering, 1 pass",
+                "image": picture(
+                    to_8bit(
+                        steering_kernel_plane(observed, {**params, "iterations": 1}, no_progress)
+                    )
+                ),
+            },
+            {
+                "title": "Steering, 3 passes",
+                "image": picture(to_8bit(steering_kernel_plane(observed, params, no_progress))),
+            },
+        ],
+    )
+
+    def error(image: NDArray[np.float64]) -> str:
+        return fix(float(np.sqrt(np.mean((image - clean) ** 2))), 2)
+
+    rows = [["Noisy", "", "", error(observed)], ["Classic", "2", "", error(classic)]]
+    for order in ("0", "2"):
+        for iterations in (1, 3, 5, 7):
+            values = {**params, "order": order, "iterations": iterations}
+            result = steering_kernel_plane(observed, values, no_progress)
+            rows.append(["Steering", order, str(iterations), error(result)])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Method", "Order N", "Iterations", "RMSE (levels)"], rows)
+        + "\nThe image of the figure, 120 x 120, with h 2 and a window of 11 x 11. The RMSE is "
+        "measured against the image before noise, over all pixels.\n"
+    )
+
+
+# BM3D-lite --------------------------------------------------------------------------------------
+
+
+def stripes_scene() -> Gray:
+    """Vertical stripes 3 pixels wide, 50 and 130, on the left half, and a flat 170 with a
+    disk of 220 and radius 20 on the right half."""
+    rows, cols = np.mgrid[0:160, 0:160]
+    image = np.where((cols // 3) % 2 == 0, 50.0, 130.0)
+    image[:, 80:] = 170
+    image[(rows - 80) ** 2 + (cols - 120) ** 2 <= 400] = 220
+    return to_8bit(image)
+
+
+def bm3d_lite_docs(out: dict[Path, str]) -> None:
+    filter_id = "bm3d-lite"
+    clean = stripes_scene().astype(np.float64)
+    observed = noisy(stripes_scene(), 20, seed=7).astype(np.float64)
+    basic, final, _ = bm3d_lite_plane(observed, catalog_values(filter_id, sigma=20), no_progress)
+    figure(
+        out,
+        filter_id,
+        "Stripes 3 pixels wide beside a flat area with a disk, then with noise of sigma 20. "
+        "Then the basic estimate of the first step and the final estimate, with sigma set to 20.",
+        [
+            {"title": "Clean", "image": picture(to_8bit(clean))},
+            {"title": "Noisy", "image": picture(to_8bit(observed))},
+            {"title": "Basic", "image": picture(to_8bit(basic))},
+            {"title": "Final", "image": picture(to_8bit(final))},
+        ],
+    )
+
+    def score(image: NDArray[np.float64]) -> str:
+        return fix(float(10 * np.log10(255**2 / np.mean((image - clean) ** 2))), 2)
+
+    rows = []
+    for sigma in (10, 20, 30, 50):
+        observed = noisy(stripes_scene(), sigma, seed=7).astype(np.float64)
+        known = bm3d_lite_plane(observed, catalog_values(filter_id, sigma=sigma), no_progress)
+        guessed = bm3d_lite_plane(observed, catalog_values(filter_id), no_progress)
+        rows.append(
+            [
+                str(sigma),
+                score(observed),
+                score(known[0]),
+                score(known[1]),
+                fix(guessed[2], 1),
+                score(guessed[1]),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            [
+                "Noise sigma",
+                "Noisy PSNR (dB)",
+                "Basic PSNR (dB)",
+                "Final PSNR (dB)",
+                "Estimated sigma",
+                "Final PSNR with the estimate (dB)",
+            ],
+            rows,
+        )
+        + "\nThe clean image of the figure, 160 x 160, with Gaussian noise rounded and clipped "
+        "to 8 bits. The default search window of 39 x 39.\n"
+    )
+
+
+# Bitonic ----------------------------------------------------------------------------------------
+
+
+def bitonic_docs(out: dict[Path, str]) -> None:
+    filter_id = "bitonic"
+    clean = lines_scene()
+    length = 9
+
+    def gauss(image: NDArray[np.float64]) -> NDArray[np.float64]:
+        return np.asarray(
+            ndimage.gaussian_filter(image, 0.33 * length, mode="reflect", truncate=2),
+            np.float64,
+        )
+
+    def median(image: NDArray[np.float64]) -> NDArray[np.float64]:
+        return np.asarray(
+            ndimage.median_filter(image, footprint=bitonic_disk(length), mode="reflect"),
+            np.float64,
+        )
+
+    observed = noisy(clean.astype(np.uint8), 20, seed=8).astype(np.float64)
+    figure(
+        out,
+        filter_id,
+        "A step and three thin lines with noise of sigma 20. Then a Gaussian of sigma 0.33 l, "
+        "a median over a disk of diameter l, and the bitonic filter, all with l = 9.",
+        [
+            {"title": "Noisy", "image": picture(to_8bit(observed))},
+            {"title": "Gaussian", "image": picture(to_8bit(gauss(observed)))},
+            {"title": "Median", "image": picture(to_8bit(median(observed)))},
+            {
+                "title": "Bitonic",
+                "image": picture(to_8bit(bitonic_parts(observed, length, 10)["output"])),
+            },
+        ],
+    )
+
+    def table(scene: NDArray[np.float64]) -> str:
+        def score(image: NDArray[np.float64]) -> str:
+            return fix(float(10 * np.log10(255**2 / np.mean((image - scene) ** 2))), 2)
+
+        rows = []
+        for sigma in (5, 10, 20, 40):
+            observed = noisy(scene.astype(np.uint8), sigma, seed=8).astype(np.float64)
+            rows.append(
+                [
+                    str(sigma),
+                    score(observed),
+                    score(gauss(observed)),
+                    score(median(observed)),
+                    score(bitonic_parts(observed, length, 10)["output"]),
+                ]
+            )
+        headers = ["Noise sigma", "Noisy (dB)", "Gaussian (dB)", "Median (dB)", "Bitonic (dB)"]
+        return md_table(headers, rows)
+
+    shapes = contour_scene(0).astype(np.float64)
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + "The step and lines of the figure, 120 x 120:\n\n"
+        + table(clean)
+        + "\nThe disk and square of the edge detector pages, 160 x 160, blurred with a "
+        "Gaussian of sigma 1.5 before noise:\n\n"
+        + table(shapes)
+        + "\nPSNR against the image before noise, with Gaussian noise rounded and clipped to 8 "
+        "bits. All three filters use l = 9, and the bitonic filter c = 10 percent.\n"
+    )
+
+
 # Tone mapping -----------------------------------------------------------------------------------
 
 
@@ -3828,6 +4034,9 @@ def build() -> dict[Path, str]:
     shen_castan_docs(out)
     susan_edge_docs(out)
     local_laplacian_docs(out)
+    steering_kernel_docs(out)
+    bm3d_lite_docs(out)
+    bitonic_docs(out)
     tone_docs(out)
     structured_edge_docs(out)
     return out

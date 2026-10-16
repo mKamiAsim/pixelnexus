@@ -89,9 +89,9 @@ Requirements 1 also lists the ideal and Butterworth low-pass filters here. They 
 | nlm | Non-local means | scikit-image. Done on 2026-10-16. | Advanced | Science | 6f |
 | tv-denoise | Total variation denoising | Rudin-Osher-Fatemi (ROF). Chambolle and split Bregman solvers. Done on 2026-10-16. | Advanced | Science | 6f |
 | bm3d | BM3D | Left out on the owner's decision of 2026-10-16. The `bm3d` package lists no license. bm3d-lite shows the same idea. | Unsupported | none | |
-| bm3d-lite | BM3D-inspired denoising | Simplified two-stage version. Clearly labeled as simplified. | Advanced | Science | 6f |
+| bm3d-lite | BM3D-inspired denoising | Simplified two-stage version. Clearly labeled as simplified. Our own code after Dabov et al. and Lebrun. Done on 2026-10-16. | Advanced | Science | 6f |
 | susan-smoothing | SUSAN noise filter | Smith and Brady. Done on 2026-10-16. | Advanced | Science | 6f |
-| bitonic | Bitonic filter | Treece. Deferred: the paper could not be reached. | Advanced | Science | 6f |
+| bitonic | Bitonic filter | Treece, from the equations of his technical report. Done on 2026-10-16. | Advanced | Science | 6f |
 | bilateral-solver | Bilateral solver | Large sparse solver. High effort for its teaching value. | Planned | none | |
 | bm4d | BM4D | Needs volumetric data. PixelNexus works on 2D images. | Unsupported | none | |
 
@@ -116,7 +116,7 @@ Requirements 1 also lists the ideal and Butterworth low-pass filters here. They 
 | mad-outlier | Median absolute deviation thresholding | Marks or repairs pixels far from the local median. | Core | Browser | 5b |
 | savgol | Savitzky-Golay filter | Regression-based filters. Local polynomial fit. Has a fixed kernel. | Core | Browser | 5b |
 | m-estimator | Robust M-estimator filter | Huber and Tukey weights, iteratively reweighted. Done on 2026-10-16. | Advanced | Science | 6f |
-| steering-kernel | Steering kernel regression | Takeda, Farsiu and Milanfar. | Advanced | Science | 6f |
+| steering-kernel | Steering kernel regression | Takeda, Farsiu and Milanfar. Our own code from the paper. Done on 2026-10-16. | Advanced | Science | 6f |
 | ransac-surface | RANSAC surface fit | RANSAC-based robust estimation. Fits a background surface and removes it. Done on 2026-10-16. | Advanced | Science | 6f |
 | lms-2d | LMS adaptive filter | Needs a reference signal. A 2D LMS predictor may be added later with an honest label. | Planned | none | |
 | rls-2d | RLS adaptive filter | Same reason as LMS. | Planned | none | |
