@@ -2,7 +2,7 @@
 
 Checked on 2026-10-16. Nothing on this page has been downloaded. Licenses were read from each project's own LICENSE file or README through the GitHub API. Sizes and SHA-256 values come from Hugging Face and GitHub metadata, not from downloads.
 
-**Your approval is needed before any download** (PLAN.md, Phase 7b checkpoint). After you approve, the chosen entries go into `catalog/models.yaml`, and each file downloads only when you click Download model or run the CLI command.
+**Approved on 2026-10-16.** The approved set is below, under Decision. It is in `catalog/models.yaml`, and each file downloads only when you click Download model or run the CLI command. The tables keep the full review.
 
 ## How to read the table
 
@@ -54,3 +54,25 @@ Not suggested now: NAFNet (MIT), since its weights are on Google Drive and Baidu
 2. The PyTorch export step: accept it (PyTorch is installed once on this machine to make the ONNX files, and never in the engine), or skip the rows that need it.
 3. Zero-DCE: include as non-commercial, or leave out.
 4. FBCNN and Restormer: include as optional large models, or leave for later.
+
+## Decision (2026-10-16)
+
+The owner approved this set, the one-time PyTorch export step, and PiDiNet for study and other non-commercial use:
+
+| Use | In the browser and on phones | In the local engine |
+|---|---|---|
+| Subject selection | u2netp | birefnet-lite |
+| Portrait and soft edges | modnet | modnet |
+| Click and box selection | efficientsam-ti | sam2-1-tiny |
+| Denoising | dncnn-color-blind | dncnn-color-blind, ffdnet-color |
+| JPEG cleanup | dncnn3 | dncnn3 |
+| Super-resolution | swin2sr-lightweight-x2 | realesr-general-x4v3 |
+| Teaching super-resolution | none | fsrcnn-x2, edsr-x4 |
+| Learned edges | none | hed-bsds, pidinet |
+| Style transfer | style-mosaic, style-candy, style-udnie, style-rain-princess, style-pointilism | the same |
+
+DnCNN-3 (dncnn3, MIT, from KAIR) was added in place of FBCNN for JPEG cleanup, since it is 2.7 MB instead of 288 MB.
+
+Left out for now: IS-Net (BiRefNet lite is better), FBCNN and Restormer (large), Zero-DCE (non-commercial only), NAFNet (no stable download link).
+
+The SHA-256 of each file that had no published hash was computed from one download on 2026-10-16, from the pinned URL in models.yaml. The u2netp hash matched an independent mirror. Those downloads were deleted afterwards.

@@ -1221,7 +1221,8 @@
         "sourceUrl",
         "sha256",
         "sizeMB",
-        "runtimes"
+        "runtimes",
+        "format"
       ],
       "properties": {
         "id": {
@@ -1239,6 +1240,7 @@
             "jpeg-cleanup",
             "super-resolution",
             "edges",
+            "style",
             "other"
           ]
         },
@@ -1282,6 +1284,47 @@
         },
         "reference": {
           "$ref": "#/$defs/reference"
+        },
+        "format": {
+          "enum": [
+            "onnx",
+            "pytorch",
+            "tensorflow-pb",
+            "caffe",
+            "opencv-yml"
+          ],
+          "description": "The file format. pytorch weights need a one-time ONNX export with PyTorch before they run; the engine never imports PyTorch."
+        },
+        "extraFiles": {
+          "type": "array",
+          "description": "Further files the model needs next to the main file, such as an external ONNX data file or a second network.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceUrl",
+              "sha256",
+              "sizeMB"
+            ],
+            "properties": {
+              "sourceUrl": {
+                "type": "string",
+                "pattern": "^https://"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sizeMB": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          }
+        },
+        "nonCommercial": {
+          "type": "boolean",
+          "description": "True when the license allows research and non-commercial use only. The studio says so before the download."
         }
       }
     },
