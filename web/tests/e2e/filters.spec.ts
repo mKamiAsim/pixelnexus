@@ -366,7 +366,8 @@ test("inpainting sends the selection to the engine as its mask", async ({ page }
   await front(page, "Properties");
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByText("Select the area first", { exact: true })).toBeVisible();
-  expect(engine.jobs).toHaveLength(0);
+  // The Learn demo may run its own small jobs meanwhile. None may be on the 512 px image.
+  expect(engine.jobs.filter((j) => engine.images.get(j.image)?.width === "512")).toHaveLength(0);
   await marquee(page, [-40, -40], [40, 40]);
   await expect(page.getByRole("contentinfo")).toContainText("Selection:");
   await page.getByRole("button", { name: "Apply", exact: true }).click();

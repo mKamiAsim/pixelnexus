@@ -199,6 +199,8 @@ test("Color Range, saved masks and the Masks panel", async ({ page }) => {
 test("the selection dialogs and the Masks panel have no serious accessibility issues", async ({
   page,
 }) => {
+  // Five accessibility scans take longer than the default timeout on the CI runner.
+  test.slow();
   await openTestImage(page, "Hue sweep");
   await canvas(page).focus();
   await page.keyboard.press("Control+a");
