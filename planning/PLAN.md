@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 6: science engine and advanced filters |
-| Next action | Phase 6f is done. bm3d is left out (decided 2026-10-16). The engine Docker image is rebuilt and checked once Phase 6 is complete. |
+| Current phase | Phase 7: optional AI |
+| Next action | Phase 7a: the AI provider framework (section 3.11). |
 | Last updated | 2026-10-16 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 6f done: steering-kernel, bm3d-lite and bitonic. |
-| In progress | Phase 6: science engine and advanced filters |
-| Next steps | Phase 6f is done. bm3d is left out (decided 2026-10-16). The engine Docker image is rebuilt and checked once Phase 6 is complete. |
+| Last finished step | Phase 6 done, exit checks met: coverage 97 percent, E2E with the engine stopped, Docker image rebuilt and checked. |
+| In progress | Phase 7: optional AI (not started) |
+| Next steps | Phase 7a: the AI provider framework (section 3.11). Then 7b, the model registry. |
 | Open questions | None at the moment. Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync` and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
 
@@ -634,7 +634,7 @@ Exit per sub-phase: every entry meets the definition of done. Catalog statuses a
 
 Docs: science engine architecture, API reference generated from OpenAPI, optional dependencies, one page per filter.
 
-Exit: pytest passes with the coverage target. Every entry meets the definition of done. An E2E test proves the studio still works with the engine stopped.
+Exit: pytest passes with the coverage target. Every entry meets the definition of done. An E2E test proves the studio still works with the engine stopped. **Met on 2026-10-16:** pytest passes with 97 percent line coverage of the engine (no number was set, so this is the measured value), the catalog check passes, the engine-stopped E2E test passes, and the rebuilt engine Docker image ran a job for every filter that needs neither a selection nor a model.
 
 ### Phase 7: Optional AI
 
@@ -989,3 +989,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 6f | Phase 6f part 2, steering-kernel. New module steering_kernel.py, read from the authors' copy of Takeda, Farsiu and Milanfar 2007 (Eq. 43, 47, 48, 50 to 54, Fig. 10; lambda' 1.0 and lambda'' 0.01; mu_i = 1 on a regular grid). Defaults N 2, h 2.0 and 3 iterations, as in the paper's JPEG and film grain experiments. Our choices, labeled: an 11 x 11 regression window, a 5 x 5 gradient window, reflect 101, the first gradients from a classic fit with the same h, and a ridge of 1e-10 per diagonal entry. Tests build C_i from an SVD exactly as in the paper and compare. Worked example on a step with thin lines at noise sigma 20: classic 19.04, steering 10.79 at N 2 after 1 or 3 passes, worse with more passes. 8 tests. | bm3d-lite, then bitonic. |
 | 2026-10-16 | 6f | Phase 6f part 2 done with bm3d-lite. New module bm3d_lite.py, after Dabov et al. 2007 and the step-by-step description and parameter table of Lebrun's IPOL analysis (2012): 8 x 8 patches, step 3, groups of 16 and 32, lambda_3D 2.7, tau 2500 and 400 (5000 and 3500 above sigma 40), weights 1 / N kept and 1 / norm(omega)^2, the reference first in its group. Simplified, labeled: orthonormal DCT for all transforms (Lebrun's DCT variant), no Kaiser window, no 2D pre-threshold, each channel on its own, sigma estimated with skimage estimate_sigma when 0. Bug found and fixed on the way: in flat areas ties at distance 0 could push the reference out of its group and leave pixels uncovered. Cameraman crop at sigma 20: 22.1 to 30.3 dB. Worked example on stripes and a disk: the first step gains 16 to 18 dB, the second adds nothing there and loses about 0.3 dB at sigma 30 and 50; on fine texture it gained 0.4 to 3.2 dB. 9 tests. | bitonic, from Treece's report. |
 | 2026-10-16 | 6f | Phase 6f done with bitonic. New module bitonic.py, from the equations of Treece's TR 700 (read, not copied; all rights reserved), published as IEEE TIP 25(11) 2016: centile opening and closing with percentile_filter over a disk of diameter l, Gaussian-smoothed errors with sigma 0.33 l cut at 2 sigma, the weighted mix, 0.5 weights where both errors are 0, symmetric extension, c = 10 percent. Default l = 9 is our choice. A step and the inside of a ramp pass exactly; single stair-step pixels on pixelated curves can change. Worked example on the blurred disk and square: bitonic beats the median by 1.1 to 2.0 dB and the Gaussian more, at sigma 5 to 40. On thin lines all scores are close, but only the bitonic keeps the lines. 10 tests. | Rebuild and check the engine Docker image, then Phase 6 exit. |
+| 2026-10-16 | 6 | Phase 6 exit. Engine coverage 97 percent (4299 statements, 123 missed). All 47 E2E tests pass, with the engine-stopped test. The engine Docker image was rebuilt (python 3.12.15, NumPy 2.5.3, SciPy 1.18.1, scikit-image 0.26.0, OpenCV 5.0.0.93) and run on port 18765: every filter that needs neither a selection nor a model finished a job through the API. The 9 selection filters refused with 422 as designed, structured-edge asked for its model, and dtcwt-denoise is planned. | Phase 7a. |
