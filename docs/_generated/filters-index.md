@@ -116,6 +116,7 @@
 | [Hysteresis thresholding](edges/hysteresis.md) | Edge detection and boundary analysis | Keeps strong pixels, and weak pixels that are joined to strong ones, so broken edges stay whole without keeping noise. | Implemented and tested |
 | [Kirsch compass](edges/kirsch.md) | Edge detection and boundary analysis | Turns one 3x3 mask in eight steps of 45 degrees and keeps the strongest response at each pixel. | Implemented and tested |
 | [Marr-Hildreth](edges/marr-hildreth.md) | Edge detection and boundary analysis | Finds edges as the zero crossings of the Laplacian of Gaussian. | Implemented and tested |
+| [Phase congruency](edges/phase-congruency.md) | Edge detection and boundary analysis | Finds edges, lines and corners where the Fourier components of the image are in phase, after Kovesi. The measure goes from 0 to 1 and does not change with the brightness or the contrast of the image, so faint and strong edges count the same. | Implemented and tested |
 | [Prewitt](edges/prewitt.md) | Edge detection and boundary analysis | Estimates the brightness gradient with two 3x3 kernels that average plainly along the edge. | Implemented and tested |
 | [Roberts Cross](edges/roberts.md) | Edge detection and boundary analysis | Estimates the gradient from the two diagonal differences of a 2x2 block of pixels. | Implemented and tested |
 | [Robinson compass](edges/robinson.md) | Edge detection and boundary analysis | A compass filter built from the Sobel mask, turned in eight steps of 45 degrees. | Implemented and tested |

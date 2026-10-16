@@ -10,6 +10,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     inpainting,
     keypoints,
     mser,
+    phase,
     plugplay,
     radon,
     restoration,

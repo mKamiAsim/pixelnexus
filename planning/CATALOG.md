@@ -227,7 +227,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | deriche | Deriche | OpenCV ximgproc gradients. | Advanced | Science | 6f |
 | shen-castan | Shen-Castan | ISEF filter. | Advanced | Science | 6f |
 | susan-edge | SUSAN edge detector | | Advanced | Science | 6f |
-| phase-congruency | Phase congruency | Kovesi method with log-Gabor filters. Cross-listed in texture. | Advanced | Science | 6d |
+| phase-congruency | Phase congruency | Kovesi method with log-Gabor filters. Cross-listed in texture. Our own code after phasecong3. Done on 2026-10-16. | Advanced | Science | 6d |
 | hough-linking | Hough-based edge linking | Canny then probabilistic Hough. | Advanced | Science | 6d |
 | structured-edge | Structured Edge Detector | Needs a downloaded model file. License check first. | Optional | Science | 6d |
 

@@ -213,6 +213,7 @@ nav:
           - Frei-Chen: filters/edges/frei-chen.md
           - Zero-crossing detector: filters/edges/zero-crossing.md
           - Marr-Hildreth: filters/edges/marr-hildreth.md
+          - Phase congruency: filters/edges/phase-congruency.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md

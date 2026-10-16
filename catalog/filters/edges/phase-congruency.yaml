@@ -1,8 +1,209 @@
 id: phase-congruency
 name: Phase congruency
+aliases: [Phase congruency edges and corners, Kovesi phase congruency, phasecong]
 family: edges
+alsoIn: [features]
+tags: [purpose:edge, purpose:analysis]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Kovesi method with log-Gabor filters. Cross-listed in texture.
+
+summary: Finds edges, lines and corners where the Fourier components of the image are in phase, after Kovesi. The measure goes from 0 to 1 and does not change with the brightness or the contrast of the image, so faint and strong edges count the same.
+purpose: Find features by their shape alone, whatever their contrast, and tell steps from bright and dark lines.
+classification: {linearity: nonlinear, domain: frequency, operation: local phase agreement}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/phase.py, symbol: phase_congruency_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the luma with the BT.709 weights and gives a gray result. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. Kovesi's code uses the image as it is.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The filter bank and the moments.'}
+  - {name: SciPy, optional: false, note: 'scipy.fft for the convolutions.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: edges
+    options:
+      - {value: edges, label: Edges (largest moment M)}
+      - {value: corners, label: Corners (smallest moment m)}
+      - {value: type, label: Feature type}
+    description: The largest moment of the phase congruency over the directions marks edges, the smallest marks corners. The feature type tells bright lines, steps and dark lines apart. It shows only where the edge value M is at least 0.05, which is our choice.
+    effect: Corners need phase congruency in all directions, edges in one.
+  - key: scales
+    label: Scales
+    type: integer
+    min: 2
+    max: 6
+    step: 1
+    default: 4
+    description: The number of filter scales. Kovesi suggests 3 to 6.
+    effect: More scales reach coarser features and smooth the result.
+  - key: orientations
+    label: Directions
+    type: integer
+    min: 3
+    max: 12
+    step: 1
+    default: 6
+    description: The number of filter directions over half a turn.
+    effect: More directions follow curved edges more evenly and take longer.
+  - key: minWavelength
+    label: Smallest wavelength
+    type: number
+    min: 2
+    max: 20
+    step: 0.5
+    default: 3
+    unit: px
+    description: The wavelength of the finest filter.
+    effect: Larger values ignore fine detail and noise.
+  - key: mult
+    label: Scale factor
+    type: number
+    min: 1.3
+    max: 4
+    step: 0.1
+    default: 2.1
+    description: Each filter has this many times the wavelength of the one before.
+    effect: Larger factors cover more scales with the same number of filters, with gaps between them.
+  - key: sigmaOnf
+    label: Bandwidth ratio
+    type: number
+    min: 0.3
+    max: 0.9
+    step: 0.05
+    default: 0.55
+    description: The ratio sigma / f_0 of the log-Gabor filters. 0.55 gives about 2 octaves, 0.75 about 1 octave.
+    effect: Smaller values give each filter a wider band of frequencies.
+  - key: k
+    label: Noise factor k
+    type: number
+    min: 0
+    max: 20
+    step: 0.5
+    default: 2
+    description: The noise threshold is the estimated mean of the noise energy plus k standard deviations.
+    effect: Raise it on noisy images. Kovesi suggests up to 10 or 20.
+  - key: cutoff
+    label: Spread cutoff
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: The spread of the frequencies below which phase congruency is lowered.
+    effect: Higher values need more scales to agree before a point counts.
+  - key: g
+    label: Spread sharpness
+    type: number
+    min: 1
+    max: 50
+    step: 1
+    default: 10
+    description: How sharply the weight for the spread of the frequencies changes at the cutoff.
+    effect: Larger values make the cutoff harder.
+  - key: stretch
+    label: Stretch
+    type: boolean
+    default: true
+    description: Stretch the edges or corners so the largest value is white. With it off, values from 0 to 1 show from black to white. A result below 0.001 everywhere is not stretched.
+    effect: Off lets you compare results of different images.
+  - ref: border
+    default: reflect
+formula: |
+  PC_o(x) = W_o(x)\, \frac{\max\!\big(\sum_s A_{s}(x) \big(\cos(\phi_{s} - \bar\phi) - \lvert \sin(\phi_{s} - \bar\phi) \rvert\big) - T,\ 0\big)}{\sum_s A_{s}(x) + \varepsilon}
+formulaExplanation: >-
+  Phase congruency asks whether the Fourier components of the image agree in phase at a point.
+  At a step or a line they all do, whatever the contrast. Each direction o has a bank of
+  log-Gabor filters at several scales s. Each filter gives an even and an odd response, with
+  the amplitude A_s and the phase phi_s. The energy sums A_s (cos(phi_s - phi_mean) -
+  |sin(phi_s - phi_mean)|), so it is large where the phases agree with their weighted mean.
+  The noise threshold T is subtracted. Kovesi estimates it from the smallest scale, as the
+  mean plus k standard deviations of a Rayleigh distribution. Dividing by the sum of the
+  amplitudes removes the contrast, and a sigmoid weight W_o lowers points where only a few
+  scales respond. The vectors PC_o (cos theta_o, sin theta_o) of all directions form a
+  covariance matrix. Its largest moment M is high on edges and its smallest moment m on
+  corners. The feature type is the angle between the summed even and odd responses.
+symbols:
+  - {symbol: 'A_s, \phi_s', meaning: 'The amplitude and phase of the filter response at scale s'}
+  - {symbol: '\bar\phi', meaning: 'The phase of the summed responses'}
+  - {symbol: 'T', meaning: 'The noise threshold'}
+  - {symbol: 'W_o', meaning: 'The weight for the spread of the frequencies'}
+steps:
+  - Take the luma, extend it with the border mode, and take its FFT.
+  - Filter it with log-Gabor filters at every scale and direction.
+  - For each direction, measure how well the phases of the scales agree, less the noise threshold.
+  - Divide by the summed amplitudes and weight by the spread of the frequencies.
+  - Combine the directions into the moments M and m, or into the feature type.
+complexity:
+  time: O(S D N log N)
+  memory: O(S N)
+  notes: N is the number of pixels of the extended image, S the number of scales and D the number of directions.
+useCases:
+  - Edges and corners in images with uneven lighting or low contrast, such as medical and satellite images.
+  - Telling steps from bright and dark lines.
+advantages:
+  - Does not change with the brightness or contrast of the image.
+  - Gives edges and corners from one computation.
+  - Responds to lines and steps alike, with no double response at lines.
+limitations:
+  - Slow compared to gradient filters. It needs one FFT for each scale and direction.
+  - Faint texture counts as much as strong edges where it rises above the noise threshold.
+  - Many parameters, though the defaults are usually fine.
+artifacts:
+  - Thin double responses on each side of a step that falls between pixels.
+references:
+  - kind: paper
+    text: Kovesi, P. Image features from phase congruency. Videre, Journal of Computer Vision Research 1(3), MIT Press, 1999.
+  - kind: paper
+    text: Kovesi, P. Phase congruency, a low-level image invariant. Psychological Research 64(2), 136 to 148, 2000.
+    doi: 10.1007/s004260000024
+  - kind: paper
+    text: Kovesi, P. Phase congruency detects corners and edges. Proceedings of DICTA 2003, Sydney, 2003.
+  - kind: library
+    text: Kovesi, P. ImagePhaseCongruency.jl, the function phasecong3. This code follows its steps.
+    url: https://github.com/peterkovesi/ImagePhaseCongruency.jl
+implementation: {path: engine/src/pixelnexus_engine/filters/phase.py, symbol: phase_congruency_filter}
+tests: [engine/tests/test_phase.py]
+learn:
+  oneSentence: Find the places where waves of all sizes line up, which are the edges and lines of the image.
+  howItWorks:
+    - Split the image into waves of several sizes and directions.
+    - At an edge or a line, the waves of all sizes line up.
+    - Measure how well they line up, from 0 to 1, whatever the contrast.
+    - Combine the directions to find edges, corners and the kind of feature.
+  academic: >-
+    Kovesi's phase congruency from a log-Gabor filter bank, with noise compensation and
+    frequency spread weighting, and the moments of its covariance over directions.
+  paramNotes:
+    output: Edges, corners, or the kind of feature.
+    scales: How many filter sizes are used.
+    orientations: How many directions are used.
+    minWavelength: The size of the finest filter.
+    mult: How fast the filter sizes grow.
+    sigmaOnf: How wide each filter is in frequency.
+    k: How much noise to ignore.
+    cutoff: How many scales must respond.
+    g: How sharp that limit is.
+    stretch: Stretch the result to white.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Turn Stretch off and compare a faint and a strong edge. Both give about the same value.
+    - Choose the feature type on an image with thin lines. Bright lines turn white and dark lines black.
+  pitfalls:
+    - A low noise factor on a noisy image. The noise then shows as texture everywhere.
+  demos: [line-profile]
+related: [log-gabor, canny, harris, susan-corner]
+docsPage: filters/edges/phase-congruency.md

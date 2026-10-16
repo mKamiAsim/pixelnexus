@@ -51,6 +51,7 @@ from pixelnexus_engine.filters.directional import (
 from pixelnexus_engine.filters.inpainting import inpaint
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
 from pixelnexus_engine.filters.mser import mser
+from pixelnexus_engine.filters.phase import phase_congruency, phase_congruency_filter
 from pixelnexus_engine.filters.plugplay import pnp_admm_filter, red_filter
 from pixelnexus_engine.filters.radon import back_project, radon_filter, ridgelet, sinogram
 from pixelnexus_engine.filters.restoration import (
@@ -1945,6 +1946,62 @@ def hog_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Phase congruency -------------------------------------------------------------------------------
+
+
+def phase_scene(size: int = 160) -> Gray:
+    """Uneven light from 60 on the left to 190 on the right, a faint square of +20 and a strong
+    square of +60, and a bright and a dark line 1 pixel wide."""
+    x = np.arange(size)[None, :] * np.ones((size, 1))
+    out = 60 + 130 * x / (size - 1)
+    out[24:64, 20:60] += 20
+    out[24:64, 100:140] += 60
+    out[100:140, 50] += 50
+    out[100:140, 110] -= 50
+    return np.clip(np.rint(out), 0, 255).astype(np.uint8)
+
+
+def phase_congruency_docs(out: dict[Path, str]) -> None:
+    filter_id = "phase-congruency"
+    scene = phase_scene()
+
+    def shown(**values: Any) -> dict[str, Any]:
+        return picture(run(phase_congruency_filter, scene, filter_id, **values))
+
+    figure(
+        out,
+        filter_id,
+        "A test image of 160 x 160 with light that rises from left to right, a faint square "
+        "(+20) and a strong square (+60), and a bright and a dark line. Then the edges, the "
+        "corners and the feature type of phase congruency with the defaults.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Edges", "image": shown()},
+            {"title": "Corners", "image": shown(output="corners")},
+            {"title": "Feature type", "image": shown(output="type")},
+        ],
+    )
+    rows = []
+    for height in (10, 40, 160):
+        step = np.full((64, 64), 40.0)
+        step[:, 33:] = 40 + height
+        step[:, 32] = 40 + height / 2
+        noise = np.random.default_rng(3).normal(0, 2, step.shape)
+        cells = []
+        for gray, k in ((step, 2.0), (step + noise, 2.0), (step + noise, 5.0)):
+            result = phase_congruency(gray, catalog_values(filter_id, k=k), lambda _: None)
+            cells.append(fix(float(np.median(result["M"][:, 32])), 2))
+        rows.append([str(height), *cells])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Step height", "No noise", "Noise, k = 2", "Noise, k = 5"], rows)
+        + "\nThe largest moment M at a vertical step on a ground of 40, as the median along the "
+        "middle column of the step, which holds the mean of both sides. The image is 64 x 64 "
+        "and not rounded. The noise is Gaussian with sigma 2. The other settings are the "
+        "defaults.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -1982,6 +2039,7 @@ def build() -> dict[Path, str]:
     ltp_docs(out)
     glcm_docs(out)
     hog_docs(out)
+    phase_congruency_docs(out)
     return out
 
 
