@@ -1,5 +1,41 @@
 import AxeBuilder from "@axe-core/playwright";
+import { deflateSync } from "node:zlib";
+
 import { expect, test, type Page } from "@playwright/test";
+
+/** A white, opaque PNG of the given size, for the mock service. */
+function whitePng(width: number, height: number): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (bytes: Buffer) => {
+    let c = 0xffffffff;
+    for (const b of bytes) c = (crcTable[(c ^ b) & 255] ?? 0) ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const out = Buffer.alloc(body.length + 8);
+    out.writeUInt32BE(data.length, 0);
+    body.copy(out, 4);
+    out.writeUInt32BE(crc(body), body.length + 4);
+    return out;
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 6, 0, 0, 0], 8);
+  const rows = Buffer.alloc((width * 4 + 1) * height, 255);
+  for (let y = 0; y < height; y++) rows[y * (width * 4 + 1)] = 0;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(rows)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 async function openProviders(page: Page) {
   await page.goto("/");
@@ -83,4 +119,57 @@ test("the request log starts empty and says it stays on the device", async ({ pa
   await page.getByRole("menuitem", { name: "AI request log..." }).click();
   const dialog = page.getByRole("dialog", { name: "AI request log" });
   await expect(dialog.getByText("No requests have left this device.")).toBeVisible();
+});
+
+test("consent comes before every external request, and never for local work", async ({ page }) => {
+  let requests = 0;
+  // The mock service. Nothing leaves this computer.
+  await page.route("https://ai.mock.test/v1/**", async (route) => {
+    requests += 1;
+    await route.fulfill({ contentType: "image/png", body: whitePng(8, 8) });
+  });
+  await openProviders(page);
+  const dialog = page.getByRole("dialog", { name: "AI providers" });
+  await dialog.getByLabel("Name", { exact: true }).fill("Mock cloud");
+  await dialog.getByRole("textbox", { name: "Base URL" }).fill("https://ai.mock.test/v1");
+  await dialog.getByLabel("API key").fill("test-key-2222");
+  await dialog.getByRole("button", { name: "Add provider" }).click();
+  await dialog.getByRole("combobox", { name: "Provider for Subject selection" }).click();
+  await page.getByRole("option", { name: "Mock cloud" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+
+  await page
+    .getByRole("button", { name: /Siemens star/ })
+    .first()
+    .click();
+  await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
+  const aiSubject = async () => {
+    await page.getByRole("menuitem", { name: "Select", exact: true }).click();
+    await page.getByRole("menuitem", { name: "AI subject", exact: true }).click();
+  };
+
+  await aiSubject();
+  const consent = page.getByRole("dialog", { name: "Send to Mock cloud?" });
+  await expect(consent).toBeVisible();
+  expect(requests).toBe(0);
+  await consent.getByRole("button", { name: "Cancel" }).click();
+  await expect(consent).toBeHidden();
+  expect(requests).toBe(0);
+
+  await aiSubject();
+  await consent.getByRole("button", { name: "Send once" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: the whole image");
+  expect(requests).toBe(1);
+
+  // Every request asks again.
+  await aiSubject();
+  await expect(consent).toBeVisible();
+  await consent.getByRole("button", { name: "Cancel" }).click();
+  expect(requests).toBe(1);
+
+  // Local work never asks: the classical subject runs with no dialog.
+  await page.getByRole("menuitem", { name: "Select", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Subject", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(requests).toBe(1);
 });
