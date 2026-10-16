@@ -492,8 +492,8 @@ These are tools, not filters. They live in `catalog/tools/` and have Learn entri
 | edge-assisted | Edge-assisted selection | Snaps to nearby edges. | Core | Browser | 4 |
 | subject-heuristic | Subject selection (classical) | Saliency, center prior, edges, color clusters. | Core | Browser | 4 |
 | background-heuristic | Background selection (classical) | Inverse of the subject mask, with corrections. | Core | Browser | 4 |
-| object-select-classical | Object selection (classical) | Box to GrabCut. | Advanced | Science | 6e |
-| click-select-classical | Click-to-select (classical) | Positive and negative seeds to random walker. | Advanced | Science | 6e |
+| object-select-classical | Object selection (classical) | Box to GrabCut. Select > Object. Done on 2026-10-16. | Advanced | Science | 6e |
+| click-select-classical | Click-to-select (classical) | Positive and negative seeds to random walker. Click Select tool. Done on 2026-10-16. | Advanced | Science | 6e |
 | ai-click-select, ai-subject, ai-matting | AI selection | See section 12. | Optional | Model | 7 |
 
 Selection operations, all Core, Browser, Phase 4: new, add, subtract, intersect, invert, select all, deselect, disable for a while, feather, grow, shrink, smooth, border, from alpha, from luminance, named masks, save and load.

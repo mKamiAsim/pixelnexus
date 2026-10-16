@@ -2,6 +2,7 @@ import { RotateCcw } from "lucide-react";
 import { useId } from "react";
 
 import { entryParams } from "@/catalog/params";
+import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { NumberField } from "@/components/ui/NumberField";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -13,8 +14,10 @@ import type { SelectionToolId } from "@/selection/ids";
 import { useSuperpixels } from "@/selection/superpixelCache";
 import { toolEntry, useToolValues } from "@/selection/values";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { useSeeds } from "@/state/seeds";
 import { useSelection } from "@/state/selection";
 
+import { clearSeeds } from "./seedActions";
 import { MODES } from "./selectionModes";
 
 /** The brush tools always add or remove, so they have no mode buttons. */
@@ -129,6 +132,7 @@ export function SelectionOptions({ tool }: { tool: SelectionToolId }) {
         />
       ))}
       {tool === "quick-selection" ? <SuperpixelStatus /> : null}
+      {tool === "click-select-classical" ? <SeedStatus /> : null}
       {params.length > 0 ? (
         <IconButton
           label="Reset tool settings"
@@ -152,5 +156,28 @@ function SuperpixelStatus() {
         ? "Preparing the image for Quick Selection..."
         : `Quick Selection is not available: ${state.message}`}
     </span>
+  );
+}
+
+/** Click Select keeps its seeds for the image. This counts them and clears them. */
+function SeedStatus() {
+  const doc = useDocuments((s) => activeDocument(s));
+  const state = useSeeds();
+  const seeds =
+    doc && state.documentId === doc.id && state.image === doc.current ? state.seeds : [];
+  const object = seeds.filter((s) => s.object).length;
+  return (
+    <>
+      <span role="status" className="shrink-0 text-xs text-text-muted">
+        {seeds.length === 0
+          ? "Click inside the object to start."
+          : `${object} object and ${seeds.length - object} background seeds`}
+      </span>
+      {seeds.length > 0 ? (
+        <Button variant="ghost" size="sm" onClick={clearSeeds}>
+          Clear seeds
+        </Button>
+      ) : null}
+    </>
   );
 }

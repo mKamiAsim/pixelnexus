@@ -41,6 +41,7 @@ import {
   toggleSelectionEnabled,
   type RefineKind,
 } from "./selectionActions";
+import { selectObject } from "./seedActions";
 import { TOOLS, type ToolInfo } from "./tools";
 import {
   PANELS,
@@ -422,6 +423,15 @@ export function buildCommands(): Command[] {
       keywords: "subject object main thing saliency automatic",
       enabled: hasDocument,
       run: () => void selectSubject(false),
+    },
+    {
+      id: "select.object",
+      label: "Object",
+      menu: "select",
+      section: "auto",
+      keywords: "object grabcut box classical cut out",
+      enabled: hasSelection,
+      run: () => void selectObject(),
     },
     {
       id: "select.background",

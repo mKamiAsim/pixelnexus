@@ -100,4 +100,10 @@ export const TOOLS: readonly ToolInfo[] = [
     group: "color",
     hint: "Paint over a part of the image. The selection grows to similar areas. Alt subtracts.",
   },
+  {
+    id: "click-select-classical",
+    label: toolName("click-select-classical"),
+    group: "color",
+    hint: "Click inside the object and Alt-click outside it. Needs the local engine.",
+  },
 ];

@@ -9,6 +9,7 @@ export const SELECTION_TOOL_IDS = [
   "eraser-select",
   "magic-wand",
   "quick-selection",
+  "click-select-classical",
 ] as const;
 
 export type SelectionToolId = (typeof SELECTION_TOOL_IDS)[number];

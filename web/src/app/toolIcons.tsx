@@ -6,6 +6,7 @@ import {
   Lasso,
   LassoSelect,
   Magnet,
+  MousePointerClick,
   Paintbrush,
   Sparkles,
   SquareDashed,
@@ -29,4 +30,5 @@ export const TOOL_ICONS: Record<ToolId, ReactNode> = {
   "eraser-select": <Eraser size={16} />,
   "magic-wand": <WandSparkles size={16} />,
   "quick-selection": <Sparkles size={16} />,
+  "click-select-classical": <MousePointerClick size={16} />,
 };

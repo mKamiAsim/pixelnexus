@@ -15,5 +15,7 @@
 | [Select by brightness](color-range.md) | Color and tone | Selects pixels whose brightness lies in a range, with a soft fade outside it. | Implemented and tested |
 | [Select by hue and saturation](color-range.md) | Color and tone | Selects pixels by hue, saturation and value ranges. | Implemented and tested |
 | [Background selection (classical)](subject.md) | Automatic | Selects everything except the main subject, without AI. | Implemented and tested |
+| [Click Select (classical)](seeds.md) | Automatic | Click inside an object, and Alt-click outside it. The random walker grows the selection from your clicks, with no AI. | Implemented and tested |
+| [Object selection (classical)](seeds.md) | Automatic | Select > Object turns a rough box around an object into a selection of the object, with GrabCut and no AI. | Implemented and tested |
 | [Quick Selection](quick-selection.md) | Automatic | Paints a selection that grows to similar areas and stops at edges. | Implemented and tested |
 | [Subject selection (classical)](subject.md) | Automatic | Selects the main subject of the image, without AI. | Implemented and tested |

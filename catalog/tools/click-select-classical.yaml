@@ -1,8 +1,58 @@
 id: click-select-classical
-name: Click-to-select (classical)
+name: Click Select (classical)
 group: auto
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Positive and negative seeds to random walker.
+params:
+  - key: seedRadius
+    label: Seed size
+    type: integer
+    default: 3
+    min: 0
+    max: 50
+    step: 1
+    unit: px
+    description: The radius of the disk each click marks. 0 marks one pixel.
+    effect: Larger seeds give the random walker more to start from, but can cross an edge.
+  - key: beta
+    label: Edge strength
+    type: number
+    default: 130
+    min: 1
+    max: 2000
+    step: 1
+    description: The beta of the random walker. Higher values make edges harder to cross. The random walker filter uses 130.
+    effect: Raise it when the selection leaks across soft edges.
+summary: "Click inside an object, and Alt-click outside it. The random walker grows the selection from your clicks, with no AI."
+steps:
+  - "Each click adds an object seed, and each Alt-click a background seed, as a disk of the seed size."
+  - "Until the first Alt-click, the image edge counts as background."
+  - "The seeds go to the engine as a map: object seeds at 255, background seeds at 0, and the rest at 128."
+  - "The random walker filter decides every other pixel, and its object replaces the selection."
+  - "The seeds stay for this image until you clear them or change the image."
+implementation:
+  path: "web/src/app/seedActions.ts"
+  symbol: "addSeed"
+tests:
+  - "web/src/core/selection/seeds.test.ts"
+  - "web/tests/e2e/filters.spec.ts"
+references:
+  - kind: "paper"
+    text: "Grady, L. Random walks for image segmentation. IEEE Transactions on Pattern Analysis and Machine Intelligence 28(11), 1768 to 1783, 2006."
+    doi: "10.1109/TPAMI.2006.233"
+learn:
+  oneSentence: "Click on the object and Alt-click on the background, and the selection follows the edges between them."
+  howItWorks:
+    - "Your clicks are seeds for the object and the background."
+    - "A random walk from each pixel tends to stay on its side of an edge."
+    - "Each pixel joins the seed its walk most likely reaches first."
+  academic: "Grady's random walker from scikit-image, with seeds from clicks. See the random walker filter for the details."
+  tryThis:
+    - "Click once inside a disk of the Disks image. Then Alt-click on a second disk that joined by mistake."
+  pitfalls:
+    - "Soft edges. Raise the edge strength, or add more seeds near the edge."
+  demos: []
+docsPage: "selection/seeds.md"

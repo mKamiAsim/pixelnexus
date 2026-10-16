@@ -13,6 +13,7 @@ import {
 import { cssColor, ImageRenderer, type RenderMode } from "@/canvas/renderer";
 import { FeatureOverlay } from "@/canvas/FeatureOverlay";
 import { LabelOverlay } from "@/canvas/LabelOverlay";
+import { SeedOverlay } from "@/canvas/SeedOverlay";
 import { SelectionOverlay } from "@/canvas/SelectionOverlay";
 import {
   clampPan,
@@ -27,6 +28,7 @@ import {
   type Size,
   type ViewState,
 } from "@/canvas/viewport";
+import { addSeed } from "@/app/seedActions";
 import { commitSelection } from "@/app/selectionActions";
 import { TOOLS } from "@/app/tools";
 import type { Rect } from "@/core/filters/run";
@@ -45,6 +47,7 @@ import { featurePoints } from "@/core/features/table";
 import { useDocuments, type ImageDocument } from "@/state/documents";
 import { useFeatures } from "@/state/features";
 import { useFilters } from "@/state/filters";
+import { useSeeds } from "@/state/seeds";
 import { useSelection } from "@/state/selection";
 import { useUi } from "@/state/ui";
 
@@ -122,6 +125,9 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const preview = useFilters((s) => s.preview);
   const featureLayer = useFeatures((s) => s.layers[doc.id]);
   const featuresVisible = useFeatures((s) => s.visible);
+  const seedState = useSeeds();
+  const seeds =
+    seedState.documentId === doc.id && seedState.image === doc.current ? seedState.seeds : [];
   const setHover = useUi((s) => s.setHover);
   const setProbe = useUi((s) => s.setProbe);
   const maskView = useSelection((s) => s.maskView);
@@ -419,6 +425,11 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
       return;
     }
     if (event.button !== 0 || !doc.view) return;
+    if (tool === "click-select-classical") {
+      const pixel = pixelAt(doc.view, doc.current, point.x, point.y);
+      if (pixel) void addSeed(pixel.x, pixel.y, !event.altKey);
+      return;
+    }
     if (isSelectionTool(tool)) {
       const g = currentGesture();
       const p = screenToImage(doc.view, point.x, point.y);
@@ -571,6 +582,9 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         <LabelOverlay labels={shownLayer.labels} view={doc.view} />
       ) : null}
       {doc.view && features ? <FeatureOverlay points={features} view={doc.view} /> : null}
+      {doc.view && tool === "click-select-classical" ? (
+        <SeedOverlay seeds={seeds} view={doc.view} />
+      ) : null}
       {doc.view ? (
         <SelectionOverlay
           outline={shownOutline}

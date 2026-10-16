@@ -266,7 +266,7 @@ async function fakeEngine(page: Page) {
       if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
       const image = images.get(job?.image ?? "");
       if (!image) return json({ detail: "There is no job with this id." }, 404);
-      if (job?.filter === "slic" || job?.filter === "level-set") {
+      if (["slic", "level-set", "grabcut", "random-walker"].includes(job?.filter ?? "")) {
         return json(fakeRegions(Number(image.width), Number(image.height)));
       }
       if (job?.filter === "matched-filter") {
@@ -499,6 +499,52 @@ test("a level set starts from the selection and its inside becomes the selection
   await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
   await front(page, "Learn");
   await expect(page.getByText("the contour starts as the edge of a disk")).toBeVisible();
+});
+
+test("Select > Object sends the box to GrabCut and selects the object", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await marquee(page, [-60, -60], [60, 60]);
+  await page.getByRole("menuitem", { name: "Select", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Object", exact: true }).click();
+  // The stand-in engine's regions are the left half of the image.
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  const job = engine.jobs.find((j) => j.filter === "grabcut");
+  expect(job?.params.start).toBe("box");
+  expect(engine.images.get(job?.mask ?? "")?.width).toBe("512");
+});
+
+test("Click Select sends its seeds to the random walker and draws them", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await page.getByRole("button", { name: "Click Select (classical)" }).click();
+  await expect(page.getByText("Click inside the object to start.")).toBeVisible();
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.click(cx, cy);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  const first = engine.jobs.filter((j) => j.filter === "random-walker").at(-1);
+  expect(first?.params.seeds).toBe("map");
+  // The map: 255 at the seed, 0 on the image edge before any background seed, 128 elsewhere.
+  const map = engine.images.get(first?.mask ?? "");
+  const at = (x: number, y: number) => map?.body[(y * 512 + x) * 4];
+  expect(at(256, 256)).toBe(255);
+  expect(at(0, 100)).toBe(0);
+  expect(at(100, 100)).toBe(128);
+  await page.keyboard.down("Alt");
+  await page.mouse.click(cx + 100, cy);
+  await page.keyboard.up("Alt");
+  await expect(page.getByText("1 object and 1 background seeds")).toBeVisible();
+  await expect(page.locator('[data-seed="object"]')).toHaveCount(1);
+  await expect(page.locator('[data-seed="background"]')).toHaveCount(1);
+  const second = engine.jobs.filter((j) => j.filter === "random-walker").at(-1);
+  // With a background seed, the image edge is no longer background.
+  expect(engine.images.get(second?.mask ?? "")?.body[100 * 512 * 4]).toBe(128);
+  await page.getByRole("button", { name: "Clear seeds" }).click();
+  await expect(page.getByTestId("seed-overlay")).toHaveCount(0);
 });
 
 test("a blob detector lists its features, draws them and exports CSV", async ({ page }) => {

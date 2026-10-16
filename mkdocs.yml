@@ -115,6 +115,7 @@ nav:
       - Quick Selection: selection/quick-selection.md
       - Snap to edges: selection/snap-to-edges.md
       - Subject and background: selection/subject.md
+      - Object and Click Select: selection/seeds.md
   - Architecture:
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
