@@ -20,3 +20,4 @@
 | [Quick Selection](quick-selection.md) | Automatic | Paints a selection that grows to similar areas and stops at edges. | Implemented and tested |
 | [Subject selection (classical)](subject.md) | Automatic | Selects the main subject of the image, without AI. | Implemented and tested |
 | [AI Click Select](ai-selection.md) | AI | Click inside an object, and Alt-click outside it. A segmentation model selects the object from your clicks. | Implemented and tested |
+| [AI subject](ai-selection.md) | AI | Select > AI subject selects the main subject with a learned model. AI background selects the rest. | Implemented and tested |

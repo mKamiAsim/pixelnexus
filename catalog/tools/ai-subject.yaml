@@ -1,8 +1,39 @@
 id: ai-subject
-name: Subject selection
+name: AI subject
 group: ai
 tier: optional
 engine: model
 phase: '7'
-status: planned
+status: implemented-tested
 planNotes: Salient object model (BiRefNet or IS-Net). Background selection is its inverse.
+params: []
+summary: "Select > AI subject selects the main subject with a learned model. AI background selects the rest."
+steps:
+  - "The whole image goes to the provider you chose for Subject selection."
+  - "The provider's model, such as BiRefNet lite in the engine or U2-Net small in the browser, answers with a mask."
+  - "AI background inverts the mask."
+  - "The mask replaces the selection. It is labeled as an AI result, and the history step names the provider."
+implementation:
+  path: "web/src/app/aiSelectActions.ts"
+  symbol: "aiSelect"
+tests:
+  - "web/src/app/aiSelectActions.test.ts"
+references:
+  - kind: "paper"
+    text: "Zheng, P., Gao, D., Fan, D.-P., Liu, L., Laaksonen, J., Ouyang, W., and Sebe, N. Bilateral reference for high-resolution dichotomous image segmentation. CAAI Artificial Intelligence Research, 9150038, 2024."
+    doi: "10.26599/AIR.2024.9150038"
+  - kind: "paper"
+    text: "Qin, X., Zhang, Z., Huang, C., Dehghan, M., Zaiane, O. R., and Jagersand, M. U2-Net. Going deeper with nested U-structure for salient object detection. Pattern Recognition 106, 107404, 2020."
+    doi: "10.1016/j.patcog.2020.107404"
+learn:
+  oneSentence: "A learned model finds the main subject and selects it."
+  howItWorks:
+    - "A network trained on many photos with marked subjects predicts, for each pixel, how likely it belongs to the subject."
+    - "The prediction is scaled back to the image size and becomes the selection."
+  academic: "Salient object segmentation. The engine uses BiRefNet lite, and the browser U2-Net small."
+  tryThis:
+    - "Compare Select > Subject, which uses no AI, with Select > AI subject on the same photo."
+  pitfalls:
+    - "The result is an AI result. Detail may not exist in the original scene."
+  demos: []
+docsPage: "selection/ai-selection.md"
