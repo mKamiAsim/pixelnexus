@@ -106,7 +106,7 @@ function CurvePlot({ values }: { values: readonly number[] }) {
         <line x1={0} y1={size} x2={size} y2={0} stroke="var(--px-border)" strokeDasharray="3 3" />
         <polyline points={points.join(" ")} fill="none" stroke="var(--px-accent)" strokeWidth={2} />
         {[0, 128, 255].map((v) => (
-          <g key={v} fontSize={10} fill="var(--px-text-muted)">
+          <g key={v} fontSize={11} fill="var(--px-text-muted)">
             <text x={(v / 255) * size} y={size + 14} textAnchor="middle">
               {v}
             </text>

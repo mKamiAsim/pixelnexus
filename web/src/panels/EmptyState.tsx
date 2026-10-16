@@ -34,11 +34,13 @@ export function EmptyState() {
             <span className="text-xs text-text-muted">{displayShortcut("Mod+V")}</span>
           </Button>
         </div>
-        <section aria-labelledby="samples-heading" className="flex flex-col gap-2">
+        <section aria-labelledby="samples-heading" className="@container flex flex-col gap-2">
           <h3 id="samples-heading" className="text-sm font-semibold">
             Or try a test image
           </h3>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {/* Columns follow the width of the card, not of the window, so names stay readable
+              when the canvas area is narrow. */}
+          <ul className="grid grid-cols-1 gap-2 @sm:grid-cols-2 @xl:grid-cols-3">
             {previews.map((sample) => (
               <li key={sample.id}>
                 <button

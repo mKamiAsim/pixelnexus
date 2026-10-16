@@ -144,7 +144,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "features",
       "developer",
     ]);
-    widths.push(["properties", 300]);
+    widths.push(["properties", 320]);
   } else if (id === "study") {
     add("library", CANVAS_PANEL, "left");
     stack("library", ["images"]);
@@ -160,7 +160,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "history",
       "masks",
     ]);
-    widths.push(["library", 240], ["learn", 400]);
+    widths.push(["library", 260], ["learn", 430]);
     heights.push(["info", 280]);
   } else if (id === "developer") {
     add("library", CANVAS_PANEL, "left");
@@ -177,7 +177,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "features",
       "navigator",
     ]);
-    widths.push(["library", 240], ["developer", 400]);
+    widths.push(["library", 260], ["developer", 430]);
     heights.push(["history", 260]);
   } else {
     add("library", CANVAS_PANEL, "left");
@@ -194,7 +194,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "metrics",
       "features",
     ]);
-    widths.push(["library", 260], ["properties", 330]);
+    widths.push(["library", 280], ["properties", 360]);
     heights.push(["history", 260]);
   }
   for (const [panel, height] of heights) dock.getPanel(panel)?.group.api.setSize({ height });

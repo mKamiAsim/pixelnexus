@@ -5,7 +5,7 @@
 .dockview-theme-pixelnexus {
   color-scheme: inherit;
   --dv-paneview-active-outline-color: var(--px-focus);
-  --dv-tabs-and-actions-container-font-size: 11px;
+  --dv-tabs-and-actions-container-font-size: 12px;
   --dv-tabs-and-actions-container-height: 28px;
   --dv-drag-over-background-color: var(--px-accent-subtle);
   --dv-drag-over-border-color: var(--px-accent);
@@ -15,7 +15,7 @@
   --dv-floating-box-shadow: var(--px-shadow-popover);
   --dv-floating-border: 1px solid var(--px-border);
   --dv-overlay-z-index: 999;
-  --dv-tab-font-size: 11px;
+  --dv-tab-font-size: 12px;
   --dv-border-radius: 0px;
   --dv-tab-margin: 0;
   --dv-sash-color: transparent;
@@ -44,7 +44,7 @@
   --dv-tab-group-color-orange: var(--px-warning);
   --dv-tab-group-chip-padding: 4px 8px;
   --dv-tab-group-chip-border-radius: 6px;
-  --dv-tab-group-chip-font-size: 11px;
+  --dv-tab-group-chip-font-size: 12px;
   --dv-tab-group-line-height: 2px;
   --dv-tab-group-line-opacity: 0.6;
 

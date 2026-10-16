@@ -74,7 +74,7 @@ export function ProfilePlot({
         />
       ) : null}
       <polyline points={points.join(" ")} fill="none" stroke="var(--px-accent)" strokeWidth={2} />
-      <g fontSize={10} fill="var(--px-text-muted)">
+      <g fontSize={11} fill="var(--px-text-muted)">
         {[0, 0.25, 0.5].map((f) => (
           <text key={f} x={(f / 0.5) * width} y={height + 14} textAnchor="middle">
             {f}
