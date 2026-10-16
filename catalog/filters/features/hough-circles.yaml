@@ -1,8 +1,203 @@
 id: hough-circles
 name: Hough transform for circles
+aliases: [Hough circles, Circle Hough transform, Circular Hough transform]
 family: features
+tags: [purpose:analysis, purpose:edge]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Accumulator view.
+
+summary: Finds circles in the Canny edges of the image. For each radius, every edge pixel votes for the centers of all circles of that radius through it. Centers with a large share of their circle on edges win. The circles go to the Features panel and are drawn on the canvas, or the filter shows the accumulator.
+purpose: Find round objects of known size, such as coins, cells or pupils, and see how voting finds them.
+classification: {linearity: nonlinear, domain: transform, operation: voting in circle space}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_circles_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter finds edges on the luma with the BT.709 weights. The accumulator is a gray image
+  with the alpha of the image.
+boundary: The border mode reaches the Canny smoothing. scikit-image drops edges on the outermost pixels. Centers lie inside the image.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.canny, skimage.transform.hough_circle and hough_circle_peaks.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: circles
+    options:
+      - {value: circles, label: Circles}
+      - {value: accumulator, label: Accumulator}
+    description: The found circles as a table, drawn on the canvas, or the accumulator as an image.
+    effect: The accumulator shows the center of each circle as a bright spot.
+  - key: sigma
+    label: Edge smoothing
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of the Gaussian blur before Canny finds edges. scikit-image uses 1.
+    effect: Larger values ignore fine detail and noise, and round off corners.
+  - key: lowThreshold
+    label: Low threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.1
+    description: Weak edges must reach this Sobel magnitude, on the luma from 0 to 1. scikit-image uses 0.1.
+    effect: Lower values keep fainter edges that touch strong ones.
+  - key: highThreshold
+    label: High threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.2
+    description: Strong edges must reach this Sobel magnitude. scikit-image uses 0.2. A value below the low threshold counts as the low threshold.
+    effect: Lower values start more edges.
+  - ref: border
+    default: reflect101
+  - key: minRadius
+    label: Smallest radius
+    type: integer
+    min: 2
+    max: 200
+    step: 1
+    default: 5
+    unit: px
+    description: The smallest radius to look for.
+    effect: Together with the largest radius, sets which sizes are found.
+  - key: maxRadius
+    label: Largest radius
+    type: integer
+    min: 2
+    max: 200
+    step: 1
+    default: 50
+    unit: px
+    description: The largest radius to look for. A value below the smallest radius counts as the smallest radius.
+    effect: A wide range takes longer, since each radius has its own accumulator.
+  - key: radiusStep
+    label: Radius step
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 1
+    unit: px
+    description: The step between the radii that are tried.
+    effect: Larger steps are faster and miss radii in between.
+  - key: threshold
+    label: Share threshold
+    type: number
+    min: 0.05
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: A circle needs at least this share of the points on its circle to be edge pixels.
+    effect: Lower values find broken and partly hidden circles, and more false ones.
+  - key: circles
+    label: Most circles
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 10
+    description: At most this many circles, the strongest first.
+    effect: Limits the result on busy images.
+  - key: minDistance
+    label: Distance apart
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 5
+    unit: px
+    description: Two centers of one radius must be at least this far apart in x or in y.
+    effect: Larger values keep fewer circles that lie close together.
+formula: |
+  (x - a)^2 + (y - b)^2 = r^2,
+  \qquad
+  H(a, b, r) = \frac{\#\{\text{edge pixels on the circle } (a, b, r)\}}{\#\{\text{points on the circle}\}}
+formulaExplanation: >-
+  A circle has a center (a, b) and a radius r. For each radius, an edge pixel lies on all
+  circles whose center is r away from it. These centers form a circle themselves. Every edge
+  pixel draws this circle of votes into the accumulator of its radius. Where many of these
+  circles cross, many edge pixels lie on one circle, so peaks are circles. Here scikit-image
+  divides each count by the number of points on the circle. So H is the share of the circle
+  that is edge, and circles of different sizes compare fairly. Duda and Hart described this
+  extension of the Hough transform to curves.
+symbols:
+  - {symbol: 'a, b', meaning: 'The center of a circle'}
+  - {symbol: 'r', meaning: 'The radius'}
+  - {symbol: 'H', meaning: 'The share of the circle that is edge'}
+steps:
+  - Find edges with Canny on the luma.
+  - For each radius, let every edge pixel vote for the centers of all circles through it.
+  - Divide each count by the number of points on the circle.
+  - Find the peaks over all radii, and list them as circles.
+complexity:
+  time: O(E R r)
+  memory: O(R N)
+  notes: E is the number of edge pixels, R the number of radii, r the largest radius and N the number of pixels.
+useCases:
+  - Counting coins, cells, holes or other round objects.
+  - Finding the pupil of an eye.
+advantages:
+  - Finds circles with gaps or partly hidden.
+  - Gives the center and the radius directly.
+limitations:
+  - Each radius needs its own accumulator, so a wide range of radii is slow and needs memory.
+  - Ellipses and circles seen at a slant are not found.
+  - Concentric edges, such as both sides of a thick ring, give two circles.
+artifacts:
+  - Circles of nearby radii on one round object, when the distance apart is small.
+references:
+  - kind: paper
+    text: Duda, R. O., and Hart, P. E. Use of the Hough transformation to detect lines and curves in pictures. Communications of the ACM 15(1), 11 to 15, 1972.
+    doi: 10.1145/361237.361242
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: library
+    text: scikit-image documentation, skimage.transform.hough_circle and hough_circle_peaks.
+implementation: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_circles}
+tests: [engine/tests/test_hough.py]
+learn:
+  oneSentence: Every edge pixel votes for the centers of all circles through it, and the centers with the most votes are found.
+  howItWorks:
+    - Find the edges of the image.
+    - For one radius, each edge pixel votes for every center at that distance.
+    - Votes pile up at the centers of circles of that radius.
+    - Repeat for each radius, and keep the strongest piles.
+  academic: >-
+    The circle Hough transform on Canny edges, with accumulators normalized by the perimeter
+    and peak detection over the radii.
+  paramNotes:
+    output: The circles, or the accumulator.
+    sigma: How much the image is blurred before finding edges.
+    lowThreshold: How weak an edge may be.
+    highThreshold: How strong an edge must be to start.
+    border: How the image is filled past its edges for the blur.
+    minRadius: The smallest circle to look for.
+    maxRadius: The largest circle to look for.
+    radiusStep: The step between radii.
+    threshold: How much of a circle must be edge.
+    circles: How many circles at most.
+    minDistance: How far apart centers must be.
+  tryThis:
+    - Apply it to the Disks test image. Each disk is found with its radius.
+  pitfalls:
+    - A range of radii that misses the objects. Nothing is found, or the wrong size.
+  demos: [feature-viewer]
+related: [hough-lines, blob-log, canny]
+docsPage: filters/features/hough-circles.md

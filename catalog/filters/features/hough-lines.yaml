@@ -1,8 +1,191 @@
 id: hough-lines
 name: Hough transform for lines
+aliases: [Hough lines, Line Hough transform, Standard Hough transform]
 family: features
+tags: [purpose:analysis, purpose:edge]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Accumulator view.
+
+summary: Finds straight lines in the Canny edges of the image. Every edge pixel votes for all lines through it, and the lines with the most votes win. The result draws the lines across the image, shows the accumulator of votes, or lists the lines in a table.
+purpose: Find straight lines, even broken or partly hidden ones, and see how voting finds them.
+classification: {linearity: nonlinear, domain: transform, operation: voting in line space}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_lines_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter finds edges on the luma with the BT.709 weights and gives a gray result. Alpha is
+  kept. The table goes to the Features panel.
+boundary: The border mode reaches the Canny smoothing. scikit-image drops edges on the outermost pixels. Lines are drawn up to the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.canny, skimage.transform.hough_line and hough_line_peaks.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: lines
+    options:
+      - {value: lines, label: Lines over the edges}
+      - {value: accumulator, label: Accumulator}
+      - {value: table, label: Table of lines}
+    description: The found lines in white over the edges in gray, the accumulator of votes, or a table of the lines.
+    effect: The accumulator shows each line as a bright spot.
+  - key: sigma
+    label: Edge smoothing
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of the Gaussian blur before Canny finds edges. scikit-image uses 1.
+    effect: Larger values ignore fine detail and noise, and round off corners.
+  - key: lowThreshold
+    label: Low threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.1
+    description: Weak edges must reach this Sobel magnitude, on the luma from 0 to 1. scikit-image uses 0.1.
+    effect: Lower values keep fainter edges that touch strong ones.
+  - key: highThreshold
+    label: High threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.2
+    description: Strong edges must reach this Sobel magnitude. scikit-image uses 0.2. A value below the low threshold counts as the low threshold.
+    effect: Lower values start more edges.
+  - ref: border
+    default: reflect101
+  - key: angles
+    label: Angles
+    type: integer
+    min: 30
+    max: 720
+    step: 1
+    default: 180
+    description: The number of angles over half a turn. scikit-image uses 180, one per degree.
+    effect: More angles find the direction more precisely.
+  - key: threshold
+    label: Vote threshold
+    type: number
+    min: 0.05
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: A line needs at least this share of the votes of the strongest line. scikit-image uses 0.5.
+    effect: Lower values find shorter and weaker lines.
+  - key: lines
+    label: Most lines
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    description: At most this many lines, the strongest first.
+    effect: Limits the result on busy images.
+  - key: minDistance
+    label: Distance apart
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 9
+    unit: px
+    description: Two lines must be at least this far apart in distance from the origin, or far enough apart in angle. scikit-image uses 9.
+    effect: Larger values keep fewer lines that lie close together.
+  - key: minAngle
+    label: Angle apart
+    type: integer
+    min: 1
+    max: 90
+    step: 1
+    default: 10
+    description: Two lines must be at least this many angle steps apart, or far enough apart in distance. With 180 angles, a step is 1 degree. scikit-image uses 10.
+    effect: Larger values keep fewer lines with similar directions.
+formula: |
+  \rho = x \cos\theta + y \sin\theta,
+  \qquad
+  H(\theta, \rho) = \#\{\text{edge pixels on the line } (\theta, \rho)\}
+formulaExplanation: >-
+  A line is described by the angle theta of its normal and its distance rho from the origin,
+  as Duda and Hart proposed. An edge pixel at (x, y) lies on all lines with x cos theta +
+  y sin theta = rho, which is a sine curve in the plane of theta and rho. Every edge pixel adds
+  one vote along its curve in the accumulator H. Where many curves cross, many edge pixels lie
+  on one line, so peaks of H are lines. Here scikit-image measures theta with y pointing down
+  and the origin at the center of the top-left pixel. The peaks must reach the vote threshold
+  times the largest vote and lie apart by the distance and angle limits.
+symbols:
+  - {symbol: '\theta', meaning: 'The angle of the normal of a line'}
+  - {symbol: '\rho', meaning: 'The distance of a line from the origin'}
+  - {symbol: 'H', meaning: 'The accumulator of votes'}
+steps:
+  - Find edges with Canny on the luma.
+  - Let every edge pixel vote for all lines through it.
+  - Find the peaks of the accumulator.
+  - Draw the lines over the edges, show the accumulator, or list the lines.
+complexity:
+  time: O(E A)
+  memory: O(A D)
+  notes: E is the number of edge pixels, A the number of angles and D the length of the image diagonal.
+useCases:
+  - Finding lanes, walls, the edges of documents and other straight structures.
+  - Teaching how voting in a parameter space finds shapes.
+advantages:
+  - Finds lines with gaps or partly hidden.
+  - Each line gets one peak, whatever its length.
+limitations:
+  - Lines are infinite. The filter does not tell where a segment starts or ends. Edge linking does.
+  - Many short edges in a busy image add up to false lines.
+  - Thick edges vote for several nearby lines.
+artifacts:
+  - Lines that are slightly off in angle, when the edges are short.
+references:
+  - kind: paper
+    text: Duda, R. O., and Hart, P. E. Use of the Hough transformation to detect lines and curves in pictures. Communications of the ACM 15(1), 11 to 15, 1972.
+    doi: 10.1145/361237.361242
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: library
+    text: scikit-image documentation, skimage.transform.hough_line and hough_line_peaks.
+implementation: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_lines}
+tests: [engine/tests/test_hough.py]
+learn:
+  oneSentence: Every edge pixel votes for all lines through it, and the lines with the most votes are found.
+  howItWorks:
+    - Find the edges of the image.
+    - Each edge pixel votes for every line that could pass through it.
+    - Votes pile up on the lines that many edge pixels share.
+    - The piles are the lines in the image.
+  academic: >-
+    The standard Hough transform in the (theta, rho) normal form of Duda and Hart, on Canny
+    edges, with peak detection in the accumulator.
+  paramNotes:
+    output: Lines, the accumulator, or a table.
+    sigma: How much the image is blurred before finding edges.
+    lowThreshold: How weak an edge may be.
+    highThreshold: How strong an edge must be to start.
+    border: How the image is filled past its edges for the blur.
+    angles: How finely the directions are counted.
+    threshold: How many votes a line needs.
+    lines: How many lines at most.
+    minDistance: How far apart lines must be.
+    minAngle: How different their directions must be.
+  tryThis:
+    - Show the accumulator. Each straight edge of the image is one bright spot where sine curves cross.
+  pitfalls:
+    - A busy image with a low vote threshold. Short edges add up to lines that are not there.
+  demos: [line-profile]
+related: [hough-circles, hough-linking, canny, radon-filter]
+docsPage: filters/features/hough-lines.md

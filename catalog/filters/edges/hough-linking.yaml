@@ -1,8 +1,182 @@
 id: hough-linking
 name: Hough-based edge linking
+aliases: [Probabilistic Hough transform, Progressive probabilistic Hough transform, Line segment detection]
 family: edges
+alsoIn: [features]
+tags: [purpose:edge, purpose:analysis]
 tier: advanced
 engine: science
 phase: 6d
-status: planned
+status: implemented-tested
 planNotes: Canny then probabilistic Hough.
+
+summary: Links Canny edge pixels into straight line segments with the progressive probabilistic Hough transform of Matas, Galambos and Kittler. Unlike the standard Hough transform, it finds where each segment starts and ends, and it may bridge small gaps.
+purpose: Turn scattered edge pixels into clean straight segments with known end points.
+classification: {linearity: nonlinear, domain: transform, operation: random voting and segment tracing}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_linking_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter finds edges on the luma with the BT.709 weights and gives a gray result. Alpha is
+  kept. The table goes to the Features panel.
+boundary: The border mode reaches the Canny smoothing. scikit-image drops edges on the outermost pixels.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.canny and skimage.transform.probabilistic_hough_line.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: segments
+    options:
+      - {value: segments, label: Segments over the edges}
+      - {value: table, label: Table of segments}
+    description: The segments in white over the edges in gray, or a table of the segments.
+    effect: Gray edges that stay gray were not linked into any segment.
+  - key: sigma
+    label: Edge smoothing
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of the Gaussian blur before Canny finds edges. scikit-image uses 1.
+    effect: Larger values ignore fine detail and noise, and round off corners.
+  - key: lowThreshold
+    label: Low threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.1
+    description: Weak edges must reach this Sobel magnitude, on the luma from 0 to 1. scikit-image uses 0.1.
+    effect: Lower values keep fainter edges that touch strong ones.
+  - key: highThreshold
+    label: High threshold
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.2
+    description: Strong edges must reach this Sobel magnitude. scikit-image uses 0.2. A value below the low threshold counts as the low threshold.
+    effect: Lower values start more edges.
+  - ref: border
+    default: reflect101
+  - key: angles
+    label: Angles
+    type: integer
+    min: 30
+    max: 720
+    step: 1
+    default: 180
+    description: The number of angles over half a turn. scikit-image uses 180, one per degree.
+    effect: More angles find the direction more precisely.
+  - key: threshold
+    label: Vote threshold
+    type: integer
+    min: 1
+    max: 500
+    step: 1
+    default: 10
+    description: A line must reach this many votes before its segment is traced. scikit-image uses 10.
+    effect: Higher values need more edge pixels on a line.
+  - key: minLength
+    label: Shortest segment
+    type: integer
+    min: 2
+    max: 1000
+    step: 1
+    default: 50
+    unit: px
+    description: A segment is kept when it spans at least this many pixels in x or in y. scikit-image uses 50.
+    effect: Lower values keep short pieces of edges.
+  - key: maxGap
+    label: Largest gap
+    type: integer
+    min: 0
+    max: 100
+    step: 1
+    default: 10
+    unit: px
+    description: A segment may jump over a gap of at most this many pixels. scikit-image uses 10.
+    effect: Larger values bridge broken edges, and may join edges that do not belong together.
+formula: |
+  \rho = x \cos\theta + y \sin\theta,
+  \qquad
+  H(\theta, \rho) \ge {{threshold}}
+formulaExplanation: >-
+  The progressive probabilistic Hough transform of Matas and coworkers votes with one edge
+  pixel at a time, in random order, in the same accumulator of lines as the standard
+  transform. When a line reaches the vote threshold, the filter follows that line from the
+  pixel that voted last, in both directions, and jumps over gaps up to the largest gap. A
+  segment is kept when it spans the shortest length in x or in y. Its pixels are then removed
+  from the edges and their votes from the accumulator. Pixels on a found segment never get
+  their turn to vote, which saves time. The order is random, so this filter fixes the seed and
+  gives the same result each time.
+symbols:
+  - {symbol: '\theta, \rho', meaning: 'The normal angle and distance of a line'}
+  - {symbol: 'H', meaning: 'The accumulator of votes'}
+steps:
+  - Find edges with Canny on the luma.
+  - Take edge pixels in random order and let each vote for all lines through it.
+  - When a line reaches the threshold, trace its segment along the edge pixels.
+  - Keep segments that span enough pixels, and remove their pixels and votes.
+  - Draw the segments over the edges, or list them.
+complexity:
+  time: O(E A)
+  memory: O(A D + N)
+  notes: E is the number of edge pixels, A the number of angles, D the length of the image diagonal and N the number of pixels. Pixels on found segments do not vote.
+useCases:
+  - Finding straight segments in drawings, buildings and documents.
+  - Cleaning up broken edges before measuring them.
+advantages:
+  - Gives the end points of each segment.
+  - Bridges small gaps in edges.
+limitations:
+  - Only straight segments. Curves become chains of short segments or are dropped.
+  - Another seed would give slightly different segments.
+artifacts:
+  - Segments that stop short of a corner, or run past it along the next edge.
+references:
+  - kind: paper
+    text: Matas, J., Galambos, C., and Kittler, J. Robust detection of lines using the progressive probabilistic Hough transform. Computer Vision and Image Understanding 78(1), 119 to 137, 2000.
+    doi: 10.1006/cviu.1999.0831
+  - kind: paper
+    text: Canny, J. A computational approach to edge detection. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-8(6), 679 to 698, 1986.
+    doi: 10.1109/TPAMI.1986.4767851
+  - kind: library
+    text: scikit-image documentation, skimage.transform.probabilistic_hough_line.
+implementation: {path: engine/src/pixelnexus_engine/filters/hough.py, symbol: hough_linking}
+tests: [engine/tests/test_hough.py]
+learn:
+  oneSentence: Join edge pixels that lie on a straight line into segments with a start and an end.
+  howItWorks:
+    - Find the edges of the image.
+    - Pick edge pixels at random and let them vote for lines through them.
+    - When a line has enough votes, follow it along the edge pixels to find the segment.
+    - Remove that segment and go on until no pixels are left.
+  academic: >-
+    The progressive probabilistic Hough transform of Matas et al. on Canny edges, with a fixed
+    seed.
+  paramNotes:
+    output: The segments, or a table.
+    sigma: How much the image is blurred before finding edges.
+    lowThreshold: How weak an edge may be.
+    highThreshold: How strong an edge must be to start.
+    border: How the image is filled past its edges for the blur.
+    angles: How finely the directions are counted.
+    threshold: How many votes a line needs.
+    minLength: How short a segment may be.
+    maxGap: How large a gap may be bridged.
+  tryThis:
+    - Lower the shortest segment and raise the largest gap, and watch broken edges join.
+  pitfalls:
+    - Curved edges. They break into short segments or disappear.
+  demos: [line-profile]
+related: [hough-lines, canny, hysteresis]
+docsPage: filters/edges/hough-linking.md

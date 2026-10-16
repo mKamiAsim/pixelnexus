@@ -228,7 +228,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | shen-castan | Shen-Castan | ISEF filter. | Advanced | Science | 6f |
 | susan-edge | SUSAN edge detector | | Advanced | Science | 6f |
 | phase-congruency | Phase congruency | Kovesi method with log-Gabor filters. Cross-listed in texture. Our own code after phasecong3. Done on 2026-10-16. | Advanced | Science | 6d |
-| hough-linking | Hough-based edge linking | Canny then probabilistic Hough. | Advanced | Science | 6d |
+| hough-linking | Hough-based edge linking | Canny then probabilistic Hough. Done on 2026-10-16. | Advanced | Science | 6d |
 | structured-edge | Structured Edge Detector | Needs a downloaded model file. License check first. | Optional | Science | 6d |
 
 Laplacian, LoG, DoG and the morphological gradient are cross-listed here from their own families.
@@ -265,8 +265,8 @@ Detectors produce overlays, keypoints, orientations and scores. They do not pret
 | akaze | AKAZE | Extra. OpenCV. Done on 2026-10-15. | Advanced | Science | 6d |
 | susan-corner | SUSAN corner detector | Our own code, without the false-corner tests of the paper. Done on 2026-10-15. | Advanced | Science | 6d |
 | mser | MSER region detector | OpenCV. Regions as centroid, equal-area radius and long axis. Done on 2026-10-15. | Advanced | Science | 6d |
-| hough-lines | Hough transform for lines | Accumulator view. | Advanced | Science | 6d |
-| hough-circles | Hough transform for circles | Accumulator view. | Advanced | Science | 6d |
+| hough-lines | Hough transform for lines | Accumulator view. Done on 2026-10-16. | Advanced | Science | 6d |
+| hough-circles | Hough transform for circles | Accumulator view. Done on 2026-10-16. | Advanced | Science | 6d |
 
 Log-Gabor, phase congruency and the steerable pyramid are cross-listed here.
 

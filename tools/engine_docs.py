@@ -48,6 +48,14 @@ from pixelnexus_engine.filters.directional import (
     directional_shearlet,
     frequency_grid,
 )
+from pixelnexus_engine.filters.hough import (
+    circle_rows,
+    edges,
+    hough_circles,
+    hough_lines,
+    hough_linking,
+    segment_rows,
+)
 from pixelnexus_engine.filters.inpainting import inpaint
 from pixelnexus_engine.filters.keypoints import akaze, brisk, orb, sift
 from pixelnexus_engine.filters.mser import mser
@@ -2002,6 +2010,173 @@ def phase_congruency_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Hough transforms -------------------------------------------------------------------------------
+
+
+def hough_scene(size: int = 160) -> Gray:
+    """A bright triangle, a gray rectangle and a dashed line on a dark ground."""
+    from skimage import draw
+
+    # scikit-image has no type hints.
+    untyped: Any = draw
+    gray = np.full((size, size), 40.0)
+    rows, cols = untyped.polygon([20, 90, 90], [30, 10, 80], gray.shape)
+    gray[rows, cols] = 210
+    gray[100:140, 90:150] = 140
+    for t in np.linspace(0, 1, 400):
+        x, y = 100 + 50 * t, 20 + 50 * t
+        if (t * 50 * math.sqrt(2)) % 16 < 10:
+            gray[round(y) - 1 : round(y) + 2, round(x) - 1 : round(x) + 2] = 180
+    return gray.astype(np.uint8)
+
+
+def hough_lines_docs(out: dict[Path, str]) -> None:
+    filter_id = "hough-lines"
+    scene = hough_scene()
+    figure(
+        out,
+        filter_id,
+        "A test image of 160 x 160 with a triangle, a rectangle and a dashed line. Then the "
+        "lines found with the defaults in white over the Canny edges in gray, the accumulator, "
+        "and the three strongest lines only.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Lines", "image": picture(run(hough_lines, scene, filter_id))},
+            {
+                "title": "Accumulator",
+                "image": picture(run(hough_lines, scene, filter_id, output="accumulator")),
+            },
+            {
+                "title": "Three lines",
+                "image": picture(run(hough_lines, scene, filter_id, lines=3)),
+            },
+        ],
+    )
+    found = table_rows(hough_lines, filter_id, scene, output="table")
+    rows = [[fix(r["angle"], 0), fix(r["distance"], 0), str(int(r["votes"]))] for r in found]
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Direction (deg)", "Distance (px)", "Votes"], rows)
+        + "\nThe table output with the defaults on the test image of the figure. The direction "
+        "counts counterclockwise from the x axis. The distance is that of the line from the "
+        "center of the top-left pixel.\n"
+    )
+
+
+def hough_circles_docs(out: dict[Path, str]) -> None:
+    filter_id = "hough-circles"
+    scene = disks(256, 256)
+    hidden = scene.copy()
+    hidden[125:150, :] = scene[0, 0]
+    rough = noisy(scene.astype(np.float64), 12, seed=5)
+    values = {"minRadius": 3, "maxRadius": 40}
+
+    def ringed(gray: Gray, **extra: Any) -> dict[str, Any]:
+        params = catalog_values(filter_id, **values, **extra)
+        rows = circle_rows(edges(rgba(gray), params), params)
+        return picture(with_rings(gray, rows))
+
+    figure(
+        out,
+        filter_id,
+        "The Disks test image at 256 x 256 with the circles found for radii from 3 to 40, each "
+        "drawn as a ring. Then the accumulator, the circles with a share threshold of 0.3 when a "
+        "band hides the tops of the two lower disks, and the circles with noise of sigma 12.",
+        [
+            {"title": "Disks", "image": ringed(scene)},
+            {
+                "title": "Accumulator",
+                "image": picture(
+                    run(hough_circles, scene, filter_id, output="accumulator", **values)
+                ),
+            },
+            {"title": "Hidden, threshold 0.3", "image": ringed(hidden, threshold=0.3)},
+            {"title": "Noise of sigma 12", "image": ringed(rough)},
+        ],
+    )
+    rows = []
+    cases: list[tuple[str, Gray, float]] = [
+        ("Clean", scene, 0.5),
+        ("Partly hidden", hidden, 0.5),
+        ("Partly hidden, threshold 0.3", hidden, 0.3),
+        ("Noise", rough, 0.5),
+    ]
+    for title, gray, threshold in cases:
+        params = catalog_values(filter_id, **values, threshold=threshold)
+        found = circle_rows(edges(rgba(gray), params), params)
+        for x, y, radius in TEST_DISKS_256:
+            near = [r for r in found if abs(r[0] + 0.5 - x) <= 2 and abs(r[1] + 0.5 - y) <= 2]
+            cell = f"{near[0][2]} ({near[0][3]:.2f})" if near else "not found"
+            rows.append([title, f"({x}, {y})", str(radius), cell])
+        extra = len(found) - sum(
+            1
+            for r in found
+            if any(
+                abs(r[0] + 0.5 - x) <= 2 and abs(r[1] + 0.5 - y) <= 2 for x, y, _ in TEST_DISKS_256
+            )
+        )
+        rows.append([title, "elsewhere", "", f"{extra} circles"])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Image", "Disk center", "Radius (px)", "Found radius (share)"], rows)
+        + "\nThe images of the figure with radii from 3 to 40 and the other defaults, unless a "
+        "threshold is named. A disk "
+        "counts as found when a circle has its center within 2 pixels of the disk center. The "
+        "share is the part of the circle that lies on edges.\n"
+    )
+
+
+TEST_DISKS_256 = [
+    (48, 48, 24),
+    (128, 48, 12),
+    (192, 48, 6),
+    (224, 48, 3),
+    (64, 160, 36),
+    (176, 160, 18),
+]
+
+
+def hough_linking_docs(out: dict[Path, str]) -> None:
+    filter_id = "hough-linking"
+    scene = hough_scene()
+    figure(
+        out,
+        filter_id,
+        "The test image of 160 x 160 with a triangle, a rectangle and a dashed line. Then the "
+        "segments in white over the Canny edges in gray with the defaults, with the shortest "
+        "segment 20, and with the shortest segment 20 and the largest gap 0.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Defaults", "image": picture(run(hough_linking, scene, filter_id))},
+            {
+                "title": "Shortest 20",
+                "image": picture(run(hough_linking, scene, filter_id, minLength=20)),
+            },
+            {
+                "title": "Shortest 20, gap 0",
+                "image": picture(run(hough_linking, scene, filter_id, minLength=20, maxGap=0)),
+            },
+        ],
+    )
+    params = catalog_values(filter_id)
+    found = edges(rgba(scene), params)
+    rows = []
+    for length in (50, 20):
+        for gap in (0, 3, 10):
+            segments = segment_rows(found, catalog_values(filter_id, minLength=length, maxGap=gap))
+            total = sum(r[4] for r in segments)
+            rows.append([str(length), str(gap), str(len(segments)), fix(total, 0)])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Shortest segment (px)", "Largest gap (px)", "Segments", "Total length (px)"], rows
+        )
+        + f"\nThe test image of the figure has {int(found.sum())} edge pixels with the default "
+        "Canny settings. The total length adds up the lengths of all segments. The dashes of "
+        "the dashed line are 10 pixels long with gaps of about 6.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -2040,6 +2215,9 @@ def build() -> dict[Path, str]:
     glcm_docs(out)
     hog_docs(out)
     phase_congruency_docs(out)
+    hough_lines_docs(out)
+    hough_circles_docs(out)
+    hough_linking_docs(out)
     return out
 
 

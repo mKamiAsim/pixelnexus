@@ -214,6 +214,7 @@ nav:
           - Zero-crossing detector: filters/edges/zero-crossing.md
           - Marr-Hildreth: filters/edges/marr-hildreth.md
           - Phase congruency: filters/edges/phase-congruency.md
+          - Hough-based edge linking: filters/edges/hough-linking.md
       - Features:
           - Line detectors: filters/features/line-detector.md
           - Laws' texture energy: filters/features/laws.md
@@ -237,6 +238,8 @@ nav:
           - Local Ternary Pattern: filters/features/ltp.md
           - GLCM features: filters/features/glcm.md
           - Histogram of Oriented Gradients: filters/features/hog.md
+          - Hough transform for lines: filters/features/hough-lines.md
+          - Hough transform for circles: filters/features/hough-circles.md
           - Harris corner detector: filters/features/harris.md
           - Shi-Tomasi: filters/features/shi-tomasi.md
           - Moravec corner detector: filters/features/moravec.md
