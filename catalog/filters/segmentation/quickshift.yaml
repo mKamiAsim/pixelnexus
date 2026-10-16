@@ -1,8 +1,141 @@
 id: quickshift
 name: Quickshift
+aliases: [Quick shift, Quickshift superpixels]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Extra.
+
+summary: Splits the image into regions by linking each pixel to its nearest neighbor of higher density in color and position, after Vedaldi and Soatto. Cutting the long links leaves trees, and each tree is a region.
+purpose: Find regions around the modes of the color and position density, without choosing their number.
+classification: {linearity: nonlinear, domain: spatial, operation: mode seeking}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: quickshift_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the RGB image, which scikit-image turns into CIELAB. Regions go to the
+  Features panel and are drawn over the image. The boundaries and mean colors are color images
+  with the alpha of the image.
+boundary: Regions end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.quickshift.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: ratio
+    label: Color weight
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 1
+    description: How much color counts against position, from 0 to 1. scikit-image uses 1.
+    effect: Lower values give regions that are more compact and care less about color.
+  - key: kernelSize
+    label: Kernel size
+    type: number
+    min: 1
+    max: 20
+    step: 0.5
+    default: 5
+    description: The width of the Gaussian that estimates the density. scikit-image uses 5.
+    effect: Larger values give fewer, larger regions, and take longer.
+  - key: maxDist
+    label: Longest link
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    description: Links longer than this, in color and position, are cut. scikit-image uses 10.
+    effect: Larger values give fewer regions.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 0
+    unit: px
+    description: The sigma of a Gaussian blur first. scikit-image uses 0, no blur.
+    effect: A blur makes noisy images give smoother regions.
+formula: |
+  P(x) = \sum_{y} e^{-\lVert f(x) - f(y) \rVert^2 / (2 \sigma_k^2)},
+  \qquad
+  x \to \arg\min_{y : P(y) > P(x)} \lVert f(x) - f(y) \rVert
+formulaExplanation: >-
+  f(x) holds the CIELAB color of pixel x, weighted by the color weight, and its position. The
+  density P sums a Gaussian of the kernel size over the nearby pixels. Each pixel links to the
+  nearest pixel with a higher density, so the links climb toward the peaks of the density.
+  Links longer than the longest link are cut. The links that remain form trees, one per peak,
+  and each tree is a region. Unlike mean shift, each pixel moves once, which makes it quick.
+symbols:
+  - {symbol: 'f(x)', meaning: 'The weighted color and the position of pixel x'}
+  - {symbol: 'P(x)', meaning: 'The density at pixel x'}
+  - {symbol: '\sigma_k', meaning: 'The kernel size'}
+steps:
+  - Turn the image into CIELAB and join color and position.
+  - Estimate the density at each pixel with a Gaussian kernel.
+  - Link each pixel to its nearest neighbor of higher density.
+  - Cut links longer than the longest link, and label the trees.
+complexity:
+  time: O(N K^2)
+  memory: O(N)
+  notes: N is the number of pixels and K the reach of the search window on each side, 3 times the kernel size rounded up.
+useCases:
+  - Superpixels whose number follows the image.
+advantages:
+  - No number of regions to choose.
+  - Regions follow color and position together.
+limitations:
+  - Slower than SLIC and Felzenszwalb for large kernels.
+  - Flat areas break into many regions, since their density has no clear peaks.
+artifacts:
+  - Speckled regions in flat areas.
+references:
+  - kind: paper
+    text: Vedaldi, A., and Soatto, S. Quick shift and kernel methods for mode seeking. European Conference on Computer Vision (ECCV), Lecture Notes in Computer Science 5305, 705 to 718, 2008.
+    doi: 10.1007/978-3-540-88693-8_52
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.quickshift.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: quickshift_filter}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Let each pixel point to a nearby pixel that is more typical, and group the pixels that point to the same peak.
+  howItWorks:
+    - Measure how crowded each pixel's color and position are.
+    - Link each pixel to the nearest pixel that is more crowded.
+    - Cut links that are too long.
+    - Each group of linked pixels is a region.
+  academic: >-
+    Quick shift mode seeking on CIELAB color and position with a Gaussian Parzen density, after
+    Vedaldi and Soatto.
+  paramNotes:
+    output: Regions, boundaries, or mean colors.
+    ratio: How much color counts.
+    kernelSize: How smooth the density is.
+    maxDist: The longest link kept.
+    sigma: How much to blur first.
+  tryThis:
+    - Raise the longest link and watch regions join.
+  pitfalls:
+    - Large kernels on large images. The filter gets slow.
+  demos: [stage-viewer]
+related: [slic, felzenszwalb, mean-shift]
+docsPage: filters/segmentation/quickshift.md

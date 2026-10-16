@@ -5,6 +5,7 @@
  */
 import { create } from "zustand";
 
+import type { LabelMap } from "@/core/features/labels";
 import type { FeatureTable } from "@/core/features/table";
 import type { RgbaImage } from "@/core/image/types";
 
@@ -17,6 +18,8 @@ export interface FeatureLayer {
   /** The image the features were found on. */
   readonly source: RgbaImage;
   readonly table: FeatureTable;
+  /** For segmentation results: the regions of the whole image. */
+  readonly labels?: LabelMap;
 }
 
 interface FeaturesState {

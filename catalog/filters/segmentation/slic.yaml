@@ -1,7 +1,143 @@
 id: slic
 name: SLIC superpixels
+aliases: [SLIC, Simple linear iterative clustering, Superpixels]
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
+
+summary: Splits the image into compact superpixels of about equal size that follow color edges, after Achanta and coworkers. It is k-means clustering on color and position, with each pixel searching only the nearby centers.
+purpose: Reduce an image to a few hundred regions that respect its edges, as a first step for further segmentation or to simplify it.
+classification: {linearity: nonlinear, domain: spatial, operation: local k-means clustering}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: slic_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the RGB image, which scikit-image turns into CIELAB. Regions go to the
+  Features panel and are drawn over the image. The boundaries and mean colors are color images
+  with the alpha of the image.
+boundary: Superpixels end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.slic.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The superpixels as a label map, drawn over the image and listed in the Features panel. Or the boundaries in yellow over the image, or each superpixel filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: segments
+    label: Superpixels
+    type: integer
+    min: 2
+    max: 5000
+    step: 1
+    default: 100
+    description: About how many superpixels to make. scikit-image uses 100. The result can have fewer.
+    effect: More superpixels are smaller and follow finer detail.
+  - key: compactness
+    label: Compactness
+    type: number
+    min: 0.01
+    max: 100
+    step: 0.01
+    default: 10
+    description: How much position counts against color. scikit-image uses 10.
+    effect: Higher values give more square superpixels, lower values follow color edges more closely.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 10
+    description: The number of k-means steps. scikit-image uses 10.
+    effect: More steps settle the superpixels a little more.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 0
+    unit: px
+    description: The sigma of a Gaussian blur before clustering. scikit-image uses 0, no blur.
+    effect: A blur makes noisy images give smoother superpixels.
+formula: |
+  D = \sqrt{d_c^2 + \left(\frac{d_s}{S}\right)^2 m^2},
+  \qquad
+  S = \sqrt{N / K}
+formulaExplanation: >-
+  N is the number of pixels and K the number of superpixels, so the centers start on a grid
+  with the step S. Each pixel is compared with the centers within 2 S of it. The distance D
+  joins the color distance d_c in CIELAB and the distance in position d_s, scaled by S and the
+  compactness m. Each pixel joins its nearest center, the centers move to the mean color and
+  position of their pixels, and this repeats. Finally, parts of superpixels that are cut off
+  join a neighbor, so every superpixel is connected. Searching only near each center makes it
+  linear in the number of pixels.
+symbols:
+  - {symbol: 'd_c, d_s', meaning: 'The distances in CIELAB color and in position'}
+  - {symbol: 'S', meaning: 'The grid step of the starting centers'}
+  - {symbol: 'm', meaning: 'The compactness'}
+steps:
+  - Turn the image into CIELAB and place the centers on a grid.
+  - Give each pixel to the nearest center within 2 S, by color and position.
+  - Move each center to the mean of its pixels, and repeat.
+  - Join cut-off parts to a neighbor, so every superpixel is connected.
+complexity:
+  time: O(I N)
+  memory: O(N)
+  notes: N is the number of pixels and I the number of iterations.
+useCases:
+  - A first step before merging regions or labeling objects.
+  - Simplifying an image into flat patches.
+advantages:
+  - Superpixels of about equal size that follow edges.
+  - Fast, and linear in the number of pixels.
+limitations:
+  - The number of superpixels is only a target.
+  - Thin structures narrower than a superpixel can be lost.
+artifacts:
+  - Grid-like shapes in flat areas, where no edge guides the superpixels.
+references:
+  - kind: paper
+    text: Achanta, R., Shaji, A., Smith, K., Lucchi, A., Fua, P., and Susstrunk, S. SLIC superpixels compared to state-of-the-art superpixel methods. IEEE Transactions on Pattern Analysis and Machine Intelligence 34(11), 2274 to 2282, 2012.
+    doi: 10.1109/TPAMI.2012.120
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.slic.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: slic_filter}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Split the image into small patches of about equal size that follow its edges.
+  howItWorks:
+    - Scatter starting points evenly over the image.
+    - Give each pixel to the nearest point by color and position.
+    - Move each point to the middle of its pixels, and repeat.
+    - The groups of pixels are the superpixels.
+  academic: >-
+    Simple linear iterative clustering: k-means in CIELAB and position with a local search
+    window, after Achanta et al.
+  paramNotes:
+    output: Regions, boundaries, or mean colors.
+    segments: About how many superpixels.
+    compactness: How square they are.
+    iterations: How many rounds of clustering.
+    sigma: How much to blur first.
+  tryThis:
+    - Lower the compactness and watch the superpixels follow the edges more closely.
+  pitfalls:
+    - Expecting objects. Superpixels are pieces of objects, not whole objects.
+  demos: [stage-viewer]
+related: [felzenszwalb, quickshift, kmeans-color]
+docsPage: filters/segmentation/slic.md

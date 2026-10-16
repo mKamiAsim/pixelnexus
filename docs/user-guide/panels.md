@@ -104,14 +104,15 @@ Below the chart are the mean, the standard deviation, the median, the lowest and
 
 ## Features
 
-Feature detectors, such as LoG blob detection, find things in the image instead of changing it. The Features panel lists what the last detector found on the active image.
+Feature detectors, such as LoG blob detection, and segmentation filters, such as SLIC superpixels, find things in the image instead of changing it. The Features panel lists what the last of them found on the active image.
 
 - **The table.** One row per feature, with the strongest first. The x and y columns give the position of each feature in pixels, with the center of the top-left pixel at 0, 0. Some detectors give positions between pixels. Other columns depend on the detector, such as the radius, sigma and the score. The table shows the first 200 rows.
 - **Show on the canvas** draws each feature over the image: a circle of its radius, or a small cross when it has none. The canvas draws at most 2000 features.
 - **Export CSV** saves all rows as a CSV file, with the units in the header.
+- **Regions** from a segmentation are drawn over the image in their label colors, see through, with solid boundaries. Their table gives each region's label, area, centroid and mean brightness. Click a row number to make that region the selection, or click **Select all regions**. From there, the selection works like any other, so you can save it or export it as a mask.
 - **Clear** forgets the features of this image.
 
-Features belong to the image they were found on. After the image changes, they stay in the panel but leave the canvas. With a selection, a detector still looks at the whole image, and only the features whose center lies in the selection are kept. Features never become a History step, since the pixels do not change.
+Features belong to the image they were found on. After the image changes, they stay in the panel but leave the canvas. With a selection, a detector still looks at the whole image, and only the features whose center lies in the selection are kept. Regions always cover the whole image. Features never become a History step, since the pixels do not change.
 
 ## Masks
 

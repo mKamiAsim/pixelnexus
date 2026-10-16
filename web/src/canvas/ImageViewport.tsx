@@ -12,6 +12,7 @@ import {
 
 import { cssColor, ImageRenderer, type RenderMode } from "@/canvas/renderer";
 import { FeatureOverlay } from "@/canvas/FeatureOverlay";
+import { LabelOverlay } from "@/canvas/LabelOverlay";
 import { SelectionOverlay } from "@/canvas/SelectionOverlay";
 import {
   clampPan,
@@ -142,11 +143,12 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
   const shownOutline = outline?.key === gestureKey ? outline.outline : null;
   const shownDraft = draft?.key === gestureKey ? draft : null;
   const shownMask = shownDraft?.mask ?? (doc.selectionEnabled ? doc.selection : null);
-  // Features found on this exact image, when they are switched on.
+  // Features found on this exact image, when they are switched on. Regions draw as a label
+  // map instead of points.
+  const shownLayer = featuresVisible && featureLayer?.source === image ? featureLayer : null;
   const features = useMemo(
-    () =>
-      featuresVisible && featureLayer?.source === image ? featurePoints(featureLayer.table) : null,
-    [featuresVisible, featureLayer, image],
+    () => (shownLayer && !shownLayer.labels ? featurePoints(shownLayer.table) : null),
+    [shownLayer],
   );
   // A filter preview of this exact image, if there is one. It stays visible while a newer one runs.
   const previewShown = useMemo(
@@ -565,6 +567,9 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         onKeyDown={onKeyDown}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {doc.view && shownLayer?.labels ? (
+        <LabelOverlay labels={shownLayer.labels} view={doc.view} />
+      ) : null}
       {doc.view && features ? <FeatureOverlay points={features} view={doc.view} /> : null}
       {doc.view ? (
         <SelectionOverlay

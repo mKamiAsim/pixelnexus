@@ -78,6 +78,17 @@ from pixelnexus_engine.filters.ridges import (
     meijering_filter,
     sato_filter,
 )
+from pixelnexus_engine.filters.segmentation import (
+    felzenszwalb_filter,
+    felzenszwalb_labels,
+    multi_otsu,
+    multi_otsu_labels,
+    multi_otsu_thresholds,
+    quickshift_filter,
+    quickshift_labels,
+    slic_filter,
+    slic_labels,
+)
 from pixelnexus_engine.filters.steerable import band_noise, steerable_pyramid
 from pixelnexus_engine.filters.superresolution import Grid, sr_classical
 from pixelnexus_engine.filters.superresolution import back_project as sr_back_project
@@ -2280,6 +2291,149 @@ def matched_filter_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Segmentation -----------------------------------------------------------------------------------
+
+
+def label_colors(labels: NDArray[np.int64]) -> Color:
+    """Regions in the studio's label colors, golden-angle hues with saturation 0.65 and value
+    0.95, with boundary pixels at half brightness. Label 0 is black."""
+    import colorsys
+
+    count = int(labels.max(initial=0))
+    table = np.zeros((count + 1, 3))
+    for k in range(1, count + 1):
+        table[k] = colorsys.hsv_to_rgb(((k * 137.507764) % 360) / 360, 0.65, 0.95)
+    rgb = table[labels] * 255
+    edge = np.zeros(labels.shape, bool)
+    edge[:, :-1] |= labels[:, :-1] != labels[:, 1:]
+    edge[:-1, :] |= labels[:-1, :] != labels[1:, :]
+    rgb[edge] *= 0.5
+    return to_8bit(rgb)
+
+
+def segmentation_scene() -> Color:
+    """The colored blocks with red disks, with Gaussian noise of sigma 6 on each channel."""
+    noise = np.random.default_rng(9).normal(0, 6, (160, 160, 3))
+    return to_8bit(blocks_scene() * 255 + noise)
+
+
+SEGMENTERS: dict[str, tuple[str, Callable[..., Any], Callable[..., Any]]] = {
+    "slic": ("SLIC", slic_filter, slic_labels),
+    "felzenszwalb": ("Felzenszwalb", felzenszwalb_filter, felzenszwalb_labels),
+    "quickshift": ("Quickshift", quickshift_filter, quickshift_labels),
+}
+SWEEPS: dict[str, tuple[list[str], list[dict[str, Any]]]] = {
+    "slic": (
+        ["Superpixels asked", "Compactness"],
+        [{"segments": n, "compactness": m} for n in (25, 100, 400) for m in (1, 10, 100)],
+    ),
+    "felzenszwalb": (
+        ["Scale", "Smallest region (px)"],
+        [{"scale": k, "minSize": m} for k in (1, 10, 100, 1000) for m in (20, 100)],
+    ),
+    "quickshift": (
+        ["Kernel size", "Longest link"],
+        [{"kernelSize": k, "maxDist": d} for k in (3, 5, 8) for d in (5, 10, 20)],
+    ),
+}
+
+
+def segmenter_docs(out: dict[Path, str], filter_id: str) -> None:
+    name, function, labels_of = SEGMENTERS[filter_id]
+    scene = segmentation_scene()
+    image = rgba_color(scene)
+    labels = labels_of(image, catalog_values(filter_id))
+    figure(
+        out,
+        filter_id,
+        "A test image of 160 x 160 with colored squares of 20 pixels and red disks, with noise of "
+        f"sigma 6. Then the regions of {name} with the defaults in their label colors, with "
+        "boundaries darker, the boundaries in yellow over the image, and each region filled "
+        "with its mean color.",
+        [
+            {"title": "Input", "image": color_picture(scene)},
+            {"title": "Regions", "image": color_picture(label_colors(labels))},
+            {
+                "title": "Boundaries",
+                "image": color_picture(run_color(function, scene, filter_id, output="boundaries")),
+            },
+            {
+                "title": "Mean colors",
+                "image": color_picture(run_color(function, scene, filter_id, output="mean")),
+            },
+        ],
+    )
+    headers, sweep = SWEEPS[filter_id]
+    rows = []
+    for values in sweep:
+        found = labels_of(image, catalog_values(filter_id, **values))
+        count = int(found.max())
+        rows.append([*(f"{v:g}" for v in values.values()), str(count), fix(found.size / count, 0)])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table([*headers, "Regions", "Mean area (px)"], rows)
+        + "\nThe test image of the figure, 160 x 160 pixels, with the other settings at their "
+        "defaults. The colored squares alone would give 64 regions, and the disks cut some of "
+        "them.\n"
+    )
+
+
+def otsu_scene() -> Gray:
+    """A dark ground of 40 with a ramp, gray squares of 120 and bright disks of 210, blurred
+    with sigma 1, with noise of sigma 8."""
+    gray = np.full((160, 160), 40.0) + np.linspace(0, 20, 160)[None, :]
+    gray[20:70, 90:150] = 120
+    gray[100:150, 10:70] = 120
+    gray[disks(160, 160) > 128] = 210
+    gray = ndimage.gaussian_filter(gray, 1)
+    return noisy(gray, 8, seed=2)
+
+
+def multi_otsu_docs(out: dict[Path, str]) -> None:
+    filter_id = "multi-otsu"
+    scene = otsu_scene()
+    labels = multi_otsu_labels(rgba(scene), catalog_values(filter_id))
+    figure(
+        out,
+        filter_id,
+        "A test image of 160 x 160 with a dark ground that brightens to the right, gray squares "
+        "and bright disks, slightly blurred, with noise of sigma 8. Then the 3 classes in their "
+        "label colors, as gray levels, and as boundaries in yellow over the image.",
+        [
+            {"title": "Input", "image": picture(scene)},
+            {"title": "Classes", "image": color_picture(label_colors(labels))},
+            {
+                "title": "Gray levels",
+                "image": picture(run(multi_otsu, scene, filter_id, output="levels")),
+            },
+            {
+                "title": "Boundaries",
+                "image": color_picture(
+                    run_color(multi_otsu, np.dstack([scene] * 3), filter_id, output="boundaries")
+                ),
+            },
+        ],
+    )
+    rows = []
+    for classes in (2, 3, 4, 5):
+        thresholds = multi_otsu_thresholds(rgba(scene), classes)
+        found = multi_otsu_labels(rgba(scene), catalog_values(filter_id, classes=classes))
+        shares = np.bincount(found.ravel(), minlength=classes + 1)[1:] / found.size
+        rows.append(
+            [
+                str(classes),
+                ", ".join(str(int(t)) for t in thresholds),
+                ", ".join(fix(float(v), 2) for v in shares),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Classes", "Thresholds", "Share of pixels per class"], rows)
+        + "\nThe test image of the figure. The image was made with three levels, about 40 to "
+        "60, 120 and 210, before the blur and the noise.\n"
+    )
+
+
 def filter_id_title(filter_id: str) -> str:
     return {"deblock": "Deblocked", "dering": "Deringed", "jpeg-cleanup": "Cleaned"}[filter_id]
 
@@ -2322,6 +2476,9 @@ def build() -> dict[Path, str]:
     hough_circles_docs(out)
     hough_linking_docs(out)
     matched_filter_docs(out)
+    for filter_id in SEGMENTERS:
+        segmenter_docs(out, filter_id)
+    multi_otsu_docs(out)
     return out
 
 

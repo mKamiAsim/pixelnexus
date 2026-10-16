@@ -389,6 +389,10 @@ nav:
           - Region growing: filters/segmentation/region-growing.md
           - K-means color segmentation: filters/segmentation/kmeans-color.md
           - Connected-component labeling: filters/segmentation/ccl.md
+          - Multi-level Otsu: filters/segmentation/multi-otsu.md
+          - SLIC superpixels: filters/segmentation/slic.md
+          - Felzenszwalb-Huttenlocher segmentation: filters/segmentation/felzenszwalb.md
+          - Quickshift: filters/segmentation/quickshift.md
       - Utility:
           - Add Gaussian noise: filters/utility/noise-gaussian.md
           - Add periodic noise: filters/utility/noise-periodic.md

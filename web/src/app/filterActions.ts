@@ -170,7 +170,8 @@ export async function applySelected(): Promise<void> {
   if (resizes && !fitsLimits(source, Number(values.scale))) return;
   // Feature detectors and tables look at the whole image. A selection only chooses which
   // features to keep.
-  const finds = entry.output === "features" || entry.output === "table";
+  const finds =
+    entry.output === "features" || entry.output === "table" || entry.output === "labels";
   const scope = resizes || template ? "whole" : selectionScope(entry, doc);
   const mask = scopeMask(selection, scope);
   // The selection the filter reads: the template itself, or the area it changes.
@@ -228,13 +229,26 @@ export async function applySelected(): Promise<void> {
     }
     const ms = Math.round(result.timing.totalMs);
     if (result.features) {
-      const table = rowsInMask(result.features, mask);
-      useFeatures.getState().set(doc.id, { filterId: entry.id, label, source, table });
+      // Regions cover the whole image, so their table stays whole too.
+      const labels = result.labels;
+      const table = labels ? result.features : rowsInMask(result.features, mask);
+      useFeatures
+        .getState()
+        .set(doc.id, { filterId: entry.id, label, source, table, ...(labels ? { labels } : {}) });
       useFilters
         .getState()
         .setLastRun(entry.id, { kind: "apply", ...result.timing, at: Date.now() });
       showPanel("features");
-      if (hasPoints(table)) {
+      if (labels) {
+        notify(
+          "success",
+          `${entry.name} found ${table.summary}`,
+          [
+            `${ms} ms. The image does not change. The Features panel lists them, and can select them.`,
+            ...(mask ? ["The regions cover the whole image, not only the selection."] : []),
+          ].join(" "),
+        );
+      } else if (hasPoints(table)) {
         notify(
           "success",
           `${entry.name} found ${table.summary}`,

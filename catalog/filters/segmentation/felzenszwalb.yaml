@@ -2,9 +2,136 @@ id: felzenszwalb
 name: Felzenszwalb-Huttenlocher segmentation
 aliases:
 - Felzenszwalb graph-based segmentation
+- Efficient graph-based segmentation
 family: segmentation
+tags: [purpose:segmentation]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Felzenszwalb graph-based segmentation.
+
+summary: Splits the image into regions by merging neighboring pixels along a graph, after Felzenszwalb and Huttenlocher. Two regions merge when the step between them is no larger than the variation inside them, so regions grow large in smooth areas and stay small in busy ones.
+purpose: Find regions of any shape and size that differ from their neighbors more than within themselves.
+classification: {linearity: nonlinear, domain: spatial, operation: minimum spanning tree merging}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: felzenszwalb_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the RGB image, with the color distance between neighboring pixels.
+  Regions go to the Features panel and are drawn over the image. The boundaries and mean
+  colors are color images with the alpha of the image.
+boundary: Regions end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.felzenszwalb.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Regions}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each region}
+    description: The regions as a label map, drawn over the image and listed in the Features panel. Or the boundaries in yellow over the image, or each region filled with its mean color.
+    effect: Regions can become the selection from the Features panel. The other outputs change the image.
+  - key: scale
+    label: Scale
+    type: number
+    min: 0.1
+    max: 5000
+    step: 0.1
+    default: 1
+    description: How strongly small regions prefer to merge. scikit-image uses 1.
+    effect: Higher values give fewer, larger regions.
+  - key: sigma
+    label: Smoothing
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 0.8
+    unit: px
+    description: The sigma of a Gaussian blur before the graph is built. scikit-image uses 0.8.
+    effect: A blur removes noise that would break regions apart.
+  - key: minSize
+    label: Smallest region
+    type: integer
+    min: 1
+    max: 10000
+    step: 1
+    default: 20
+    unit: px
+    description: Regions smaller than this join a neighbor at the end. scikit-image uses 20.
+    effect: Higher values remove small specks.
+formula: |
+  w(p, q) \le \min\Big(\operatorname{Int}(C_1) + \frac{k}{\lvert C_1 \rvert},\ \operatorname{Int}(C_2) + \frac{k}{\lvert C_2 \rvert}\Big),
+  \qquad
+  k = {{scale}}
+formulaExplanation: >-
+  Each pixel is a node, linked to its 8 neighbors by an edge. Its weight w is the color
+  distance after the blur. The edges are taken from the lightest. An edge between two regions
+  C_1 and C_2 joins them when its weight passes a test for both regions. It must be no larger
+  than the internal difference Int of the region plus k over its size. Int(C) is the heaviest
+  edge of the minimum spanning tree of C, the largest step needed to cross it. The term
+  k / |C| lets small regions merge across larger steps. Large regions need a clear boundary to
+  stay apart. Here scikit-image divides the scale by 255, so k works as on pixel levels from 0
+  to 255.
+symbols:
+  - {symbol: 'w(p, q)', meaning: 'The color distance between neighbors p and q'}
+  - {symbol: '\operatorname{Int}(C)', meaning: 'The heaviest edge of the minimum spanning tree of region C'}
+  - {symbol: 'k', meaning: 'The scale'}
+steps:
+  - Blur the image and link each pixel to its 8 neighbors by color distance.
+  - Sort the edges from the lightest.
+  - Merge the two regions of each edge when it passes the test.
+  - Join regions smaller than the smallest size to a neighbor.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. Sorting the edges takes the most time.
+useCases:
+  - Over-segmenting an image into regions of any shape before grouping them.
+advantages:
+  - Fast, and adapts region size to the image.
+  - Regions follow edges of any shape.
+limitations:
+  - The scale does not set the number or size of regions directly.
+  - Gradual ramps can join very different colors in one region.
+artifacts:
+  - Thin regions along soft edges.
+references:
+  - kind: paper
+    text: Felzenszwalb, P. F., and Huttenlocher, D. P. Efficient graph-based image segmentation. International Journal of Computer Vision 59(2), 167 to 181, 2004.
+    doi: 10.1023/B:VISI.0000022288.19776.77
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.felzenszwalb.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: felzenszwalb_filter}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Merge neighboring pixels into regions as long as the step between them is small compared to the variation inside.
+  howItWorks:
+    - Link every pixel to its neighbors, weighted by how different they are.
+    - Go through the links from the most similar pair.
+    - Merge two regions when the link between them is no bigger than the steps inside them.
+    - Small regions merge readily, large ones need a clear border to stay apart.
+  academic: >-
+    Greedy merging along the minimum spanning tree with an adaptive threshold k / |C|, after
+    Felzenszwalb and Huttenlocher.
+  paramNotes:
+    output: Regions, boundaries, or mean colors.
+    scale: How large regions get.
+    sigma: How much to blur first.
+    minSize: The smallest region kept.
+  tryThis:
+    - Raise the scale step by step and watch regions merge.
+  pitfalls:
+    - A scale of 1 on a detailed image. It gives very many small regions.
+  demos: [stage-viewer]
+related: [slic, quickshift, watershed]
+docsPage: filters/segmentation/felzenszwalb.md

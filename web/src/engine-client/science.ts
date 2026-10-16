@@ -9,6 +9,7 @@
  * such as an enlargement, comes back whole. Feature detectors send a table as JSON, and the
  * image stays as it was.
  */
+import { decodeLabels, isLabelResult, paintLabels } from "@/core/features/labels";
 import { isFeatureTable } from "@/core/features/table";
 import { fullRect } from "@/core/filters/run";
 import type { Params, Representation } from "@/core/filters/types";
@@ -126,15 +127,30 @@ export class ScienceEngine implements EngineClient {
       const response = await this.call(`/jobs/${id}/result`);
       if (response.headers.get("content-type")?.includes("application/json")) {
         const body: unknown = await response.json();
-        if (!isFeatureTable(body))
-          throw new EngineError("The engine sent a result of unknown kind.");
         const region = job.region ?? fullRect(job.image);
         const totalMs = performance.now() - started;
+        const timing = { totalMs, computeMs: totalMs, tiles: 1, workers: 1 };
+        if (isLabelResult(body)) {
+          const labels = decodeLabels(body);
+          if (labels.width !== job.image.width || labels.height !== job.image.height)
+            throw new EngineError("The engine sent a label map of another size.");
+          const painted = paintLabels(labels);
+          return {
+            region,
+            image: cropImage(painted, region),
+            warnings: [],
+            timing,
+            features: body.table,
+            labels,
+          };
+        }
+        if (!isFeatureTable(body))
+          throw new EngineError("The engine sent a result of unknown kind.");
         return {
           region,
           image: cropImage(job.image, region),
           warnings: [],
-          timing: { totalMs, computeMs: totalMs, tiles: 1, workers: 1 },
+          timing,
           features: body,
         };
       }

@@ -1,8 +1,117 @@
 id: multi-otsu
 name: Multi-level Otsu
+aliases: [Multi-Otsu thresholding, Multilevel Otsu thresholding]
 family: segmentation
+tags: [purpose:segmentation, purpose:threshold]
 tier: advanced
 engine: science
 phase: 6e
-status: planned
+status: implemented-tested
 planNotes: Extra.
+
+summary: Splits the gray levels into several classes with the thresholds that make the classes most different, extending Otsu's method to more than two classes. Liao, Chen and Chung gave a fast way to find them.
+purpose: Separate an image into dark, middle and bright parts, or more, without choosing the thresholds by hand.
+classification: {linearity: nonlinear, domain: statistical, operation: multilevel thresholding}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: multi_otsu_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit luma with the BT.709 weights. Classes go to the Features panel
+  and are drawn over the image. The gray levels output gives a gray image, the boundaries and
+  mean colors give color images, all with the alpha of the image.
+boundary: Pixelwise, so no border handling is needed.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.filters.threshold_multiotsu.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Classes}
+      - {value: levels, label: Gray level for each class}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each class}
+    description: The classes as a label map, drawn over the image and listed in the Features panel. Or evenly spaced gray levels from black to white, the class boundaries in yellow over the image, or each class filled with its mean color.
+    effect: Classes can become the selection from the Features panel. The other outputs change the image.
+  - key: classes
+    label: Classes
+    type: integer
+    min: 2
+    max: 5
+    step: 1
+    default: 3
+    description: The number of classes, one more than the number of thresholds. scikit-image uses 3.
+    effect: More classes split the gray levels more finely and take much longer to find.
+formula: |
+  (t_1, \dots, t_{M-1}) = \arg\max \sum_{k=1}^{M} \omega_k (\mu_k - \mu)^2,
+  \qquad
+  M = {{classes}}
+formulaExplanation: >-
+  The histogram of the luma is split by M - 1 thresholds into M classes. Class k has the share
+  omega_k of the pixels and the mean gray level mu_k, and mu is the mean of the whole image.
+  The thresholds are those that make the variance between the classes largest, as Otsu did for
+  two classes. Liao and coworkers showed how to compute this quickly with lookup tables, but
+  the search still tries every set of thresholds, so its cost grows fast with M. A pixel
+  belongs to class c when its gray level is above exactly c thresholds. A level equal to a
+  threshold belongs to the class below, as in Otsu's method. The classes are not split into
+  connected parts, so one class can have many separate pieces.
+symbols:
+  - {symbol: 't_j', meaning: 'The thresholds'}
+  - {symbol: '\omega_k, \mu_k', meaning: 'The share and mean gray level of class k'}
+  - {symbol: 'M', meaning: 'The number of classes'}
+steps:
+  - Take the 8-bit luma and its histogram of 256 bins.
+  - Find the M - 1 thresholds with the largest variance between classes.
+  - Give each pixel the class of its gray level.
+complexity:
+  time: O(N + L^(M - 1))
+  memory: O(N + L^2)
+  notes: N is the number of pixels and L = 256 the number of gray levels. The search over thresholds dominates for more classes.
+useCases:
+  - Separating background, tissue and bright structures in medical images.
+  - Splitting a document into paper, text and pictures.
+advantages:
+  - No thresholds to choose by hand.
+  - Exact for the variance criterion.
+limitations:
+  - Only the gray levels count, not where pixels are.
+  - The search becomes slow beyond 4 or 5 classes.
+artifacts:
+  - Speckle where noise crosses a threshold.
+references:
+  - kind: paper
+    text: Otsu, N. A threshold selection method from gray-level histograms. IEEE Transactions on Systems, Man, and Cybernetics 9(1), 62 to 66, 1979.
+    doi: 10.1109/TSMC.1979.4310076
+  - kind: paper
+    text: Liao, P.-S., Chen, T.-S., and Chung, P.-C. A fast algorithm for multilevel thresholding. Journal of Information Science and Engineering 17(5), 713 to 727, 2001.
+    doi: 10.6688/JISE.2001.17.5.1
+  - kind: library
+    text: scikit-image documentation, skimage.filters.threshold_multiotsu.
+implementation: {path: engine/src/pixelnexus_engine/filters/segmentation.py, symbol: multi_otsu}
+tests: [engine/tests/test_segmentation.py]
+learn:
+  oneSentence: Pick several gray levels that split the image into the most distinct dark-to-bright classes.
+  howItWorks:
+    - Count how many pixels have each gray level.
+    - Try every way to cut the gray levels into the chosen number of classes.
+    - Keep the cuts that make the classes most different from each other.
+    - Give each pixel its class.
+  academic: >-
+    Otsu's between-class variance criterion for M classes, maximized by exhaustive search with
+    the lookup tables of Liao et al.
+  paramNotes:
+    output: Classes, gray levels, boundaries, or mean colors.
+    classes: How many classes.
+  tryThis:
+    - Apply it with 3 classes to an image with a dark background, gray objects and bright details.
+  pitfalls:
+    - Noisy images. Noise near a threshold flips pixels between classes.
+  demos: [stage-viewer]
+related: [otsu, kmeans-color, threshold-global]
+docsPage: filters/segmentation/multi-otsu.md

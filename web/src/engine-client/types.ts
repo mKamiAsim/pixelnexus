@@ -4,6 +4,7 @@
  */
 import type { Mask } from "@/core/composite/compose";
 import type { Rect } from "@/core/filters/run";
+import type { LabelMap } from "@/core/features/labels";
 import type { FeatureTable } from "@/core/features/table";
 import type { Params } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
@@ -56,6 +57,12 @@ export interface JobResult {
    * is then the unchanged region, since the pixels do not change.
    */
   readonly features?: FeatureTable;
+  /**
+   * For segmentation filters that return regions (catalog output "labels"): the label map of
+   * the whole image. `features` then holds the table of regions, and the image shows the
+   * regions in their label colors.
+   */
+  readonly labels?: LabelMap;
 }
 
 export interface EngineClient {

@@ -162,6 +162,34 @@ const FAKE_BLOBS = {
   summary: "2 blobs",
 };
 
+/** A label map of the given size: label 1 on the left half, label 2 on the right half. */
+function fakeRegions(width: number, height: number) {
+  const labels = Buffer.alloc(width * height);
+  for (let i = 0; i < labels.length; i++) labels[i] = i % width < width / 2 ? 1 : 2;
+  return {
+    kind: "labels",
+    width,
+    height,
+    bits: 8,
+    data: labels.toString("base64"),
+    table: {
+      kind: "features",
+      columns: [
+        { key: "label", label: "Label", unit: "" },
+        { key: "area", label: "Area", unit: "px" },
+        { key: "x", label: "x", unit: "px" },
+        { key: "y", label: "y", unit: "px" },
+        { key: "mean", label: "Mean", unit: "levels" },
+      ],
+      rows: [
+        [1, (width * height) / 2, width / 4 - 0.5, height / 2 - 0.5, 60],
+        [2, (width * height) / 2, (3 * width) / 4 - 0.5, height / 2 - 0.5, 80],
+      ],
+      summary: "2 superpixels",
+    },
+  };
+}
+
 /** Raw RGBA with the color channels inverted and alpha kept. */
 function inverted(body: Buffer): Buffer {
   const out = Buffer.from(body);
@@ -224,6 +252,9 @@ async function fakeEngine(page: Page) {
       if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
       const image = images.get(job?.image ?? "");
       if (!image) return json({ detail: "There is no job with this id." }, 404);
+      if (job?.filter === "slic") {
+        return json(fakeRegions(Number(image.width), Number(image.height)));
+      }
       if (job?.filter === "matched-filter") {
         return route.fulfill({
           headers: { ...CORS, "X-Width": image.width, "X-Height": image.height },
@@ -391,6 +422,27 @@ test("super-resolution replaces the image with the larger engine result", async 
   await expect(page.getByRole("img", { name: "Estimate after iteration 10" })).toBeVisible();
   await page.keyboard.press("Control+z");
   await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
+});
+
+test("a segmentation draws its regions and turns one into the selection", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "SLIC", "SLIC superpixels");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(announcer(page)).toContainText("SLIC superpixels found 2 superpixels");
+  await expect(page.getByTestId("label-overlay")).toBeVisible();
+  const table = page.getByRole("table", { name: "Features" });
+  await expect(table).toContainText("131072");
+  await page.getByRole("button", { name: "Select region 2" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText(
+    "Selection: 256 x 512 px at x 256, y 0",
+  );
+  await page.getByRole("button", { name: "Select all regions" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: the whole image");
+  await page.getByRole("switch", { name: "Show on the canvas" }).click();
+  await expect(page.getByTestId("label-overlay")).toHaveCount(0);
 });
 
 test("a blob detector lists its features, draws them and exports CSV", async ({ page }) => {
