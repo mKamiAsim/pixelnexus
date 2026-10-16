@@ -19,7 +19,7 @@ Choose **Edit > AI providers** to pick a provider for each task. The tasks and t
 | Remote PixelNexus engine | An engine you run on another machine | Once per session for each host |
 | External AI service | A service you set up with a base URL and a key | Every time |
 
-The first two kinds keep the image on your device. The on-device models arrive in Phase 7d. Until then, a task set to one says that the kind is not available yet.
+The first two kinds keep the image on your device.
 
 ## Local engine models
 
@@ -28,6 +28,14 @@ The first two kinds keep the image on your device. The on-device models arrive i
 Each model downloads only when you ask, in the Properties panel of a filter that uses it, or with `uv run pixelnexus-engine models download <id>`. A task whose model is not downloaded says which one to download. EfficientSAM has no negative clicks, so a request with them is refused, not changed. SAM 2.1 takes them.
 
 The engine runs models with ONNX Runtime. With the `cuda` extra, it uses an NVIDIA GPU when a test model really runs on it, and the CPU otherwise. The status bar shows GPU or CPU next to the engine light.
+
+## On-device models
+
+**On-device models** is also always in the list. It runs the task inside the browser with ONNX Runtime Web, on the GPU through WebGPU where the browser offers it, and on the CPU otherwise. It works the same in the Pages studio. Nothing is sent and nothing is asked.
+
+Each model first has to be downloaded to this browser. **Edit > AI providers** lists the models that run in a browser, with their size and license. A model downloads only when you click its Download button. Every file is checked against its SHA-256 in the catalog and kept in the browser's storage, so it loads without the network next time. Remove deletes it again. The runtime itself, about 27 MB, loads only the first time a model runs.
+
+Subject selection uses U2-Net small, click and box selection EfficientSAM tiny, and super-resolution Swin2SR at 2x. EfficientSAM takes no negative clicks. A task whose model is not downloaded says which model to download.
 
 ## Adding a provider
 

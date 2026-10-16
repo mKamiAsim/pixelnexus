@@ -3,7 +3,7 @@
  * with the provider for each task, the consent dialog shown before a request leaves the device,
  * and the session request log.
  */
-import { useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -11,12 +11,20 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { catalog } from "@/catalog";
 import { checkEndpoint } from "@/core/ai/endpoint";
+import {
+  downloadModel,
+  isCached,
+  removeModel,
+  runsOnDevice,
+  totalMB,
+} from "@/core/ai/ondevice/store";
 import { maskKey } from "@/core/ai/secrets";
 import type { ProviderKindId } from "@/core/ai/types";
 import { ENGINE_PROVIDER, ON_DEVICE_PROVIDER, requestLog, secrets, useAi } from "@/state/ai";
 import { useUi } from "@/state/ui";
 
 import { classicalName } from "./aiActions";
+import { openModelCache } from "./onDeviceAdapter";
 import { formatBytes } from "./format";
 
 const FIELD =
@@ -124,9 +132,106 @@ export function AiProvidersDialog() {
             </ul>
           )}
         </section>
+        <OnDeviceModels />
         <AddProvider onAdded={() => setVersion((v) => v + 1)} />
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Models that run in this browser. Each one shows its size and license, and downloads only when
+ * you click Download. Files are checked against their SHA-256 and kept in this browser.
+ */
+function OnDeviceModels() {
+  const models = catalog.models.filter(runsOnDevice);
+  const [state, setState] = useState<Record<string, "ready" | "missing" | number | string>>({});
+  const available = typeof caches !== "undefined";
+
+  useEffect(() => {
+    if (!available) return;
+    let current = true;
+    void openModelCache().then(async (cache) => {
+      const entries = await Promise.all(
+        models.map(async (m) => [m.id, (await isCached(m, cache)) ? "ready" : "missing"] as const),
+      );
+      if (current) setState(Object.fromEntries(entries));
+    });
+    return () => {
+      current = false;
+    };
+    // The catalog does not change while the dialog is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [available]);
+
+  const set = (id: string, value: "ready" | "missing" | number | string) =>
+    setState((old) => ({ ...old, [id]: value }));
+
+  return (
+    <section aria-labelledby="ai-device" className="flex flex-col gap-2">
+      <h3 id="ai-device" className="text-xs font-semibold text-text-secondary">
+        On-device models
+      </h3>
+      {!available ? (
+        <p className="text-xs text-text-muted">
+          This browser cannot keep models. Open the studio over HTTPS or on localhost.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {models.map((m) => {
+            const status = state[m.id];
+            return (
+              <li key={m.id} className="flex items-start justify-between gap-3 text-xs">
+                <span className="min-w-0">
+                  <span className="font-medium text-text">{m.name}</span>{" "}
+                  <span className="text-text-muted">
+                    {totalMB(m)} MB. {m.license}
+                    {m.nonCommercial ? " Non-commercial use only." : ""}
+                  </span>
+                  {typeof status === "string" && status !== "ready" && status !== "missing" ? (
+                    <span role="alert" className="block text-danger">
+                      {status}
+                    </span>
+                  ) : null}
+                </span>
+                {status === "ready" ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      void openModelCache()
+                        .then((cache) => removeModel(m, cache))
+                        .then(() => set(m.id, "missing"))
+                    }
+                  >
+                    Remove {m.name}
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={typeof status === "number"}
+                    onClick={() => {
+                      set(m.id, 0);
+                      void openModelCache()
+                        .then((cache) => downloadModel(m, cache, (share) => set(m.id, share)))
+                        .then(() => set(m.id, "ready"))
+                        .catch((error: unknown) =>
+                          set(
+                            m.id,
+                            error instanceof Error ? error.message : "The download failed.",
+                          ),
+                        );
+                    }}
+                  >
+                    {typeof status === "number"
+                      ? `Downloading ${Math.round(status * 100)}%`
+                      : `Download ${m.name}`}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
