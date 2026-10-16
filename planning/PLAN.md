@@ -612,7 +612,7 @@ Exit per sub-phase: every entry meets the definition of done. Catalog statuses a
   2. Plug-and-play: pnp-admm and red, with a choice of denoisers that already exist in the engine or scikit-image. Done on 2026-10-15.
   3. Artifact removal on one image: dehaze, deband, descreen, deblock, dering and jpeg-cleanup. Done on 2026-10-15.
   4. Inpainting and super-resolution, which need two new engine features: the selection sent with the job as a mask, and results whose size differs from the input. Done on 2026-10-15.
-- [ ] **6d** Features and texture: overlays for keypoints with scale, orientation and score. Score tables and CSV export. Hough accumulators. HOG view.
+- [x] **6d** Features and texture: overlays for keypoints with scale, orientation and score. Score tables and CSV export. Hough accumulators. HOG view.
   Order of work, in five parts:
   1. Ridge and vessel filters with scikit-image, which return images: hessian, frangi, sato, meijering. Done on 2026-10-15.
   2. Feature results in the studio: the engine returns points with scale, orientation and score as a JSON table. The studio draws them as an overlay on the canvas and lists them in a table with CSV export. First users: blob-log, blob-dog and blob-doh. Done on 2026-10-15.
@@ -623,7 +623,7 @@ Exit per sub-phase: every entry meets the definition of done. Catalog statuses a
   Order of work, in four parts:
   1. Label results in the studio: the engine returns a label map with a table of regions (area, centroid, mean brightness), and the region count as the object count. The studio draws the regions over the image, lists them in the Features panel, and turns one region or all of them into the selection. The selection exports as a mask as before. First users: slic, felzenszwalb, quickshift and multi-otsu. Done on 2026-10-16.
   2. Watershed and region methods: watershed (markers from h-minima), marker-watershed (markers from the selection), mean-shift and split-merge. Done on 2026-10-16.
-  3. Contours: chan-vese, level-set (morphological geodesic active contour) and active-contour (a snake from the selection boundary). Their results become selections.
+  3. Contours: chan-vese, level-set (morphological geodesic active contour) and active-contour (a snake from the selection boundary). Their results become selections. Done on 2026-10-16.
   4. Interactive segmentation: graph-cut, grabcut and random-walker with seeds, then object-select-classical (the box around the selection to GrabCut) and click-select-classical (positive and negative seed clicks to the random walker), which need a seed tool.
 - [ ] **6f** Advanced nonlinear and adaptive methods, as listed in CATALOG.md.
 
