@@ -131,6 +131,7 @@ from pixelnexus_engine.filters.superresolution import back_project as sr_back_pr
 from pixelnexus_engine.filters.surf import surf_inspired
 from pixelnexus_engine.filters.susan import susan_corner
 from pixelnexus_engine.filters.texture import glcm, hog_filter, hog_view, lbp, ltp, ltp_codes
+from pixelnexus_engine.filters.tone import tone_mapping
 from pixelnexus_engine.filters.tree_morphology import (
     area_closing_filter,
     area_opening_filter,
@@ -3444,6 +3445,53 @@ def deriche_docs(out: dict[Path, str]) -> None:
     )
 
 
+# Tone mapping -----------------------------------------------------------------------------------
+
+
+def contrast_scene() -> Gray:
+    """A dark left half of 20 and a bright right half of 235, each with three squares that differ
+    by 10 levels, and a ramp between them."""
+    gray = np.full((100, 160), 20, np.uint8)
+    gray[:, 60:100] = np.linspace(20, 235, 40).round().astype(np.uint8)
+    gray[:, 100:] = 235
+    for top in (10, 40, 70):
+        gray[top : top + 20, 20:40] = 30
+        gray[top : top + 20, 120:140] = 245
+    return gray
+
+
+def tone_docs(out: dict[Path, str]) -> None:
+    filter_id = "tone-mapping"
+    scene = contrast_scene()
+    operators = (("reinhard", "Reinhard"), ("drago", "Drago"), ("mantiuk", "Mantiuk"))
+    results = {key: run(tone_mapping, scene, filter_id, operator=key) for key, _ in operators}
+    figure(
+        out,
+        filter_id,
+        "A dark half and a bright half, each with squares 10 levels apart, and a ramp between. "
+        "Then the Reinhard, Drago and Mantiuk operators with their defaults.",
+        [{"title": "Input", "image": picture(scene)}]
+        + [{"title": name, "image": picture(results[key])} for key, name in operators],
+    )
+    rows = [["Input", "20", "10", "235", "10"]]
+    for key, name in operators:
+        result = results[key].astype(int)
+        dark, dark_square = result[45, 10], result[45, 30]
+        bright, bright_square = result[45, 150], result[45, 130]
+        rows.append(
+            [name, str(dark), str(dark_square - dark), str(bright), str(bright_square - bright)]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(
+            ["Operator", "Dark ground", "Dark square step", "Bright ground", "Bright square step"],
+            rows,
+        )
+        + "\nThe image of the figure. The dark ground is 20 and its squares 30. The bright "
+        "ground is 235 and its squares 245. A step is the square minus its ground.\n"
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -3569,6 +3617,7 @@ def build() -> dict[Path, str]:
     for filter_id in TREE_FILTERS:
         tree_docs(out, filter_id)
     deriche_docs(out)
+    tone_docs(out)
     structured_edge_docs(out)
     return out
 

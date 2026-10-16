@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="285.48pt" viewBox="0 0 360 285.48" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 285.48 
+L 360 285.48 
+L 360 0 
+L 0 0 
+L 0 285.48 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#p7963fbbd77)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAABdUlEQVR4nO3csWrDMBRAUbXYCnjO/39m1nYrnRoKhivsc5ZASJTAu7zN+ng+n1/jZuacY9/3se/7mHOOOefYtm08Ho+f9/56/f29/37+3e/czWf9B7g3AZISICkBkhIgKQGSEiApAZISIKnt7AOP4zj1vNfrdep5d7P6PGxAUgIkJUBSAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUqc/E+IZjrWsPg8bkJQASQmQlABJCZCUAEkJkJQASQmQlNuxLm71ediApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApNyOdXGrz8MGJCVAUgIkJUBSAiQlQFICJCVAUgIk5Xasi1t9HjYgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKbdjXdzq87ABSQmQlABJCZCUAEkJkJQASQmQlABJfQP/kSfgJrjtNQAAAABJRU5ErkJggg==" id="imageba52b5cbd9" width="160" height="100" transform="matrix(1.0875 0 0 1.0875 3.6 20.971983)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="90.6" y="16.971983" transform="rotate(-0 90.6 16.971983)">Input</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#pf9bedeceb8)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAABrklEQVR4nO3cQWrjQBBA0ZbUlpOQhS/oA+REPq3J7MIMDF4JfrDfAyFpUyD4aNe1jDG+x4u5Xq/jcrmMz8/P8fHxMd7f38e+7+Pt7W2cTqdxPp/HnHPs+z62bRv7vo8555hzjnVdx+l0Gtu2jTnn2Lbtn2td1//el2X5eV/XdSzL8vP89/ureb0v5lcRICkBkhIgKQGSEiApAZISICkBkppHD/z6+jp03u12O3Teq9m27dB59/v90Hn+gKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQOPxPiDMfvcvQZjqP5A5ISICkBkhIgKQGSEiApAZISICkBkrId68nZjgUPCJCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJ2Y715GzHggcESEqApARISoCkBEhKgKQESEqApGzHenK2Y8EDAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUgIkJUBStmM9Odux4AEBkhIgKQGSEiApAZISICkBkhIgqT9+5ST7r16QHgAAAABJRU5ErkJggg==" id="image14d60173af" width="160" height="100" transform="matrix(1.0875 0 0 1.0875 182.4 20.971983)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="269.4" y="16.971983" transform="rotate(-0 269.4 16.971983)">Reinhard</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#pc74c967f2c)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAABpklEQVR4nO3cQariQBRA0YoxUQKOxC25hr9EV+nvUf9RY09C30bPgVBkUoRwqVm9aYzxPT7M/X4ft9ttXK/XcblcxuVyGdu2jW3bxul0GufzeazrOtZ1HcuyjGVZxvF4/FnneR6Hw2EsyzLmef55/73+6Zmm6a/rNE31r/nnDvUH8NkESEqApARISoCkBEhKgKQESEqApI57b/j19bXrfo/HY9f9Ps3hsO8Z83w+d93PCUhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhq9zsh7nD8X/a+w7E3JyApAZISICkBkhIgKQGSEiApAZISICnTsd6c6VjwggBJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlOlYb850LHhBgKQESEqApARISoCkBEhKgKQESMp0rDdnOha8IEBSAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUgIkJUBSAiQlQFICJCVAUgIkZTrWmzMdC14QICkBkhIgKQGSEiApAZISICkBkvoFYDEloGRjnJ4AAAAASUVORK5CYII=" id="image36285abdf0" width="160" height="100" transform="matrix(1.0875 0 0 1.0875 3.6 158.547824)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="90.6" y="154.547824" transform="rotate(-0 90.6 154.547824)">Drago</text>
+   </g>
+  </g>
+  <g id="axes_4">
+   <g clip-path="url(#p84d4adfe6b)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAAE10lEQVR4nO2dSW7jMBAAaWqJD0Felnve6DcGsOckg+E0N4mLSFUBAyuSJRvjQnMRu3XTWr/Uxfj+/lZfX1/q8/NT3e93db/f1bqu6uPjQ63rqtZ1VfM8v1/neVbLsqhlWdQ0Te/X7Zi9PU2T0lq/32fu296jtf7v2DRNrf9rqqNbfwG4NqcS8PV6/XmF8SkqYIpQr9dL3W639ytcg6ICbiJtYrlAvutSrQn2iWWKCteimoBSBKTPB1UjoC0azS5UHQXbEpp9P7gmVUbB5t+bcNv28/n0ngNjM6eeEGoyf35+Dn0hm8fjkfV6V2NZlqzX+/39zXq9pAjoko+oBXtJEtDVX6MfB3tJ7gMiIeQkWUBfH5DpFEhFK6Xeo9IYiHSQk1mp9MhFpINcnGo5FlwPBISmICA0BQGhKQgITUFAaMohAVtMxzAFNBaHBGwxIc0k+FjsEpAoBLnYJSBRCHLRxSAE4celCwFZADEu+na7RffpzPfV7gfS7xyTd06I+QP7FpzaSUX2+305HNJawiNpmUTGMLlzOHIjNsFbVLQrFpgSuqJhTAWE0L7YY6a89neGPgj2Ae0f1LcaWpLCd04IVyQ2t0ls75tiE9F2kx1DSCRbOOTrn+S8YBNJMilCxeLqI7qOI1//nHIaJiVHhUFI34gCbgKYIkiVrKRBQOi4vW3iOt/8R22ZsZiVCkcRu4Ck1NyGzrH3bedL27HX3NPPhHOhU5q6kDB2H03qs7kGETHJ7iGhoT9214axm8KYYpMxEtvvt69v/o18/bOrOpZSyhm5SlbHssVFvjBDVccykaqd1iKmDwp9kGUiulVTSATsnyw5ITVFYCJ6LA4tyW9xK6x11IW87F6SL0WiWjIi3zgcGoRIdyZKwwqYsdgtoH0XoqQQ0npEIuAYZImAJSWUPgP5xuHwNExpMcy7Icg3HqdcjgXX4fA8YI0m2P4sGIesg5BSTXDNAQ/UJesgpBRSPxAJxyBLBDT3lYbByFjsvhUnTUDXkoIIOA6HqmO1iESkZI5FtuVYtah96w/Kkm05VotoRATsn0ODEJMWawKJgP2TnBNi52PY/cDH4+FM3UxNSkr9bPifLqtjufCV4IhZE5ha28WVyG7nBEO/6NgfMEYeVx7vRigx3caVZ2yfj4T9Ij6uVcp4k+5C+H586RzpfPMzQ02qLzHdFhX6QOwDSlJJTax0K046rlTc9ElMH9H1+dAnh8qzlSJFKOTrmywLUpUKV8eKwRzlSpUPWuSgQFmKPStuz8qVkFBHp3HgfAQFtH9gX//NFuToIgXXyNjcRsK+EfuAknS+AUdssyhFQ1+EjLlW7ZU4kJe3gLmav5LVsaTvBH5OXx1L6uy7aDkAQLYx6SIrjrm+celCQOQbFx5YDU3hgdXQlGIT0aUg+o5FsWfFlYLoOxZdDEJgXBAQmoKA0BQEhKYgIDTlLSCjS2iBVipdPmSFXIhZcT5YGAA5Se4D+lYgExkhlWQBXRGQyAh72P3A6pj9ACF214ax9wPsYVd1LB/2E85DtV2ez+ef4kNE07wMVR0rFVfxIjOJXWvtPQfGpuqdEDu6UdsFqgnoywlm+ua6VBMwtuIWXIuqETB0jEh4PYoKaIoVW7oXCa9FlVFwTBOLhNfkVOsB6RNej1MJCNfjHzUR4rxfUFsUAAAAAElFTkSuQmCC" id="image433e8979eb" width="160" height="100" transform="matrix(1.0875 0 0 1.0875 182.4 158.547824)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="269.4" y="154.547824" transform="rotate(-0 269.4 154.547824)">Mantiuk</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p7963fbbd77">
+   <rect x="3.6" y="20.971983" width="174" height="108.75"/>
+  </clipPath>
+  <clipPath id="pf9bedeceb8">
+   <rect x="182.4" y="20.971983" width="174" height="108.75"/>
+  </clipPath>
+  <clipPath id="pc74c967f2c">
+   <rect x="3.6" y="158.547824" width="174" height="108.75"/>
+  </clipPath>
+  <clipPath id="p84d4adfe6b">
+   <rect x="182.4" y="158.547824" width="174" height="108.75"/>
+  </clipPath>
+ </defs>
+</svg>
