@@ -224,7 +224,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | marr-hildreth | Marr-Hildreth | LoG with zero crossings. | Core | Browser | 5c |
 | zero-crossing | Zero-crossing detector | | Core | Browser | 5c |
 | hysteresis | Hysteresis thresholding | Works on any response map. | Core | Browser | 5c |
-| deriche | Deriche | OpenCV ximgproc gradients. | Advanced | Science | 6f |
+| deriche | Deriche | OpenCV ximgproc gradients. Done on 2026-10-16. | Advanced | Science | 6f |
 | shen-castan | Shen-Castan | ISEF filter. | Advanced | Science | 6f |
 | susan-edge | SUSAN edge detector | | Advanced | Science | 6f |
 | phase-congruency | Phase congruency | Kovesi method with log-Gabor filters. Cross-listed in texture. Our own code after phasecong3. Done on 2026-10-16. | Advanced | Science | 6d |

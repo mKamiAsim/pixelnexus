@@ -50,6 +50,7 @@ from pixelnexus_engine.filters.contours import (
     level_set_inside,
     snake_result,
 )
+from pixelnexus_engine.filters.deriche import deriche
 from pixelnexus_engine.filters.directional import (
     BANKS,
     directional_curvelet,
@@ -3410,6 +3411,39 @@ def tree_docs(out: dict[Path, str], filter_id: str) -> None:
     )
 
 
+# Deriche ----------------------------------------------------------------------------------------
+
+
+def deriche_docs(out: dict[Path, str]) -> None:
+    filter_id = "deriche"
+    scene = contour_scene()
+    figure(
+        out,
+        filter_id,
+        "A disk and a square with noise of sigma 10. Then the Deriche gradient magnitude with "
+        "alpha 2, 1 and 0.5.",
+        [{"title": "Input", "image": picture(scene)}]
+        + [
+            {"title": f"Alpha {a:g}", "image": picture(run(deriche, scene, filter_id, alpha=a))}
+            for a in (2, 1, 0.5)
+        ],
+    )
+    flat = noisy(np.full((200, 200), 128, np.uint8), 10, seed=2)
+    edge = np.full((40, 40), 50, np.uint8)
+    edge[:, 20:] = 200
+    rows = []
+    for alpha in (0.25, 0.5, 1, 2, 4):
+        peak = run(deriche, edge, filter_id, alpha=alpha)[20].max()
+        noise = run(deriche, flat, filter_id, alpha=alpha)[50:150, 50:150].astype(float).mean()
+        rows.append([f"{alpha:g}", str(int(peak)), fix(float(noise), 2)])
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Alpha", "Peak on a step of 150", "Mean magnitude on noise"], rows)
+        + "\nWith omega 0.1. The step goes from 50 to 200. The noise is a flat gray of 128 with "
+        "Gaussian noise of sigma 10, measured in the middle 100 x 100 pixels.\n"
+    )
+
+
 # Structured edges -------------------------------------------------------------------------------
 
 
@@ -3534,6 +3568,7 @@ def build() -> dict[Path, str]:
     medial_axis_docs(out)
     for filter_id in TREE_FILTERS:
         tree_docs(out, filter_id)
+    deriche_docs(out)
     structured_edge_docs(out)
     return out
 
