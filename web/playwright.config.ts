@@ -17,6 +17,8 @@ export default defineConfig({
     // parallel browser requests to "localhost" (IPv6 ::1) stall at random.
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
+    // The service worker would store the whole studio again in every test. pwa.spec.ts allows it.
+    serviceWorkers: "block",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

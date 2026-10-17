@@ -98,13 +98,11 @@ describe("deleting a history step", () => {
     const image = createImage(2, 1);
     image.data.set(doc.current.data);
     image.data[4] = 9;
-    useDocuments
-      .getState()
-      .edit(id, image, "Gaussian 8 inside", {
-        id: "gaussian",
-        params: { sigma: 8 },
-        scope: "selection",
-      });
+    useDocuments.getState().edit(id, image, "Gaussian 8 inside", {
+      id: "gaussian",
+      params: { sigma: 8 },
+      scope: "selection",
+    });
     await deleteHistoryStep(id, 1);
     expect(activeDocument()?.steps.map((s) => s.label)).toEqual([
       "Open",

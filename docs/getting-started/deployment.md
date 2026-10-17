@@ -4,9 +4,21 @@ PixelNexus has two parts that deploy separately: the studio, a static web app, a
 
 ## The studio
 
-`pnpm build` writes the studio to `web/dist`. It is static files, so any web server can host it. Browser filters, on-device models and every panel work without a server of your own.
+`pnpm build` writes the studio to `web/dist`. It is static files, so any web server can host it, at the root or in a folder. Browser filters, on-device models and every panel work without a server of your own.
 
-The public site will publish the docs at the root of GitHub Pages and the studio at `/studio/`. The owner enables Pages and approves the first deploy.
+## GitHub Pages
+
+The workflow `.github/workflows/pages.yml` builds the docs, puts the studio in `studio/` next to them, and publishes both. The docs are at the root of the site and the studio is at `/studio/`. The workflow runs only when you start it by hand, from the Actions tab.
+
+Before the first run, open the repository settings, then Pages, and set the source to GitHub Actions.
+
+## Offline use and installing
+
+The studio has a web app manifest and a service worker, so you can install it from the browser menu. The first visit stores the studio, about 5 MB. After that it opens without a network connection, and every browser filter works. Large files, such as the 27 MB model runtime, are stored the first time you use them. On-device models are stored when you download them.
+
+When a new version is published, the studio stores it in the background and tells you. It starts after you close every studio tab and open the studio again. Only production builds have a service worker, so `pnpm dev` never caches anything.
+
+To remove the stored files, clear the site data for the studio in your browser settings.
 
 ## The engine on this computer
 
@@ -16,6 +28,8 @@ uv run --extra cpu pixelnexus-engine
 ```
 
 Use `--extra cuda` on a computer with an NVIDIA GPU. The engine listens on `127.0.0.1:8765` and accepts requests only from the studio addresses in `PIXELNEXUS_ALLOWED_ORIGINS`. See [Configuration](configuration.md).
+
+To use your engine from the studio on GitHub Pages, add the site's address to the list. The list replaces the default one, so keep the local address too, for example `PIXELNEXUS_ALLOWED_ORIGINS=http://localhost:5173,https://mkamiasim.github.io`. Your browser may also ask whether the site may reach devices on your network. Allow it only for this site.
 
 ## Docker
 

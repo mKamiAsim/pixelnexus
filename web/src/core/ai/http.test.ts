@@ -21,7 +21,7 @@ async function decodeTestPng(bytes: Uint8Array): Promise<RgbaImage> {
   let width = 0;
   let height = 0;
   const idat: Uint8Array[] = [];
-  for (let at = 8; at < bytes.length; ) {
+  for (let at = 8; at < bytes.length;) {
     const length = view.getUint32(at);
     const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8));
     const body = bytes.subarray(at + 8, at + 8 + length);

@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 9: documentation completion and publishing |
-| Next action | Phase 9: the Pages workflow (checkpoint: owner approval), PWA, README. |
+| Next action | Owner: enable Pages (Settings, Pages, source GitHub Actions) and start the Pages workflow by hand. Meanwhile Phase 10: full test run in Chromium, Firefox and WebKit with coverage. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 9: figure check of every page, with fixes. |
+| Last finished step | Phase 9: Pages workflow ready, PWA with offline support, README. Only the owner's Pages checkpoint is left. |
 | In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. Phase 11 (phone app) was dropped on 2026-10-17. Phase 10 is the last phase. A phone app is planned again after the project is done. |
 | Next steps | Phase 9, in the order of its task list. CI runs only on the pull request into main, so check it when the owner merges. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -674,9 +674,9 @@ Docs: user guide pages for pipelines, history, compare, metrics and projects. Do
 - [x] Parameter reference, dependencies and licenses, limitations, troubleshooting, contributing, and an "Adding a filter" walk-through based on a real filter. Done on 2026-10-17.
 - [x] `tools/check_docs.py`: finds implemented entries without a page, pages without an entry, wrong source paths, missing statuses, missing formulas and missing tests. Done on 2026-10-17, in CI.
 - [x] Figure check: every page at 1280 px and 390 px, in light and dark. No overlaps. Results recorded in a checklist. Done on 2026-10-17 with `web/scripts/check-figures.mjs` (docs/_meta/figure-checklist.md).
-- [ ] Pages workflow: docs at the root, studio at `/studio/`. **Checkpoint: you enable Pages and approve the first deploy.**
-- [ ] The studio becomes an installable web app (PWA) with offline support. This is a quick phone option before the native app.
-- [ ] README with local docs commands.
+- [ ] Pages workflow: docs at the root, studio at `/studio/`. **Checkpoint: you enable Pages and approve the first deploy.** Workflow ready on 2026-10-17 and checked with a local copy of the site under `/pixelnexus/`. Waiting for the owner.
+- [x] The studio becomes an installable web app (PWA) with offline support. This is a quick phone option before the native app. Done on 2026-10-17: manifest, icons, own service worker (build/sw.js), E2E test offline.
+- [x] README with local docs commands. Done on 2026-10-17.
 
 ### Phase 10: Validation and release
 
@@ -1010,3 +1010,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 9 | Phase 9 part 2. The docs tree of section 7 is complete: deployment, architecture overview, selection masks and refinement, contributing, implementation/ (adding a filter on the box filter, filter definition schema, science engine and frontend integration, testing guidelines, optional dependencies, model integration) and reference/ (filter catalog, parameter reference, API reference, dependencies and licenses, limitations, troubleshooting, glossary). Generated: filter schema (descriptions added to the schema), glossary, shared parameters (gen_docs.py), the engine API from FastAPI's OpenAPI (engine_docs.py, with docstrings added to five routes), and dependencies with licenses from installed metadata (new tools/gen_licenses.py, run by hand). New tools/check_docs.py in CI, with tests that each kind of problem is found; it finds none today. Fixed a tool test that used ai-subject as a non-runnable tool. | Figure check, Pages workflow, PWA, README. |
 | 2026-10-17 | 9 | Figure check. New web/scripts/check-figures.mjs opens all 365 pages of the built site at 1280 px and 390 px, light and dark, and checks sideways scroll, figure loading, fit and theme variant, Mermaid rendering and label overlap, and formula errors. It also checks every SVG figure for overlapping or cut labels. First run: 12 band figures with a cut title, the vector median figure with overlapping titles, the bilateral legend past the edge, and wide inline formulas on 3 pages at 390 px. All fixed; all 568 figures redrawn from current filter code. Now 365 of 365 pages and 568 of 568 figures pass. | Pages workflow, PWA, README. |
 | 2026-10-17 | 9 | The owner dropped Phase 11 (phone app) from the current plan; a phone app is planned again after the project is done. Removed phone app mentions from the docs. Fixed .gitignore: `models/` also hid docs/models/, so the four model pages from Phase 7 were never committed. It is now `/models/`. | Pages workflow, PWA, README. |
+| 2026-10-17 | 9 | Pages workflow: fixed `uv sync` to use `--extra cpu`, checked the studio at `/pixelnexus/studio/` from a local copy of the site (filters, workers and fonts load). PWA: web app manifest, a 3x3 kernel icon (SVG and PNG from web/scripts/make-icons.mjs), and an own service worker without new packages: build/sw-plugin.ts lists the 49 files (4.7 MB) to store at install, the 27 MB model runtime is stored on first use, a new version waits until every tab is closed and the studio says so. E2E tests block service workers except the new pwa.spec.ts, which goes offline, reloads and applies a filter. README rewritten with the docs commands. Deployment page covers Pages, offline use and the engine origin. Formatted 3 files that failed prettier. 3678 unit and 63 E2E tests pass. | Owner: Pages checkpoint. Phase 10. |

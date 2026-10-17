@@ -6,11 +6,12 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 import { catalogPlugin } from "./build/catalog-plugin.ts";
+import { serviceWorkerPlugin } from "./build/sw-plugin.ts";
 
 export default defineConfig({
   // Relative asset paths, so the same build works at "/", at "/studio/" and inside a native WebView.
   base: "./",
-  plugins: [react(), tailwindcss(), catalogPlugin()],
+  plugins: [react(), tailwindcss(), catalogPlugin(), serviceWorkerPlugin()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

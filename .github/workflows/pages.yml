@@ -27,7 +27,7 @@ jobs:
           enable-cache: true
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: uv sync --frozen
+      - run: uv sync --frozen --extra cpu
       - run: uv run python tools/gen_docs.py --check
       - run: uv run mkdocs build --strict
       - run: cp -r web/dist site/studio

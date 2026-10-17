@@ -16,7 +16,10 @@ async function menu(page: Page, top: string, item: string) {
   await page.getByRole("menuitem", { name: top, exact: true }).click();
   // A menu item's name ends with its shortcut, such as "Save project Ctrl+Shift+S".
   const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  await page.getByRole("menuitem", { name: new RegExp(`^${escaped}( |$)`) }).first().click();
+  await page
+    .getByRole("menuitem", { name: new RegExp(`^${escaped}( |$)`) })
+    .first()
+    .click();
 }
 
 test("saves a project with history and pipeline, and opens it again", async ({ page }) => {
