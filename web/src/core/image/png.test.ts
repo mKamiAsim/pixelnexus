@@ -3,7 +3,7 @@ import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 
 import { readImageHeader } from "@/core/image/format";
-import { crc32, encodePng } from "@/core/image/png";
+import { crc32, decodePng, encodePng } from "@/core/image/png";
 import { softAlphaDisk } from "@/core/image/synthetic";
 import { createImage } from "@/core/image/types";
 
@@ -65,5 +65,19 @@ describe("exact PNG encoder", () => {
   it("encodes a fully transparent image", async () => {
     const png = await encodePng(createImage(3, 3));
     expect(unfilter(inflateSync(idat(png)), 3, 3).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("decodePng", () => {
+  it("reads back what encodePng wrote, byte for byte, with every row filter", async () => {
+    const image = createImage(37, 23);
+    for (let i = 0; i < image.data.length; i++) image.data[i] = (i * 7919 + (i >> 5) * 31) % 256;
+    const back = await decodePng(await encodePng(image));
+    expect([back.width, back.height]).toEqual([37, 23]);
+    expect(Array.from(back.data)).toEqual(Array.from(image.data));
+  });
+
+  it("refuses files it cannot read exactly", async () => {
+    await expect(decodePng(new Uint8Array([1, 2, 3]))).rejects.toThrow("not a PNG");
   });
 });

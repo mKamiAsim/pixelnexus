@@ -13,6 +13,7 @@ A unit test compares this table with the command list in the studio, so the two 
 | Open... | File | `Ctrl+O` | `Cmd+O` |
 | Paste image | File | `Ctrl+V` | `Cmd+V` |
 | Export... | File | `Ctrl+S` | `Cmd+S` |
+| Save project | File | `Ctrl+Shift+S` | `Cmd+Shift+S` |
 | Undo | Edit | `Ctrl+Z` | `Cmd+Z` |
 | Redo | Edit | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
 | Resize... | Image | `Ctrl+Alt+I` | `Cmd+Alt+I` |

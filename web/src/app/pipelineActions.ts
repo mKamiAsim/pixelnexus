@@ -16,6 +16,7 @@ import {
   parsePipeline,
   pipelineJson,
   runPipeline,
+  type PipelineFile,
   type PipelineStep,
   type StepScope,
 } from "@/core/pipeline/pipeline";
@@ -193,6 +194,14 @@ export function savePipeline(): void {
   const { steps } = usePipeline.getState();
   if (steps.length === 0) return;
   download(new Blob([pipelineJson(steps)], { type: "application/json" }), "pipeline.json");
+}
+
+/** Check the steps of a pipeline held in a project file. */
+export function parsePipelineFile(file: PipelineFile): {
+  steps: PipelineStep[];
+  warnings: string[];
+} {
+  return parsePipeline(JSON.stringify(file), validateStep);
 }
 
 export async function loadPipeline(file: File): Promise<void> {

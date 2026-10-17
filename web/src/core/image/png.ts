@@ -83,8 +83,18 @@ export function filterRows(image: RgbaImage): Uint8Array {
   return out;
 }
 
+/** Bytes as a stream, without Blob.stream, which some test environments lack. */
+function streamOf(data: Uint8Array): ReadableStream<BufferSource> {
+  return new ReadableStream<BufferSource>({
+    start(controller) {
+      controller.enqueue(data.slice());
+      controller.close();
+    },
+  });
+}
+
 async function zlib(data: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([data.slice()]).stream().pipeThrough(new CompressionStream("deflate"));
+  const stream = streamOf(data).pipeThrough(new CompressionStream("deflate"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -110,4 +120,77 @@ export async function encodePng(image: RgbaImage): Promise<Uint8Array> {
     offset += part.length;
   }
   return out;
+}
+
+async function inflate(data: Uint8Array): Promise<Uint8Array> {
+  const stream = streamOf(data).pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/**
+ * Decode an 8-bit RGBA PNG without interlacing, as encodePng writes it, exactly. Project files
+ * use it, so their images come back byte for byte. Other PNG kinds are refused; the studio opens
+ * those through the browser's decoder.
+ */
+export async function decodePng(bytes: Uint8Array): Promise<RgbaImage> {
+  if (bytes.length < 8 || SIGNATURE.some((b, i) => bytes[i] !== b)) {
+    throw new Error("This is not a PNG file.");
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let width = 0;
+  let height = 0;
+  const parts: Uint8Array[] = [];
+  for (let at = 8; at + 8 <= bytes.length;) {
+    const length = view.getUint32(at);
+    const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8));
+    const body = bytes.subarray(at + 8, at + 8 + length);
+    if (type === "IHDR") {
+      width = view.getUint32(at + 8);
+      height = view.getUint32(at + 12);
+      const [depth, color, , , interlace] = body.subarray(8, 13);
+      if (depth !== 8 || color !== 6 || interlace !== 0) {
+        throw new Error("Only 8-bit RGBA PNG files without interlacing can be read here.");
+      }
+    } else if (type === "IDAT") {
+      parts.push(body);
+    } else if (type === "IEND") {
+      break;
+    }
+    at += 12 + length;
+  }
+  const joined = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    joined.set(part, offset);
+    offset += part.length;
+  }
+  const raw = await inflate(joined);
+  const stride = width * 4;
+  if (raw.length < (stride + 1) * height) throw new Error("The PNG data is too short.");
+  const data = new Uint8ClampedArray(stride * height);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const row = y * (stride + 1) + 1;
+    for (let x = 0; x < stride; x++) {
+      const value = raw[row + x] ?? 0;
+      const left = x >= 4 ? (data[y * stride + x - 4] ?? 0) : 0;
+      const up = y > 0 ? (data[(y - 1) * stride + x] ?? 0) : 0;
+      const corner = x >= 4 && y > 0 ? (data[(y - 1) * stride + x - 4] ?? 0) : 0;
+      const add =
+        filter === 0
+          ? 0
+          : filter === 1
+            ? left
+            : filter === 2
+              ? up
+              : filter === 3
+                ? (left + up) >> 1
+                : filter === 4
+                  ? paeth(left, up, corner)
+                  : -1;
+      if (add < 0) throw new Error("The PNG uses an unknown row filter.");
+      data[y * stride + x] = (value + add) & 255;
+    }
+  }
+  return { width, height, data };
 }

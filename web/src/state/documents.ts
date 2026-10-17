@@ -93,6 +93,15 @@ export type NewDocument = Omit<
   | "masks"
 >;
 
+export interface RestoredDocument {
+  readonly name: string;
+  readonly source: DocumentSource;
+  readonly steps: readonly Omit<HistoryStep, "id">[];
+  readonly index: number;
+  readonly dropped: number;
+  readonly masks: readonly { readonly name: string; readonly mask: Mask }[];
+}
+
 export interface FilterRecord {
   readonly id: string;
   readonly params: Readonly<Record<string, ParamValue>>;
@@ -104,6 +113,8 @@ interface DocumentsState {
   documents: readonly ImageDocument[];
   activeId: string | null;
   open: (document: NewDocument) => string;
+  /** Open an image with its whole history, as a project file holds it. */
+  restore: (document: RestoredDocument) => string;
   close: (id: string) => void;
   activate: (id: string) => void;
   setView: (id: string, view: ViewState) => void;
@@ -257,6 +268,38 @@ export const useDocuments = create<DocumentsState>()((set) => ({
           steps: [first],
           index: 0,
           dropped: 0,
+          view: null,
+        },
+      ],
+      activeId: id,
+    }));
+    return id;
+  },
+  restore: (document) => {
+    const id = newId();
+    const steps = document.steps.map((step) => ({ ...step, id: ++stepCounter }));
+    const first = steps[0];
+    if (!first) throw new Error("A restored image needs at least one step.");
+    const index = Math.min(Math.max(0, document.index), steps.length - 1);
+    const current = steps[index] ?? first;
+    set((state) => ({
+      documents: [
+        ...state.documents,
+        {
+          id,
+          name: document.name,
+          source: document.source,
+          fileBytes: 0,
+          header: null,
+          warnings: [],
+          original: first.image,
+          current: current.image,
+          selection: current.selection,
+          selectionEnabled: true,
+          masks: document.masks.map((m) => ({ id: ++maskCounter, name: m.name, mask: m.mask })),
+          steps,
+          index,
+          dropped: document.dropped,
           view: null,
         },
       ],

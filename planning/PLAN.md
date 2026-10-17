@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 8: professional workflow and performance |
-| Next action | Phase 8: project files (.pnx) with images, masks, history and pipeline. |
+| Next action | Phase 8: warnings for color space, bit depth, size and transparency changes. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,8 +24,8 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 8: the Metrics panel. |
-| In progress | Phase 8: professional workflow and performance (Pipeline, History, presets, compare grid and metrics done) |
+| Last finished step | Phase 8: project files (.pnx). |
+| In progress | Phase 8: professional workflow and performance (Pipeline, History, presets, compare grid, metrics and projects done) |
 | Next steps | Phase 8 in order: Pipeline panel, full History panel, preset library, compare grid and parameter sweep, metrics panel, then the rest of the Phase 8 list. The owner asked on 2026-10-17 to continue into Phase 8. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
@@ -658,7 +658,7 @@ Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models a
 - [x] Preset library per filter with import and export. Done on 2026-10-17.
 - [x] Compare grid and parameter sweep. Done on 2026-10-17.
 - [x] Metrics panel against the original or a chosen reference. Done on 2026-10-17.
-- [ ] Project files (`.pnx`) with images, masks, history and pipeline.
+- [x] Project files (`.pnx`) with images, masks, history and pipeline. Done on 2026-10-17.
 - [ ] Warnings for color space, bit depth, size and transparency changes.
 - [ ] Performance pass: profile first. Then WebGL2 for hot convolutions only, with parity tests. Large-image stress test.
 - [ ] Tablet and phone layout.
@@ -1019,3 +1019,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 8 | Preset library import and export. Preset files use format pixelnexus-presets version 1 (web/src/core/presets/presets.ts) and hold one filter or all; on import every value is validated against the catalog, a same-named preset is replaced, and unknown filters are left out with a warning. Properties has export (this filter) and import buttons; File > Import presets and Export all presets. 3 core tests, 1 action test, 1 E2E test. | Compare grid and parameter sweep. |
 | 2026-10-17 | 8 | Compare grid and parameter sweep. Filter > Compare grid opens a dialog where every cell runs at full resolution on the same 256 x 256 crop (our choice of size) around the pinned probe pixel or the image center, so results are exact. Cells come from the current settings or a sweep of one value of the selected filter (web/src/core/compare/sweep.ts: evenly spaced, both ends, on the parameter's step, whole and odd where required, every option of a choice, both states of a switch, at most 12). Each cell shows its time; Use copies its values into Properties. Docs: user-guide/compare-grid.md. 4 sweep tests, 3 action tests, 1 E2E test. | Metrics panel. |
 | 2026-10-17 | 8 | Metrics panel. The reference can be the original, any earlier step or another open image of the same size. Only inside the selection measures the pixels that are at least half selected (our choice), for all four metrics; SSIM averages its map over them. A check proves the two halves of an image, weighted by their pixels, give the whole. Measure every step lists PSNR and SSIM of each history step. Docs: user-guide/metrics.md. 3 metric tests, 1 E2E test. | Project files (.pnx). |
+| 2026-10-17 | 8 | Project files. A .pnx is a stored ZIP (web/src/core/project/zip.ts, checked with Python's zipfile) with project.json (format pixelnexus-project version 1) and one PNG per distinct image and selection. web/src/core/image/png.ts gains an exact reader for its own 8-bit RGBA PNGs, so projects open byte for byte; zlib streams no longer need Blob.stream. Projects hold every open image with its history (filter records, scope, AI marks, index, dropped count), saved selections and the pipeline (checked against the catalog on open); never keys or settings. File > Save project (Ctrl+Shift+S) and Open project; File > Open and drop also take .pnx. Docs: user-guide/projects.md. 2 PNG tests, 3 ZIP tests, 3 project tests, 1 action test, 1 E2E test. | Warnings for color space, bit depth, size and transparency. |

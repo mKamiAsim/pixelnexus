@@ -105,6 +105,7 @@ nav:
       - Pipelines: user-guide/pipelines.md
       - Compare grid: user-guide/compare-grid.md
       - Metrics: user-guide/metrics.md
+      - Projects: user-guide/projects.md
       - Export: user-guide/export.md
       - AI providers and consent: user-guide/ai-providers.md
       - Keyboard shortcuts: user-guide/keyboard-shortcuts.md

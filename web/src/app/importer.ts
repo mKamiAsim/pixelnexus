@@ -5,6 +5,7 @@ import { useDocuments } from "@/state/documents";
 import { notify } from "@/state/notifications";
 import { useSettings } from "@/state/settings";
 import { useUi } from "@/state/ui";
+import { openProject } from "./projectActions";
 
 let pickerOpener: (() => void) | null = null;
 
@@ -27,7 +28,12 @@ export async function openFiles(
   files: Iterable<File>,
   source: "file" | "paste" = "file",
 ): Promise<void> {
-  const list = [...files];
+  const all = [...files];
+  // Project files open with their history, not as images.
+  for (const project of all.filter((f) => f.name.toLowerCase().endsWith(".pnx"))) {
+    await openProject(project);
+  }
+  const list = all.filter((f) => !f.name.toLowerCase().endsWith(".pnx"));
   if (list.length === 0) return;
   const { beginWork, endWork } = useUi.getState();
   beginWork(list.length === 1 ? "Opening 1 image" : `Opening ${list.length} images`);
@@ -120,4 +126,4 @@ export function pastedImageFiles(data: DataTransfer | null): File[] {
 }
 
 /** File picker filter. The decoder checks the real format from the bytes, not the name. */
-export const ACCEPTED_FILES = "image/*,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff";
+export const ACCEPTED_FILES = "image/*,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff,.pnx";

@@ -43,6 +43,7 @@ import {
   type RefineKind,
 } from "./selectionActions";
 import { aiImage } from "./aiImageActions";
+import { chooseAndOpenProject, saveProject } from "./projectActions";
 import { chooseAndImportPresets, exportPresets } from "./presetActions";
 import { addSelectedFilter, runPipelineOnActive } from "./pipelineActions";
 import { aiSelect } from "./aiSelectActions";
@@ -199,6 +200,24 @@ export function buildCommands(): Command[] {
       keywords: "save download png jpeg webp tiff",
       enabled: hasDocument,
       run: () => useUi.getState().setDialog("export"),
+    },
+    {
+      id: "file.save-project",
+      label: "Save project",
+      menu: "file",
+      section: "project",
+      shortcut: "Mod+Shift+S",
+      keywords: "project pnx save history workspace session",
+      enabled: hasDocument,
+      run: () => void saveProject(),
+    },
+    {
+      id: "file.open-project",
+      label: "Open project...",
+      menu: "file",
+      section: "project",
+      keywords: "project pnx open load history session",
+      run: chooseAndOpenProject,
     },
     {
       id: "file.import-presets",
