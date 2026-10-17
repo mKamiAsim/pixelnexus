@@ -36,6 +36,7 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
 
+from pixelnexus_engine import embeddings
 from pixelnexus_engine.filters.learned import IMAGENET_MEAN, IMAGENET_STD
 from pixelnexus_engine.inference import session
 from pixelnexus_engine.models import file_name, model_entry, model_files, require
@@ -172,9 +173,13 @@ def efficient_sam(image: Rgba, params: dict[str, Any], progress: Progress) -> Rg
         )
     encoder_path, decoder_path = local_files("efficientsam-ti")
     height, width = image.shape[:2]
-    x = np.ascontiguousarray(image[..., :3].transpose(2, 0, 1)[None], np.float32) / np.float32(255)
-    encoder = session(encoder_path)
-    embeddings = encoder.run(None, {"batched_images": x})[0]
+    rgb = np.ascontiguousarray(image[..., :3])
+
+    def encode() -> dict[str, Any]:
+        x = np.ascontiguousarray(rgb.transpose(2, 0, 1)[None], np.float32) / np.float32(255)
+        return {"image_embeddings": session(encoder_path).run(None, {"batched_images": x})[0]}
+
+    image_embeddings = embeddings.cached("efficientsam-ti", rgb, encode)["image_embeddings"]
     progress(0.6)
     coords = [(px, py) for px, py, _ in points]
     labels = [1.0] * len(points)
@@ -185,7 +190,7 @@ def efficient_sam(image: Rgba, params: dict[str, Any], progress: Progress) -> Rg
     masks, iou, _ = decoder.run(
         None,
         {
-            "image_embeddings": embeddings,
+            "image_embeddings": image_embeddings,
             "batched_point_coords": np.array(coords, np.float32)[None, None],
             "batched_point_labels": np.array(labels, np.float32)[None, None],
             "orig_im_size": np.array([height, width], np.int64),
@@ -201,10 +206,15 @@ def sam2(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
     encoder_path, _, decoder_path, _ = local_files("sam2-1-tiny")
     height, width = image.shape[:2]
     sx, sy = 1024 / width, 1024 / height
-    x = imagenet(np.ascontiguousarray(image[..., :3]), (1024, 1024), Image.Resampling.BILINEAR)
-    encoder = session(encoder_path)
-    names = [o.name for o in encoder.get_outputs()]
-    embeddings = dict(zip(names, encoder.run(None, {"pixel_values": x}), strict=True))
+    rgb = np.ascontiguousarray(image[..., :3])
+
+    def encode() -> dict[str, Any]:
+        x = imagenet(rgb, (1024, 1024), Image.Resampling.BILINEAR)
+        encoder = session(encoder_path)
+        names = [o.name for o in encoder.get_outputs()]
+        return dict(zip(names, encoder.run(None, {"pixel_values": x}), strict=True))
+
+    encoded = embeddings.cached("sam2-1-tiny", rgb, encode)
     progress(0.6)
     feed: dict[str, Any] = {
         "input_points": np.array([[px * sx, py * sy] for px, py, _ in points], np.float32).reshape(
@@ -220,7 +230,7 @@ def sam2(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
             if corners is not None
             else np.zeros((1, 0, 4), np.float32)
         ),
-        **embeddings,
+        **encoded,
     }
     decoder = session(decoder_path)
     iou, masks, _ = decoder.run(["iou_scores", "pred_masks", "object_score_logits"], feed)

@@ -34,6 +34,7 @@ uv run --env-file .env pixelnexus-engine
 | `PIXELNEXUS_DEVICE` | `auto` | Where AI models run: `auto`, `cpu` or `cuda`. With `auto`, the engine uses CUDA when a test model really runs on it, and the CPU otherwise. |
 | `PIXELNEXUS_MAX_WORKERS` | half the processor cores, at least 1 | How many filter jobs run at the same time. Each job runs in its own process. |
 | `PIXELNEXUS_CACHE_MB` | `1024` | Memory for uploaded images, in megabytes. The image used least recently is dropped first. |
+| `PIXELNEXUS_EMBEDDINGS_MB` | `512` | Disk space for image encoder results of click and box selection, in megabytes, in a `.embeddings` folder inside the models folder. The results used least recently are dropped first. `0` turns it off. |
 | `PIXELNEXUS_CATALOG_DIR` | found from the working folder | The `catalog/filters` folder. The engine checks every job against the catalog. When you start it from the repository, it finds the folder by itself. |
 
 The engine reports its limits at `/api/v1/info`. It never reports file paths.

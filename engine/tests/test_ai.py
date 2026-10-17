@@ -147,6 +147,28 @@ def test_real_subject_models_find_the_disk(real_models: None, model: str) -> Non
     assert iou(ai.subject_select(image, {"model": model}, NOTHING), disk) > 0.95
 
 
+@on_disk("efficientsam-ti", "sam2-1-tiny")
+@pytest.mark.parametrize("model", ["efficientsam-ti", "sam2-1-tiny"])
+def test_real_second_click_reuses_the_encoder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, model: str
+) -> None:
+    # The models stay where they are. Only the cache goes to a fresh folder.
+    monkeypatch.setattr(ai.embeddings, "folder", lambda: tmp_path)
+    monkeypatch.setenv("PIXELNEXUS_MODELS_DIR", str(ROOT / "models"))
+    image, _ = disk_scene()
+    params = {"model": model, "points": [{"x": 180, "y": 120, "positive": True}]}
+    first = ai.prompted_select(image, params, NOTHING)
+    opened: list[str] = []
+    real_session = ai.session
+    monkeypatch.setattr(
+        ai, "session", lambda path: opened.append(Path(path).name) or real_session(path)
+    )
+    second = ai.prompted_select(image, params, NOTHING)
+    np.testing.assert_array_equal(first, second)
+    assert len(list(tmp_path.glob("*.npz"))) == 1
+    assert len(opened) == 1  # the decoder only
+
+
 @on_disk("modnet")
 def test_real_modnet_mattes_the_disk(real_models: None) -> None:
     image, disk = disk_scene()

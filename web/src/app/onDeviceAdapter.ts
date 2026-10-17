@@ -9,6 +9,7 @@ import { cachedFiles, CACHE_NAME, runsOnDevice, type ModelCache } from "@/core/a
 import { createSession, runtime, type Session } from "@/core/ai/ondevice/runtime";
 import { promptedSelect, subjectSelect, superResolve, type Run } from "@/core/ai/ondevice/tasks";
 import type { AiOutput, AiRequest, ProviderAdapter, ProviderConfig } from "@/core/ai/types";
+import type { RgbaImage } from "@/core/image/types";
 import type { Model } from "@/generated/catalog-types";
 
 /** The on-device model for a task: the provider's choice, or the first one that runs here. */
@@ -63,6 +64,33 @@ function runner(session: Session): Run {
   };
 }
 
+type Outputs = Awaited<ReturnType<Run>>;
+
+/**
+ * Encoder results per image and model. Click Select sends the same image object with every
+ * click, so later clicks run only the decoder. Entries go away with their image.
+ */
+const encoded = new WeakMap<RgbaImage, Map<string, Promise<Outputs>>>();
+
+/** A Run that keeps its first answer for this image and model. */
+export function cachedEncoder(image: RgbaImage, modelId: string, run: Run): Run {
+  return (inputs) => {
+    let byModel = encoded.get(image);
+    if (!byModel) {
+      byModel = new Map();
+      encoded.set(image, byModel);
+    }
+    let pending = byModel.get(modelId);
+    if (!pending) {
+      pending = run(inputs);
+      const models = byModel;
+      pending.catch(() => models.delete(modelId));
+      byModel.set(modelId, pending);
+    }
+    return pending;
+  };
+}
+
 export function onDeviceAdapter(
   provider: ProviderConfig,
   cache: () => Promise<ModelCache> = openModelCache,
@@ -88,7 +116,7 @@ export function onDeviceAdapter(
               request.image,
               request.points ?? [],
               request.box,
-              runner(first),
+              cachedEncoder(request.image, model.id, runner(first)),
               runner(second),
             ),
           };

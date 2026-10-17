@@ -4,7 +4,7 @@ import { catalog } from "@/catalog";
 import { createImage } from "@/core/image/types";
 import type { ModelCache } from "@/core/ai/ondevice/store";
 
-import { onDeviceAdapter, onDeviceModel } from "./onDeviceAdapter";
+import { cachedEncoder, onDeviceAdapter, onDeviceModel } from "./onDeviceAdapter";
 
 const provider = { id: "on-device", kind: "on-device" as const, name: "On-device models" };
 const emptyCache = async (): Promise<ModelCache> => ({
@@ -28,5 +28,26 @@ describe("on-device adapter", () => {
     await expect(adapter.run({ task, image: createImage(4, 4) })).rejects.toThrow(
       "Download U2-Net small (u2netp) first, in Edit > AI providers.",
     );
+  });
+
+  it("runs the encoder once per image and model, and again after a failure", async () => {
+    let calls = 0;
+    const run = async () => {
+      calls += 1;
+      if (calls === 3) throw new Error("busy");
+      return { image_embeddings: { data: new Float32Array([calls]), dims: [1] } };
+    };
+    const image = createImage(2, 2);
+    const input = { batched_images: { data: new Float32Array(12), dims: [1, 3, 2, 2] } };
+    await cachedEncoder(image, "efficientsam-ti", run)(input);
+    const again = await cachedEncoder(image, "efficientsam-ti", run)(input);
+    expect(calls).toBe(1);
+    expect(again.image_embeddings?.data[0]).toBe(1);
+    await cachedEncoder(createImage(2, 2), "efficientsam-ti", run)(input);
+    expect(calls).toBe(2);
+    const other = createImage(2, 2);
+    await expect(cachedEncoder(other, "efficientsam-ti", run)(input)).rejects.toThrow("busy");
+    await cachedEncoder(other, "efficientsam-ti", run)(input);
+    expect(calls).toBe(4);
   });
 });

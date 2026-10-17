@@ -32,6 +32,7 @@ class Settings:
     models_dir: Path = field(default_factory=lambda: Path("models"))
     max_workers: int = field(default_factory=lambda: max(1, (os.cpu_count() or 2) // 2))
     cache_mb: int = 1024
+    embeddings_mb: int = 512
     catalog_dir: Path | None = None
 
     @classmethod
@@ -49,6 +50,7 @@ class Settings:
             models_dir=Path(source.get("PIXELNEXUS_MODELS_DIR", str(defaults.models_dir))),
             max_workers=int(source.get("PIXELNEXUS_MAX_WORKERS", defaults.max_workers)),
             cache_mb=int(source.get("PIXELNEXUS_CACHE_MB", defaults.cache_mb)),
+            embeddings_mb=int(source.get("PIXELNEXUS_EMBEDDINGS_MB", defaults.embeddings_mb)),
             catalog_dir=Path(catalog)
             if (catalog := source.get("PIXELNEXUS_CATALOG_DIR"))
             else None,

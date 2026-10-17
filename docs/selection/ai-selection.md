@@ -13,7 +13,7 @@ AI selection uses learned models through the AI provider you choose for each tas
 3. If the selection spills over, Alt-click on the part that should not be selected. A red ring marks a negative point.
 4. Keep adding points until the selection fits. **Clear seeds** in the options bar starts over.
 
-Every click sends all points of this image again, with the whole image. EfficientSAM tiny, the on-device model, takes no negative points. Use the engine with SAM 2.1 for those.
+Every click sends all points of this image again, with the whole image. The slow part of the model, the image encoder, runs only for the first click on an image. Its result is kept, so later clicks take a fraction of the time. The engine keeps it on disk, within `PIXELNEXUS_EMBEDDINGS_MB`. The browser keeps it in memory until the image changes. EfficientSAM tiny, the on-device model, takes no negative points. Use the engine with SAM 2.1 for those.
 
 ## AI subject, background and object
 
