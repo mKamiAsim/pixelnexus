@@ -25,6 +25,7 @@ import {
   type DockviewReadyEvent,
   type IDockviewHeaderActionsProps,
   type IDockviewPanelHeaderProps,
+  type IDockviewPanelProps,
 } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
@@ -49,6 +50,8 @@ import { NavigatorPanel } from "@/panels/NavigatorPanel";
 import { SpectrumPanel } from "@/panels/SpectrumPanel";
 import { useUi } from "@/state/ui";
 import "@/styles/dockview-theme.css";
+
+import { PanelVisibleContext } from "./panelVisibility";
 import { THEMES } from "@/styles/themes";
 
 import {
@@ -92,13 +95,26 @@ const PANEL_ICONS: Record<PanelId, LucideIcon> = {
 
 /** Each panel gets its own error boundary, so one failing panel cannot blank the studio. */
 const panel = (name: string, body: ReactNode, scroll = true) => {
-  const PanelComponent = () => (
-    <div
-      className={clsx("h-full bg-panel text-text", scroll ? "overflow-auto" : "overflow-hidden")}
-    >
-      <ErrorBoundary name={`the ${name} panel`}>{body}</ErrorBoundary>
-    </div>
-  );
+  const PanelComponent = ({ api }: IDockviewPanelProps) => {
+    // Panels behind another tab stay mounted. Heavy panels read this and wait until they show.
+    const subscribe = useMemo(
+      () => (onChange: () => void) => {
+        const listener = api.onDidVisibilityChange(onChange);
+        return () => listener.dispose();
+      },
+      [api],
+    );
+    const visible = useSyncExternalStore(subscribe, () => api.isVisible);
+    return (
+      <div
+        className={clsx("h-full bg-panel text-text", scroll ? "overflow-auto" : "overflow-hidden")}
+      >
+        <PanelVisibleContext value={visible}>
+          <ErrorBoundary name={`the ${name} panel`}>{body}</ErrorBoundary>
+        </PanelVisibleContext>
+      </div>
+    );
+  };
   return PanelComponent;
 };
 

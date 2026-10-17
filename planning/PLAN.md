@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 8: professional workflow and performance |
-| Next action | Phase 8: performance pass. Profile first, then WebGL2 for hot convolutions only, with parity tests, and a large-image stress test. |
+| Next action | Phase 8: tablet and phone layout. Then the Phase 8 docs check and exit. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,8 +24,8 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 8: change warnings. |
-| In progress | Phase 8: professional workflow and performance (Pipeline, History, presets, compare grid, metrics, projects and warnings done) |
+| Last finished step | Phase 8: performance pass. |
+| In progress | Phase 8: professional workflow and performance (all but the tablet and phone layout done) |
 | Next steps | Phase 8 in order: Pipeline panel, full History panel, preset library, compare grid and parameter sweep, metrics panel, then the rest of the Phase 8 list. The owner asked on 2026-10-17 to continue into Phase 8. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
@@ -660,7 +660,7 @@ Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models a
 - [x] Metrics panel against the original or a chosen reference. Done on 2026-10-17.
 - [x] Project files (`.pnx`) with images, masks, history and pipeline. Done on 2026-10-17.
 - [x] Warnings for color space, bit depth, size and transparency changes. Done on 2026-10-17.
-- [ ] Performance pass: profile first. Then WebGL2 for hot convolutions only, with parity tests. Large-image stress test.
+- [x] Performance pass: profile first. Then WebGL2 for hot convolutions only, with parity tests. Large-image stress test. Done on 2026-10-17. The profile showed no hot convolution (0.12 to 0.47 s at 4096 x 4096), so no WebGL2 path was added; the hot spots were the bilateral filter and main-thread SSIM in the Metrics panel. See docs/architecture/performance.md.
 - [ ] Tablet and phone layout.
 
 Docs: user guide pages for pipelines, history, compare, metrics and projects.
@@ -1021,3 +1021,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 8 | Metrics panel. The reference can be the original, any earlier step or another open image of the same size. Only inside the selection measures the pixels that are at least half selected (our choice), for all four metrics; SSIM averages its map over them. A check proves the two halves of an image, weighted by their pixels, give the whole. Measure every step lists PSNR and SSIM of each history step. Docs: user-guide/metrics.md. 3 metric tests, 1 E2E test. | Project files (.pnx). |
 | 2026-10-17 | 8 | Project files. A .pnx is a stored ZIP (web/src/core/project/zip.ts, checked with Python's zipfile) with project.json (format pixelnexus-project version 1) and one PNG per distinct image and selection. web/src/core/image/png.ts gains an exact reader for its own 8-bit RGBA PNGs, so projects open byte for byte; zlib streams no longer need Blob.stream. Projects hold every open image with its history (filter records, scope, AI marks, index, dropped count), saved selections and the pipeline (checked against the catalog on open); never keys or settings. File > Save project (Ctrl+Shift+S) and Open project; File > Open and drop also take .pnx. Docs: user-guide/projects.md. 2 PNG tests, 3 ZIP tests, 3 project tests, 1 action test, 1 E2E test. | Warnings for color space, bit depth, size and transparency. |
 | 2026-10-17 | 8 | Change warnings. web/src/core/image/changes.ts finds what a step changed besides pixel values: size, transparency added or removed, and color lost (red, green and blue equal everywhere), with cached scans per image. The documents store keeps the notes on the step, a watcher warns once per new step, and History details list them. Bit depth and color profile are warned about on open (existing), and export now notes lossy formats and 8-bit sRGB. 4 core tests, 1 watcher test. | Performance pass. |
+| 2026-10-17 | 8 | Performance pass, profile first. New pnpm bench:filters (12 filters through the studio, job and wall time). Profile at 4096 x 4096 with 8 workers: convolutions 0.17 to 0.47 s, bilateral 25.0 s, Canny 4.45 s. A CPU profile of a 6000 x 6000 apply showed 12.9 s wall for a 0.4 s job: the Metrics panel computed SSIM on the main thread even behind its tab. Changes: exact table-driven bilateral path (identical results, parity tests for all border and range modes, 25.0 s to 3.8 s); worker cap 8 to 16 (15 to 37 percent faster on 32 threads); metrics in a worker and only while visible, Histogram and Spectrum likewise (panel visibility from dockview); Apply stops the preview at once. Decision: no WebGL2 path, since no convolution was hot. New large-image stress test: each 6000 x 6000 apply 0.8 to 0.95 s (was about 12.8 s). Docs: architecture/performance.md. | Tablet and phone layout. |

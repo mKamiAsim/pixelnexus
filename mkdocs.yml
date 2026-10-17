@@ -135,6 +135,7 @@ nav:
       - Processing pipeline: architecture/processing-pipeline.md
       - Selection and masking: architecture/selection-and-masking.md
       - Execution model: architecture/execution-model.md
+      - Performance: architecture/performance.md
       - Science engine: architecture/science-engine.md
       - Learn panel architecture: architecture/learn-panel.md
   - Mathematics:

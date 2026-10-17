@@ -33,6 +33,7 @@ import type { RgbaImage } from "@/core/image/types";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
+import { usePanelVisible } from "@/app/panelVisibility";
 
 /** Spectra are computed once per image version and reused. */
 const cache = new WeakMap<RgbaImage, SpectrumView>();
@@ -40,15 +41,17 @@ const cache = new WeakMap<RgbaImage, SpectrumView>();
 /** Compute the spectrum after the browser has painted, as the Histogram panel does. */
 function useSpectrum(image: RgbaImage | null): SpectrumView | null {
   const [state, setState] = useState<{ image: RgbaImage; view: SpectrumView } | null>(null);
+  // A panel behind another tab waits until it shows (PLAN.md Phase 8 performance pass).
+  const visible = usePanelVisible();
   useEffect(() => {
-    if (!image) return;
+    if (!image || !visible) return;
     const timer = window.setTimeout(() => {
       const view = cache.get(image) ?? spectrumView(image);
       cache.set(image, view);
       setState({ image, view });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [image]);
+  }, [image, visible]);
   return image && state?.image === image ? state.view : null;
 }
 

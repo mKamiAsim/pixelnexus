@@ -1,12 +1,14 @@
 import { clsx } from "clsx";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import type { RgbaImage } from "@/core/image/types";
 import type { Mask } from "@/core/mask/mask";
-import { qualityMetrics, type QualityMetrics } from "@/core/metrics/quality";
+import type { QualityMetrics } from "@/core/metrics/quality";
+import { metricsInWorker } from "@/core/workers/metrics-client";
+import { usePanelVisible } from "@/app/panelVisibility";
 import {
   activeDocument,
   activeSelection,
@@ -17,25 +19,47 @@ import {
 
 const ORIGINAL = "original";
 
-/** Metrics per image pair and selection, so a panel redraw does not compute them again. */
-const cache = new WeakMap<RgbaImage, WeakMap<RgbaImage, Map<Mask | null, QualityMetrics>>>();
-function cachedMetrics(image: RgbaImage, reference: RgbaImage, mask: Mask | null): QualityMetrics {
-  let byReference = cache.get(image);
-  if (!byReference) {
-    byReference = new WeakMap();
-    cache.set(image, byReference);
-  }
-  let byMask = byReference.get(reference);
-  if (!byMask) {
-    byMask = new Map();
-    byReference.set(reference, byMask);
-  }
-  let metrics = byMask.get(mask);
-  if (!metrics) {
-    metrics = qualityMetrics(image, reference, mask ?? undefined);
-    byMask.set(mask, metrics);
-  }
-  return metrics;
+type Measured = {
+  readonly key: object;
+  readonly metrics: QualityMetrics | null;
+  readonly error?: string;
+};
+
+/**
+ * The metrics of an image against a reference, from the worker. Undefined while they are being
+ * computed. Nothing is computed while `enabled` is false, as for a panel behind another tab.
+ */
+function useMetrics(
+  image: RgbaImage | undefined,
+  reference: RgbaImage | undefined,
+  mask: Mask | null,
+  enabled: boolean,
+): Measured | undefined {
+  const [answer, setAnswer] = useState<Measured | undefined>(undefined);
+  const fits =
+    image && reference && image.width === reference.width && image.height === reference.height;
+  // One object per question, so an old answer is never shown for a new question.
+  const key = useMemo(() => ({ image, reference, mask }), [image, reference, mask]);
+  useEffect(() => {
+    if (!enabled || !fits || !image || !reference) return;
+    let current = true;
+    metricsInWorker(image, reference, mask)
+      .then((metrics) => current && setAnswer({ key, metrics }))
+      .catch(
+        (error: unknown) =>
+          current &&
+          setAnswer({
+            key,
+            metrics: null,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+      );
+    return () => {
+      current = false;
+    };
+  }, [enabled, fits, image, reference, mask, key]);
+  if (!fits) return { key, metrics: null };
+  return answer?.key === key ? answer : undefined;
 }
 
 const format = (value: number, digits: number, unit: string, psnr = false) =>
@@ -76,7 +100,36 @@ const ROWS = [
   },
 ] as const;
 
-/** The PSNR and SSIM of every step against the reference, computed on request. */
+function StepRow({
+  step,
+  index,
+  current,
+  reference,
+  mask,
+}: {
+  step: HistoryStep;
+  index: number;
+  current: boolean;
+  reference: RgbaImage;
+  mask: Mask | null;
+}) {
+  const fits = step.image.width === reference.width && step.image.height === reference.height;
+  const measured = useMetrics(step.image, reference, fits ? mask : null, true);
+  const m = measured?.metrics;
+  return (
+    <tr className={clsx("border-t border-border-subtle", current && "font-medium")}>
+      <td className="max-w-40 truncate py-1 pr-2" title={step.label}>
+        {index} {step.label}
+      </td>
+      <td className="py-1 pr-2 text-right font-mono">
+        {!fits ? "Other size" : m ? format(m.psnr, 2, "dB", true) : "Measuring"}
+      </td>
+      <td className="py-1 text-right font-mono">{m ? format(m.ssim, 4, "") : ""}</td>
+    </tr>
+  );
+}
+
+/** The PSNR and SSIM of every step against the reference, computed on request in the worker. */
 function StepTable({
   doc,
   reference,
@@ -114,34 +167,16 @@ function StepTable({
         </tr>
       </thead>
       <tbody>
-        {doc.steps.map((step, index) => {
-          const fits =
-            step.image.width === reference.width && step.image.height === reference.height;
-          const m = fits
-            ? cachedMetrics(
-                step.image,
-                reference,
-                mask && mask.width === reference.width ? mask : null,
-              )
-            : null;
-          return (
-            <tr
-              key={step.id}
-              className={clsx(
-                "border-t border-border-subtle",
-                index === doc.index && "font-medium",
-              )}
-            >
-              <td className="max-w-40 truncate py-1 pr-2" title={step.label}>
-                {index} {step.label}
-              </td>
-              <td className="py-1 pr-2 text-right font-mono">
-                {m ? format(m.psnr, 2, "dB", true) : "Other size"}
-              </td>
-              <td className="py-1 text-right font-mono">{m ? format(m.ssim, 4, "") : ""}</td>
-            </tr>
-          );
-        })}
+        {doc.steps.map((step, index) => (
+          <StepRow
+            key={step.id}
+            step={step}
+            index={index}
+            current={index === doc.index}
+            reference={reference}
+            mask={mask && mask.width === reference.width ? mask : null}
+          />
+        ))}
       </tbody>
     </table>
   );
@@ -172,10 +207,15 @@ export function MetricsPanel() {
   const reference = otherDoc?.current ?? step?.image ?? doc?.original;
   const selection = doc ? activeSelection(doc) : null;
   const mask = inside && selection ? selection : null;
-  const metrics =
-    current && reference && reference.width === current.width && reference.height === current.height
-      ? cachedMetrics(current, reference, mask)
-      : null;
+  const visible = usePanelVisible();
+  const measured = useMetrics(current, reference, mask, visible);
+  const fits = Boolean(
+    current &&
+    reference &&
+    reference.width === current.width &&
+    reference.height === current.height,
+  );
+  const metrics = measured?.metrics ?? null;
 
   if (!doc || !reference) {
     return <p className="p-3 text-xs text-text-secondary">Open an image to compare it.</p>;
@@ -205,6 +245,12 @@ export function MetricsPanel() {
       {selection ? (
         <Switch label="Only inside the selection" checked={inside} onChange={setInside} />
       ) : null}
+      {fits && !measured ? (
+        <p className="text-text-secondary" role="status">
+          Measuring.
+        </p>
+      ) : null}
+      {measured?.error ? <p className="text-danger">{measured.error}</p> : null}
       {metrics ? (
         <table className="tabular w-full border-collapse" aria-label="Quality metrics">
           <tbody>
@@ -223,7 +269,7 @@ export function MetricsPanel() {
             })}
           </tbody>
         </table>
-      ) : (
+      ) : fits ? null : (
         <p className="text-text-secondary">
           The reference has another size. Choose an image of {doc.current.width} x{" "}
           {doc.current.height} px.

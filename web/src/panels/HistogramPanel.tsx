@@ -7,6 +7,7 @@ import { computeHistogram, histogramStats, type Histogram } from "@/core/image/h
 import type { RgbaImage } from "@/core/image/types";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { useUi } from "@/state/ui";
+import { usePanelVisible } from "@/app/panelVisibility";
 
 type View = "rgb" | "luma" | "red" | "green" | "blue" | "alpha";
 
@@ -33,8 +34,10 @@ function useHistogram(image: RgbaImage | null): { histogram: Histogram | null; c
     image: null,
     histogram: null,
   });
+  // A panel behind another tab waits until it shows (PLAN.md Phase 8 performance pass).
+  const visible = usePanelVisible();
   useEffect(() => {
-    if (!image) return;
+    if (!image || !visible) return;
     const cached = cache.get(image);
     const timer = window.setTimeout(() => {
       const histogram = cached ?? computeHistogram(image);
@@ -42,7 +45,7 @@ function useHistogram(image: RgbaImage | null): { histogram: Histogram | null; c
       setState({ image, histogram });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [image]);
+  }, [image, visible]);
   return {
     histogram: image ? state.histogram : null,
     counting: image !== null && state.image !== image,

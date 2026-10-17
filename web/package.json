@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "e2e": "playwright test",
     "bench:viewport": "node scripts/bench-viewport.mjs",
+    "bench:filters": "node scripts/bench-filters.mjs",
     "gen:filter-docs": "pnpm gen && node scripts/gen-filter-docs.mjs"
   },
   "dependencies": {

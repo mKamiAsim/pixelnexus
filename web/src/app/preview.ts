@@ -290,6 +290,8 @@ function schedule(): void {
 export function startPreview(): () => void {
   const stops = [
     useFilters.subscribe((state, previous) => {
+      // Apply needs the workers now: stop a running preview at once, without the debounce.
+      if (state.applying && !previous.applying) clear();
       if (
         state.selectedId !== previous.selectedId ||
         state.values !== previous.values ||

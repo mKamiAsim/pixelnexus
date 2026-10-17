@@ -62,11 +62,134 @@ export function bilateralWeights(
   return { spatial, range, combined: product.map((row) => row.map((v) => v / total)) };
 }
 
+/** True when every value is a whole number from 0 to 255, as in planes read from 8-bit images. */
+function bytesOnly(planes: readonly Plane[]): boolean {
+  for (const plane of planes) {
+    for (const v of plane.data) if (!Number.isInteger(v) || v < 0 || v > 255) return false;
+  }
+  return true;
+}
+
 /**
  * The bilateral sum on three planes. `guide` holds the planes that set the range weights: the
  * image itself, or a guide image for the joint bilateral filter.
+ *
+ * Speed (PLAN.md Phase 8, measured at 25 s for a 4096 x 4096 image): when the guide holds whole
+ * numbers from 0 to 255, the range weights come from a table of Math.exp at every possible
+ * difference, and pixels away from the border read their window by fixed offsets. Both give the
+ * same numbers in the same order as the plain loop, bilateralPlanesReference, so the result is
+ * identical. The tests check that.
  */
 export function bilateralPlanes(
+  planes: readonly [Plane, Plane, Plane],
+  guide: readonly Plane[],
+  mode: RangeMode,
+  sigmaSpace: number,
+  sigmaRange: number,
+  border: BorderMode,
+): [Plane, Plane, Plane] {
+  if (!bytesOnly(guide)) {
+    return bilateralPlanesReference(planes, guide, mode, sigmaSpace, sigmaRange, border);
+  }
+  const { width, height } = planes[0];
+  const taps = spatialTaps(sigmaSpace);
+  const r = bilateralRadius(sigmaSpace);
+  const rangeCoeff = -1 / (2 * sigmaRange * sigmaRange);
+  // The range weight for every possible squared difference.
+  const maxD2 = mode === "color" ? guide.length * 255 * 255 : 255 * 255;
+  const table = new Float64Array(maxD2 + 1);
+  if (mode === "color") {
+    for (let d2 = 0; d2 <= maxD2; d2++) table[d2] = Math.exp(d2 * rangeCoeff);
+  } else {
+    // The plain loop computes exp(d * d * c), so the table does too, at d = 0 to 255.
+    for (let d = 0; d <= 255; d++) table[d * d] = Math.exp(d * d * rangeCoeff);
+  }
+  const count = taps.length;
+  const tapW = Float64Array.from(taps, (t) => t.w);
+  const tapOffset = Int32Array.from(taps, (t) => t.dy * width + t.dx);
+  const xs = borderTable(width, r, border);
+  const ys = borderTable(height, r, border);
+  const p0 = planes[0].data;
+  const p1 = planes[1].data;
+  const p2 = planes[2].data;
+  const g0 = (guide[0] as Plane).data;
+  const g1 = (guide[Math.min(1, guide.length - 1)] as Plane).data;
+  const g2 = (guide[Math.min(2, guide.length - 1)] as Plane).data;
+  const out = [createPlane(width, height), createPlane(width, height), createPlane(width, height)];
+  const o0 = (out[0] as Plane).data;
+  const o1 = (out[1] as Plane).data;
+  const o2 = (out[2] as Plane).data;
+  const indices = new Int32Array(count);
+  const guides = guide.length;
+  for (let y = 0; y < height; y++) {
+    const insideY = y >= r && y < height - r;
+    for (let x = 0; x < width; x++) {
+      const center = y * width + x;
+      if (insideY && x >= r && x < width - r) {
+        for (let t = 0; t < count; t++) indices[t] = center + (tapOffset[t] ?? 0);
+      } else {
+        for (let t = 0; t < count; t++) {
+          const sx = xs[x + (taps[t]?.dx ?? 0) + r] ?? -1;
+          const sy = ys[y + (taps[t]?.dy ?? 0) + r] ?? -1;
+          indices[t] = sx < 0 || sy < 0 ? -1 : sy * width + sx;
+        }
+      }
+      let s0 = 0;
+      let s1 = 0;
+      let s2 = 0;
+      let t0 = 0;
+      let t1 = 0;
+      let t2 = 0;
+      const c0 = g0[center] ?? 0;
+      const c1 = g1[center] ?? 0;
+      const c2 = g2[center] ?? 0;
+      // Outside the image with the constant border, every value is 0. Inside, indices are >= 0.
+      const edge = !(insideY && x >= r && x < width - r);
+      if (mode === "color") {
+        for (let t = 0; t < count; t++) {
+          const i = indices[t] ?? -1;
+          const out = edge && i < 0;
+          const q0 = out ? 0 : (g0[i] ?? 0);
+          let d2 = (q0 - c0) ** 2;
+          if (guides > 1) d2 += ((out ? 0 : (g1[i] ?? 0)) - c1) ** 2;
+          if (guides > 2) d2 += ((out ? 0 : (g2[i] ?? 0)) - c2) ** 2;
+          const weight = (tapW[t] ?? 0) * (table[d2] ?? 0);
+          s0 += weight * (out ? 0 : (p0[i] ?? 0));
+          s1 += weight * (out ? 0 : (p1[i] ?? 0));
+          s2 += weight * (out ? 0 : (p2[i] ?? 0));
+          t0 += weight;
+        }
+        t1 = t0;
+        t2 = t0;
+      } else {
+        for (let t = 0; t < count; t++) {
+          const i = indices[t] ?? -1;
+          const out = edge && i < 0;
+          const w = tapW[t] ?? 0;
+          const d0 = (out ? 0 : (g0[i] ?? 0)) - c0;
+          const d1 = (out ? 0 : (g1[i] ?? 0)) - c1;
+          const d2 = (out ? 0 : (g2[i] ?? 0)) - c2;
+          const w0 = w * (table[d0 * d0] ?? 0);
+          const w1 = w * (table[d1 * d1] ?? 0);
+          const w2 = w * (table[d2 * d2] ?? 0);
+          s0 += w0 * (out ? 0 : (p0[i] ?? 0));
+          s1 += w1 * (out ? 0 : (p1[i] ?? 0));
+          s2 += w2 * (out ? 0 : (p2[i] ?? 0));
+          t0 += w0;
+          t1 += w1;
+          t2 += w2;
+        }
+      }
+      o0[center] = s0 / t0;
+      o1[center] = s1 / t1;
+      o2[center] = s2 / t2;
+    }
+  }
+  return out as [Plane, Plane, Plane];
+}
+
+/** The plain loop, kept as the reference for the fast path and for guides with fractions. */
+export function bilateralPlanesReference(
   planes: readonly [Plane, Plane, Plane],
   guide: readonly Plane[],
   mode: RangeMode,

@@ -37,7 +37,7 @@ export class AbortedError extends Error {
 
 export function defaultPoolSize(): number {
   const cores = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
-  return Math.max(1, Math.min(8, cores - 1));
+  return Math.max(1, Math.min(16, cores - 1));
 }
 
 export class WorkerPool {
