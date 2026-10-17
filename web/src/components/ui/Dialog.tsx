@@ -3,6 +3,21 @@ import { X } from "lucide-react";
 import { Dialog as RadixDialog } from "radix-ui";
 import type { ReactNode } from "react";
 
+/**
+ * Where the focus goes when a dialog closes and the element that opened it is gone, as with a
+ * menu item: the image canvas, or else the menu bar.
+ */
+function focusFallback(): void {
+  requestAnimationFrame(() => {
+    if (document.activeElement && document.activeElement !== document.body) return;
+    // Two queries, since one selector list would return the menu bar, which comes first.
+    const target =
+      document.querySelector<HTMLElement>('canvas[tabindex="0"]') ??
+      document.querySelector<HTMLElement>('[role="menubar"] button');
+    target?.focus({ preventScroll: true });
+  });
+}
+
 /** A modal dialog with a title, an optional description and a close button. */
 export function Dialog({
   open,
@@ -14,6 +29,7 @@ export function Dialog({
   className,
   hideHeader = false,
   focusField = false,
+  scrollableText = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,12 +42,15 @@ export function Dialog({
   hideHeader?: boolean;
   /** Focus the first text or number field on open, instead of the first button. */
   focusField?: boolean;
+  /** The body holds only text that may scroll. It becomes a tab stop, so keys can scroll it. */
+  scrollableText?: boolean;
 }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <RadixDialog.Content
+          onCloseAutoFocus={focusFallback}
           onOpenAutoFocus={(event) => {
             if (!focusField || !(event.target instanceof HTMLElement)) return;
             const field = event.target.querySelector<HTMLInputElement>(
@@ -70,7 +89,12 @@ export function Dialog({
           {hideHeader || !description ? (
             <RadixDialog.Description className="sr-only">{title}</RadixDialog.Description>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+          <div
+            className="min-h-0 flex-1 overflow-auto"
+            {...(scrollableText ? { tabIndex: 0, role: "region", "aria-label": title } : {})}
+          >
+            {children}
+          </div>
           {footer ? (
             <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">
               {footer}

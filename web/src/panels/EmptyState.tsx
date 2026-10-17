@@ -15,7 +15,10 @@ export function EmptyState() {
     [],
   );
   return (
-    <div className="flex h-full items-center justify-center overflow-auto bg-canvas p-6">
+    <div
+      data-start-screen
+      className="flex h-full items-center justify-center overflow-auto bg-canvas p-6"
+    >
       <div className="flex w-full max-w-2xl flex-col gap-6 rounded-panel border border-border bg-panel p-6 shadow-popover">
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold">Open an image to start</h2>

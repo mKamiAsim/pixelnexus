@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 10: validation and release (Phase 9 waits only for the owner's Pages checkpoint) |
-| Next action | Phase 10: finish the full test run (Python with coverage; WebKit needs `sudo apt-get install libevent-2.1-7t64 libavif16 libmanette-0.2-0` on this PC), then run tools/audit_catalog.py, then the accessibility audit. Owner: enable Pages (Settings, Pages, source GitHub Actions) and start the Pages workflow by hand. |
+| Next action | Phase 10: finish the full test run (Python with coverage; WebKit needs `sudo apt-get install libevent-2.1-7t64 libavif16 libmanette-0.2-0` on this PC), then run tools/audit_catalog.py, then the clean Docker install. Owner: enable Pages (Settings, Pages, source GitHub Actions) and start the Pages workflow by hand. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 10: maths audit; E2E in Firefox passes; tools/audit_catalog.py written. |
+| Last finished step | Phase 10: accessibility audit with fixes (focus rings, focus after dialogs, skip button). |
 | In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. Phase 11 (phone app) was dropped on 2026-10-17. Phase 10 is the last phase. A phone app is planned again after the project is done. |
 | Next steps | Phase 9, in the order of its task list. CI runs only on the pull request into main, so check it when the owner merges. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -683,7 +683,7 @@ Docs: user guide pages for pipelines, history, compare, metrics and projects. Do
 - [ ] Full test run: unit, fixtures, components, API, and E2E in Chromium, Firefox and WebKit. Coverage report.
 - [ ] Catalog audit: every status matches reality. No filter is shown as working without a passing test.
 - [x] Maths audit: automated check that Inspector kernels equal the kernels used. Manual review of 20 random filter pages. Done on 2026-10-17 (docs/_meta/maths-audit.md). 19 pages correct; the iteration range of Landweber, projected Landweber and Richardson-Lucy was one step off and is fixed.
-- [ ] Accessibility audit: axe, keyboard-only walk-through, screen-reader smoke test.
+- [x] Accessibility audit: axe, keyboard-only walk-through, screen-reader smoke test. Done on 2026-10-17 (docs/_meta/accessibility-audit.md), except the test with a real screen reader, which needs the owner. Six problems found and fixed.
 - [ ] Clean install in Docker from the documented steps.
 - [ ] Final limitations page and release notes. Tag v1.0.0 after your approval.
 
@@ -1012,3 +1012,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 9 | The owner dropped Phase 11 (phone app) from the current plan; a phone app is planned again after the project is done. Removed phone app mentions from the docs. Fixed .gitignore: `models/` also hid docs/models/, so the four model pages from Phase 7 were never committed. It is now `/models/`. | Pages workflow, PWA, README. |
 | 2026-10-17 | 9 | Pages workflow: fixed `uv sync` to use `--extra cpu`, checked the studio at `/pixelnexus/studio/` from a local copy of the site (filters, workers and fonts load). PWA: web app manifest, a 3x3 kernel icon (SVG and PNG from web/scripts/make-icons.mjs), and an own service worker without new packages: build/sw-plugin.ts lists the 49 files (4.7 MB) to store at install, the 27 MB model runtime is stored on first use, a new version waits until every tab is closed and the studio says so. E2E tests block service workers except the new pwa.spec.ts, which goes offline, reloads and applies a filter. README rewritten with the docs commands. Deployment page covers Pages, offline use and the engine origin. Formatted 3 files that failed prettier. 3678 unit and 63 E2E tests pass. | Owner: Pages checkpoint. Phase 10. |
 | 2026-10-17 | 10 | Started Phase 10. Playwright has Firefox and WebKit projects, and CI installs all three. Firefox: 63 of 63 E2E tests pass after two test fixes (Firefox names the engine address in the message text; the coordinate test checks zooms below 200% only where the browser places the pointer between pixels, which only Chromium does). WebKit needs three system libraries on this PC. Web coverage: 76.7% statements, 54.0% branches, 68.9% functions, 77.0% lines. Maths audit: a generic test now checks every Inspector kernel against the filter output (32 tests, with a guard for new filters); 20 random pages reviewed by hand, one off-by-one in the iteration range of 3 formulas fixed. New tools/audit_catalog.py checks every status against the result files of a real test run. | Python coverage run, catalog audit, accessibility audit. |
+| 2026-10-17 | 10 | Accessibility audit. New a11y.spec.ts: axe in all five themes over the workspace and five more dialogs, the command palette, a Tab walk that checks a 2 px focus ring at every stop, and a keyboard-only flow (open, filter, undo). Fixed: no focus ring on the canvas, panel tabs and menu bar triggers; focus lost on the page body after a dialog opened from a menu closed; the shortcut list could not be scrolled by keyboard; a "Skip to the image" button as the first tab stop, since the Library put hundreds of stops before the image. A real screen reader test is left for the owner. 3710 unit and 142 E2E tests (Chromium and Firefox) pass. | Python coverage, catalog audit, Docker install. |

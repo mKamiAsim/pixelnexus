@@ -81,7 +81,7 @@ export function MenuBar() {
         const entries = entriesFor(commands, menu.id);
         return (
           <Menubar.Menu key={menu.id}>
-            <Menubar.Trigger className="h-6 rounded-control px-2 text-sm text-text-secondary outline-none select-none hover:bg-hover hover:text-text data-[highlighted]:bg-hover data-[state=open]:bg-hover data-[state=open]:text-text">
+            <Menubar.Trigger className="h-6 rounded-control px-2 text-sm text-text-secondary outline-none select-none focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-solid hover:bg-hover hover:text-text data-[highlighted]:bg-hover data-[state=open]:bg-hover data-[state=open]:text-text">
               {menu.label}
             </Menubar.Trigger>
             <Menubar.Portal>

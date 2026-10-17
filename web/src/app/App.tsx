@@ -164,6 +164,27 @@ function usePaste(): void {
   }, []);
 }
 
+/**
+ * The first stop of the Tab key, shown only while it has focus. The panels come before the image
+ * in Tab order, and the Library alone has hundreds of buttons, so this jumps straight to the image,
+ * or to the buttons of the start screen when no image is open.
+ */
+function SkipToImage() {
+  return (
+    <button
+      type="button"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-1 focus:left-1 focus:z-50 focus:rounded-control focus:bg-accent focus:px-3 focus:py-1 focus:text-sm focus:text-on-accent"
+      onClick={() =>
+        document
+          .querySelector<HTMLElement>('canvas[tabindex="0"], [data-start-screen] button')
+          ?.focus()
+      }
+    >
+      Skip to the image
+    </button>
+  );
+}
+
 /** The studio shell: menus, tool options, tools, the docking workspace and the status bar. */
 export function App() {
   useGlobalKeys();
@@ -183,6 +204,7 @@ export function App() {
   return (
     <TooltipProvider>
       <div className="flex h-full flex-col overflow-hidden bg-app text-text">
+        <SkipToImage />
         <header className="flex h-8 shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden border-b border-border-subtle bg-panel px-2">
           <Logo />
           <MenuBar />

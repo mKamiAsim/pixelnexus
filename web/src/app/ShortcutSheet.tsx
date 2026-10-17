@@ -33,6 +33,7 @@ export function ShortcutSheet() {
       title="Keyboard shortcuts"
       description={`${isApple ? "Cmd" : "Ctrl"} shortcuts work anywhere except while you type in a field.`}
       className="w-[min(44rem,calc(100vw-2rem))]"
+      scrollableText
     >
       <div className="grid gap-x-8 gap-y-5 p-4 sm:grid-cols-2">
         {MENUS.map((menu) => {

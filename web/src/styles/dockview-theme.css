@@ -70,3 +70,11 @@
 .dockview-theme-pixelnexus .dv-tab {
   font-weight: 500;
 }
+
+/* Dockview marks a focused tab with a 1 px line in the divider color, which is hard to see.
+   Use the focus ring of the rest of the studio. */
+.dv-tab:focus-visible::after,
+.dv-tab:has(:focus-visible)::after {
+  outline: 2px solid var(--px-focus) !important;
+  outline-offset: -2px;
+}

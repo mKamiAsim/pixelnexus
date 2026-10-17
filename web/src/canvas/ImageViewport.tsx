@@ -567,7 +567,7 @@ export function ImageViewport({ document: doc }: { document: ImageDocument }) {
         role="img"
         aria-label={`${doc.name}, ${doc.current.width} by ${doc.current.height} pixels, zoom ${zoomLabel}`}
         className={clsx(
-          "absolute inset-0 size-full touch-none outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+          "absolute inset-0 size-full touch-none outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus focus-visible:outline-solid",
           cursor,
         )}
         onPointerDown={onPointerDown}
