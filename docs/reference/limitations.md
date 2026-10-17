@@ -30,3 +30,15 @@ What PixelNexus does not do, or does with limits. Each filter page also lists it
 
 - The studio needs a current browser with WebAssembly, Web Workers and WebGL2. On-device models use WebGPU where it exists, and are slower without it.
 - The phone layout is a first step. There is no native phone app.
+- The installed studio opens offline only after one visit online. Offline, browser filters work. Science filters need the engine, and an on-device model must be downloaded once while online.
+- The studio on GitHub Pages can use an engine on your computer only after you add the site's address to `PIXELNEXUS_ALLOWED_ORIGINS`. Your browser may also ask whether the site may reach your local network. See [Deployment](../getting-started/deployment.md).
+
+## Catalog
+
+- 24 filters are planned and cannot run yet. 7 are listed as unsupported, with the reason on their pages.
+- 8 science filters need a model that you download, and 1 needs an optional package.
+
+## Testing
+
+- The end-to-end tests run in Chromium, Firefox and WebKit. On a Linux computer, WebKit needs some system libraries.
+- The studio has passed automated accessibility checks and keyboard tests, but no test with a real screen reader yet.

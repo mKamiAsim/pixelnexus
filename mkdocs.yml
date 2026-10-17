@@ -157,6 +157,7 @@ nav:
       - Limitations: reference/limitations.md
       - Troubleshooting: reference/troubleshooting.md
       - Glossary: reference/glossary.md
+      - Release notes: release-notes.md
   - Contributing: contributing.md
   - Mathematics:
       - Foundations: mathematics/foundations.md
