@@ -28,13 +28,13 @@ Checked by tests in Chromium and Firefox:
 
 | Problem | Fix |
 |---|---|
-| The canvas showed no focus ring. Its `outline-none` class won over the focus outline. | The focus outline sets its own style. |
-| Panel tabs showed focus as a 1 px line in the border color, which is hard to see. | Panel tabs use the 2 px focus ring of the rest of the studio. |
+| The canvas showed no focus ring. Its `outline-none` class won. | The focus outline sets its own style. |
+| Panel tabs showed focus as a faint 1 px line. | They use the 2 px focus ring. |
 | The menu bar triggers showed focus only by a faint background. | They show the focus ring. |
-| After a dialog opened from a menu closed, the focus was lost on the page body, because the menu item that opened it was gone. | The focus goes to the image canvas, or to the menu bar when no image is open. |
+| A dialog opened from a menu gave the focus back to the page body on close. The menu item that opened it was gone. | The focus goes to the image canvas. With no image open, it goes to the menu bar. |
 | The list of keyboard shortcuts scrolled, but the keyboard could not reach it. | The list is a named region and a tab stop. |
-| The panels come before the image in Tab order, and the Library alone has hundreds of buttons. Reaching the image took hundreds of key presses. | A "Skip to the image" button is the first tab stop. It shows only while it has focus. |
+| The panels come before the image in Tab order. The Library alone has hundreds of buttons. | A "Skip to the image" button is the first tab stop. It shows only while it has focus. |
 
 ## Screen readers
 
-Not tested with a real screen reader. That needs a person with NVDA, JAWS, VoiceOver or Orca. The automated checks cover what a screen reader relies on: every control has a name (axe), the page has banner, main and contentinfo landmarks, and results such as "Applied Gaussian filter" and "Undid Gaussian filter" are spoken through a live region, checked in many tests. A short test with a real screen reader is left for the owner before the release.
+Not tested with a real screen reader. That needs a person with NVDA, JAWS, VoiceOver or Orca. The automated checks cover what a screen reader relies on. Every control has a name (axe). The page has banner, main and contentinfo landmarks. Results such as "Applied Gaussian filter" go to a live region, and many tests check it. A short test with a real screen reader is left for the owner before the release.
