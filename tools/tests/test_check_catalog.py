@@ -168,6 +168,10 @@ def test_ai_tasks_name_runnable_classical_alternatives(catalog: Any) -> None:
             task["classical"] = {"kind": "filter", "id": "no-such-filter"}
         if task["id"] == "jpeg-cleanup":
             task["classical"] = {"kind": "tool", "id": "ai-subject"}
+    # Every tool runs today, so the test makes one planned in its own copy.
+    for tool in broken.bundle["tools"]:
+        if tool["id"] == "ai-subject":
+            tool["status"] = "planned"
     messages = [i.message for i in structure_issues(broken)]
     assert "classical filter 'no-such-filter' does not exist" in messages
     assert "classical alternative 'ai-subject' is not runnable" in messages

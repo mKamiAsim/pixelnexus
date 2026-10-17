@@ -17,6 +17,7 @@ through web/scripts/gen-filter-docs.mjs.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections import Counter
@@ -150,6 +151,69 @@ def models_reference(bundle: dict[str, Any]) -> str:
     first = table(headers, rows, ["left", "left", "right", "left", "left", "left", "left"])
     second = table(["Model", "Takes", "Gives", "Paper"], facts, ["left"] * 4)
     return HEADER + first + "\n" + second
+
+
+def _schema_type(spec: dict[str, Any], defs: dict[str, Any]) -> str:
+    """A short type name for a schema property."""
+    if "$ref" in spec:
+        target = defs.get(spec["$ref"].split("/")[-1], {})
+        if "enum" in target:
+            return "one of " + ", ".join(f"`{v}`" for v in target["enum"])
+        return str(target.get("title") or target.get("type") or spec["$ref"].split("/")[-1])
+    if "enum" in spec:
+        return "one of " + ", ".join(f"`{v}`" for v in spec["enum"])
+    if spec.get("type") == "array":
+        items = spec.get("items", {})
+        return f"list of {_schema_type(items, defs)}" if items else "list"
+    return str(spec.get("type", "any"))
+
+
+def filter_schema() -> str:
+    """Every field of a filter entry, from catalog/schema/catalog.schema.json."""
+    schema = json.loads((ROOT / "catalog" / "schema" / "catalog.schema.json").read_text("utf-8"))
+    defs = schema["$defs"]
+    spec = defs["filter"]
+    required = set(spec.get("required", []))
+    rows = []
+    for key, prop in spec["properties"].items():
+        ref = defs.get(prop.get("$ref", "").split("/")[-1], {}) if "$ref" in prop else {}
+        text = prop.get("description") or ref.get("description") or ""
+        rows.append([f"`{key}`", "Yes" if key in required else "", _schema_type(prop, defs), text])
+    return HEADER + table(["Field", "Required", "Type", "Meaning"], rows, ["left"] * 4)
+
+
+def glossary(bundle: dict[str, Any]) -> str:
+    """The glossary from catalog/glossary.yaml, the same text as the studio's tooltips."""
+    rows = []
+    for term in sorted(bundle["glossary"], key=lambda t: str(t["term"]).lower()):
+        rows.append(
+            [
+                f"**{term['term']}**",
+                ", ".join(term.get("aliases", []) or []),
+                term["definition"],
+                ", ".join(term.get("seeAlso", []) or []),
+            ]
+        )
+    return HEADER + table(["Term", "Also called", "Meaning", "See also"], rows, ["left"] * 4)
+
+
+def common_params(bundle: dict[str, Any]) -> str:
+    """The shared parameters from catalog/common-params.yaml."""
+    rows = []
+    for p in bundle["commonParams"]:
+        options = ", ".join(f"`{o['value']}` ({o['label']})" for o in p.get("options", []) or [])
+        rows.append(
+            [
+                f"`{p['key']}`",
+                p["label"],
+                p["type"],
+                f"`{p['default']}`",
+                options,
+                p["description"] + (f" {p['effect']}" if p.get("effect") else ""),
+            ]
+        )
+    headers = ["Key", "Label", "Type", "Default", "Options", "Meaning"]
+    return HEADER + table(headers, rows, ["left"] * 6)
 
 
 def resolve_params(entry: dict[str, Any], common: dict[str, Any]) -> list[dict[str, Any]]:
@@ -402,6 +466,9 @@ def build() -> dict[str, str]:
         "tools-index.md": tools_index(bundle),
         "ai-tasks.md": ai_tasks(bundle),
         "models.md": models_reference(bundle),
+        "filter-schema.md": filter_schema(),
+        "glossary.md": glossary(bundle),
+        "common-params.md": common_params(bundle),
     }
     for entry in bundle["filters"]:
         if entry.get("docsPage") and entry.get("formula"):

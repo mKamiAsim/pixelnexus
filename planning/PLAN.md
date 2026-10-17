@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 9: documentation completion and publishing |
-| Next action | Phase 9: the rest of the docs tree (deployment, architecture overview, implementation/, reference/, contributing, selection masks-and-refinement). |
+| Next action | Phase 9: figure check (every page at 1280 px and 390 px, light and dark, checklist), then the Pages workflow (checkpoint: owner approval), PWA, README. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 9 part 1: seven mathematics pages. |
+| Last finished step | Phase 9 part 2: docs tree complete, generated reference pages, tools/check_docs.py. |
 | In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. |
 | Next steps | Phase 9, in the order of its task list. CI runs only on the pull request into main, so check it when the owner merges. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -669,10 +669,10 @@ Docs: user guide pages for pipelines, history, compare, metrics and projects. Do
 
 ### Phase 9: Documentation completion and publishing
 
-- [ ] Finish every section of the docs tree in section 7.
-- [ ] Catalog page generated from the catalog, with every entry and status.
-- [ ] Parameter reference, dependencies and licenses, limitations, troubleshooting, contributing, and an "Adding a filter" walk-through based on a real filter.
-- [ ] `tools/check_docs.py`: finds implemented entries without a page, pages without an entry, wrong source paths, missing statuses, missing formulas and missing tests.
+- [x] Finish every section of the docs tree in section 7. Done on 2026-10-17.
+- [x] Catalog page generated from the catalog, with every entry and status. Done on 2026-10-17 (reference/filter-catalog.md).
+- [x] Parameter reference, dependencies and licenses, limitations, troubleshooting, contributing, and an "Adding a filter" walk-through based on a real filter. Done on 2026-10-17.
+- [x] `tools/check_docs.py`: finds implemented entries without a page, pages without an entry, wrong source paths, missing statuses, missing formulas and missing tests. Done on 2026-10-17, in CI.
 - [ ] Figure check: every page at 1280 px and 390 px, in light and dark. No overlaps. Results recorded in a checklist.
 - [ ] Pages workflow: docs at the root, studio at `/studio/`. **Checkpoint: you enable Pages and approve the first deploy.**
 - [ ] The studio becomes an installable web app (PWA) with offline support. This is a quick phone option before the native app.
@@ -1026,3 +1026,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 8 | Performance pass, profile first. New pnpm bench:filters (12 filters through the studio, job and wall time). Profile at 4096 x 4096 with 8 workers: convolutions 0.17 to 0.47 s, bilateral 25.0 s, Canny 4.45 s. A CPU profile of a 6000 x 6000 apply showed 12.9 s wall for a 0.4 s job: the Metrics panel computed SSIM on the main thread even behind its tab. Changes: exact table-driven bilateral path (identical results, parity tests for all border and range modes, 25.0 s to 3.8 s); worker cap 8 to 16 (15 to 37 percent faster on 32 threads); metrics in a worker and only while visible, Histogram and Spectrum likewise (panel visibility from dockview); Apply stops the preview at once. Decision: no WebGL2 path, since no convolution was hot. New large-image stress test: each 6000 x 6000 apply 0.8 to 0.95 s (was about 12.8 s). Docs: architecture/performance.md. | Tablet and phone layout. |
 | 2026-10-17 | 8 | Tablet and phone layout. A new Phone preset puts the canvas on top and all panels in one tab group below. The studio picks a layout by width (under 768 px Phone, under 1180 px Compact, else your last choice; our choice of sizes), only when the screen moves into another size class, and does not remember those as your choice. The decision is made once per page load, and a preset is saved at once, so a reload keeps it. On phones the name hides and the menu bar scrolls. The header shows the preset on screen. Checked in the browser at 375 x 812 and 768 x 1024. 2 unit tests, 1 E2E test with axe at phone size. Phase 8 done. | Phase 9. |
 | 2026-10-17 | 9 | Phase 9 part 1. Seven mathematics pages from the docs tree: spatial and frequency domains, Fourier transform (numpy convention, our mixed-radix and Bluestein FFT, the padding step, the Spectrum panel), wavelet transforms (bands, decimated and stationary, shrinkage), color spaces (the exact formulas of convert.ts), computational complexity (from the catalog), noise models (from the noise filter formulas) and image quality metrics (as quality.ts). | Rest of the docs tree. |
+| 2026-10-17 | 9 | Phase 9 part 2. The docs tree of section 7 is complete: deployment, architecture overview, selection masks and refinement, contributing, implementation/ (adding a filter on the box filter, filter definition schema, science engine and frontend integration, testing guidelines, optional dependencies, model integration) and reference/ (filter catalog, parameter reference, API reference, dependencies and licenses, limitations, troubleshooting, glossary). Generated: filter schema (descriptions added to the schema), glossary, shared parameters (gen_docs.py), the engine API from FastAPI's OpenAPI (engine_docs.py, with docstrings added to five routes), and dependencies with licenses from installed metadata (new tools/gen_licenses.py, run by hand). New tools/check_docs.py in CI, with tests that each kind of problem is found; it finds none today. Fixed a tool test that used ai-subject as a non-runnable tool. | Figure check, Pages workflow, PWA, README. |

@@ -259,6 +259,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @router.get("/filters/{filter_id}")
     def get_filter(filter_id: str) -> dict[str, Any]:
+        """One catalog entry, and whether this engine can run it."""
         for entry in catalog:
             if entry["id"] == filter_id:
                 return entry_view(entry)
@@ -377,6 +378,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @router.get("/images/{image_id}/metadata")
     def metadata(image_id: str) -> dict[str, Any]:
+        """The id, size and channel count of an uploaded image."""
         stored = images.get(image_id)
         if stored is None:
             raise _not_found("image with this id. Upload it again")
@@ -417,6 +419,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @router.post("/jobs", status_code=202)
     def submit(request: JobRequest) -> dict[str, Any]:
+        """Start a filter job on an uploaded image. Parameters are checked against the catalog."""
         if request.filter not in FILTERS:
             raise _not_found(f'filter "{request.filter}" in this engine')
         params = checked_params(request.filter, request.params)
@@ -448,6 +451,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @router.get("/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
+        """The state and progress of a job."""
         job = jobs().get(job_id)
         if job is None:
             raise _not_found("job with this id")
@@ -496,6 +500,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @router.delete("/jobs/{job_id}")
     def cancel(job_id: str) -> dict[str, Any]:
+        """Cancel a job and stop its process."""
         job = jobs().cancel(job_id)
         if job is None:
             raise _not_found("job with this id")

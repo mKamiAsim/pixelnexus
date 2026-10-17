@@ -98,6 +98,7 @@ nav:
       - Development environment: getting-started/development-environment.md
       - Configuration: getting-started/configuration.md
       - Running tests: getting-started/running-tests.md
+      - Deployment: getting-started/deployment.md
   - User guide:
       - The workspace: user-guide/workspace.md
       - Panels: user-guide/panels.md
@@ -122,12 +123,14 @@ nav:
       - Subject and background: selection/subject.md
       - Object and Click Select: selection/seeds.md
       - AI selection: selection/ai-selection.md
+      - Masks and refinement: selection/masks-and-refinement.md
   - AI models:
       - Model reference: models/reference.md
       - Model integration: models/integration.md
       - Hardware needs: models/hardware.md
       - Connecting an external API: models/external-api.md
   - Architecture:
+      - Overview: architecture/overview.md
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md
       - Preview and rendering: architecture/preview-and-rendering.md
@@ -138,6 +141,23 @@ nav:
       - Performance: architecture/performance.md
       - Science engine: architecture/science-engine.md
       - Learn panel architecture: architecture/learn-panel.md
+  - Implementation:
+      - Adding a filter: implementation/adding-a-filter.md
+      - Filter definition schema: implementation/filter-definition-schema.md
+      - Science engine integration: implementation/science-engine-integration.md
+      - Frontend integration: implementation/frontend-integration.md
+      - Testing guidelines: implementation/testing-guidelines.md
+      - Optional dependencies: implementation/optional-dependencies.md
+      - Model integration: implementation/model-integration.md
+  - Reference:
+      - Filter catalog: reference/filter-catalog.md
+      - Parameter reference: reference/parameter-reference.md
+      - API reference: reference/api-reference.md
+      - Dependencies and licenses: reference/dependencies.md
+      - Limitations: reference/limitations.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Glossary: reference/glossary.md
+  - Contributing: contributing.md
   - Mathematics:
       - Foundations: mathematics/foundations.md
       - Image representation: mathematics/image-representation.md
