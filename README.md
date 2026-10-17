@@ -33,6 +33,12 @@ The studio can also be installed as an app from the browser menu. After the firs
 | `pnpm e2e` | Runs the browser tests. |
 | `docker compose up --build` | Runs the studio and the engine in containers. |
 
+The tests need Chromium the first time, and the browser tests also use Firefox and WebKit:
+
+```bash
+pnpm --filter @pixelnexus/web exec playwright install chromium firefox webkit
+```
+
 The full list is in `.github/workflows/ci.yml` and in the docs, under Getting started.
 
 ## Documentation

@@ -15,17 +15,19 @@ Vitest runs two groups of tests:
 - **unit** runs in Node.js. It covers maths, catalog rules and components.
 - **browser** runs in a real Chromium. It covers code that needs browser features, such as Web Workers, image decoding and WebGL. These files end in `.browser.test.ts`.
 
-The browser tests and the end-to-end tests need Chromium the first time:
+The browser tests need Chromium the first time. The end-to-end tests also run in Firefox and WebKit:
 
 ```bash
-pnpm --filter @pixelnexus/web exec playwright install chromium
+pnpm --filter @pixelnexus/web exec playwright install chromium firefox webkit
 ```
+
+On Linux, WebKit also needs some system libraries. When they are missing, Playwright prints the command that installs them. To run the end-to-end tests in one browser, add `--project`, for example `pnpm e2e --project=firefox`.
 
 Unit tests sit next to the code they test, as `*.test.ts` or `*.test.tsx`. Tests that check build tools and shared data sit in `web/tests/unit/`. End-to-end tests sit in `web/tests/e2e/`.
 
 ### End-to-end tests
 
-`pnpm e2e` builds the studio, serves the build and drives it in Chromium. The tests in `web/tests/e2e/` cover:
+`pnpm e2e` builds the studio, serves the build and drives it in Chromium, Firefox and WebKit. The tests in `web/tests/e2e/` cover:
 
 - Opening three images, zooming, panning, every compare mode, and exporting in PNG, JPEG, WebP and TIFF, with a check of each file's first bytes.
 - A resized export, checked in the PNG header.
@@ -34,7 +36,9 @@ Unit tests sit next to the code they test, as `*.test.ts` or `*.test.tsx`. Tests
 - Opening and panning a 6000x6000 image.
 - Choosing a filter in the Library, the preview, Apply and undo.
 - The Inspector kernel following a parameter, the Learn panel demos, a planned filter that cannot run, the export name after a filter, and the Filter menu and palette.
-- Accessibility checks with axe in several states and themes, and on each filter panel. A serious or critical issue fails the test.
+- Accessibility checks with axe in several states and all five themes, and on each filter panel and dialog. A serious or critical issue fails the test.
+- A walk through the workspace with the Tab key, with a focus ring at every stop, and opening, filtering and undoing with the keyboard only.
+- The installed web app: it goes offline, reloads and still applies a filter.
 
 The server listens on `127.0.0.1:4173`. On your own computer, Playwright runs at most 4 tests at once. On one Windows computer with security software, many browsers at once, or browsers that used `localhost` (the IPv6 address `::1`), made page loads stall at random. The IPv4 address and the limit of 4 avoid this. CI keeps the Playwright default.
 
