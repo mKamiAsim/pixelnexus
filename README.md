@@ -4,7 +4,18 @@ PixelNexus is an image processing studio that runs in your web browser. It is ma
 
 Every filter comes with its formula, its kernel or operator, its limits and a plain explanation with live demos on your own image.
 
-**Status:** close to the first release. The studio, the science engine, AI tools and the docs are done. Validation and release are next. See [planning/PLAN.md](planning/PLAN.md).
+**Version 1.0.0.** 277 filters and 20 tools, each with passing tests. See the [release notes](docs/release-notes.md).
+
+## Documentation and studio
+
+| Link | What it holds |
+|---|---|
+| [Documentation](https://mkamiasim.github.io/pixelnexus/) | How to use and study with the studio, the mathematics, and one page for every filter. |
+| [Studio](https://mkamiasim.github.io/pixelnexus/studio/) | The studio online. Nothing to install. |
+| [The studio guide](https://mkamiasim.github.io/pixelnexus/user-guide/studio/) | A first session, the Study workspace and study paths. |
+| [Configuration](https://mkamiasim.github.io/pixelnexus/getting-started/configuration/) | Every setting of the engine and the studio. |
+
+The same pages are in the `docs/` folder of this repository.
 
 ## Quick start
 
@@ -41,9 +52,25 @@ pnpm --filter @pixelnexus/web exec playwright install chromium firefox webkit
 
 The full list is in `.github/workflows/ci.yml` and in the docs, under Getting started.
 
-## Documentation
+## Configuration
 
-The docs live in `docs/` and build with MkDocs. They explain the mathematics, the code and the tests for every filter.
+The studio keeps its preferences in your browser. Change them in **Edit > Preferences**. AI services are set in **Edit > AI providers**.
+
+The engine reads environment variables. Copy `.env.example` to `.env`, edit it, and start the engine with `uv run --extra cpu --env-file .env pixelnexus-engine`. The most common settings:
+
+| Variable | Default | What it sets |
+|---|---|---|
+| `PIXELNEXUS_ENGINE_HOST` | `127.0.0.1` | The address the engine listens on. |
+| `PIXELNEXUS_ENGINE_PORT` | `8765` | The port the engine listens on. |
+| `PIXELNEXUS_ALLOWED_ORIGINS` | the studio's local addresses | The web addresses that may call the engine. Add `https://mkamiasim.github.io` to use the online studio with your engine. |
+| `PIXELNEXUS_DEVICE` | `auto` | Where AI models run: `auto`, `cpu` or `cuda`. |
+| `PIXELNEXUS_MODELS_DIR` | `./models` | The folder for AI models that you download. |
+
+The full list is on the [configuration page](https://mkamiasim.github.io/pixelnexus/getting-started/configuration/).
+
+## Working on the docs
+
+The docs build with MkDocs.
 
 | Command | What it does |
 |---|---|
@@ -52,9 +79,9 @@ The docs live in `docs/` and build with MkDocs. They explain the mathematics, th
 | `uv run --extra cpu python tools/gen_docs.py` | Writes the generated pages from the catalog. Add `--check` to only check them. |
 | `uv run --extra cpu python tools/check_docs.py` | Checks that every filter has a page, with its status, formula, source and tests. |
 | `uv run --extra cpu python tools/lint_prose.py` | Checks the writing style of the docs. |
-| `pnpm --filter @pixelnexus/web check:figures` | After a build, checks every page at phone and desktop width, in light and dark. |
+| `pnpm --filter @pixelnexus/web check:figures` | After a build, checks every page at phone and desktop width. |
 
-The public site publishes the docs at the root and the studio at `/studio/`.
+The site publishes the docs at the root and the studio at `/studio/`.
 
 ## Privacy
 

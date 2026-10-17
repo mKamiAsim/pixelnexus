@@ -30,21 +30,11 @@ theme:
   font: false
   icon:
     repo: fontawesome/brands/github
+  # The look of the Hacker theme for GitHub Pages (docs/stylesheets/extra.css). It is dark only.
   palette:
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
+    scheme: slate
+    primary: custom
+    accent: custom
   features:
     - navigation.tabs
     - navigation.sections
@@ -100,6 +90,7 @@ nav:
       - Running tests: getting-started/running-tests.md
       - Deployment: getting-started/deployment.md
   - User guide:
+      - The studio: user-guide/studio.md
       - The workspace: user-guide/workspace.md
       - Panels: user-guide/panels.md
       - The Learn panel: user-guide/learn-panel.md

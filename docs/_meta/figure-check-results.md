@@ -4,11 +4,11 @@ Written by `web/scripts/check-figures.mjs` on 2026-10-17. This file is not part 
 
 | Check | Result |
 |---|---|
-| Pages | 365, each at 1280 px and 390 px, light and dark (1460 views) |
+| Pages | 367, each at 1280 px and 390 px, light and dark (1468 views) |
 | Pages with figures | 284 |
 | Pages with Mermaid diagrams | 10 |
 | Pages with formulas | 314 |
-| Pages that pass | 365 of 365 |
+| Pages that pass | 367 of 367 |
 | SVG figures | 568, 568 with no overlapping or cut labels |
 
 Every check passed.

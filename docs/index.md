@@ -22,8 +22,10 @@ These pages are the technical reference. They explain how each filter works, the
 
 ## Project status
 
-!!! note "Early development"
-    PixelNexus is in Phase 2 of 11. The studio opens, views, compares and exports images. Filters arrive in Phase 3, so no filter runs yet.
+!!! note "Version 1.0.0"
+    PixelNexus 1.0.0 is released. 277 filters and 20 tools run, each with passing tests. See the [release notes](release-notes.md).
+
+**Open the studio:** <https://mkamiasim.github.io/pixelnexus/studio/>. To learn how to use it, and how to study with it, start with [The studio](user-guide/studio.md).
 
 Every filter and tool has an entry in the catalog. Each entry has an honest status. The table below is generated from the catalog.
 
@@ -36,6 +38,8 @@ The catalog groups the entries into families:
 ## How these docs are organized
 
 - **Getting started** explains how to install, run and test PixelNexus.
-- **User guide** shows you how to use the studio.
+- **User guide** shows you how to use the studio, and how to study with it.
 - **Architecture** explains how the studio is built.
-- Pages about the mathematics and each filter are added as each phase is built. A page appears only when its content is real.
+- **Mathematics** explains the ideas that many filters share.
+- **Filters** has one page for each filter: its formula, kernel or operator, a worked example, its limits and its tests.
+- **Reference** lists every filter, parameter and dependency, with the limitations and release notes.

@@ -77,7 +77,7 @@ function serve() {
 }
 
 /** Runs in the page. Returns a list of problems. */
-function checkPage(theme) {
+function checkPage() {
   const problems = [];
   const overlap = (a, b) =>
     a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -99,7 +99,9 @@ function checkPage(theme) {
   for (const img of document.querySelectorAll(".md-content img")) {
     const src = img.getAttribute("src") ?? "";
     const shown = getComputedStyle(img).display !== "none" && img.offsetParent !== null;
-    const other = theme === "light" ? "#only-dark" : "#only-light";
+    // The site may be dark only, so the page itself says which variant should show.
+    const dark = document.body.getAttribute("data-md-color-scheme") === "slate";
+    const other = dark ? "#only-light" : "#only-dark";
     if (src.endsWith(other) && shown) problems.push(`Shows the wrong theme: ${src}`);
     if (!shown) continue;
     figures += 1;
@@ -219,7 +221,7 @@ async function main() {
       try {
         await page.goto(`${base}/${job.path}${job.path ? "/" : ""}`);
         await settle(page);
-        const found = await page.evaluate(checkPage, job.theme);
+        const found = await page.evaluate(checkPage);
         const entry = results.get(job.path);
         entry.figures = Math.max(entry.figures, found.figures);
         entry.diagrams = Math.max(entry.diagrams, found.diagrams);
