@@ -146,6 +146,13 @@ nav:
       - Linearity and superposition: mathematics/linearity-and-superposition.md
       - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
       - Numerical precision: mathematics/numerical-precision.md
+      - Spatial and frequency domains: mathematics/spatial-and-frequency-domains.md
+      - Fourier transform: mathematics/fourier-transform.md
+      - Wavelet transforms: mathematics/wavelet-transforms.md
+      - Color spaces: mathematics/color-spaces.md
+      - Computational complexity: mathematics/computational-complexity.md
+      - Noise models: mathematics/noise-models.md
+      - Image quality metrics: mathematics/image-quality-metrics.md
   - Mathematical Inspector:
       - The Inspector: mathematical-inspector/overview.md
       - Kernel generation: mathematical-inspector/kernel-generation.md
