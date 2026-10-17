@@ -4,7 +4,7 @@ import { NumberField } from "@/components/ui/NumberField";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { DEFAULT_LIMITS } from "@/core/image/limits";
-import { useSettings } from "@/state/settings";
+import { DEFAULT_HISTORY, useSettings } from "@/state/settings";
 import { useUi } from "@/state/ui";
 import { applyTheme, isThemeId, THEMES } from "@/styles/themes";
 
@@ -19,6 +19,8 @@ export function PreferencesDialog() {
   const limits = useSettings((s) => s.limits);
   const setLimits = useSettings((s) => s.setLimits);
   const rulers = useSettings((s) => s.rulers);
+  const history = useSettings((s) => s.history);
+  const setHistory = useSettings((s) => s.setHistory);
   const toggleRulers = useSettings((s) => s.toggleRulers);
   const reset = useSettings((s) => s.reset);
 
@@ -94,6 +96,33 @@ export function PreferencesDialog() {
             max={32768}
             fallback={DEFAULT_LIMITS.maxSide}
             onChange={(value) => setLimits({ ...limits, maxSide: value })}
+          />
+        </section>
+        <section aria-labelledby="prefs-history" className="flex flex-col gap-2.5">
+          <h3 id="prefs-history" className="text-xs font-semibold text-text-secondary">
+            History
+          </h3>
+          <p className="text-xs text-text-secondary">
+            Each image keeps this many steps after the original, within this much memory. When
+            either is full, the oldest steps are dropped. The original always stays.
+          </p>
+          <LimitRow
+            label="Steps"
+            unit="steps"
+            value={history.steps}
+            min={5}
+            max={500}
+            fallback={DEFAULT_HISTORY.steps}
+            onChange={(value) => setHistory({ ...history, steps: value })}
+          />
+          <LimitRow
+            label="Memory"
+            unit="MB"
+            value={Math.round(history.megabytes)}
+            min={64}
+            max={8192}
+            fallback={DEFAULT_HISTORY.megabytes}
+            onChange={(value) => setHistory({ ...history, megabytes: value })}
           />
         </section>
       </div>

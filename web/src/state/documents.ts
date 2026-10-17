@@ -130,6 +130,13 @@ interface DocumentsState {
   redo: (id: string) => void;
   /** Go to any step in the history. */
   jumpTo: (id: string, index: number) => void;
+  /**
+   * Put new steps in place of the history, for example after a step was deleted and the later
+   * ones recomputed. `index` is the current step. The original stays first.
+   */
+  replaceHistory: (id: string, steps: readonly HistoryStep[], index: number) => void;
+  /** Free memory: keep only the original and the current step. */
+  purgeHistory: (id: string) => void;
 }
 
 let counter = 0;
@@ -314,6 +321,36 @@ export const useDocuments = create<DocumentsState>()((set) => ({
     set((state) => ({ documents: update(state.documents, id, (d) => moveTo(d, d.index + 1)) })),
   jumpTo: (id, index) =>
     set((state) => ({ documents: update(state.documents, id, (d) => moveTo(d, index)) })),
+  replaceHistory: (id, steps, index) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => {
+        const step = steps[index];
+        if (!step || steps[0] !== d.steps[0]) return d;
+        return {
+          ...d,
+          steps,
+          index,
+          current: step.image,
+          selection: step.selection,
+          view: sameSize(step.image, d.current) ? d.view : null,
+        };
+      }),
+    })),
+  purgeHistory: (id) =>
+    set((state) => ({
+      documents: update(state.documents, id, (d) => {
+        const first = d.steps[0];
+        const current = d.steps[d.index];
+        if (!first || !current || d.steps.length <= 2) return d;
+        const steps = d.index === 0 ? [first] : [first, current];
+        return {
+          ...d,
+          steps,
+          index: steps.length - 1,
+          dropped: d.dropped + d.steps.length - steps.length,
+        };
+      }),
+    })),
 }));
 
 export function activeDocument(

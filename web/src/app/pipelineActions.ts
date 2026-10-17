@@ -9,8 +9,6 @@
  */
 import { isRunnable, type Filter } from "@/catalog";
 import { entryParams, validateParams } from "@/catalog/params";
-import { composite } from "@/core/composite/compose";
-import { processingRegion, scopeMask } from "@/core/composite/scope";
 import type { ParamValue } from "@/core/filters/types";
 import type { RgbaImage } from "@/core/image/types";
 import {
@@ -21,7 +19,6 @@ import {
   type PipelineStep,
   type StepScope,
 } from "@/core/pipeline/pipeline";
-import { runJob } from "@/engine-client";
 import { activeDocument, activeSelection, appliedSteps, useDocuments } from "@/state/documents";
 import { useFilters } from "@/state/filters";
 import { announce, notify } from "@/state/notifications";
@@ -30,7 +27,8 @@ import { useUi } from "@/state/ui";
 
 import { isModelFilter } from "./aiLabel";
 import { download } from "./download";
-import { filterById, filterValues, isGlobal, stepLabel } from "./filterActions";
+import { filterById, filterValues, stepLabel } from "./filterActions";
+import { replayFilter } from "./replay";
 
 /** Why a filter cannot be a pipeline step, or null when it can. */
 export function pipelineProblem(entry: Filter): string | null {
@@ -147,30 +145,8 @@ export async function runPipelineOnActive(): Promise<void> {
   const { beginWork, endWork } = useUi.getState();
   beginWork("Running the pipeline");
   announce("Running the pipeline.");
-  const runStep = async (step: PipelineStep, image: RgbaImage, signal?: AbortSignal) => {
-    const fits = selection && selection.width === image.width && selection.height === image.height;
-    if (step.scope !== "whole" && !fits) {
-      throw new Error(
-        selection
-          ? "The selection does not fit the image at this step, since an earlier step changed its size."
-          : "This step works on the selection. Make a selection first.",
-      );
-    }
-    const mask = fits ? scopeMask(selection, step.scope) : null;
-    const region = processingRegion(image, mask, isGlobal(step.params));
-    if (!region) return image;
-    const result = await runJob(
-      { filterId: step.filterId, values: step.params, image, region },
-      signal ? { signal } : {},
-    );
-    // A result that fills its region goes back through the compositor. Another size means the
-    // filter changed the image size, as an enlargement does, and the result replaces the image.
-    const fills =
-      result.image.width === result.region.width && result.image.height === result.region.height;
-    if (fills) return composite(image, result.image, result.region, mask);
-    if (mask) throw new Error("A step that changes the image size cannot work on the selection.");
-    return result.image;
-  };
+  const runStep = (step: PipelineStep, image: RgbaImage, signal?: AbortSignal) =>
+    replayFilter(step, image, selection, signal);
   try {
     const started = performance.now();
     const result = await runPipeline(doc.original, steps, {
