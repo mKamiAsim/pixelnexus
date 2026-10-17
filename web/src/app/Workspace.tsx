@@ -5,10 +5,10 @@ import {
   ChevronsRight,
   Code,
   Crosshair,
+  Gauge,
   GraduationCap,
   History,
   Image,
-  Gauge,
   Layers,
   Library,
   Map,
@@ -16,8 +16,9 @@ import {
   Sigma,
   SlidersHorizontal,
   Target,
-  X,
   type LucideIcon,
+  Workflow,
+  X,
 } from "lucide-react";
 import {
   DockviewReact,
@@ -34,6 +35,7 @@ import { LearnPanel } from "@/learn/LearnPanel";
 import { CanvasPanel } from "@/panels/CanvasPanel";
 import { DeveloperPanel } from "@/panels/DeveloperPanel";
 import { HistoryPanel } from "@/panels/HistoryPanel";
+import { PipelinePanel } from "@/panels/PipelinePanel";
 import { InspectorPanel } from "@/panels/InspectorPanel";
 import { LibraryPanel } from "@/panels/LibraryPanel";
 import { MasksPanel } from "@/panels/MasksPanel";
@@ -77,6 +79,7 @@ const PANEL_ICONS: Record<PanelId, LucideIcon> = {
   learn: GraduationCap,
   developer: Code,
   history: History,
+  pipeline: Workflow,
   images: Image,
   navigator: Map,
   info: Crosshair,
@@ -111,6 +114,7 @@ const COMPONENTS = {
   learn: panel("Learn", <LearnPanel />),
   developer: panel("Developer", <DeveloperPanel />),
   history: panel("History", <HistoryPanel />, false),
+  pipeline: panel("Pipeline", <PipelinePanel />, false),
   images: panel("Images", <ImagesPanel />),
   navigator: panel("Navigator", <NavigatorPanel />),
   info: panel("Info", <InfoPanel />),

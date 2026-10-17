@@ -102,6 +102,7 @@ nav:
       - The workspace: user-guide/workspace.md
       - Panels: user-guide/panels.md
       - The Learn panel: user-guide/learn-panel.md
+      - Pipelines: user-guide/pipelines.md
       - Export: user-guide/export.md
       - AI providers and consent: user-guide/ai-providers.md
       - Keyboard shortcuts: user-guide/keyboard-shortcuts.md

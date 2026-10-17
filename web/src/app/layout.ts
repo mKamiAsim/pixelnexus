@@ -17,6 +17,7 @@ export const PANELS = [
   { id: "learn", title: "Learn", side: "right" },
   { id: "developer", title: "Developer", side: "right" },
   { id: "history", title: "History", side: "right" },
+  { id: "pipeline", title: "Pipeline", side: "right" },
   { id: "navigator", title: "Navigator", side: "right" },
   { id: "info", title: "Info", side: "right" },
   { id: "histogram", title: "Histogram", side: "right" },
@@ -53,8 +54,8 @@ export const PRESETS = [
 
 export type PresetId = (typeof PRESETS)[number]["id"];
 
-// Version 4 adds the Spectrum panel. Older saved layouts are replaced once by the preset.
-const STORAGE_KEY = "pixelnexus.layout.v4";
+// Version 5 adds the Pipeline panel. Older saved layouts are replaced once by the preset.
+const STORAGE_KEY = "pixelnexus.layout.v5";
 const PRESET_KEY = "pixelnexus.preset.v1";
 
 let api: DockviewApi | null = null;
@@ -135,6 +136,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "inspector",
       "images",
       "history",
+      "pipeline",
       "navigator",
       "info",
       "histogram",
@@ -158,6 +160,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
       "features",
       "navigator",
       "history",
+      "pipeline",
       "masks",
     ]);
     widths.push(["library", 260], ["learn", 430]);
@@ -169,6 +172,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     stack("developer", ["inspector", "properties"]);
     add("history", "developer", "below");
     stack("history", [
+      "pipeline",
       "masks",
       "info",
       "histogram",
@@ -186,6 +190,7 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
     stack("properties", ["inspector", "learn", "developer"]);
     add("history", "properties", "below");
     stack("history", [
+      "pipeline",
       "masks",
       "navigator",
       "info",

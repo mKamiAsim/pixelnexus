@@ -52,6 +52,10 @@ The History panel lists the steps of the active image. Step 0 is the original.
 - Each filter step names the filter and its main values, for example "Gaussian filter (sigma 2 px)".
 - An image keeps at most 50 steps and at most 768 MB of pixels. When it needs room, the oldest steps go first, and the panel says how many were dropped. The original always stays.
 
+
+## Pipeline
+
+The Pipeline panel holds a chain of filter steps to run on the original image, and to save or load as JSON. See [Pipelines](pipelines.md).
 ## Images
 
 The Images panel lists the open images with a thumbnail, the size, the format and the file size. Click an image to show it. The x closes it. A warning sign means the file opened with notes.

@@ -15,6 +15,9 @@ const MODEL_FILTERS: ReadonlySet<string> = new Set(
     .map((f) => f.id),
 );
 
+/** True for a filter that needs a learned model. */
+export const isModelFilter = (filterId: string) => MODEL_FILTERS.has(filterId);
+
 export function isAiStep(step: HistoryStep): boolean {
   return step.ai === true || (step.filter !== undefined && MODEL_FILTERS.has(step.filter.id));
 }

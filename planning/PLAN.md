@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 8: professional workflow and performance |
-| Next action | Phase 8, first task: the Pipeline panel (chain, reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON). |
+| Next action | Phase 8: the full History panel (thumbnails, parameters, scope, time, jump to a state, delete an entry with later steps recomputed, memory manager for 50 or more entries). |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,8 +24,8 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7 done: model docs and the exit check. |
-| In progress | Phase 8: professional workflow and performance (starting) |
+| Last finished step | Phase 8: the Pipeline panel. |
+| In progress | Phase 8: professional workflow and performance (Pipeline panel done) |
 | Next steps | Phase 8 in order: Pipeline panel, full History panel, preset library, compare grid and parameter sweep, metrics panel, then the rest of the Phase 8 list. The owner asked on 2026-10-17 to continue into Phase 8. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
@@ -653,7 +653,7 @@ Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models a
 
 ### Phase 8: Professional workflow and performance
 
-- [ ] Pipeline panel: chain, drag to reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON.
+- [x] Pipeline panel: chain, drag to reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON. Done on 2026-10-17.
 - [ ] Full History panel: thumbnails, parameters, scope, time, jump to a state, delete an entry (later steps are recomputed), memory manager for 50 or more entries.
 - [ ] Preset library per filter with import and export.
 - [ ] Compare grid and parameter sweep.
@@ -1014,3 +1014,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 7 | AI result labels. History steps from AI tasks carry an ai flag, and steps that ran a filter with a catalog model (model or modelChoices) count too (web/src/app/aiLabel.ts). The History panel marks them AI, and the status bar shows the label while any step up to the current one is an AI result. 2 unit tests; the consent E2E test checks the status bar label. | Learn and Inspector for models. |
 | 2026-10-17 | 7 | Learn and Inspector for models. The engine reads the input and output tensors of a downloaded model from its ONNX files (GET /api/v1/models/{id}/tensors, the exported model.onnx for PyTorch and Caffe weights). The Inspector has a Model tab with the model card and those tensors, and the Learn panel a Model pipeline demo that draws the catalog steps of every filter with a model, with the real shapes. Checked live with the engine on CUDA: DnCNN shows image and restored as 1 x 3 x height x width. The engine launch entry now passes --extra cpu, with a new engine-cuda entry, since a plain uv run removes ONNX Runtime. 3 engine tests, 2 E2E tests; 54 E2E tests pass. | Phase 7 docs and exit check. |
 | 2026-10-17 | 7 | Phase 7 done. Docs: a new AI models section with the model reference (generated from catalog/models.yaml by tools/gen_docs.py: format, size, where it runs, phone, license, who uses it, inputs, outputs, paper), model integration, hardware needs (the measured GPU and CPU times of 7c) and the Generic HTTP contract for an external API. Exit check: CI uses tiny dummy ONNX models and a mock service; real models were checked by hand on this PC; the consent E2E test passes; the studio works with no models and no providers. | Phase 8: the Pipeline panel. |
+| 2026-10-17 | 8 | Pipeline panel. web/src/core/pipeline/pipeline.ts (pure): steps with validated params, on or off and a scope; JSON format pixelnexus-pipeline version 1, checked against the catalog on load; each step's result cached under a key chained from the step before, so a change recomputes only that step and later ones, and unused results are dropped. The panel adds the selected filter or makes the chain from the history, turns steps on and off, reorders by drag or arrow buttons, edits values and scope inline, runs from the original image as one history step, and saves or loads JSON. Filter > Add to pipeline and Run pipeline. Layout storage moved to v5 so the new panel appears. Docs: user-guide/pipelines.md. 7 core tests, 7 action tests, 1 E2E test; 55 E2E tests pass. | Full History panel. |

@@ -20,6 +20,7 @@ import { useFilters } from "@/state/filters";
 import { useSelection } from "@/state/selection";
 import { useSettings } from "@/state/settings";
 import { useUi, type CompareMode } from "@/state/ui";
+import { usePipeline } from "@/state/pipeline";
 import { applyTheme, THEMES } from "@/styles/themes";
 
 import { chooseFiles, openSample, pasteFromClipboard } from "./importer";
@@ -42,6 +43,7 @@ import {
   type RefineKind,
 } from "./selectionActions";
 import { aiImage } from "./aiImageActions";
+import { addSelectedFilter, runPipelineOnActive } from "./pipelineActions";
 import { aiSelect } from "./aiSelectActions";
 import { selectObject } from "./seedActions";
 import { TOOLS, type ToolInfo } from "./tools";
@@ -605,6 +607,27 @@ export function buildCommands(): Command[] {
       keywords: "live preview filter",
       checked: () => useFilters.getState().previewOn,
       run: () => useFilters.getState().setPreviewOn(!useFilters.getState().previewOn),
+    },
+    {
+      id: "filter.add-to-pipeline",
+      label: "Add to pipeline",
+      menu: "filter",
+      section: "pipeline",
+      keywords: "pipeline chain recipe step",
+      enabled: () => filterById(useFilters.getState().selectedId) !== null,
+      run: () => {
+        addSelectedFilter();
+        showPanel("pipeline");
+      },
+    },
+    {
+      id: "filter.run-pipeline",
+      label: "Run pipeline",
+      menu: "filter",
+      section: "pipeline",
+      keywords: "pipeline chain recipe run",
+      enabled: () => hasDocument() && usePipeline.getState().steps.length > 0,
+      run: () => void runPipelineOnActive(),
     },
     {
       id: "filter.metrics",
