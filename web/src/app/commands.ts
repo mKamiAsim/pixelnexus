@@ -627,6 +627,15 @@ export function buildCommands(): Command[] {
       run: () => useFilters.getState().setPreviewOn(!useFilters.getState().previewOn),
     },
     {
+      id: "filter.compare-grid",
+      label: "Compare grid...",
+      menu: "filter",
+      section: "compare",
+      keywords: "compare grid sweep side by side values settings",
+      enabled: hasDocument,
+      run: () => useUi.getState().setDialog("compare-grid"),
+    },
+    {
       id: "filter.add-to-pipeline",
       label: "Add to pipeline",
       menu: "filter",

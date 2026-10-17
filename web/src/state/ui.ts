@@ -22,6 +22,7 @@ export type DialogId =
   | "select-snap"
   | "image-resize"
   | "image-rotate"
+  | "compare-grid"
   | null;
 
 export interface PixelPoint {

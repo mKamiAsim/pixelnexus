@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 8: professional workflow and performance |
-| Next action | Phase 8: the compare grid and parameter sweep. |
+| Next action | Phase 8: the Metrics panel against the original or a chosen reference. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,8 +24,8 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 8: preset import and export. |
-| In progress | Phase 8: professional workflow and performance (Pipeline, History and presets done) |
+| Last finished step | Phase 8: the compare grid and parameter sweep. |
+| In progress | Phase 8: professional workflow and performance (Pipeline, History, presets and compare grid done) |
 | Next steps | Phase 8 in order: Pipeline panel, full History panel, preset library, compare grid and parameter sweep, metrics panel, then the rest of the Phase 8 list. The owner asked on 2026-10-17 to continue into Phase 8. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
@@ -656,7 +656,7 @@ Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models a
 - [x] Pipeline panel: chain, drag to reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON. Done on 2026-10-17.
 - [x] Full History panel: thumbnails, parameters, scope, time, jump to a state, delete an entry (later steps are recomputed), memory manager for 50 or more entries. Done on 2026-10-17.
 - [x] Preset library per filter with import and export. Done on 2026-10-17.
-- [ ] Compare grid and parameter sweep.
+- [x] Compare grid and parameter sweep. Done on 2026-10-17.
 - [ ] Metrics panel against the original or a chosen reference.
 - [ ] Project files (`.pnx`) with images, masks, history and pipeline.
 - [ ] Warnings for color space, bit depth, size and transparency changes.
@@ -1017,3 +1017,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 8 | Pipeline panel. web/src/core/pipeline/pipeline.ts (pure): steps with validated params, on or off and a scope; JSON format pixelnexus-pipeline version 1, checked against the catalog on load; each step's result cached under a key chained from the step before, so a change recomputes only that step and later ones, and unused results are dropped. The panel adds the selected filter or makes the chain from the history, turns steps on and off, reorders by drag or arrow buttons, edits values and scope inline, runs from the original image as one history step, and saves or loads JSON. Filter > Add to pipeline and Run pipeline. Layout storage moved to v5 so the new panel appears. Docs: user-guide/pipelines.md. 7 core tests, 7 action tests, 1 E2E test; 55 E2E tests pass. | Full History panel. |
 | 2026-10-17 | 8 | Full History panel. Each step has a thumbnail, its time, an AI mark, and details (all values by their catalog labels, scope, size, date). Delete removes a step and recomputes the later ones from the step before (web/src/app/historyActions.ts): filter steps run again through the shared replayFilter (web/src/app/replay.ts, also used by the pipeline), selection steps keep their selection, and a step that cannot be run again (rotation, AI, pipeline) blocks the delete with its name. Nothing changes if a recompute fails. Memory line with Free memory (keeps the original and the current step). Preferences gain History steps (default 50) and memory (default 768 MB). 5 action tests, 1 settings test, 1 E2E test; 56 E2E tests pass. | Preset library. |
 | 2026-10-17 | 8 | Preset library import and export. Preset files use format pixelnexus-presets version 1 (web/src/core/presets/presets.ts) and hold one filter or all; on import every value is validated against the catalog, a same-named preset is replaced, and unknown filters are left out with a warning. Properties has export (this filter) and import buttons; File > Import presets and Export all presets. 3 core tests, 1 action test, 1 E2E test. | Compare grid and parameter sweep. |
+| 2026-10-17 | 8 | Compare grid and parameter sweep. Filter > Compare grid opens a dialog where every cell runs at full resolution on the same 256 x 256 crop (our choice of size) around the pinned probe pixel or the image center, so results are exact. Cells come from the current settings or a sweep of one value of the selected filter (web/src/core/compare/sweep.ts: evenly spaced, both ends, on the parameter's step, whole and odd where required, every option of a choice, both states of a switch, at most 12). Each cell shows its time; Use copies its values into Properties. Docs: user-guide/compare-grid.md. 4 sweep tests, 3 action tests, 1 E2E test. | Metrics panel. |
