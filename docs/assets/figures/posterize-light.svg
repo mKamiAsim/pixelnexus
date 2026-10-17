@@ -26,7 +26,7 @@ z
   <g id="axes_1">
    <g clip-path="url(#pc0d49e138f)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAA3klEQVR4nO3SQQrCMBQA0Z/0/mfWbQWLKMIovLcJ/UmzaGfNzG3vPWutOa/fmJ2fz7PjOB7eeTW7uudXZlff49n+P53bb/7bj84NhARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgEzpDsEgBHQ7lJdYAAAAAElFTkSuQmCC" id="imagea374b028fd" width="160" height="60" transform="matrix(0.715 0 0 0.715 3.6 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAA3UlEQVR4nO3SywrCMBRAwTz+/5t1G8EiinAUZjahN2kW7ZljjNtaa8w5x7l+Y3Y+n7O998M7r2ZX9/zK7Op7PNv/p3Pv/tuPzg0ICZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASd0BwSAEdNCKqMcAAAAASUVORK5CYII=" id="imageb7eba8c92b" width="160" height="60" transform="matrix(0.715 0 0 0.715 3.6 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_1">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="60.8" y="12.17" transform="rotate(-0 60.8 12.17)">Gray ramp</text>
@@ -35,7 +35,7 @@ iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAA3klEQVR4nO3SQQrCMBQA0Z/0/mfWbQWL
   <g id="axes_2">
    <g clip-path="url(#pcb07643d25)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAv0lEQVR4nO3SoRHAQAwDQSc9uv9SkiIe3INdrhmBe2bmm4vt7tzMvzPv4R6OCJCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQAmdIPwhAEdEolQysAAAAASUVORK5CYII=" id="image64221b1593" width="160" height="60" transform="matrix(0.715 0 0 0.715 122.8 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAv0lEQVR4nO3SMRGAAAzAwILH+pcCDlgYwh3/CjLkmJlrPmx364RH+t456wD+zYCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSOoGwhAEdHSfEKgAAAAASUVORK5CYII=" id="image4b328e8959" width="160" height="60" transform="matrix(0.715 0 0 0.715 122.8 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_2">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="180" y="12.17" transform="rotate(-0 180 12.17)">4 levels</text>
@@ -44,7 +44,7 @@ iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAv0lEQVR4nO3SoRHAQAwDQSc9uv9SkiIe
   <g id="axes_3">
    <g clip-path="url(#pf4a875694a)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAx0lEQVR4nO3S0QmAQAwFwWgtd/2XqDUIB+vHTAGPEPaamWcOWmudnJu999E99/3rf/fRNfhIgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApARISoCkBEhKgKQESEqApATIlF7CEAR0/86BHgAAAABJRU5ErkJggg==" id="imageb6c9a7b858" width="160" height="60" transform="matrix(0.715 0 0 0.715 242 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAyElEQVR4nO3SQQ0DQRADwblg2eUP8YIhykj9qQJg+dHPzLyz6JyzOTf33tU9//6z/e+zugY/EiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkvoCwhAEdGjxMnUAAAAASUVORK5CYII=" id="image2d13f78b40" width="160" height="60" transform="matrix(0.715 0 0 0.715 242 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_3">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="299.2" y="12.17" transform="rotate(-0 299.2 12.17)">8 levels</text>

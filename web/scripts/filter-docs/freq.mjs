@@ -18,13 +18,13 @@ const BANDS = {
   },
   bandpass: {
     params: { center: 0.2, width: 0.1, outputMapping: "offset" },
-    title: "Band-pass, D0 = 0.2",
+    title: "Band-pass",
     message: "keeps only the rings whose frequency lies in the band",
     setting: "D_0 = 0.2 and W = 0.1",
   },
   bandreject: {
     params: { center: 0.2, width: 0.1 },
-    title: "Band-reject, D0 = 0.2",
+    title: "Band-reject",
     message: "removes the rings whose frequency lies in the band",
     setting: "D_0 = 0.2 and W = 0.1",
   },

@@ -22,3 +22,10 @@
 .md-typeset .arithmatex {
   overflow-x: auto;
 }
+
+/* An inline formula cannot wrap. A wide one scrolls in its own box, not the whole page. */
+.md-typeset span.arithmatex {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}

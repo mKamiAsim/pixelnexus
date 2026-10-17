@@ -26,3 +26,18 @@ Every diagram and figure is checked in a browser at 1280 px and 390 px wide, in 
 | `mathematical-inspector/parameter-synchronization.md` | Mermaid: one filter store | 2026-10-12 | Pass | Pass | Pass | Pass | 6 nodes. The first draft had 3 outputs in one row. They are 2 now. |
 
 Filter figures were checked as rendered SVG at 480 px and 358 px, in both themes. The first draft had legends on top of curves in the Laplacian and unsharp mask figures. They now sit below the plot. The Sobel page was also checked in the built site at 390 px in the dark theme, and the unsharp mask page at 1280 px in the light theme.
+
+## Full check of every page (2026-10-17)
+
+From Phase 9 on, `web/scripts/check-figures.mjs` checks every page of the built site at 1280 px and 390 px, in the light and the dark theme. The results are in `figure-check-results.md`. Run it after `uv run --extra cpu mkdocs build --strict` with `pnpm --filter @pixelnexus/web check:figures`.
+
+The first full run found these problems. All are fixed.
+
+| Problem | Fix |
+|---|---|
+| 12 band-pass and band-reject figures had a title cut at the right edge. | The titles are now "Band-pass" and "Band-reject". The band is in the text. |
+| The vector median figure had overlapping titles. | Shorter titles: "With specks", "Channel median", "Vector median". |
+| The bilateral figure legend ran past the right edge. | Legends with a label over 20 characters use one column. |
+| Wide inline formulas on the GLCM, inpaint and color spaces pages made the page scroll sideways at 390 px. | A wide inline formula now scrolls in its own box. |
+
+All 568 figures were drawn again from the current filter code. Many images changed a little, because the figures were older than some filter fixes.

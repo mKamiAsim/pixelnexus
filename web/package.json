@@ -20,6 +20,7 @@
     "e2e": "playwright test",
     "bench:viewport": "node scripts/bench-viewport.mjs",
     "bench:filters": "node scripts/bench-filters.mjs",
+    "check:figures": "node scripts/check-figures.mjs",
     "gen:filter-docs": "pnpm gen && node scripts/gen-filter-docs.mjs"
   },
   "dependencies": {

@@ -26,7 +26,7 @@ z
   <g id="axes_1">
    <g clip-path="url(#pc03f398108)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAnUlEQVR4nO3aQQ0EMRADwU6zCI7whxAaS2MPRB7Rqbf+I/s7ksfzPC8H1lon5+y9uZkvcRIncRIncRIncRIncRIncRIncRIncWPO+f7zP3+aL3ESJ3ESJ3ESJ3ESJ3ESJ3ESJ3ESJ3Hj2wfESZzESZzESZzESZzESZzESZzESZzEjW8fECdxEidxEidxEidxEidxEidxEidx3i5w2w9auRxzbeAq8gAAAABJRU5ErkJggg==" id="image8e9bf10b82" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 3.6 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAv0lEQVR4nO3awQ2EMBDAQLguqCP9l5A2aIMrYh8jgf1fxbLySbTnfd/PMWCtNRk/9t6j+en5v9H0CyiAFtAUQAtoCqAFNAXQApoCaAFNAbSApgBaQHNe1zX6D9Dv+en5n78BBdACmgJoAU0BtICmAFpAUwAtoCmAFtAUQAtozvYDPk4BtICmAFpAUwAtoCmAFtAUQAtoCqAFNAXQApr2A0bTL6AAWkBTAC2gKYAW0BRAC2gKoAU0BdACmgJoAc0fWrkcc0K/EIwAAAAASUVORK5CYII=" id="imagec6b34206f1" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 3.6 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_1">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="60.8" y="13.92" transform="rotate(-0 60.8 13.92)">Checkerboard</text>
@@ -35,7 +35,7 @@ iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAnUlEQVR4nO3aQQ0EMRADwU6zCI7whxAa
   <g id="axes_2">
    <g clip-path="url(#p53cb4bb9ee)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABfElEQVR4nO3YsarCQBQE0HG8iGiVxtLSxibfkg8V9HPEytJS0CJo8rhB5SGveEmENcw9ENisDMqyRndGeZ7X6OB6vWK/3zfj1WqF2Ww2qPwTIY4QR4gjxBHiCHGEOEIcIY4QR4izrkGSMLPXeGj5XgswmUyQZRnG43Fzv1gscLlcUJblIPK/mZ+q2vDV9jcvigLL5bKZOx6P2Gw2OJ/PqKrqq/N/qdtcZlav1+t6u93WTz72OX/t2/PvFyHOvExow7egf+d82+12u2bOxz53v9//tYVT5t+NujRC/hCaz+c4nU6dH2Ip871/BcqybB44h8OhufeVn06ng8l/5H9AVVW43W6v8dDyT4Q4QhwhjhBHiCPEEeKsazD1eT76gCz6AEQf8BB9QA8WfUAefUBrqc/z0Qcg+oCPIcQR4ghxhDhCHCHOugZTn+ejD8iiD0D0AQ/RB/Rg0Qfk0Qe0lvo8H30Aog/4GEIcIY4QR4gjxBHiCHGEOEIcU3+A1H4A9GpyRLhRK0sAAAAASUVORK5CYII=" id="imageb914d56751" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 122.8 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABjElEQVR4nO2YsYqDQBiEJ5tFQqxstkxpY+Oz5EEFfRyxskwpxELUTXEYJFxxWYSJl/lgYZuBYVh+/eeQ57lHAH3fo65rAECapjifz7vSL5gg1T9CAbANsFEAbANsFADbABsFwDbARgGwDbCxoUJjDKy1z/ve9AtBAURRhCRJcDweAQDOOdzvdwzDsAv9Gtv3/VsCYwySJMH1esXlcgEAtG2LoijQdR3mef5o/W/4d4611mdZ5suy9AtlWfosy7y19uP1r0dDME3TtwTGGDjn0LYtqqoC8PMEnXOYpulPT5ipf+UQ0ghFUYQ4jnG73QCEDTGmfk3QV2AYBnRdh6ZpAADTNOF0Ou1Gvyb4P2CeZ4zj+LzvTb/w9UNQAbANsFEAbANsFADbABv1ASEi9j6vPkB9gPqAzVAfoD4gAPY+rz5gA/3C1w9BBcA2wEYBsA2wUQBsA2zUB4SI2Pu8+gD1AeoDNkN9gPqAANj7vPqADfQLXz8EFQDbABsFwDbARgGwDbBRAGwDbBQA2wCbB/RqckQb/ragAAAAAElFTkSuQmCC" id="image15c820097c" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 122.8 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_2">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="180" y="13.92" transform="rotate(-0 180 13.92)">Response</text>
@@ -44,7 +44,7 @@ iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABfElEQVR4nO3YsarCQBQE0HG8iGiVxtLS
   <g id="axes_3">
    <g clip-path="url(#p280aee43df)">
     <image xlink:href="data:image/png;base64,
-iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAnElEQVR4nO3YMQoEMQwEwXb//88+dr/gBXO0ChQOKFCiWcAmTOIkTuIkTuIkTuIkTuIkTuIkTuIkzpPw3vudf80/8hewphCJkziJkziJkziJkziJkziJkziJ8yR8+5+fPuADa/qAOImTOImTOImTOImTOImTOImTOE/Ct//56QM+sKYPiJM4iZM4iZM4iZM4iZM4iZM4ifP2Arf9AGdYOkNrG0UxAAAAAElFTkSuQmCC" id="image1e7af1bc6a" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 242 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAr0lEQVR4nO3YsQ3EMAzFUOX231nZ4Vw8ICZ7AQThxv+ZmZ2L+WkBTQG0gKYAWkBTAC2gKYAW0BRAC2gKoAU0BTg53t3Z/f83re9negHzTIPI3RRAC2gKoAU0BdACmgJoAU0BtICmAFpA0x5wdP0B2gO0gKYAWkBTAC2gKYAW0BRAC2gKoAU0BdACmvaAo+sP0B6gBTQF0AKaAmgBTQG0gKYAWkBTAC2gKYAW0Fwf4AVnWDpD7mQtlAAAAABJRU5ErkJggg==" id="image03437c40ad" width="64" height="64" transform="matrix(1.7875 0 0 1.7875 242 17.92)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
    </g>
    <g id="text_3">
     <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="299.2" y="13.92" transform="rotate(-0 299.2 13.92)">Corner points</text>

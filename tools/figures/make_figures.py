@@ -157,9 +157,12 @@ def profile_figure(spec: dict[str, Any]) -> Any:
         ax.set_ylim(0, 255)
         ax.set_xticks([0, 64, 128, 192, 255])
         ax.set_yticks([0, 64, 128, 192, 255])
-    # The legend sits below the plot, so it never covers a line.
-    fig.legend(loc="lower center", ncol=min(len(lines), 2), bbox_to_anchor=(0.5, 0.0))
-    fig.tight_layout(pad=0.3, rect=(0, 0.07 * ((len(lines) + 1) // 2) + 0.06, 1, 1))
+    # The legend sits below the plot, so it never covers a line. Long labels get one column,
+    # so they stay inside the figure.
+    ncol = 1 if max(len(line["label"]) for line in lines) > 20 else min(len(lines), 2)
+    rows = (len(lines) + ncol - 1) // ncol
+    fig.legend(loc="lower center", ncol=ncol, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(pad=0.3, rect=(0, 0.07 * rows + 0.06, 1, 1))
     return fig
 
 

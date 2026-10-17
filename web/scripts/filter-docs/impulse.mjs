@@ -50,9 +50,9 @@ export function impulseDocs(h) {
   figure("vector-median", {
     message: "Both remove the specks. The vector median uses only colors from the window.",
     panels: [
-      { title: "Color image with specks", image: pic(hues, true) },
-      { title: "Median 3x3, per channel", image: pic(run(hues, "median", { size: 3 }), true) },
-      { title: "Vector median 3x3", image: pic(run(hues, "vector-median", { size: 3 }), true) },
+      { title: "With specks", image: pic(hues, true) },
+      { title: "Channel median", image: pic(run(hues, "median", { size: 3 }), true) },
+      { title: "Vector median", image: pic(run(hues, "vector-median", { size: 3 }), true) },
     ],
   });
 
