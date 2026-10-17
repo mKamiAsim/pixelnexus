@@ -96,6 +96,6 @@ learn:
     - Add Gaussian noise in the Noise lab, then compare with nonlocal means.
   pitfalls:
     - A learned model can add detail that was never in the scene. Results carry the AI result label.
-  demos: [line-profile, noise-lab]
+  demos: [model-pipeline, line-profile, noise-lab]
 related: [ffdnet, nlm, bm3d-lite, jpeg-cleanup]
 docsPage: filters/learned/dncnn.md

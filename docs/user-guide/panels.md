@@ -33,7 +33,7 @@ A planned filter shows its settings where they are known, says which phase bring
 
 ## Inspector
 
-The Inspector shows the mathematics of the selected filter: formula, operator, parameters, algorithm, limits and references. All of it uses your current values. See [The Inspector](../mathematical-inspector/overview.md).
+The Inspector shows the mathematics of the selected filter: formula, operator, parameters, algorithm, limits and references. All of it uses your current values. A filter that uses a learned model also has a **Model** tab. It shows the model card from the catalog: format, size, license and paper. With the local engine running and the model downloaded, it also lists the real input and output tensors, read from the model files. See [The Inspector](../mathematical-inspector/overview.md).
 
 ## Learn
 

@@ -95,6 +95,6 @@ learn:
     - Compare with Canny and the Structured Edge Detector on a photo with texture.
   pitfalls:
     - A learned model can add detail that was never in the scene. Results carry the AI result label.
-  demos: [line-profile]
+  demos: [model-pipeline, line-profile]
 related: [structured-edge, canny, sobel]
 docsPage: filters/learned/learned-edges.md

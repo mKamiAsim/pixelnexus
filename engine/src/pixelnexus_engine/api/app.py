@@ -34,7 +34,14 @@ from pixelnexus_engine.config import Settings
 from pixelnexus_engine.images import ImageError, ImageStore, StoredImage, decode_rgba
 from pixelnexus_engine.inference import describe
 from pixelnexus_engine.jobs import TERMINAL, JobManager
-from pixelnexus_engine.models import delete, download, is_downloaded, model_entries, model_view
+from pixelnexus_engine.models import (
+    delete,
+    download,
+    is_downloaded,
+    model_entries,
+    model_view,
+    tensors,
+)
 from pixelnexus_engine.params import ParamError, check_params, resolve_params
 from pixelnexus_engine.registry import (
     FILTERS,
@@ -306,6 +313,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def get_model(model_id: str) -> dict[str, Any]:
         """One model, with the progress of a download that runs."""
         return view(known(model_id))
+
+    @router.get("/models/{model_id}/tensors")
+    def model_tensors(model_id: str) -> dict[str, Any]:
+        """The input and output tensors of a downloaded model, read from its ONNX files."""
+        entry = known(model_id)
+        if not is_downloaded(entry, models_folder):
+            raise HTTPException(
+                status_code=409, detail=f"Download the model {entry['name']} first."
+            )
+        try:
+            files = tensors(entry, models_folder)
+        except ImportError as error:
+            raise HTTPException(
+                status_code=501, detail="Reading tensors needs the engine's models extra."
+            ) from error
+        return {"model": model_id, "files": files}
 
     @router.post("/models/{model_id}/download", status_code=202)
     def download_model(model_id: str) -> dict[str, Any]:

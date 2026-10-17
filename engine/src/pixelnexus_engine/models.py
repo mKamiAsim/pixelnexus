@@ -17,6 +17,7 @@ PIXELNEXUS_MODELS_DIR sets where they go.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import os
 import shutil
@@ -182,3 +183,49 @@ def require(model_id: str) -> Path:
             "Download model in the Properties panel first."
         )
     return path
+
+
+@functools.lru_cache(maxsize=32)
+def _onnx_tensors(path: str, mtime: float) -> dict[str, Any]:
+    import onnx  # only with the models extra
+
+    model = onnx.load(path, load_external_data=False)
+    weights = {init.name for init in model.graph.initializer}
+
+    def describe(values: Any) -> list[dict[str, Any]]:
+        out = []
+        for value in values:
+            if value.name in weights:
+                continue
+            tensor = value.type.tensor_type
+            shape = [
+                d.dim_value if d.HasField("dim_value") else (d.dim_param or "?")
+                for d in tensor.shape.dim
+            ]
+            dtype = onnx.TensorProto.DataType.Name(tensor.elem_type).lower()
+            out.append({"name": value.name, "type": dtype, "shape": shape})
+        return out
+
+    return {"inputs": describe(model.graph.input), "outputs": describe(model.graph.output)}
+
+
+def tensors(entry: dict[str, Any], folder: Path | None = None) -> list[dict[str, Any]]:
+    """The input and output tensors of each ONNX network file of a downloaded model, read from
+    the files themselves. PyTorch and Caffe weights are read from their exported model.onnx.
+    TensorFlow files and external weight files are left out."""
+    base = model_path(entry, folder).parent
+    out = []
+    exported = base / "model.onnx"
+    if entry.get("format") in ("pytorch", "caffe"):
+        if exported.is_file():
+            out.append(
+                {"file": exported.name, **_onnx_tensors(str(exported), exported.stat().st_mtime)}
+            )
+        return out
+    for item in model_files(entry):
+        name = file_name(item["sourceUrl"])
+        path = base / name
+        if path.suffix != ".onnx" or not path.is_file():
+            continue
+        out.append({"file": name, **_onnx_tensors(str(path), path.stat().st_mtime)})
+    return out

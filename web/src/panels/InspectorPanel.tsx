@@ -2,7 +2,7 @@ import { Copy, ExternalLink } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { catalog, isRunnable, type Filter } from "@/catalog";
+import { catalog, isRunnable, modelFor, type Filter } from "@/catalog";
 import { fillFormula } from "@/catalog/formula";
 import { entryParams } from "@/catalog/params";
 import { filterById } from "@/app/filterActions";
@@ -24,6 +24,7 @@ import { useEngineRepresentation, type EngineRepresentation } from "@/app/useEng
 import { useFilterValues } from "@/app/useFilterValues";
 import { useFilters } from "@/state/filters";
 import { notify } from "@/state/notifications";
+import { ModelInspector } from "@/panels/ModelInspector";
 import { Thumbnail } from "@/panels/Thumbnail";
 
 const TABS = [
@@ -100,6 +101,8 @@ function Inspector({ entry }: { entry: Filter }) {
     browserRepresentation ??
     (engineOperator.status === "ready" ? engineOperator.representation : null);
   const familyName = catalog.families.find((f) => f.id === entry.family)?.name ?? entry.family;
+  const modelId = modelFor(entry, values);
+  const tabs = modelId ? [...TABS, { value: "model", label: "Model" } as const] : TABS;
 
   return (
     <Tabs.Root value={tab} onValueChange={setTab} className="flex h-full flex-col">
@@ -110,7 +113,7 @@ function Inspector({ entry }: { entry: Filter }) {
         </div>
         <p className="pb-1 text-xs text-text-muted">{familyName}</p>
         <Tabs.List aria-label="Inspector sections" className="-mx-3 flex overflow-x-auto px-2">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <Tabs.Trigger
               key={t.value}
               value={t.value}
@@ -148,6 +151,11 @@ function Inspector({ entry }: { entry: Filter }) {
         <Tabs.Content value="references" className="flex flex-col gap-3">
           <ReferencesTab entry={entry} />
         </Tabs.Content>
+        {modelId ? (
+          <Tabs.Content value="model" className="flex flex-col gap-3">
+            <ModelInspector key={modelId} modelId={modelId} />
+          </Tabs.Content>
+        ) : null}
       </div>
     </Tabs.Root>
   );

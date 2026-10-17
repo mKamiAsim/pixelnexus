@@ -131,6 +131,6 @@ learn:
     - Compare it with Canny on a photo with textured objects. Texture inside objects stays quiet.
   pitfalls:
     - Synthetic test images. The model learned from photos.
-  demos: [stage-viewer]
+  demos: [model-pipeline, stage-viewer]
 related: [canny, phase-congruency, hough-linking]
 docsPage: filters/edges/structured-edge.md

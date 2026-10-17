@@ -25,6 +25,22 @@ import {
   type JobResult,
 } from "./types";
 
+/** One tensor of a network file. A shape entry is a number or the name of a free size. */
+export interface TensorInfo {
+  readonly name: string;
+  readonly type: string;
+  readonly shape: readonly (number | string)[];
+}
+
+export interface ModelTensors {
+  readonly model: string;
+  readonly files: readonly {
+    readonly file: string;
+    readonly inputs: readonly TensorInfo[];
+    readonly outputs: readonly TensorInfo[];
+  }[];
+}
+
 export const DEFAULT_ENGINE_URL = "http://127.0.0.1:8765";
 
 export const OFFLINE_MESSAGE =
@@ -337,6 +353,12 @@ export class ScienceEngine implements EngineClient {
   async models(): Promise<ModelStatus[]> {
     const response = await this.call("/models");
     return (await response.json()) as ModelStatus[];
+  }
+
+  /** The input and output tensors of a downloaded model, read by the engine from its files. */
+  async modelTensors(modelId: string): Promise<ModelTensors> {
+    const response = await this.call(`/models/${encodeURIComponent(modelId)}/tensors`);
+    return (await response.json()) as ModelTensors;
   }
 
   async model(modelId: string): Promise<ModelStatus> {

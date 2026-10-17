@@ -11,6 +11,7 @@ import { FrequencyExplorer } from "./frequency";
 import { IterationViewer } from "./iterations";
 import { MorphologyStepper } from "./morphology";
 import { NoiseLab } from "./noiselab";
+import { ModelPipeline } from "./pipeline";
 import { PointOpCurve } from "./pointop";
 import { StageViewer } from "./stages";
 import { WeightViewer } from "./weights";
@@ -29,6 +30,7 @@ export const WIDGETS = {
   "iteration-viewer": { title: "Iteration viewer", component: IterationViewer },
   "point-op-curve": { title: "Point-op curve", component: PointOpCurve },
   "feature-viewer": { title: "Feature viewer", component: FeatureViewer },
+  "model-pipeline": { title: "Model pipeline", component: ModelPipeline },
 } as const;
 
 /** The phase that brings each demo that is not built yet. */

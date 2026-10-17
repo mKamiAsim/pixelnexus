@@ -657,6 +657,28 @@ test("planned filters are listed but cannot run", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeDisabled();
 });
 
+test("the Inspector shows the model card of a learned filter", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "dncnn", "DnCNN");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Model" }).click();
+  const panel = page.getByRole("tabpanel", { name: "Model" });
+  await expect(panel.getByText("PyTorch weights, exported to ONNX on this computer")).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Tensors" })).toBeVisible();
+  await expect(panel.getByText(/Start the local engine|Download the model/)).toBeVisible();
+});
+
+test("the Learn panel draws the model pipeline from the catalog steps", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "dncnn", "DnCNN");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Model pipeline" })).toBeVisible();
+  const pipeline = page.getByRole("list", { name: "Pipeline of DnCNN" });
+  await expect(pipeline.getByText("Your image")).toBeVisible();
+  await expect(pipeline.getByText("Subtract the estimate from the input.")).toBeVisible();
+  await expect(pipeline.getByText(/AI result\. Detail may not exist/)).toBeVisible();
+});
+
 test("the Iteration viewer shows how anisotropic diffusion settles", async ({ page }) => {
   await openTestImage(page, "Noise patches");
   await chooseFilter(page, "anisotropic", "Anisotropic diffusion");

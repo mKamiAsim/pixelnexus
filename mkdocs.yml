@@ -118,6 +118,11 @@ nav:
       - Subject and background: selection/subject.md
       - Object and Click Select: selection/seeds.md
       - AI selection: selection/ai-selection.md
+  - AI models:
+      - Model reference: models/reference.md
+      - Model integration: models/integration.md
+      - Hardware needs: models/hardware.md
+      - Connecting an external API: models/external-api.md
   - Architecture:
       - Frontend architecture: architecture/frontend-architecture.md
       - Image data model: architecture/image-data-model.md

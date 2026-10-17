@@ -41,6 +41,7 @@ Most demos look at one pixel. At first it is the center of the image. To use ano
 | Gradient explorer | The horizontal and vertical change at the pixel, the strength and the direction as an arrow. A small map shows the direction at every pixel as color and the strength as brightness. | Sobel |
 | Line profile | The brightness along the row or column through the pixel, before and after the filter. You see how the filter changes edges and noise. | Every Phase 3 filter except Sobel |
 | Feature viewer | The 128 x 128 patch around the pixel, with the features a detector finds there drawn on it, and the strongest in a small table. The detector runs in the PixelNexus engine. | Blob detectors |
+| Model pipeline | The steps of a learned filter, from your image to the result. Below them are the network's size, what it takes and gives, and its tensor shapes when the local engine has the model. The steps come from the catalog. | DnCNN, Real-ESRGAN |
 
 The catalog sets which demos each filter shows. Demos for later filter families, such as a frequency explorer or a morphology stepper, arrive with those families. The panel names the phase that brings them.
 

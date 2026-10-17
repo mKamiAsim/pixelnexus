@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 7: optional AI |
-| Next action | Phase 7: Learn and Inspector for models, the remaining docs and the Phase 7 exit check. Then Phase 8 (the owner asked on 2026-10-17 to continue into Phase 8 once Phase 7 is done). |
+| Current phase | Phase 8: professional workflow and performance |
+| Next action | Phase 8, first task: the Pipeline panel (chain, reorder, enable and disable, edit a step, invalidate later caches, save and load as JSON). |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,9 +24,9 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7: AI result labels in the History panel and status bar. |
-| In progress | Phase 7: optional AI (7a to 7f done) |
-| Next steps | Phase 7f (AI features in the UI), then AI result labels, Learn and Inspector for models, the remaining docs and the Phase 7 exit (consent E2E test). |
+| Last finished step | Phase 7 done: model docs and the exit check. |
+| In progress | Phase 8: professional workflow and performance (starting) |
+| Next steps | Phase 8 in order: Pipeline panel, full History panel, preset library, compare grid and parameter sweep, metrics panel, then the rest of the Phase 8 list. The owner asked on 2026-10-17 to continue into Phase 8. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
 
@@ -645,9 +645,9 @@ Exit: pytest passes with the coverage target. Every entry meets the definition o
 - [x] **7e** External providers: PixelNexus remote engine adapter, generic HTTP adapter, and presets for one or two hosted services. HTTPS rules. Contract tests against a local mock server. No real external call in CI. Done on 2026-10-16: presets live in catalog/providers.yaml (Generic HTTP and remove.bg).
 - [x] **7f** AI features on top of the router: subject, background, object (box prompt), click-to-select (positive and negative points), edge refinement, denoising, JPEG cleanup, super-resolution at 2x and 4x with tiling. Image encoder results cached per image. Done on 2026-10-17.
 - [x] Clear labels on every AI result, per section 3.11. Done on 2026-10-17.
-- [ ] Learn and Inspector for models: pipeline diagram, tensor shapes, model card. No invented kernels.
+- [x] Learn and Inspector for models: pipeline diagram, tensor shapes, model card. No invented kernels. Done on 2026-10-17.
 
-Docs: AI providers and consent, model integration, model reference, licenses, hardware needs, how to connect an external API.
+Docs: AI providers and consent, model integration, model reference, licenses, hardware needs, how to connect an external API. Done on 2026-10-17 (docs/models/ and docs/user-guide/ai-providers.md).
 
 Exit: CI tests use tiny dummy ONNX models and a mock external API. Real models are checked by hand on this machine. A test proves the consent dialog appears before every external request and never for local providers. The studio works with no models and no providers set.
 
@@ -1012,3 +1012,5 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7f | Phase 7f part 4. New AI task matting (Soft edges) with MODNet, classical alternative Snap to edges. The engine's _ai-matting follows MODNet's ONNX demo at commit 28165a4 (checked by reading it): scale to -1 to 1, shorter side to 512 when outside that, sides down to a multiple of 32, area interpolation both ways. On the disk scene the matte averages 253 inside and 6 outside. Select > AI soft edges keeps the matte as a soft selection. catalog/tools/ai-matting.yaml is implemented-tested. 5 engine tests, 1 unit test. | Phase 7f part 5: encoder cache. |
 | 2026-10-17 | 7f | Phase 7f done. Image encoder results of SAM 2.1 tiny and EfficientSAM tiny are cached per image: in the engine on disk (engine/src/pixelnexus_engine/embeddings.py, a .embeddings folder in the models folder, keyed by SHA-256 of model, size and RGB bytes, least recently used dropped beyond PIXELNEXUS_EMBEDDINGS_MB, 512 by default, our choice), since every job is a new process; in the browser in memory per image object. Measured on this PC's CPU in one process: a second click took 0.09 s instead of 1.23 s (SAM 2.1) and 0.65 s (EfficientSAM), with the same mask. 5 cache tests, 2 real-model tests, 1 unit test. | Phase 7: AI result labels, Learn and Inspector for models, docs, exit. |
 | 2026-10-17 | 7 | AI result labels. History steps from AI tasks carry an ai flag, and steps that ran a filter with a catalog model (model or modelChoices) count too (web/src/app/aiLabel.ts). The History panel marks them AI, and the status bar shows the label while any step up to the current one is an AI result. 2 unit tests; the consent E2E test checks the status bar label. | Learn and Inspector for models. |
+| 2026-10-17 | 7 | Learn and Inspector for models. The engine reads the input and output tensors of a downloaded model from its ONNX files (GET /api/v1/models/{id}/tensors, the exported model.onnx for PyTorch and Caffe weights). The Inspector has a Model tab with the model card and those tensors, and the Learn panel a Model pipeline demo that draws the catalog steps of every filter with a model, with the real shapes. Checked live with the engine on CUDA: DnCNN shows image and restored as 1 x 3 x height x width. The engine launch entry now passes --extra cpu, with a new engine-cuda entry, since a plain uv run removes ONNX Runtime. 3 engine tests, 2 E2E tests; 54 E2E tests pass. | Phase 7 docs and exit check. |
+| 2026-10-17 | 7 | Phase 7 done. Docs: a new AI models section with the model reference (generated from catalog/models.yaml by tools/gen_docs.py: format, size, where it runs, phone, license, who uses it, inputs, outputs, paper), model integration, hardware needs (the measured GPU and CPU times of 7c) and the Generic HTTP contract for an external API. Exit check: CI uses tiny dummy ONNX models and a mock service; real models were checked by hand on this PC; the consent E2E test passes; the studio works with no models and no providers. | Phase 8: the Pipeline panel. |

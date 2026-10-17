@@ -4,19 +4,43 @@
     {
       "name": "studio",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
+      "runtimeArgs": [
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "docs",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "mkdocs", "serve", "--dev-addr", "127.0.0.1:8000"],
+      "runtimeArgs": [
+        "run",
+        "mkdocs",
+        "serve",
+        "--dev-addr",
+        "127.0.0.1:8000"
+      ],
       "port": 8000
     },
     {
       "name": "engine",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "pixelnexus-engine"],
+      "runtimeArgs": [
+        "run",
+        "--extra",
+        "cpu",
+        "pixelnexus-engine"
+      ],
+      "port": 8765
+    },
+    {
+      "name": "engine-cuda",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--extra",
+        "cuda",
+        "pixelnexus-engine"
+      ],
       "port": 8765
     }
   ]

@@ -91,6 +91,6 @@ learn:
     - Compare with Resize at bicubic, at 400 percent zoom.
   pitfalls:
     - A learned model can add detail that was never in the scene. Results carry the AI result label.
-  demos: [line-profile]
+  demos: [model-pipeline, line-profile]
 related: [edsr, real-esrgan, sr-classical]
 docsPage: filters/learned/srcnn.md

@@ -93,6 +93,65 @@ def ai_tasks(bundle: dict[str, Any]) -> str:
     return HEADER + table(headers, rows, ["left", "left", "left", "left", "left"])
 
 
+MODEL_FORMATS = {
+    "onnx": "ONNX",
+    "pytorch": "PyTorch, exported to ONNX once",
+    "tensorflow-pb": "TensorFlow graph, run by OpenCV",
+    "caffe": "Caffe, exported to ONNX once",
+    "opencv-yml": "OpenCV model file",
+}
+
+
+def models_reference(bundle: dict[str, Any]) -> str:
+    """Every approved model: format, size, where it runs, license, and who uses it."""
+    users: dict[str, list[str]] = {}
+    for task in bundle["aiTasks"]:
+        for model in task.get("models", []) or []:
+            users.setdefault(model, []).append(f"{task['name']} (AI task)")
+    for entry in bundle["filters"]:
+        named = [
+            entry.get("model"),
+            *((entry.get("modelChoices") or {}).get("models", {}) or {}).values(),
+        ]
+        for model in dict.fromkeys(m for m in named if m):
+            users.setdefault(model, []).append(f"{entry['name']} (filter)")
+    rows, facts = [], []
+    for model in bundle["models"]:
+        runs = model["runtimes"]
+        if model["format"] != "onnx":
+            runs = [r for r in runs if r != "on-device"]
+        where = " and ".join({"engine": "engine", "on-device": "browser"}[r] for r in runs)
+        license_text = model["license"].split(". ")[0].rstrip(".")
+        if model.get("licenseUrl"):
+            license_text = f"[{license_text}]({model['licenseUrl']})"
+        if model.get("nonCommercial") and "commercial" not in license_text:
+            license_text += ", non-commercial use only"
+        rows.append(
+            [
+                model["name"],
+                MODEL_FORMATS.get(model["format"], model["format"]),
+                f"{model['sizeMB']} MB",
+                where,
+                "Yes" if model.get("phoneSuitable") else "No",
+                license_text,
+                ", ".join(users.get(model["id"], [])) or "None yet",
+            ]
+        )
+        reference = model.get("reference") or {}
+        paper = reference.get("text", "")
+        if reference.get("doi"):
+            paper += f" [DOI {reference['doi']}](https://doi.org/{reference['doi']})"
+        elif reference.get("url"):
+            paper += f" [{reference['url']}]({reference['url']})"
+        facts.append(
+            [model["name"], model.get("inputs", ""), model.get("outputs", ""), paper or "None"]
+        )
+    headers = ["Model", "Format", "Size", "Runs in", "Phone", "License", "Used by"]
+    first = table(headers, rows, ["left", "left", "right", "left", "left", "left", "left"])
+    second = table(["Model", "Takes", "Gives", "Paper"], facts, ["left"] * 4)
+    return HEADER + first + "\n" + second
+
+
 def resolve_params(entry: dict[str, Any], common: dict[str, Any]) -> list[dict[str, Any]]:
     """Expand shared parameters. The channel scope offers only the scopes the filter allows."""
     params = []
@@ -342,6 +401,7 @@ def build() -> dict[str, str]:
         "filters-index.md": filters_index(bundle),
         "tools-index.md": tools_index(bundle),
         "ai-tasks.md": ai_tasks(bundle),
+        "models.md": models_reference(bundle),
     }
     for entry in bundle["filters"]:
         if entry.get("docsPage") and entry.get("formula"):

@@ -104,6 +104,6 @@ learn:
     - Run the same style on a small and a large copy of one photo, and compare the brush size.
   pitfalls:
     - A learned model can add detail that was never in the scene. Results carry the AI result label.
-  demos: [line-profile]
+  demos: [model-pipeline, line-profile]
 related: [oil-painting, cartoon]
 docsPage: filters/learned/fast-style.md
