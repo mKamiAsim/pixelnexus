@@ -114,6 +114,8 @@ interface FiltersState {
   toggleFavorite: (filterId: string) => void;
   savePreset: (filterId: string, preset: Preset) => void;
   deletePreset: (filterId: string, name: string) => void;
+  /** Add presets from a file. A preset with the same name as a saved one replaces it. */
+  importPresets: (presets: Readonly<Record<string, readonly Preset[]>>) => number;
 }
 
 const initial = typeof window === "undefined" ? { favorites: [], presets: {} } : load();
@@ -172,6 +174,23 @@ export const useFilters = create<FiltersState>()((set, get) => {
         },
       }));
       persist();
+    },
+    importPresets: (incoming) => {
+      let count = 0;
+      set((state) => {
+        const presets = { ...state.presets };
+        for (const [filterId, list] of Object.entries(incoming)) {
+          const names = new Set(list.map((p) => p.name));
+          presets[filterId] = [
+            ...(presets[filterId] ?? []).filter((p) => !names.has(p.name)),
+            ...list,
+          ];
+          count += list.length;
+        }
+        return { presets };
+      });
+      persist();
+      return count;
     },
     deletePreset: (filterId, name) => {
       set((state) => ({

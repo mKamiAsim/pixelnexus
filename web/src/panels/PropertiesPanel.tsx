@@ -1,5 +1,15 @@
 import { clsx } from "clsx";
-import { AlertTriangle, ChevronRight, Copy, Info, LoaderCircle, Save, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  Copy,
+  Download,
+  Info,
+  LoaderCircle,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { Collapsible } from "radix-ui";
 import { useState } from "react";
 
@@ -22,6 +32,7 @@ import type { FilterScope } from "@/core/composite/scope";
 import { activeDocument, activeSelection, useDocuments } from "@/state/documents";
 import { useNeedsEngine } from "@/state/engine";
 import { useFilterValues } from "@/app/useFilterValues";
+import { chooseAndImportPresets, exportPresets } from "@/app/presetActions";
 import { useFilters, type Preset, type RunInfo } from "@/state/filters";
 import { notify } from "@/state/notifications";
 
@@ -423,6 +434,19 @@ function PresetRow({
           icon={<Save size={13} />}
           size="sm"
           disabled={!name.trim()}
+        />
+        <IconButton
+          label="Export the presets of this filter"
+          icon={<Download size={13} />}
+          size="sm"
+          disabled={presets.length === 0}
+          onClick={() => exportPresets(entry.id)}
+        />
+        <IconButton
+          label="Import presets"
+          icon={<Upload size={13} />}
+          size="sm"
+          onClick={chooseAndImportPresets}
         />
         <IconButton
           label="Copy the settings as JSON"

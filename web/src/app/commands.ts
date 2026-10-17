@@ -43,6 +43,7 @@ import {
   type RefineKind,
 } from "./selectionActions";
 import { aiImage } from "./aiImageActions";
+import { chooseAndImportPresets, exportPresets } from "./presetActions";
 import { addSelectedFilter, runPipelineOnActive } from "./pipelineActions";
 import { aiSelect } from "./aiSelectActions";
 import { selectObject } from "./seedActions";
@@ -198,6 +199,23 @@ export function buildCommands(): Command[] {
       keywords: "save download png jpeg webp tiff",
       enabled: hasDocument,
       run: () => useUi.getState().setDialog("export"),
+    },
+    {
+      id: "file.import-presets",
+      label: "Import presets...",
+      menu: "file",
+      section: "presets",
+      keywords: "presets settings import load json",
+      run: chooseAndImportPresets,
+    },
+    {
+      id: "file.export-presets",
+      label: "Export all presets",
+      menu: "file",
+      section: "presets",
+      keywords: "presets settings export save json",
+      enabled: () => Object.values(useFilters.getState().presets).some((list) => list.length > 0),
+      run: () => exportPresets(),
     },
     {
       id: "file.close",

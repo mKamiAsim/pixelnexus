@@ -26,6 +26,9 @@ The Properties panel shows the settings of the selected filter and runs it.
 - **Apply** runs the filter at full resolution (Ctrl+Enter or Cmd+Enter), on the part that **Apply to** names. While it runs, a progress bar and **Cancel** appear.
 - **Reset** returns the parameters to their defaults.
 - **Presets.** Save the current values under a name, load them later or delete them. Presets are saved in this browser.
+    - The export button saves the presets of this filter as a JSON file. The import button reads such a file back.
+    - **File > Export all presets** saves the presets of every filter in one file. **File > Import presets** reads one.
+    - On import, every value is checked against the catalog. A preset with the same name as a saved one replaces it. Presets of filters this studio does not know are left out, with a warning.
 - **Copy JSON** copies the filter id and the values.
 - **Last run** shows how long the last preview or Apply took.
 
