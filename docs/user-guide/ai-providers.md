@@ -34,7 +34,7 @@ With a selection, denoising and JPEG cleanup send only the box around it. The an
 | Kind | Where it runs | Asks before sending |
 |---|---|---|
 | Local engine model | The PixelNexus engine on this computer | Never |
-| On-device model | Inside the browser or the phone app | Never |
+| On-device model | Inside the browser | Never |
 | Remote PixelNexus engine | An engine you run on another machine | Once per session for each host |
 | External AI service | A service you set up with a base URL and a key | Every time |
 

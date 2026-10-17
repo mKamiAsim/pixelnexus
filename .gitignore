@@ -31,7 +31,7 @@ test-results/
 tools/figures/data/
 
 # Downloaded AI models
-models/
+/models/
 
 # Editors and OS
 .vscode/

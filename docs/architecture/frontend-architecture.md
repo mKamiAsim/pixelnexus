@@ -2,7 +2,7 @@
 
 This page explains how the studio is put together. It covers the parts of the screen, where their code lives and how they share state. It also follows an image from a file to the screen and back out.
 
-The studio is a React app written in TypeScript. It runs in any modern browser, on GitHub Pages and later inside the phone app. All image work happens on your device.
+The studio is a React app written in TypeScript. It runs in any modern browser and on GitHub Pages. All image work happens on your device.
 
 ## Layers
 

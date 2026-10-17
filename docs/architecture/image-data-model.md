@@ -85,7 +85,7 @@ The header parser returns these fields. Fields the file does not state are left 
 | Pixels | 50 million | A small compressed file can hold a huge image. This stops such files before decoding. |
 | Longest side | 16,384 pixels | Many graphics cards cannot hold a larger texture. |
 
-These defaults are for desktop browsers. The phone app gets lower limits in Phase 11.
+These defaults are for desktop browsers. On a phone, you can lower them in the settings.
 
 ## Warnings
 

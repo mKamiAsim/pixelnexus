@@ -25,7 +25,7 @@ Read this first on any machine. It is updated with every commit.
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
 | Last finished step | Phase 9: figure check of every page, with fixes. |
-| In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. Before Phase 11 (phone app), stop and discuss it with the owner: they doubt a phone version of a learning tool is useful and are thinking of a separate real-world phone photo editor built on these filters and local models. |
+| In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. Phase 11 (phone app) was dropped on 2026-10-17. Phase 10 is the last phase. A phone app is planned again after the project is done. |
 | Next steps | Phase 9, in the order of its task list. CI runs only on the pull request into main, so check it when the owner merges. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
 | Machine notes | Run `pnpm install`, `uv sync --extra cpu` (or `--extra cuda` on a computer with an NVIDIA GPU) and the Playwright Chromium install after pulling. Behind a TLS-inspecting proxy, set `UV_SYSTEM_CERTS=1`. Inside the Claude desktop app on Windows, also set `UV_PYTHON_INSTALL_DIR` to a folder outside `AppData` (the app's sandbox hides `AppData` writes from uv). The E2E tests use `127.0.0.1` and at most 4 local workers, because parallel browser loads from `localhost` stalled on the office PC (probably the Norton network filter). On the home PC on 2026-10-15, a few unrelated tests also failed at random under 4 workers (`page.goto` aborted); `npx playwright test --workers=2` in `web` passed all 36. The E2E smoke test fails with a CORS error while your own engine runs on port 8765; the other tests pass. |
@@ -63,7 +63,7 @@ D1 to D4 were agreed with you on 2026-10-11. D5 onward are my technical choices.
 | D17 | Licenses | The default install uses permissive licenses only (MIT, BSD, Apache 2.0). Anything else is optional and clearly labeled. Project license is MIT unless you choose another. | The project stays easy to share and teach with. |
 | D18 | Git | All work goes on the `Development` branch with clear commit messages, pushed often. No branch per phase. You merge `Development` into `main`. Deploys still need your approval. | Your instruction on 2026-10-12. Two PCs stay in step. |
 | D19 | Versions | Phase 1 picks the latest stable version of each dependency that is at least two weeks old. Versions are recorded in the docs dependency page. | Current and stable. |
-| D20 | Mobile app | Later, the same web build ships as a phone app with Capacitor. Android first, iOS later (Phase 11). The browser engine runs on the phone. Science engine filters on a phone need a PixelNexus engine you run elsewhere. Otherwise they show as unavailable with the reason. | Agreed with you. Capacitor bundles the web app offline and gives native file, camera, share and secure storage. |
+| D20 | Mobile app | Later, the same web build ships as a phone app with Capacitor. Android first, iOS later. Dropped from the current plan on 2026-10-17, see Phase 11. The browser engine runs on the phone. Science engine filters on a phone need a PixelNexus engine you run elsewhere. Otherwise they show as unavailable with the reason. | Agreed with you. Capacitor bundles the web app offline and gives native file, camera, share and secure storage. |
 | D21 | AI providers | AI tools run through one of three provider kinds: models in the local engine (desktop), small on-device models (ONNX Runtime Web, in the browser or phone app), or an external AI API that you configure (base URL, API key, model and other settings). | Agreed with you. Phones never depend on large downloads. |
 | D22 | No forced downloads | No model is ever downloaded without your action. The app may suggest small models and shows their size and license first. | Agreed with you. |
 | D23 | Consent | Every use of an external AI API asks for permission first, every time. Local engine models and on-device models never ask. Any other request that sends an image off the device (for example to a remote PixelNexus engine) asks once per session for that host. | Agreed with you for AI. The remote engine rule is my default. You can change it. |
@@ -273,7 +273,7 @@ Pipelines live in the studio. The engine runs single steps. Export is done in th
 - Local filters aim for about 100 ms preview on the visible region. Real numbers are measured later. The docs quote only measured numbers.
 - A worker pool processes tiles with halos. Channels are processed one at a time when memory is tight.
 - A memory budget limits caches. History snapshots are compressed in IndexedDB.
-- Phones get lower default limits for pixels, workers and history. They are set in Phase 11 after measuring.
+- Phones get lower default limits for pixels, workers and history. They were to be set in Phase 11, which is dropped for now.
 
 ### 3.11 AI providers and consent
 
@@ -461,7 +461,7 @@ The Inspector shows all 19 fields from requirements 1 section 5.1 in tabs: Overv
 - The tool strip becomes horizontal.
 - Upload, select, filter, undo and export stay available.
 - Controls are touch sized. Gestures: pinch to zoom, two fingers to pan.
-- The design is touch-ready from Phase 2, so the phone app in Phase 11 needs layout polish, not a redesign.
+- The design is touch-ready from Phase 2, so a later phone app would need layout polish, not a redesign.
 
 ### 4.9 Accessibility
 
@@ -687,26 +687,9 @@ Docs: user guide pages for pipelines, history, compare, metrics and projects. Do
 - [ ] Clean install in Docker from the documented steps.
 - [ ] Final limitations page and release notes. Tag v1.0.0 after your approval.
 
-### Phase 11: Phone app (after the web release)
+### Phase 11: Phone app (dropped on 2026-10-17)
 
-**11a Android first**
-
-- [ ] Capacitor project that wraps the same web build. Assets are bundled, so the app works offline.
-- [ ] Native import from files and camera. Export and share through the system share sheet.
-- [ ] Storage for projects and history. API keys in Android Keystore through a secure storage plugin.
-- [ ] Phone limits for pixels, workers and history, set from measurements on real devices.
-- [ ] Touch pass on every panel and tool. Pinch zoom, two-finger pan, long-press menus.
-- [ ] Science engine filters show "Needs a PixelNexus engine". You can connect one in settings.
-- [ ] AI on the phone: small on-device models are suggested, never forced. External providers follow the consent rules.
-- [ ] Network security config: HTTPS by default, plain HTTP only for private network hosts you add.
-- [ ] Tests on an emulator and at least one real device. Signed release bundle (AAB). **Checkpoint: you set up the Play Console account and the signing key.**
-
-**11b iOS later**
-
-- [ ] Same app with Keychain storage and iOS share and photo pickers.
-- [ ] Needs a Mac with Xcode and an Apple developer account. **Checkpoint: you provide both when ready.**
-
-Docs: phone app install, limits on phones, connecting a remote engine, AI providers on phones.
+The owner dropped this phase from the current plan. PixelNexus is a learning tool, and a phone gives too little room for the Inspector, formulas and comparisons. A phone app will be planned again after this project is done, probably as a separate photo editor that uses these filters and local models. The old task list is in the git history of this file.
 
 ## 6. Testing strategy
 
@@ -840,7 +823,7 @@ A filter is done only when all of these are true:
 | R10 | Precision loss in an 8-bit pipeline. | Float32 inside filters, output mapping, warnings. A float working mode is a possible later addition. |
 | R11 | Phones have less memory and slower CPUs. WebGPU in Android WebView is not universal. Multi-threaded WebAssembly needs special headers. | Lower phone limits, proxy previews, single-thread fallback. A native ONNX Runtime plugin if on-device AI is too slow. |
 | R12 | External AI services differ a lot. A strict Content Security Policy cannot list hosts you add later. | One adapter contract, a generic HTTP adapter, mock-server tests. The CSP allows HTTPS connections, and the AI router enforces the host rules itself. |
-| R13 | iOS builds need macOS and Xcode. This machine runs Linux. | iOS is Phase 11b. It waits for a Mac or a cloud macOS build service. |
+| R13 | iOS builds need macOS and Xcode. This machine runs Linux. | Not needed now. The phone app was dropped from the current plan on 2026-10-17. |
 
 ## 11. Approval checkpoints
 
@@ -850,8 +833,6 @@ A filter is done only when all of these are true:
 4. AI model list and licenses before any download in Phase 7.
 5. Enabling GitHub Pages and the first deploy in Phase 9.
 6. Release tag in Phase 10.
-7. Play Console account and signing key in Phase 11a.
-8. Mac and Apple developer account in Phase 11b.
 
 ## 12. Progress log
 
@@ -1028,3 +1009,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 9 | Phase 9 part 1. Seven mathematics pages from the docs tree: spatial and frequency domains, Fourier transform (numpy convention, our mixed-radix and Bluestein FFT, the padding step, the Spectrum panel), wavelet transforms (bands, decimated and stationary, shrinkage), color spaces (the exact formulas of convert.ts), computational complexity (from the catalog), noise models (from the noise filter formulas) and image quality metrics (as quality.ts). | Rest of the docs tree. |
 | 2026-10-17 | 9 | Phase 9 part 2. The docs tree of section 7 is complete: deployment, architecture overview, selection masks and refinement, contributing, implementation/ (adding a filter on the box filter, filter definition schema, science engine and frontend integration, testing guidelines, optional dependencies, model integration) and reference/ (filter catalog, parameter reference, API reference, dependencies and licenses, limitations, troubleshooting, glossary). Generated: filter schema (descriptions added to the schema), glossary, shared parameters (gen_docs.py), the engine API from FastAPI's OpenAPI (engine_docs.py, with docstrings added to five routes), and dependencies with licenses from installed metadata (new tools/gen_licenses.py, run by hand). New tools/check_docs.py in CI, with tests that each kind of problem is found; it finds none today. Fixed a tool test that used ai-subject as a non-runnable tool. | Figure check, Pages workflow, PWA, README. |
 | 2026-10-17 | 9 | Figure check. New web/scripts/check-figures.mjs opens all 365 pages of the built site at 1280 px and 390 px, light and dark, and checks sideways scroll, figure loading, fit and theme variant, Mermaid rendering and label overlap, and formula errors. It also checks every SVG figure for overlapping or cut labels. First run: 12 band figures with a cut title, the vector median figure with overlapping titles, the bilateral legend past the edge, and wide inline formulas on 3 pages at 390 px. All fixed; all 568 figures redrawn from current filter code. Now 365 of 365 pages and 568 of 568 figures pass. | Pages workflow, PWA, README. |
+| 2026-10-17 | 9 | The owner dropped Phase 11 (phone app) from the current plan; a phone app is planned again after the project is done. Removed phone app mentions from the docs. Fixed .gitignore: `models/` also hid docs/models/, so the four model pages from Phase 7 were never committed. It is now `/models/`. | Pages workflow, PWA, README. |

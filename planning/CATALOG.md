@@ -416,7 +416,7 @@ AI selection models, also Phase 7:
 
 Every AI entry above can run through any provider kind in PLAN.md section 3.11: engine model, on-device model, remote PixelNexus engine or external AI API.
 
-**Small on-device candidates.** These are suggestions for the browser and the phone app. Nothing downloads without your action. Sizes are approximate and every license is checked again in Phase 7b before use.
+**Small on-device candidates.** These are suggestions for the browser. Nothing downloads without your action. Sizes are approximate and every license is checked again in Phase 7b before use.
 
 | Task | Candidate | Approximate size | License to confirm |
 |---|---|---|---|

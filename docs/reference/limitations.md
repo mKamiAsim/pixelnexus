@@ -29,4 +29,4 @@ What PixelNexus does not do, or does with limits. Each filter page also lists it
 ## Browsers and devices
 
 - The studio needs a current browser with WebAssembly, Web Workers and WebGL2. On-device models use WebGPU where it exists, and are slower without it.
-- The phone layout is a first step. The native phone app is a later phase.
+- The phone layout is a first step. There is no native phone app.
