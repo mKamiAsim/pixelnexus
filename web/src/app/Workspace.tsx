@@ -60,7 +60,9 @@ import {
   currentPreset,
   forgetLayout,
   notifyPanelsChange,
+  presetForScreen,
   restoreLayout,
+  startupPreset,
   saveLayout,
   setWorkspaceApi,
   type PanelId,
@@ -211,10 +213,30 @@ export function Workspace() {
   );
 
   useEffect(() => () => setWorkspaceApi(null), []);
+  // A phone turned sideways, or a window made narrow, gets the layout for its new size.
+  useEffect(() => {
+    let timer = 0;
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const preset = presetForScreen(window.innerWidth);
+        if (preset) applyPreset(preset, undefined, false);
+      }, 300);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   const onReady = ({ api }: DockviewReadyEvent) => {
     setWorkspaceApi(api);
-    if (!restoreLayout(api)) {
+    const forScreen = startupPreset(window.innerWidth);
+    if (forScreen) {
+      forgetLayout();
+      applyPreset(forScreen, api, false);
+    } else if (!restoreLayout(api)) {
       forgetLayout();
       applyPreset(currentPreset(), api);
     }

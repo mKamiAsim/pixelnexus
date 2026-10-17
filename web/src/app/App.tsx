@@ -15,7 +15,7 @@ import { watchChangeWarnings } from "./changeWarnings";
 import { CompareGridDialog } from "./CompareGridDialog";
 import { ExportDialog } from "./ExportDialog";
 import { ACCEPTED_FILES, openFiles, pastedImageFiles, registerFilePicker } from "./importer";
-import { applyPreset, currentPreset, onPanelsChange, PRESETS, type PresetId } from "./layout";
+import { applyPreset, onPanelsChange, PRESETS, shownPreset, type PresetId } from "./layout";
 import { MenuBar } from "./MenuBar";
 import { startPreview } from "./preview";
 import { Notices } from "./Notices";
@@ -42,7 +42,8 @@ function Logo() {
         <span className="rounded-[1px] bg-text-muted" />
         <span className="rounded-[1px] bg-text" />
       </span>
-      <h1 className="text-sm font-semibold">Pixel Nexus</h1>
+      {/* On a phone the name hides, so the menus fit. Screen readers still hear it. */}
+      <h1 className="sr-only text-sm font-semibold sm:not-sr-only">Pixel Nexus</h1>
     </span>
   );
 }
@@ -50,11 +51,7 @@ function Logo() {
 function HeaderActions() {
   const doc = useDocuments((s) => activeDocument(s));
   const setDialog = useUi((s) => s.setDialog);
-  const preset = useSyncExternalStore(
-    onPanelsChange,
-    currentPreset,
-    () => "essentials" as PresetId,
-  );
+  const preset = useSyncExternalStore(onPanelsChange, shownPreset, () => "essentials" as PresetId);
   return (
     <div className="ml-auto flex shrink-0 items-center gap-1">
       <IconButton
@@ -186,7 +183,7 @@ export function App() {
   return (
     <TooltipProvider>
       <div className="flex h-full flex-col overflow-hidden bg-app text-text">
-        <header className="flex h-8 shrink-0 items-center gap-1 border-b border-border-subtle bg-panel px-2">
+        <header className="flex h-8 shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden border-b border-border-subtle bg-panel px-2">
           <Logo />
           <MenuBar />
           <HeaderActions />

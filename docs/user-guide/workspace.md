@@ -84,10 +84,21 @@ To look at the original for a moment, hold the `\` key or press and hold the eye
     - **Essentials:** Library and Images on the left. Properties, Inspector, Learn and Developer on the right, with History, Navigator, Info and Histogram below.
     - **Study:** a wide Learn panel with the Inspector and Properties, and Info, Histogram, Navigator and History below, for teaching and learning.
     - **Developer:** a wide Developer panel with the Inspector and Properties, and History, Info, Histogram and Navigator below.
-    - **Compact:** all panels in one narrow group, for small screens.
+    - **Compact:** all panels in one narrow group, for small screens and tablets.
+    - **Phone:** the canvas on top at full width, and all panels in one tab group below it.
 - **Reset.** **Window > Reset workspace** restores the current workspace.
 
 The studio remembers your layout in this browser.
+
+## Phones and tablets
+
+The studio picks a layout for the size of the screen:
+
+- Under 768 pixels wide, such as a phone, it uses **Phone**. The name of the studio hides, so the menus fit, and the menu bar scrolls sideways.
+- From 768 to 1179 pixels, such as a tablet, it uses **Compact**.
+- From 1180 pixels, it uses the workspace you chose last.
+
+It changes the layout only when the screen moves into another of these sizes, for example when you turn a tablet or make a window narrow. Your own arrangement stays until then. The sizes are our choice.
 
 ## Themes
 

@@ -53,7 +53,7 @@ import {
   PANELS,
   PRESETS,
   applyPreset,
-  currentPreset,
+  shownPreset,
   isPanelOpen,
   showPanel,
   togglePanel,
@@ -794,7 +794,7 @@ export function buildCommands(): Command[] {
       submenu: "Workspace",
       section: "workspace",
       keywords: `layout preset ${preset.description}`,
-      checked: () => currentPreset() === preset.id,
+      checked: () => shownPreset() === preset.id,
       run: () => applyPreset(preset.id),
     })),
     {
@@ -803,7 +803,7 @@ export function buildCommands(): Command[] {
       menu: "window",
       section: "workspace",
       keywords: "layout restore panels default",
-      run: () => applyPreset(currentPreset()),
+      run: () => applyPreset(shownPreset()),
     },
     // Help
     {

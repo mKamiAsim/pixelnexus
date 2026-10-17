@@ -48,7 +48,12 @@ export const PRESETS = [
   {
     id: "compact",
     name: "Compact",
-    description: "All panels in one narrow tab group, for small screens",
+    description: "All panels in one narrow tab group, for small screens and tablets",
+  },
+  {
+    id: "phone",
+    name: "Phone",
+    description: "The canvas on top and all panels in one tab group below it, for phones",
   },
 ] as const;
 
@@ -57,6 +62,50 @@ export type PresetId = (typeof PRESETS)[number]["id"];
 // Version 5 adds the Pipeline panel. Older saved layouts are replaced once by the preset.
 const STORAGE_KEY = "pixelnexus.layout.v5";
 const PRESET_KEY = "pixelnexus.preset.v1";
+const SCREEN_KEY = "pixelnexus.screen.v1";
+
+export type ScreenClass = "phone" | "tablet" | "desktop";
+
+/**
+ * The kind of screen by its width in CSS pixels. 768 and 1180 are our choice: under 768 the
+ * side panels leave no room for the canvas, and under 1180 two side columns are too tight.
+ */
+export function screenClass(width: number): ScreenClass {
+  return width < 768 ? "phone" : width < 1180 ? "tablet" : "desktop";
+}
+
+const SCREEN_PRESETS: Record<ScreenClass, PresetId | null> = {
+  phone: "phone",
+  tablet: "compact",
+  desktop: null,
+};
+
+/**
+ * The preset to apply because the screen changed class, such as a phone, a tablet turned
+ * sideways or a narrowed window. Null when the class is the one the layout was made for. A
+ * desktop goes back to the preset you chose last, or Essentials.
+ */
+let startup: { preset: PresetId | null } | null = null;
+
+/** presetForScreen for the first layout of this page, decided once even if the workspace mounts twice. */
+export function startupPreset(width: number): PresetId | null {
+  startup ??= { preset: presetForScreen(width) };
+  return startup.preset;
+}
+
+export function presetForScreen(width: number): PresetId | null {
+  const now = screenClass(width);
+  let before: string | null = null;
+  try {
+    before = localStorage.getItem(SCREEN_KEY);
+    localStorage.setItem(SCREEN_KEY, now);
+  } catch {
+    // Storage is blocked. Use the width alone.
+  }
+  if (before === now) return null;
+  if (before === null && now === "desktop") return null;
+  return SCREEN_PRESETS[now] ?? currentPreset();
+}
 
 let api: DockviewApi | null = null;
 const listeners = new Set<() => void>();
@@ -97,6 +146,13 @@ function titleOf(id: PanelId): string {
   return PANELS.find((panel) => panel.id === id)?.title ?? id;
 }
 
+let applied: PresetId | null = null;
+
+/** The preset on screen now: the one applied last, which may be the one for this screen size. */
+export function shownPreset(): PresetId {
+  return applied ?? currentPreset();
+}
+
 export function currentPreset(): PresetId {
   try {
     const saved = localStorage.getItem(PRESET_KEY);
@@ -106,8 +162,13 @@ export function currentPreset(): PresetId {
   }
 }
 
-export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void {
+/**
+ * Lay out the panels by a preset. `remember` keeps it as your choice; a preset applied for the
+ * screen size is not remembered, so a desktop gets your own choice back.
+ */
+export function applyPreset(id: PresetId, dock: DockviewApi | null = api, remember = true): void {
   if (!dock) return;
+  applied = id;
   resetRails();
   dock.clear();
   addCanvas(dock);
@@ -128,7 +189,27 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
   const heights: [PanelId, number][] = [];
   const stack = (first: PanelId, others: PanelId[]) =>
     others.forEach((p) => add(p, first, "within"));
-  if (id === "compact") {
+  if (id === "phone") {
+    add("properties", CANVAS_PANEL, "below");
+    stack("properties", [
+      "library",
+      "learn",
+      "inspector",
+      "images",
+      "history",
+      "pipeline",
+      "navigator",
+      "info",
+      "histogram",
+      "spectrum",
+      "masks",
+      "metrics",
+      "features",
+      "developer",
+    ]);
+    const tall = typeof window === "undefined" ? 800 : window.innerHeight;
+    heights.push(["properties", Math.round(tall * 0.42)]);
+  } else if (id === "compact") {
     add("properties", CANVAS_PANEL, "right");
     stack("properties", [
       "library",
@@ -205,11 +286,13 @@ export function applyPreset(id: PresetId, dock: DockviewApi | null = api): void 
   for (const [panel, height] of heights) dock.getPanel(panel)?.group.api.setSize({ height });
   for (const [panel, width] of widths) dock.getPanel(panel)?.group.api.setSize({ width });
   try {
-    localStorage.setItem(PRESET_KEY, id);
+    if (remember) localStorage.setItem(PRESET_KEY, id);
   } catch {
     // Storage is blocked. The preset still applies for this visit.
   }
   dock.getPanel(CANVAS_PANEL)?.api.setActive();
+  // Save at once, so a reload keeps this layout even if nothing moves first.
+  saveLayout(dock);
   notifyPanelsChange();
 }
 
