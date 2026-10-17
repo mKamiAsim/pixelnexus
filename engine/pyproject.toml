@@ -1,6 +1,6 @@
 [project]
 name = "pixelnexus-engine"
-version = "0.1.0"
+version = "1.0.0"
 description = "PixelNexus science engine: advanced image processing served over a local HTTP API."
 license = "MIT"
 requires-python = ">=3.12,<3.14"

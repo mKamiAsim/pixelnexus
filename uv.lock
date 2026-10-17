@@ -1103,7 +1103,7 @@ wheels = [
 
 [[package]]
 name = "pixelnexus-engine"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "engine" }
 dependencies = [
     { name = "fastapi" },
@@ -1155,7 +1155,7 @@ provides-extras = ["optional", "models", "cuda"]
 
 [[package]]
 name = "pixelnexus-workspace"
-version = "0.0.0"
+version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "pixelnexus-engine", extra = ["optional"] },

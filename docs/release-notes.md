@@ -1,8 +1,8 @@
 # Release notes
 
-## 1.0.0 (not released yet)
+## 1.0.0 (2026-10-17)
 
-The first release of PixelNexus. It waits for the owner's approval of the tag.
+The first release of PixelNexus.
 
 ### The studio
 

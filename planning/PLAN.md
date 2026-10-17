@@ -13,8 +13,8 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 
 | Item | Value |
 |---|---|
-| Current phase | Phase 10: validation and release (Phase 9 waits only for the owner's Pages checkpoint) |
-| Next action | Owner: approve tag v1.0.0 (then bump web/package.json, engine/pyproject.toml and pyproject.toml to 1.0.0, merge Development into main, tag). Owner: enable Pages (Settings, Pages, source GitHub Actions) and start the Pages workflow; a short screen reader test; optionally `sudo apt-get install libevent-2.1-7t64 libavif16 libmanette-0.2-0` so WebKit runs on this PC. |
+| Current phase | Released v1.0.0. Phase 9 waits only for the owner to switch on Pages. |
+| Next action | Owner: merge Development into main; switch on Pages (Settings, Pages, source GitHub Actions) and run the Pages workflow from the Actions tab. Owner: enable Pages (Settings, Pages, source GitHub Actions) and start the Pages workflow; a short screen reader test; optionally `sudo apt-get install libevent-2.1-7t64 libavif16 libmanette-0.2-0` so WebKit runs on this PC. |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 10: limitations page and release notes. Every Phase 10 task is done except the owner's tag approval. |
+| Last finished step | v1.0.0 released: versions set to 1.0.0 and the tag pushed. |
 | In progress | Phase 9: documentation completion and publishing. The owner asked on 2026-10-17 to continue into Phase 10 once Phase 9 is done. Phase 11 (phone app) was dropped on 2026-10-17. Phase 10 is the last phase. A phone app is planned again after the project is done. |
 | Next steps | Phase 9, in the order of its task list. CI runs only on the pull request into main, so check it when the owner merges. |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -685,7 +685,7 @@ Docs: user guide pages for pipelines, history, compare, metrics and projects. Do
 - [x] Maths audit: automated check that Inspector kernels equal the kernels used. Manual review of 20 random filter pages. Done on 2026-10-17 (docs/_meta/maths-audit.md). 19 pages correct; the iteration range of Landweber, projected Landweber and Richardson-Lucy was one step off and is fixed.
 - [x] Accessibility audit: axe, keyboard-only walk-through, screen-reader smoke test. Done on 2026-10-17 (docs/_meta/accessibility-audit.md), except the test with a real screen reader, which needs the owner. Six problems found and fixed.
 - [x] Clean install in Docker from the documented steps. Done on 2026-10-17: docker compose from a fresh clone, and the README quick start in a clean node:24 container with only uv added. Fixed a pnpm 12 install stop on protobufjs and the Docker studio's CSP, which blocked on-device models.
-- [ ] Final limitations page and release notes. Tag v1.0.0 after your approval. Limitations page and docs/release-notes.md done on 2026-10-17. **Waiting for the owner's approval of the tag.**
+- [x] Final limitations page and release notes. Tag v1.0.0 after your approval. Done on 2026-10-17. The owner approved the tag, and v1.0.0 is tagged on Development.
 
 ### Phase 11: Phone app (dropped on 2026-10-17)
 
@@ -1015,3 +1015,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-17 | 10 | Accessibility audit. New a11y.spec.ts: axe in all five themes over the workspace and five more dialogs, the command palette, a Tab walk that checks a 2 px focus ring at every stop, and a keyboard-only flow (open, filter, undo). Fixed: no focus ring on the canvas, panel tabs and menu bar triggers; focus lost on the page body after a dialog opened from a menu closed; the shortcut list could not be scrolled by keyboard; a "Skip to the image" button as the first tab stop, since the Library put hundreds of stops before the image. A real screen reader test is left for the owner. 3710 unit and 142 E2E tests (Chromium and Firefox) pass. | Python coverage, catalog audit, Docker install. |
 | 2026-10-17 | 10 | Full test run: 895 Python tests pass with 79% line coverage, 3710 web tests, 71 E2E tests each in Chromium and Firefox. Catalog audit with tools/audit_catalog.py (with its own tests) on those result files: 0 problems. Clean install: docker compose from a fresh clone builds after two fixes (pnpm 12 stopped on the unapproved protobufjs build script, now denied in allowBuilds; the Docker studio's CSP blocked WebAssembly and model downloads, now allowed, with data: fonts, the manifest type and no caching for sw.js), and a Multi-level Otsu run reaches the engine. The README quick start passes in a clean node:24 container with only uv added. README and running-tests now name the browsers to install. | Limitations page, release notes, v1.0.0 approval. |
 | 2026-10-17 | 10 | Final limitations page (offline use, the Pages studio with a local engine, catalog counts, test gaps) and docs/release-notes.md for 1.0.0, with every number taken from the catalog and the test runs. Phase 10 is done except the v1.0.0 tag, which waits for the owner. | Owner: tag approval, Pages checkpoint, screen reader test. |
+| 2026-10-17 | 10 | The owner approved v1.0.0. Versions set to 1.0.0 in web/package.json, engine/pyproject.toml, pyproject.toml, the engine's __version__ and uv.lock. Tagged v1.0.0. Switching on Pages through the API was blocked by the agent's permission rules, so the owner does it in the settings. WebKit stays for later. | Owner: merge into main, Pages. |
