@@ -101,6 +101,7 @@ describe("AI selections through the router", () => {
     expect(useDocuments.getState().documents.at(-1)?.steps.at(-1)?.label).toMatch(
       /^AI background \(/,
     );
+    expect(useDocuments.getState().documents.at(-1)?.steps.at(-1)?.ai).toBe(true);
   });
 
   it("keeps a soft matte from AI soft edges as a soft selection", async () => {

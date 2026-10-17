@@ -1,4 +1,4 @@
-import { LoaderCircle, Send, ShieldCheck } from "lucide-react";
+import { LoaderCircle, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { formatZoom } from "@/canvas/viewport";
@@ -9,6 +9,7 @@ import { useEngine, watchEngine } from "@/state/engine";
 import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
+import { AI_RESULT_LABEL, hasAiResult } from "./aiLabel";
 import { formatSize } from "./format";
 import { describeSelection } from "./selectionActions";
 
@@ -45,6 +46,13 @@ export function StatusBar() {
             {selectionText}
             {selection && !doc.selectionEnabled ? " (off)" : ""}
           </span>
+          {hasAiResult(doc) ? (
+            <span className="flex items-center gap-1.5 text-warning" title={AI_RESULT_LABEL}>
+              <Sparkles size={12} aria-hidden />
+              <span className="sm:hidden">AI result</span>
+              <span className="hidden sm:inline">{AI_RESULT_LABEL}</span>
+            </span>
+          ) : null}
         </>
       ) : (
         <span>No image open</span>

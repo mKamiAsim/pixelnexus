@@ -160,6 +160,9 @@ test("consent comes before every external request, and never for local work", as
   await consent.getByRole("button", { name: "Send once" }).click();
   await expect(page.getByRole("contentinfo")).toContainText("Selection: the whole image");
   expect(requests).toBe(1);
+  await expect(page.getByRole("contentinfo")).toContainText(
+    "AI result. Detail may not exist in the original scene.",
+  );
 
   // Every request asks again.
   await aiSubject();

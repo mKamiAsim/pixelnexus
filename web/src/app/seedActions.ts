@@ -44,6 +44,7 @@ async function engineSelection(
   label: string,
   busy: string,
   make: (doc: ImageDocument) => Promise<Mask | null>,
+  ai = false,
 ): Promise<void> {
   const doc = activeDocument();
   if (!doc) return;
@@ -52,7 +53,7 @@ async function engineSelection(
   announce(`${busy}.`);
   try {
     const mask = await make(doc);
-    if (mask) commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, label);
+    if (mask) commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, label, ai);
   } catch (error) {
     notify(
       "error",
@@ -104,19 +105,25 @@ export function addAiSeed(x: number, y: number, object: boolean): Promise<void> 
   if (!task) return Promise.resolve();
   const seeds = useSeeds.getState().add(doc.id, doc.current, { x, y, object });
   const run = ++latest;
-  return engineSelection("AI Click Select", "Selecting from your clicks with AI", async () => {
-    const outcome = await runAiTask({
-      task,
-      image: doc.current,
-      points: seeds.map((s) => ({ x: s.x, y: s.y, positive: s.object })),
-      full: { width: doc.current.width, height: doc.current.height },
-    });
-    if (outcome.status !== "done" || outcome.result.kind !== "mask" || run !== latest) return null;
-    const now = activeDocument();
-    if (now?.id !== doc.id || now.current !== doc.current) return null;
-    notify("info", "AI Click Select", outcome.result.label);
-    return outcome.result.mask;
-  });
+  return engineSelection(
+    "AI Click Select",
+    "Selecting from your clicks with AI",
+    async () => {
+      const outcome = await runAiTask({
+        task,
+        image: doc.current,
+        points: seeds.map((s) => ({ x: s.x, y: s.y, positive: s.object })),
+        full: { width: doc.current.width, height: doc.current.height },
+      });
+      if (outcome.status !== "done" || outcome.result.kind !== "mask" || run !== latest)
+        return null;
+      const now = activeDocument();
+      if (now?.id !== doc.id || now.current !== doc.current) return null;
+      notify("info", "AI Click Select", outcome.result.label);
+      return outcome.result.mask;
+    },
+    true,
+  );
 }
 
 /** Forget the Click Select seeds. The selection stays. */

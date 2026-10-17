@@ -6,6 +6,7 @@ import { displayShortcut } from "@/app/shortcuts";
 import { IconButton } from "@/components/ui/IconButton";
 import { activeDocument, canRedo, canUndo, useDocuments } from "@/state/documents";
 import { announce } from "@/state/notifications";
+import { AI_RESULT_LABEL, isAiStep } from "@/app/aiLabel";
 
 const time = (at: number) =>
   new Date(at).toLocaleTimeString("en-US", {
@@ -84,6 +85,14 @@ export function HistoryPanel() {
                 >
                   {step.label}
                 </span>
+                {isAiStep(step) ? (
+                  <span
+                    title={AI_RESULT_LABEL}
+                    className="shrink-0 rounded-control border border-warning px-1 text-2xs text-warning"
+                  >
+                    AI<span className="sr-only">. {AI_RESULT_LABEL}</span>
+                  </span>
+                ) : null}
                 <span className="tabular shrink-0 text-2xs text-text-muted">{time(step.at)}</span>
               </button>
             </li>

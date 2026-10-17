@@ -44,11 +44,16 @@ export function describeSelection(mask: Mask | null): string {
 }
 
 /** Add a selection step to a document. Deselecting keeps the old selection for Reselect. */
-export function commitSelection(documentId: string, mask: Mask | null, label: string): void {
+export function commitSelection(
+  documentId: string,
+  mask: Mask | null,
+  label: string,
+  ai = false,
+): void {
   const doc = useDocuments.getState().documents.find((d) => d.id === documentId);
   if (!doc) return;
   if (!mask && doc.selection) useSelection.getState().remember(documentId, doc.selection);
-  useDocuments.getState().select(documentId, mask, label);
+  useDocuments.getState().select(documentId, mask, label, ai);
   announce(`${label}. ${describeSelection(mask)}.`);
 }
 

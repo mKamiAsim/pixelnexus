@@ -14,7 +14,7 @@ The source requirements are in `prompts/`. Where they disagree, the decisions in
 | Item | Value |
 |---|---|
 | Current phase | Phase 7: optional AI |
-| Next action | Phase 7: AI result labels everywhere, then Learn and Inspector for models, the remaining docs and the Phase 7 exit check. Then Phase 8 (the owner asked on 2026-10-17 to continue into Phase 8 once Phase 7 is done). |
+| Next action | Phase 7: Learn and Inspector for models, the remaining docs and the Phase 7 exit check. Then Phase 8 (the owner asked on 2026-10-17 to continue into Phase 8 once Phase 7 is done). |
 | Last updated | 2026-10-17 |
 
 ## Handoff
@@ -24,7 +24,7 @@ Read this first on any machine. It is updated with every commit.
 | Item | Value |
 |---|---|
 | Branch to continue | `Development` (the only working branch from 2026-10-12) |
-| Last finished step | Phase 7f done: image encoder results cached per image, on disk in the engine and in memory in the browser. |
+| Last finished step | Phase 7: AI result labels in the History panel and status bar. |
 | In progress | Phase 7: optional AI (7a to 7f done) |
 | Next steps | Phase 7f (AI features in the UI), then AI result labels, Learn and Inspector for models, the remaining docs and the Phase 7 exit (consent E2E test). |
 | Open questions | None at the moment. Decided: the model set in planning/MODEL_REVIEW.md, the one-time PyTorch export step, and PiDiNet for non-commercial use (2026-10-16); Decided: bm3d is left out and marked unsupported, since its package lists no license; bm3d-lite stays (2026-10-16); structured-edge downloads its model only on a click, on the user's machine, outside git, since its license is non-commercial (2026-10-16); checkpoint 3 approved on 2026-10-16 with larger panel text; the engine Docker image is rebuilt once Phase 6 is complete (2026-10-16); on 2026-10-15 you said to continue into the next phases without waiting for approval. Nothing waits for your decision. |
@@ -644,7 +644,7 @@ Exit: pytest passes with the coverage target. Every entry meets the definition o
 - [x] **7d** On-device small models: ONNX Runtime Web (WebAssembly, WebGPU where present). Loaded only after you accept a suggestion that shows size and license. Cached in browser storage. Works in the Pages studio and later in the phone app. Done on 2026-10-16: u2netp subject, EfficientSAM clicks and boxes, Swin2SR 2x, checked in the browser with WebGPU.
 - [x] **7e** External providers: PixelNexus remote engine adapter, generic HTTP adapter, and presets for one or two hosted services. HTTPS rules. Contract tests against a local mock server. No real external call in CI. Done on 2026-10-16: presets live in catalog/providers.yaml (Generic HTTP and remove.bg).
 - [x] **7f** AI features on top of the router: subject, background, object (box prompt), click-to-select (positive and negative points), edge refinement, denoising, JPEG cleanup, super-resolution at 2x and 4x with tiling. Image encoder results cached per image. Done on 2026-10-17.
-- [ ] Clear labels on every AI result, per section 3.11.
+- [x] Clear labels on every AI result, per section 3.11. Done on 2026-10-17.
 - [ ] Learn and Inspector for models: pipeline diagram, tensor shapes, model card. No invented kernels.
 
 Docs: AI providers and consent, model integration, model reference, licenses, hardware needs, how to connect an external API.
@@ -1011,3 +1011,4 @@ Add one line per session: date, phase, what was done, what is next.
 | 2026-10-16 | 7 | Phase 7 exit test. An E2E test adds an external provider for Subject selection against a mocked service (Playwright route, no real call), and checks that consent appears before every request, that Cancel sends nothing, that Send once sends one request and selects, and that the classical Subject asks nothing. The router unit tests already prove that local providers never ask. | Phase 7f part 4: MODNet edge refinement, encoder cache. |
 | 2026-10-16 | 7f | Phase 7f part 4. New AI task matting (Soft edges) with MODNet, classical alternative Snap to edges. The engine's _ai-matting follows MODNet's ONNX demo at commit 28165a4 (checked by reading it): scale to -1 to 1, shorter side to 512 when outside that, sides down to a multiple of 32, area interpolation both ways. On the disk scene the matte averages 253 inside and 6 outside. Select > AI soft edges keeps the matte as a soft selection. catalog/tools/ai-matting.yaml is implemented-tested. 5 engine tests, 1 unit test. | Phase 7f part 5: encoder cache. |
 | 2026-10-17 | 7f | Phase 7f done. Image encoder results of SAM 2.1 tiny and EfficientSAM tiny are cached per image: in the engine on disk (engine/src/pixelnexus_engine/embeddings.py, a .embeddings folder in the models folder, keyed by SHA-256 of model, size and RGB bytes, least recently used dropped beyond PIXELNEXUS_EMBEDDINGS_MB, 512 by default, our choice), since every job is a new process; in the browser in memory per image object. Measured on this PC's CPU in one process: a second click took 0.09 s instead of 1.23 s (SAM 2.1) and 0.65 s (EfficientSAM), with the same mask. 5 cache tests, 2 real-model tests, 1 unit test. | Phase 7: AI result labels, Learn and Inspector for models, docs, exit. |
+| 2026-10-17 | 7 | AI result labels. History steps from AI tasks carry an ai flag, and steps that ran a filter with a catalog model (model or modelChoices) count too (web/src/app/aiLabel.ts). The History panel marks them AI, and the status bar shows the label while any step up to the current one is an AI result. 2 unit tests; the consent E2E test checks the status bar label. | Learn and Inspector for models. |

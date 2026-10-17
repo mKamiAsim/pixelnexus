@@ -113,3 +113,11 @@ The studio tells you what went wrong and names the classical alternative for the
 ## Results
 
 Every result from a learned or external model carries the label "AI result. Detail may not exist in the original scene."
+
+You see the label in three places:
+
+- A notice when the result arrives.
+- An **AI** mark on its step in the History panel.
+- The status bar, as long as the image holds an AI result. It goes away when you undo or go back to a step before the first AI result.
+
+Learned filters, such as DnCNN or Real-ESRGAN, count as AI results too.

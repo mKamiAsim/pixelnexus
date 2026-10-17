@@ -40,6 +40,8 @@ export interface HistoryStep {
   readonly selection: Mask | null;
   /** For filter steps: the filter and the validated parameters it ran with. */
   readonly filter?: FilterRecord;
+  /** True for a result from a learned or external model (PLAN.md section 3.11). */
+  readonly ai?: true;
   /** Milliseconds since 1970, when the step was made. */
   readonly at: number;
 }
@@ -116,9 +118,10 @@ interface DocumentsState {
     label: string,
     filter?: FilterRecord,
     selection?: Mask | null,
+    ai?: boolean,
   ) => void;
   /** Add a step that changes only the selection. Null deselects. Nothing happens if it is the same. */
-  select: (id: string, selection: Mask | null, label: string) => void;
+  select: (id: string, selection: Mask | null, label: string, ai?: boolean) => void;
   setSelectionEnabled: (id: string, enabled: boolean) => void;
   saveMask: (id: string, name: string, mask: Mask) => void;
   deleteMask: (id: string, maskId: number) => void;
@@ -197,6 +200,7 @@ function addStep(
   label: string,
   filter?: FilterRecord,
   selection?: Mask | null,
+  ai = false,
 ) {
   const kept = sameSize(image, doc.current) ? doc.selection : null;
   const next = selection === undefined ? kept : selection;
@@ -207,6 +211,7 @@ function addStep(
     selection: next,
     at: Date.now(),
     ...(filter ? { filter } : {}),
+    ...(ai ? { ai: true as const } : {}),
   };
   const steps = [...doc.steps.slice(0, doc.index + 1), step];
   return trim({
@@ -265,16 +270,18 @@ export const useDocuments = create<DocumentsState>()((set) => ({
   activate: (id) => set({ activeId: id }),
   setView: (id, view) =>
     set((state) => ({ documents: update(state.documents, id, (d) => ({ ...d, view })) })),
-  edit: (id, image, label, filter, selection) =>
+  edit: (id, image, label, filter, selection, ai) =>
     set((state) => ({
-      documents: update(state.documents, id, (d) => addStep(d, image, label, filter, selection)),
+      documents: update(state.documents, id, (d) =>
+        addStep(d, image, label, filter, selection, ai),
+      ),
     })),
-  select: (id, selection, label) =>
+  select: (id, selection, label, ai) =>
     set((state) => ({
       documents: update(state.documents, id, (d) =>
         masksEqual(selection, d.selection)
           ? { ...d, selectionEnabled: true }
-          : addStep(d, d.current, label, undefined, selection),
+          : addStep(d, d.current, label, undefined, selection, ai),
       ),
     })),
   setSelectionEnabled: (id, enabled) =>

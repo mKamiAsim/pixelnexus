@@ -83,7 +83,9 @@ export async function aiImage(taskId: AiImageTask): Promise<void> {
       }
       image = blendBack(doc.current, answer, at, doc.selection);
     }
-    useDocuments.getState().edit(doc.id, image, `${label} (${outcome.provider.name})`);
+    useDocuments
+      .getState()
+      .edit(doc.id, image, `${label} (${outcome.provider.name})`, undefined, undefined, true);
     announce(`${label} applied. The image is ${image.width} by ${image.height} pixels.`);
     notify("info", label, outcome.result.label);
   } catch (error) {

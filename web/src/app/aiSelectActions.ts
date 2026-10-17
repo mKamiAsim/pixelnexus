@@ -84,7 +84,12 @@ export async function aiSelect(
     const part = outcome.result.mask;
     const whole = request.origin ? placeMask(part, request.origin, width, height) : part;
     const mask = background ? invertMask(whole) : whole;
-    commitSelection(doc.id, isMaskEmpty(mask) ? null : mask, `${label} (${outcome.provider.name})`);
+    commitSelection(
+      doc.id,
+      isMaskEmpty(mask) ? null : mask,
+      `${label} (${outcome.provider.name})`,
+      true,
+    );
     notify("info", label, outcome.result.label);
   } finally {
     endWork();
