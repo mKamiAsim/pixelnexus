@@ -1,27 +1,49 @@
+import { clsx } from "clsx";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import type { RgbaImage } from "@/core/image/types";
+import type { Mask } from "@/core/mask/mask";
 import { qualityMetrics, type QualityMetrics } from "@/core/metrics/quality";
-import { activeDocument, useDocuments } from "@/state/documents";
+import {
+  activeDocument,
+  activeSelection,
+  useDocuments,
+  type HistoryStep,
+  type ImageDocument,
+} from "@/state/documents";
 
 const ORIGINAL = "original";
 
-/** Metrics per image pair, so a panel redraw does not compute them again. */
-const cache = new WeakMap<RgbaImage, WeakMap<RgbaImage, QualityMetrics>>();
-function cachedMetrics(image: RgbaImage, reference: RgbaImage): QualityMetrics {
+/** Metrics per image pair and selection, so a panel redraw does not compute them again. */
+const cache = new WeakMap<RgbaImage, WeakMap<RgbaImage, Map<Mask | null, QualityMetrics>>>();
+function cachedMetrics(image: RgbaImage, reference: RgbaImage, mask: Mask | null): QualityMetrics {
   let byReference = cache.get(image);
   if (!byReference) {
     byReference = new WeakMap();
     cache.set(image, byReference);
   }
-  let metrics = byReference.get(reference);
+  let byMask = byReference.get(reference);
+  if (!byMask) {
+    byMask = new Map();
+    byReference.set(reference, byMask);
+  }
+  let metrics = byMask.get(mask);
   if (!metrics) {
-    metrics = qualityMetrics(image, reference);
-    byReference.set(reference, metrics);
+    metrics = qualityMetrics(image, reference, mask ?? undefined);
+    byMask.set(mask, metrics);
   }
   return metrics;
 }
+
+const format = (value: number, digits: number, unit: string, psnr = false) =>
+  Number.isFinite(value)
+    ? `${value.toFixed(digits)}${unit ? ` ${unit}` : ""}`
+    : psnr && value === Infinity
+      ? "Equal images"
+      : "No value";
 
 const ROWS = [
   {
@@ -54,14 +76,86 @@ const ROWS = [
   },
 ] as const;
 
+/** The PSNR and SSIM of every step against the reference, computed on request. */
+function StepTable({
+  doc,
+  reference,
+  mask,
+}: {
+  doc: ImageDocument;
+  reference: RgbaImage;
+  mask: Mask | null;
+}) {
+  const [shown, setShown] = useState<{
+    steps: readonly HistoryStep[];
+    reference: RgbaImage;
+  } | null>(null);
+  const fresh = shown?.steps === doc.steps && shown.reference === reference;
+  if (!fresh) {
+    return (
+      <Button size="sm" onClick={() => setShown({ steps: doc.steps, reference })}>
+        Measure every step
+      </Button>
+    );
+  }
+  return (
+    <table className="tabular w-full border-collapse" aria-label="Metrics of every step">
+      <thead>
+        <tr className="text-text-muted">
+          <th scope="col" className="text-left font-normal">
+            Step
+          </th>
+          <th scope="col" className="text-right font-normal">
+            PSNR
+          </th>
+          <th scope="col" className="text-right font-normal">
+            SSIM
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {doc.steps.map((step, index) => {
+          const fits =
+            step.image.width === reference.width && step.image.height === reference.height;
+          const m = fits
+            ? cachedMetrics(
+                step.image,
+                reference,
+                mask && mask.width === reference.width ? mask : null,
+              )
+            : null;
+          return (
+            <tr
+              key={step.id}
+              className={clsx(
+                "border-t border-border-subtle",
+                index === doc.index && "font-medium",
+              )}
+            >
+              <td className="max-w-40 truncate py-1 pr-2" title={step.label}>
+                {index} {step.label}
+              </td>
+              <td className="py-1 pr-2 text-right font-mono">
+                {m ? format(m.psnr, 2, "dB", true) : "Other size"}
+              </td>
+              <td className="py-1 text-right font-mono">{m ? format(m.ssim, 4, "") : ""}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 /**
- * Quality metrics of the active image against a reference: its own original, or another open
- * image of the same size. Use it to measure how well a filter repairs a noisy test image.
+ * Quality metrics of the active image against a reference: its own original, an earlier step,
+ * or another open image of the same size. Optionally only inside the selection. Use it to measure how well a filter repairs a noisy test image.
  */
 export function MetricsPanel() {
   const doc = useDocuments((s) => activeDocument(s));
   const documents = useDocuments((s) => s.documents);
   const [referenceId, setReferenceId] = useState(ORIGINAL);
+  const [inside, setInside] = useState(false);
   const others = doc
     ? documents.filter(
         (d) =>
@@ -70,21 +164,31 @@ export function MetricsPanel() {
           d.current.height === doc.current.height,
       )
     : [];
+  // Earlier steps of this image can be the reference too, such as the clean image before noise.
+  const earlier = doc ? doc.steps.slice(1, doc.index) : [];
   const otherDoc = others.find((d) => d.id === referenceId);
+  const step = earlier.find((s) => `step-${s.id}` === referenceId);
   const current = doc?.current;
-  const reference = otherDoc?.current ?? doc?.original;
+  const reference = otherDoc?.current ?? step?.image ?? doc?.original;
+  const selection = doc ? activeSelection(doc) : null;
+  const mask = inside && selection ? selection : null;
   const metrics =
     current && reference && reference.width === current.width && reference.height === current.height
-      ? cachedMetrics(current, reference)
+      ? cachedMetrics(current, reference, mask)
       : null;
 
-  if (!doc) {
+  if (!doc || !reference) {
     return <p className="p-3 text-xs text-text-secondary">Open an image to compare it.</p>;
   }
   const options = [
     { value: ORIGINAL, label: "Original of this image" },
+    ...earlier.map((s) => ({
+      value: `step-${s.id}`,
+      label: `Step ${doc.steps.indexOf(s)}: ${s.label}`,
+    })),
     ...others.map((d) => ({ value: d.id, label: d.name })),
   ];
+  const chosen = otherDoc ? referenceId : step ? referenceId : ORIGINAL;
   return (
     <div className="flex flex-col gap-3 p-3 text-xs">
       <div className="flex items-center justify-between gap-3">
@@ -92,22 +196,21 @@ export function MetricsPanel() {
         <Select
           label="Reference"
           size="sm"
-          value={otherDoc ? referenceId : ORIGINAL}
+          value={chosen}
           onChange={(value) => setReferenceId(String(value))}
           options={options}
           className="w-44"
         />
       </div>
+      {selection ? (
+        <Switch label="Only inside the selection" checked={inside} onChange={setInside} />
+      ) : null}
       {metrics ? (
         <table className="tabular w-full border-collapse" aria-label="Quality metrics">
           <tbody>
             {ROWS.map((row) => {
               const value = metrics[row.key];
-              const text = Number.isFinite(value)
-                ? `${value.toFixed(row.digits)}${row.unit ? ` ${row.unit}` : ""}`
-                : row.key === "psnr" && value === Infinity
-                  ? "Equal images"
-                  : "Too small";
+              const text = format(value, row.digits, row.unit, row.key === "psnr");
               return (
                 <tr key={row.key} className="border-t border-border-subtle align-top">
                   <th scope="row" className="py-1.5 pr-3 text-left font-medium">
@@ -126,10 +229,12 @@ export function MetricsPanel() {
           {doc.current.height} px.
         </p>
       )}
+      <StepTable doc={doc} reference={reference} mask={mask} />
       <p className="text-text-muted">
-        The metrics compare red, green and blue and leave out alpha. SSIM uses a Gaussian window
-        with sigma 1.5, as scikit-image does. Add noise, run a filter, and compare with the original
-        to measure the repair.
+        Inside the selection, a pixel counts when it is at least half selected. The metrics compare
+        red, green and blue and leave out alpha. SSIM uses a Gaussian window with sigma 1.5, as
+        scikit-image does. Add noise, run a filter, and compare with the original to measure the
+        repair.
       </p>
     </div>
   );

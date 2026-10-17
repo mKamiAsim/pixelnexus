@@ -12,11 +12,16 @@
  *   skimage.metrics.structural_similarity with gaussian_weights=True. Like skimage, it blurs with
  *   the reflect mode and truncate 3.5, leaves out a 5-pixel frame where the window does not fit,
  *   averages the map, and averages the three channels.
+ *
+ * With a mask, only the pixels that are at least half selected (mask 128 or more) count, for all
+ * four metrics. For SSIM the map is averaged over those pixels inside the frame. The half rule is
+ * our choice, so a soft edge counts with the side it is closer to.
  */
 import { correlateSeparable } from "@/core/filters/convolve";
 import { gaussianKernel1d } from "@/core/filters/linear/gaussian";
 import type { Plane } from "@/core/filters/planes";
 import type { RgbaImage } from "@/core/image/types";
+import type { Mask } from "@/core/mask/mask";
 
 export interface QualityMetrics {
   readonly mse: number;
@@ -42,7 +47,7 @@ function channel(image: RgbaImage, c: number): Plane {
 }
 
 /** The mean SSIM of one channel. */
-export function ssimPlane(x: Plane, y: Plane): number {
+export function ssimPlane(x: Plane, y: Plane, mask?: Mask): number {
   const { width, height } = x;
   if (width < 2 * SSIM_FRAME + 1 || height < 2 * SSIM_FRAME + 1) return Number.NaN;
   const g = gaussianKernel1d(SIGMA, TRUNCATE);
@@ -64,6 +69,7 @@ export function ssimPlane(x: Plane, y: Plane): number {
   for (let row = SSIM_FRAME; row < height - SSIM_FRAME; row++) {
     for (let col = SSIM_FRAME; col < width - SSIM_FRAME; col++) {
       const i = row * width + col;
+      if (mask && (mask.data[i] ?? 0) < 128) continue;
       const mx = ux[i] ?? 0;
       const my = uy[i] ?? 0;
       const vx = (uxx[i] ?? 0) - mx * mx;
@@ -73,28 +79,38 @@ export function ssimPlane(x: Plane, y: Plane): number {
       count++;
     }
   }
-  return sum / count;
+  return count ? sum / count : Number.NaN;
 }
 
 /** The four metrics of `image` against `reference`. Both must have the same size. */
-export function qualityMetrics(image: RgbaImage, reference: RgbaImage): QualityMetrics {
+export function qualityMetrics(
+  image: RgbaImage,
+  reference: RgbaImage,
+  mask?: Mask,
+): QualityMetrics {
   if (image.width !== reference.width || image.height !== reference.height) {
     throw new RangeError("The images must have the same size.");
   }
+  if (mask && (mask.width !== image.width || mask.height !== image.height)) {
+    throw new RangeError("The mask must have the size of the images.");
+  }
   let squares = 0;
   let absolute = 0;
-  const n = image.width * image.height;
-  for (let i = 0; i < n; i++) {
+  let n = 0;
+  for (let i = 0; i < image.width * image.height; i++) {
+    if (mask && (mask.data[i] ?? 0) < 128) continue;
+    n++;
     for (let c = 0; c < 3; c++) {
       const d = (image.data[i * 4 + c] ?? 0) - (reference.data[i * 4 + c] ?? 0);
       squares += d * d;
       absolute += Math.abs(d);
     }
   }
+  if (n === 0) return { mse: Number.NaN, mae: Number.NaN, psnr: Number.NaN, ssim: Number.NaN };
   const mse = squares / (3 * n);
   const mae = absolute / (3 * n);
   const psnr = mse === 0 ? Infinity : 10 * Math.log10((L * L) / mse);
   let ssim = 0;
-  for (let c = 0; c < 3; c++) ssim += ssimPlane(channel(image, c), channel(reference, c));
+  for (let c = 0; c < 3; c++) ssim += ssimPlane(channel(image, c), channel(reference, c), mask);
   return { mse, mae, psnr, ssim: ssim / 3 };
 }
