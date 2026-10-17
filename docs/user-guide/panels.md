@@ -55,6 +55,7 @@ The History panel lists the steps of the active image. Step 0 is the original.
 - Each step shows a thumbnail and its time. A filter step names the filter and its main values, for example "Gaussian filter (sigma 2 px)". AI results are marked **AI**.
 - The details button of a step shows all its values, its scope (whole image, inside or outside the selection), its size and the full date and time.
 - The delete button removes a step. The steps after it are computed again from the step before, with their own values and scope. A step that cannot be computed again, such as a rotation, an AI result or a pipeline run, blocks the delete, and the message names it. If a later step fails, nothing is deleted.
+- A step that changed the image's size, made parts of it transparent, removed its transparency or took all its color away gets a warning when it is made. Its details list the change under **Changed**.
 - The memory line shows how much memory the history holds and how many steps it has. **Free memory** keeps only the original and the current step.
 - An image keeps at most 50 steps and at most 768 MB of pixels by default. Change both in **Edit > Preferences**, under History. When it needs room, the oldest steps go first, and the panel says how many were dropped. The original always stays.
 

@@ -20,6 +20,7 @@ import type { ImageHeader } from "@/core/image/format";
 import type { LoadIssue } from "@/core/image/limits";
 import type { RgbaImage } from "@/core/image/types";
 import type { ParamValue } from "@/core/filters/types";
+import { describeChanges } from "@/core/image/changes";
 import { masksEqual, type Mask } from "@/core/mask/mask";
 
 export type DocumentSource = "file" | "paste" | "sample";
@@ -42,6 +43,8 @@ export interface HistoryStep {
   readonly filter?: FilterRecord;
   /** True for a result from a learned or external model (PLAN.md section 3.11). */
   readonly ai?: true;
+  /** What the step changed besides pixel values: size, transparency or color. */
+  readonly notes?: readonly string[];
   /** Milliseconds since 1970, when the step was made. */
   readonly at: number;
 }
@@ -222,6 +225,7 @@ function addStep(
 ) {
   const kept = sameSize(image, doc.current) ? doc.selection : null;
   const next = selection === undefined ? kept : selection;
+  const notes = describeChanges(doc.current, image);
   const step: HistoryStep = {
     id: ++stepCounter,
     label,
@@ -230,6 +234,7 @@ function addStep(
     at: Date.now(),
     ...(filter ? { filter } : {}),
     ...(ai ? { ai: true as const } : {}),
+    ...(notes.length ? { notes } : {}),
   };
   const steps = [...doc.steps.slice(0, doc.index + 1), step];
   return trim({

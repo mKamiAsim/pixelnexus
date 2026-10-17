@@ -30,3 +30,11 @@ Exported files carry no metadata. There is no EXIF data, no GPS position, no cam
 ## Check the result
 
 To check what a lossy format did, open the exported file again with **File > Open**. Then compare it with your original image in a second tab, or look at both histograms.
+
+## Warnings about the result
+
+The export dialog notes what the file keeps and what it loses:
+
+- JPEG has no transparency, so transparent areas become white.
+- JPEG and WebP are lossy below quality 100, so pixel values change a little. PNG keeps them exact.
+- Every file is 8-bit sRGB, as the studio works. A file that had more bits or another color profile was converted when it was opened, with a warning then.

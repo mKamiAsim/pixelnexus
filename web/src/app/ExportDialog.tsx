@@ -194,11 +194,20 @@ function ExportForm({ doc, onDone }: { doc: ImageDocument; onDone: () => void })
           {format === "png" ? (
             <Note>PNG keeps every pixel value exactly, including transparency.</Note>
           ) : null}
+          {format === "jpeg" || format === "webp" ? (
+            <Note>
+              This format is lossy below quality 100, so pixel values change a little. Use PNG to
+              keep them exact.
+            </Note>
+          ) : null}
           {format === "tiff" ? (
             <Note>TIFF is written uncompressed, so files are large.</Note>
           ) : null}
           {resize ? <Note>Resizing uses the browser's high-quality resampling.</Note> : null}
-          <Note>Metadata is removed. The file has no EXIF, GPS, camera or color profile data.</Note>
+          <Note>
+            The file is 8-bit sRGB, as the studio works. Metadata is removed. The file has no EXIF,
+            GPS, camera or color profile data.
+          </Note>
         </ul>
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">

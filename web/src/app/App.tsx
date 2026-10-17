@@ -11,6 +11,7 @@ import { useUi } from "@/state/ui";
 import { CommandPalette } from "./CommandPalette";
 import { runCommand } from "./commands";
 import { AiLogDialog, AiProvidersDialog, ConsentDialog } from "./AiDialogs";
+import { watchChangeWarnings } from "./changeWarnings";
 import { CompareGridDialog } from "./CompareGridDialog";
 import { ExportDialog } from "./ExportDialog";
 import { ACCEPTED_FILES, openFiles, pastedImageFiles, registerFilePicker } from "./importer";
@@ -180,6 +181,7 @@ export function App() {
 
   // Keep the filter preview in step with the selected filter, its values and the view.
   useEffect(() => startPreview(), []);
+  useEffect(() => watchChangeWarnings(), []);
 
   return (
     <TooltipProvider>

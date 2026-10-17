@@ -71,6 +71,12 @@ function StepDetails({ step }: { step: HistoryStep }) {
           })}
         </>
       ) : null}
+      {step.notes?.length ? (
+        <>
+          <dt className="text-text-muted">Changed</dt>
+          <dd>{step.notes.join(" ")}</dd>
+        </>
+      ) : null}
       {isAiStep(step) ? (
         <>
           <dt className="text-text-muted">Note</dt>
