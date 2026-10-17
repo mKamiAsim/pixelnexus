@@ -19,8 +19,10 @@ function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on("console", (message) => {
     // The studio looks for the local engine, which is not running in these tests. The
-    // browser logs that refused connection as a console error.
-    const fromEngine = message.location().url.includes(":8765/");
+    // browser logs that refused connection as a console error. Firefox names the address in
+    // the text, not in the location.
+    const fromEngine =
+      message.location().url.includes(":8765/") || message.text().includes(":8765/");
     if (message.type() === "error" && !fromEngine) errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));

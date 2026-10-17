@@ -92,7 +92,7 @@ params:
   - ref: channelScope
     default: rgb
 formula: |
-  f_{k+1} = f_k \cdot \left( h' \circledast \frac{g}{h \circledast f_k} \right),\quad k = 0 \ldots {{iterations}}
+  f_{k+1} = f_k \cdot \left( h' \circledast \frac{g}{h \circledast f_k} \right),\quad k = 0, \ldots, K - 1,\ K = {{iterations}}
 formulaExplanation: >-
   Each step blurs the estimate f_k with the PSF h and compares it with the image g as a ratio.
   It blurs the ratio with h', the PSF turned by a half turn, and multiplies the estimate by the
@@ -103,6 +103,7 @@ formulaExplanation: >-
 symbols:
   - {symbol: 'g', meaning: The blurred image extended with the border mode}
   - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: 'K', meaning: The number of steps}
   - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
 steps:
   - Extend the image with the border mode by half its size, at most 256 pixels, on each side.

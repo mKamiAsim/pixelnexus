@@ -28,8 +28,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm format:check
-      # Browser tests (Vitest browser mode) and end-to-end tests both need Chromium.
-      - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium
+      # Browser tests (Vitest browser mode) need Chromium. End-to-end tests run in all three browsers.
+      - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:coverage
       # Kernels and worked examples in the docs come from the filter code.
       - run: pnpm --filter @pixelnexus/web gen:filter-docs --check

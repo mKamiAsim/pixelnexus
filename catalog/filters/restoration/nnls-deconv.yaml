@@ -101,7 +101,7 @@ params:
   - ref: channelScope
     default: rgb
 formula: |
-  f_{k+1} = \max\left(0,\ f_k + \tau\, h' \circledast (g - h \circledast f_k)\right),\quad \tau = {{tau}},\ k = 0 \ldots {{iterations}}
+  f_{k+1} = \max\left(0,\ f_k + \tau\, h' \circledast (g - h \circledast f_k)\right),\quad \tau = {{tau}},\ k = 0, \ldots, K - 1,\ K = {{iterations}}
 formulaExplanation: >-
   This is the Landweber step followed by a projection onto the non-negative values. It is
   projected gradient descent on |h * f - g|^2 with f at least 0, a method for non-negative least
@@ -111,6 +111,7 @@ formulaExplanation: >-
 symbols:
   - {symbol: 'g', meaning: The blurred image extended with the border mode}
   - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: 'K', meaning: The number of steps}
   - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
   - {symbol: '\tau', meaning: The step size}
 steps:

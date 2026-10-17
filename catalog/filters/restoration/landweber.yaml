@@ -101,7 +101,7 @@ params:
   - ref: channelScope
     default: rgb
 formula: |
-  f_{k+1} = f_k + \tau\, h' \circledast (g - h \circledast f_k),\quad \tau = {{tau}},\ k = 0 \ldots {{iterations}}
+  f_{k+1} = f_k + \tau\, h' \circledast (g - h \circledast f_k),\quad \tau = {{tau}},\ k = 0, \ldots, K - 1,\ K = {{iterations}}
 formulaExplanation: >-
   Each step blurs the estimate and takes the residual g - h * f_k. It blurs the residual with h',
   the PSF turned by a half turn, and adds tau times the result. This is gradient descent on |h * f - g|^2, from
@@ -111,6 +111,7 @@ formulaExplanation: >-
 symbols:
   - {symbol: 'g', meaning: The blurred image extended with the border mode}
   - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: 'K', meaning: The number of steps}
   - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
   - {symbol: '\tau', meaning: The step size}
 steps:

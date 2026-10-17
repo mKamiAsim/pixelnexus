@@ -241,6 +241,112 @@ describe("the Inspector kernel is the kernel that runs", () => {
   });
 });
 
+/**
+ * Filters whose kernel is only the first step. Their outputs are checked against the NumPy
+ * references in tools/fixtures_gradients.py and tools/fixtures_oriented.py.
+ */
+const FIRST_STEP: Record<string, string> = {
+  laws: "The output is the local energy of the response to the kernel.",
+  "matched-vessel": "The output is the largest response over rotated copies of the kernel.",
+};
+
+/**
+ * Every filter whose Inspector shows kernels, at its default parameters (PLAN.md Phase 10, maths
+ * audit). A new filter with kernels must join one of these groups, or the last test fails.
+ */
+describe("every Inspector kernel is the kernel that runs", () => {
+  const context = { border: "reflect101" as const, originX: 0, originY: 0, channel: 0 };
+  const kernelsOf = (id: string) => {
+    const representation = (browserFilter(id) as PlaneFilter).representation({});
+    if (representation.kind !== "kernels") throw new Error(`${id}: expected kernels`);
+    return representation.kernels;
+  };
+  const responses = (id: string) =>
+    kernelsOf(id).map((k) => correlate2d(input, kernelFromRows(k.rows), "reflect101").data);
+  const run = (id: string, params: Params) =>
+    (browserFilter(id) as PlaneFilter).plane(input, params, context).data;
+  const expectClose = (actual: ArrayLike<number>, expected: (i: number) => number) => {
+    let worst = 0;
+    for (let i = 0; i < actual.length; i++)
+      worst = Math.max(worst, Math.abs((actual[i] ?? NaN) - expected(i)));
+    expect(worst).toBeLessThan(1e-3);
+  };
+
+  // One kernel, and the output is the correlation with it, plus a constant that the kernel's
+  // note names. Emboss and outline add the offsets of Pillow's kernels.
+  const OFFSETS: Record<string, number> = { emboss: 128, outline: 255 };
+  const ONE_KERNEL = BROWSER_FILTERS.filter((f) => {
+    const representation = (f as PlaneFilter).representation({});
+    return representation.kind === "kernels" && representation.kernels.length === 1;
+  })
+    .map((f) => f.id)
+    .filter((id) => !FIRST_STEP[id]);
+  it.each(ONE_KERNEL)("%s", (id) => {
+    const [response] = responses(id);
+    const offset = OFFSETS[id] ?? 0;
+    expectClose(run(id, {}), (i) => (response?.[i] ?? NaN) + offset);
+  });
+
+  // Two kernels, each the result of one output choice.
+  const PAIRS: Record<string, [string, string]> = {
+    sobel: ["gx", "gy"],
+    prewitt: ["gx", "gy"],
+    scharr: ["gx", "gy"],
+    roberts: ["gx", "gy"],
+    "farid-simoncelli": ["gx", "gy"],
+    gabor: ["real", "imaginary"],
+  };
+  it.each(Object.entries(PAIRS))("%s: each output is one kernel", (id, outputs) => {
+    const each = responses(id);
+    outputs.forEach((output, k) => expectClose(run(id, { output }), (i) => each[k]?.[i] ?? NaN));
+  });
+
+  it("steerable: the steered output combines G_x and G_y by the angle", () => {
+    const [gx, gy] = responses("steerable");
+    const t = (30 * Math.PI) / 180;
+    expectClose(
+      run("steerable", { angle: 30 }),
+      (i) => Math.cos(t) * (gx?.[i] ?? NaN) - Math.sin(t) * (gy?.[i] ?? NaN),
+    );
+  });
+
+  // Compass filters: the output is the largest response of the kernels.
+  const LARGEST: Record<string, string> = {
+    kirsch: "magnitude",
+    robinson: "magnitude",
+    "line-detector": "max",
+  };
+  it.each(Object.entries(LARGEST))("%s: the output is the largest response", (id, output) => {
+    const each = responses(id);
+    expectClose(run(id, { output }), (i) => Math.max(...each.map((r) => r[i] ?? NaN)));
+  });
+
+  it("frei-chen: the edge output is the share of the four edge masks", () => {
+    const p = responses("frei-chen");
+    expectClose(run("frei-chen", { output: "edge" }), (i) => {
+      const squares = p.map((r) => (r[i] ?? NaN) ** 2);
+      const total = squares.reduce((a, b) => a + b, 0);
+      const part = squares.slice(0, 4).reduce((a, b) => a + b, 0);
+      return total > 0 ? 255 * Math.sqrt(part / total) : 0;
+    });
+  });
+
+  it("covers every filter with kernels", () => {
+    const covered = new Set([
+      ...ONE_KERNEL,
+      ...Object.keys(PAIRS),
+      ...Object.keys(LARGEST),
+      ...Object.keys(FIRST_STEP),
+      "steerable",
+      "frei-chen",
+    ]);
+    const withKernels = BROWSER_FILTERS.filter(
+      (f) => (f as PlaneFilter).representation({}).kind === "kernels",
+    ).map((f) => f.id);
+    expect(withKernels.filter((id) => !covered.has(id))).toEqual([]);
+  });
+});
+
 describe("registry", () => {
   it("has unique ids and a radius for default parameters", () => {
     const ids = BROWSER_FILTERS.map((f) => f.id);

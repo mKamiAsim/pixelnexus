@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * End-to-end tests run against a production build served by "vite preview".
- * Phase 1 uses Chromium only. Firefox and WebKit join in Phase 10.
+ * Chromium, Firefox and WebKit. Run one with --project, for example: pnpm e2e --project=firefox
  */
 export default defineConfig({
   testDir: "tests/e2e",
@@ -20,7 +20,11 @@ export default defineConfig({
     // The service worker would store the whole studio again in every test. pwa.spec.ts allows it.
     serviceWorkers: "block",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+  ],
   webServer: {
     command: "pnpm build && pnpm preview --host 127.0.0.1",
     url: "http://127.0.0.1:4173",

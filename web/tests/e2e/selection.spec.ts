@@ -255,7 +255,11 @@ async function screenOf(page: Page, x: number, y: number) {
   };
 }
 
-test("screen and image coordinates agree at many zoom levels", async ({ page }) => {
+test("screen and image coordinates agree at many zoom levels", async ({ page, browserName }) => {
+  // Firefox and WebKit round pointer events to whole screen pixels. Below 200% that can move the
+  // pointer into the next image pixel, so there the test checks only the larger zooms. The
+  // mapping itself is the same code in every browser, with unit tests in viewport.test.ts.
+  const subPixel = browserName === "chromium";
   await openTestImage(page, "Siemens star");
   const status = page.getByRole("contentinfo");
   const zooms: number[] = [];
@@ -271,6 +275,7 @@ test("screen and image coordinates agree at many zoom levels", async ({ page }) 
     await canvas(page).focus();
     for (const key of keys) await page.keyboard.press(key);
     zooms.push(await zoomOf(page));
+    if (!subPixel && (zooms.at(-1) ?? 0) < 2) continue;
     // The pointer readout names the pixel under a computed point.
     const center = await screenOf(page, 240.5, 250.5);
     await page.mouse.move(center.x, center.y);
@@ -288,6 +293,7 @@ test("screen and image coordinates agree at many zoom levels", async ({ page }) 
   }
   // The zoom really changed: at least five different levels.
   expect(new Set(zooms).size).toBeGreaterThanOrEqual(5);
+  if (!subPixel) expect(zooms.filter((z) => z >= 2).length).toBeGreaterThanOrEqual(2);
 });
 
 test("Quick Selection grows over a disk from one short stroke", async ({ page }) => {

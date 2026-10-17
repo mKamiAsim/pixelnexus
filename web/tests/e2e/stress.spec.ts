@@ -41,7 +41,12 @@ test("a 6000 x 6000 image goes through filters, a pipeline and a delete", async 
   // The studio looks for the local engine, which is not running here. Its refused connection is
   // logged as a console error, and is not a failure.
   page.on("console", (m) => {
-    if (m.type() === "error" && !m.location().url.includes(":8765/")) errors.push(m.text());
+    if (
+      m.type() === "error" &&
+      !m.location().url.includes(":8765/") &&
+      !m.text().includes(":8765/")
+    )
+      errors.push(m.text());
   });
   await page.goto("/");
   await page.getByTestId("file-input").setInputFiles({
