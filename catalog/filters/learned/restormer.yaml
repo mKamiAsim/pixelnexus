@@ -1,0 +1,102 @@
+id: restormer
+name: Restormer
+aliases: [Attention-based restoration, Restormer denoising, Restormer deblurring]
+family: learned
+tags: [purpose:denoise, purpose:deblur]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: restormer-real-denoising
+modelChoices:
+  param: task
+  models: {denoise: restormer-real-denoising, deblur: restormer-motion-deblurring}
+planNotes: MIT License. Real camera noise and motion blur. Official weights, exported to ONNX once with tools/export_models.py.
+
+summary: Restores photos with Restormer, a U-shaped network of transformer blocks whose attention compares channels instead of pixels. One model removes the noise of real cameras, the other removes motion blur. Each needs a downloaded model.
+purpose: Show a transformer that restores large photos, and compare it with classical denoising and deconvolution.
+classification: {linearity: nonlinear, domain: learned, operation: transformer restoration}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: restormer_representation}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+colorHandling: Runs on RGB. Alpha stays.
+boundary: >-
+  The image is mirrored at the bottom and right to sides that are multiples of 8, as in
+  Restormer's demo. Images up to 720 pixels on each side run whole. Larger ones run in tiles of
+  720 pixels that overlap by at least 32, and the overlaps are averaged.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: task
+    label: Task
+    type: select
+    default: denoise
+    options:
+      - {value: denoise, label: Remove real camera noise}
+      - {value: deblur, label: Remove motion blur}
+    description: Which model runs. Each downloads on its own, about 105 MB.
+    effect: The noise model was trained on smartphone photos, the blur model on video frames with camera shake.
+formula: |
+  \hat{x} = y + f_\theta(y),\qquad
+  \operatorname{Attention}(Q, K, V) = V \cdot \operatorname{SoftMax}\!\left(\frac{K^{\top} Q}{\alpha}\right)
+formulaExplanation: >-
+  y is the degraded image and f the network, which predicts a correction. Q, K and V come from
+  the features by 1 x 1 and depthwise 3 x 3 convolutions, and have one row per pixel and one
+  column per channel. K transposed times Q is a channel by channel matrix. So the attention
+  compares channels across the whole image, and its cost grows linearly with the number of
+  pixels. alpha is a learned temperature. The network has four levels, each halving the size,
+  and a gated feed-forward part in every block.
+symbols:
+  - {symbol: 'y', meaning: 'The degraded image'}
+  - {symbol: 'f_\theta', meaning: 'The network with its trained weights'}
+  - {symbol: 'Q, K, V', meaning: 'Queries, keys and values, one row per pixel'}
+  - {symbol: '\alpha', meaning: 'A learned temperature'}
+  - {symbol: '\hat{x}', meaning: 'The restored image'}
+steps:
+  - Mirror the image at the bottom and right to sides that are multiples of 8.
+  - Run the network on the whole image, or on overlapping tiles of 720 pixels, averaging the overlaps.
+  - Crop to the image size and clamp to 0 to 1.
+complexity:
+  time: O(N C^2)
+  memory: O(N C)
+  notes: N is the number of pixels and C the number of channels inside the network. About 26 million weights. Slow without a GPU.
+useCases:
+  - Cleaning noisy smartphone photos.
+  - Sharpening photos blurred by a shaking camera.
+advantages:
+  - Handles real camera noise, which is not white Gaussian noise.
+  - Attention over channels sees the whole image at a cost that grows linearly with its size.
+limitations:
+  - Each model handles the degradation it was trained for. Out of focus blur needs another model.
+  - Large and slow on a processor.
+artifacts:
+  - Smooth, painted fine texture where noise was strong.
+references:
+  - kind: paper
+    text: Zamir, S. W., Arora, A., Khan, S., Hayat, M., Khan, F. S., and Yang, M.-H. Restormer. Efficient transformer for high-resolution image restoration. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 5718 to 5729, 2022.
+    doi: 10.1109/CVPR52688.2022.00564
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: restormer}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A transformer network removes real camera noise or motion blur from a photo.
+  howItWorks:
+    - The network shrinks the image three times and grows it back, looking at it at four sizes.
+    - Its attention compares feature channels over the whole image, which is cheap even for large photos.
+    - It adds a correction to the photo.
+  academic: >-
+    Restormer: multi-Dconv head transposed attention and a gated-Dconv feed-forward network in a
+    four-level encoder and decoder, trained on SIDD for real noise and on GoPro for motion blur.
+  paramNotes:
+    task: Which model runs.
+  tryThis:
+    - Blur a photo with Motion blur, then compare Restormer with Richardson-Lucy deconvolution.
+  pitfalls:
+    - A learned model can change detail. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [swinir, dncnn, richardson-lucy, wiener-deconv]
+docsPage: filters/learned/restormer.md

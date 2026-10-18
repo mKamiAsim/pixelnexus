@@ -1,0 +1,223 @@
+id: swt-denoise
+name: Stationary wavelet filtering
+aliases:
+- Undecimated wavelet filtering
+- Translation-invariant wavelet denoising
+- Cycle spinning
+family: multiscale
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6b
+status: implemented-tested
+planNotes: Undecimated transform and cycle spinning.
+
+summary: Wavelet thresholding on a transform that keeps every coefficient at every level, so the result does not depend on where the image starts.
+purpose: Remove Gaussian noise without the blocky wavelet spots that the decimated transform leaves near edges.
+classification: {linearity: nonlinear, domain: transform, operation: translation-invariant wavelet shrinkage}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: swt_denoise_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, with its own
+  noise estimate. With the brightness scope, only luma is filtered and the colors stay. With the
+  color scope, only Cb and Cr are filtered.
+boundary: >-
+  The stationary transform wraps around the image. It needs each side to be a multiple of 2^J,
+  so the Border mode fills the few rows and columns added to reach that size. Cycle spinning
+  shifts the image around in a circle, and its wavelet transform extends the image with the
+  Border mode.
+dependencies:
+  - {name: PyWavelets, optional: false, note: 'The stationary transform (swt2 and iswt2), the decimated transform for cycle spinning, and the filter taps.'}
+
+params:
+  - key: transform
+    label: Method
+    type: select
+    default: stationary
+    options:
+      - {value: stationary, label: Stationary transform}
+      - {value: cycle-spinning, label: Cycle spinning}
+    description: The stationary transform skips the subsampling, so it covers every shift at once. Cycle spinning runs wavelet thresholding on shifted copies and averages them.
+    effect: Cycle spinning with enough shifts comes close to the stationary transform. With few shifts, it is a cheaper partial step.
+  - key: wavelet
+    label: Wavelet
+    type: select
+    default: sym4
+    options:
+      - {value: haar, label: Haar}
+      - {value: db2, label: Daubechies 2 (db2)}
+      - {value: db4, label: Daubechies 4 (db4)}
+      - {value: db8, label: Daubechies 8 (db8)}
+      - {value: sym4, label: Symlet 4 (sym4)}
+      - {value: sym8, label: Symlet 8 (sym8)}
+      - {value: coif1, label: Coiflet 1 (coif1)}
+      - {value: coif3, label: Coiflet 3 (coif3)}
+    description: The orthogonal wavelet. Its filter taps come from PyWavelets.
+    effect: Haar gives blocky results with the decimated transform. The stationary transform smooths them out.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 5
+    step: 1
+    default: 3
+    description: How many levels the transform has. It is capped at the deepest level the image size allows.
+    effect: More levels also reach coarser noise. The stationary transform keeps 3 subbands per level at full size, so each level needs more memory.
+  - key: rule
+    label: Threshold rule
+    type: select
+    default: bayesshrink
+    options:
+      - {value: visushrink, label: VisuShrink (universal)}
+      - {value: bayesshrink, label: BayesShrink}
+      - {value: sureshrink, label: SureShrink}
+      - {value: manual, label: Fixed threshold}
+    description: How the threshold T is chosen, as in wavelet thresholding. The rules use the coefficients of the chosen transform.
+    effect: With soft thresholding, VisuShrink blurs the most, and the rules per subband keep more detail.
+  - key: mode
+    label: Shrink rule
+    type: select
+    default: soft
+    options:
+      - {value: soft, label: Soft}
+      - {value: hard, label: Hard}
+    description: Soft thresholding sets small coefficients to 0 and moves the others toward 0 by T. Hard thresholding sets small coefficients to 0 and keeps the others.
+    effect: Hard keeps more contrast. Averaging over shifts softens the isolated spots it leaves.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal details.
+    effect: Larger values remove more noise and more detail. The fixed threshold rule does not use it.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 0.5
+    default: 20
+    description: The threshold T in pixel values, for the fixed threshold rule only.
+    effect: Larger values remove more noise and more detail.
+    advanced: true
+  - key: shifts
+    label: Shifts
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    description: For cycle spinning, the shifts in each direction, from 0 to this number minus 1. The filter runs once per pair of shifts, so 4 means 16 runs.
+    effect: More shifts remove more of the blocky spots and take longer. 2^J shifts in each direction match the stationary transform.
+    advanced: true
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{I} = \operatorname{ISWT}\big(a_J,\ \eta_T(h_j),\ \eta_T(v_j),\ \eta_T(d_j)\big),
+  \quad
+  \big(a_J,\ (h_j, v_j, d_j)_{j=1}^{J}\big) = \operatorname{SWT}(I),
+  \qquad
+  \hat{I}_{\text{cycle}} = \frac{1}{n^2} \sum_{s} S_{-s}\, \operatorname{IDWT}\big(\eta_T(\operatorname{DWT}(S_s I))\big),
+  \quad
+  J = {{levels}},\ n = {{shifts}}
+formulaExplanation: >-
+  The decimated transform keeps every second coefficient at each level, so its result changes
+  when the image moves by one pixel. The stationary transform, after Nason and Silverman, skips
+  the subsampling. At level j its filters have 2^(j-1) - 1 zeros between their taps, so each
+  subband has one coefficient per pixel. The thresholds, the noise estimate and the shrink rule
+  eta_T are those of wavelet thresholding, applied to these coefficients. White noise keeps its
+  sigma in every subband, since the filters have unit energy. Coifman and Donoho called this
+  translation-invariant denoising. They showed that it equals cycle spinning over all shifts:
+  shift the image by s, threshold it with the decimated transform, shift it back by -s, and
+  average. S_s shifts by s in a circle. With J levels, 2^J shifts in each direction cover all
+  the cases. Cycle spinning with fewer shifts averages only some of them.
+symbols:
+  - {symbol: 'I', meaning: The input channel}
+  - {symbol: 'a_J', meaning: The approximation after J levels}
+  - {symbol: 'h_j, v_j, d_j', meaning: 'The horizontal, vertical and diagonal details of level j. Level 1 is the finest.'}
+  - {symbol: '\eta_T', meaning: The shrink rule with threshold T}
+  - {symbol: 'S_s', meaning: 'A circular shift by s = (s_y, s_x) pixels'}
+  - {symbol: 'n', meaning: The number of shifts in each direction for cycle spinning}
+  - {symbol: 'T', meaning: 'The threshold, in pixel values'}
+steps:
+  - For the stationary transform, add rows and columns with the border mode until each side is a multiple of 2^J.
+  - Split the channel with the stationary transform into an approximation and J levels of details, each at full size.
+  - Estimate the noise sigma from the finest diagonal details, unless it is set.
+  - Choose a threshold for each detail subband with the threshold rule, and shrink every detail coefficient.
+  - Rebuild the channel with the inverse transform and remove the added rows and columns.
+  - For cycle spinning instead, threshold n^2 circularly shifted copies with the decimated transform, shift each back and average them.
+complexity:
+  time: O(N L J)
+  memory: O(N J)
+  notes: N is the number of pixels, L the number of filter taps and J the number of levels. Each level of the stationary transform works on the whole image. Cycle spinning costs n^2 runs of wavelet thresholding, each O(N L).
+useCases:
+  - Removing sensor noise when wavelet thresholding leaves blotches near edges.
+  - Learning why shift invariance matters for wavelet methods.
+advantages:
+  - When the image moves in a circle, the result of the stationary transform moves with it. This holds when the border mode wraps and each side is a multiple of 2^J.
+  - Coifman and Donoho found fewer artifacts near edges than with the decimated transform, since no single grid position is favored.
+limitations:
+  - Needs memory for 3 J + 1 subbands, each the size of the image, in 64-bit floats.
+  - The transform wraps around, so content near one edge can affect the other edge.
+  - The threshold rules assume independent coefficients. In the stationary transform, neighboring coefficients are correlated.
+artifacts:
+  - Faint ringing along strong edges.
+  - With cycle spinning and few shifts, weaker versions of the blocky spots of the decimated transform.
+references:
+  - kind: paper
+    text: Nason, G. P., and Silverman, B. W. The stationary wavelet transform and some statistical applications. In Wavelets and Statistics, Lecture Notes in Statistics 103, 281 to 299. Springer, 1995.
+    doi: 10.1007/978-1-4612-2544-7_17
+  - kind: paper
+    text: Coifman, R. R., and Donoho, D. L. Translation-invariant de-noising. In Wavelets and Statistics, Lecture Notes in Statistics 103, 125 to 150. Springer, 1995.
+    doi: 10.1007/978-1-4612-2544-7_9
+  - kind: paper
+    text: Donoho, D. L., and Johnstone, I. M. Ideal spatial adaptation by wavelet shrinkage. Biometrika 81(3), 425 to 455, 1994.
+    doi: 10.1093/biomet/81.3.425
+  - kind: paper
+    text: Chang, S. G., Yu, B., and Vetterli, M. Adaptive wavelet thresholding for image denoising and compression. IEEE Transactions on Image Processing 9(9), 1532 to 1546, 2000.
+    doi: 10.1109/83.862633
+  - kind: library
+    text: Lee, G. R., Gommers, R., Waselewski, F., Wohlfahrt, K., and O'Leary, A. PyWavelets. A Python package for wavelet analysis. Journal of Open Source Software 4(36), 1237, 2019.
+    doi: 10.21105/joss.01237
+implementation: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: swt_denoise}
+tests: [engine/tests/test_wavelet_variants.py]
+learn:
+  oneSentence: Do wavelet thresholding for every possible shift of the image at once, and average, so no position is favored.
+  howItWorks:
+    - The usual wavelet transform keeps only every second value at each level, so it depends on where the image starts.
+    - The stationary transform keeps all of them, at every level.
+    - Small detail values are set to zero, as in wavelet thresholding.
+    - The rebuild averages over all the ways the image could have been split.
+  academic: >-
+    Undecimated (stationary) wavelet transform with subband thresholding, equivalent to
+    Coifman and Donoho's translation-invariant de-noising by cycle spinning over all circular
+    shifts. Cycle spinning over a subset of shifts is offered as an alternative.
+  paramNotes:
+    transform: All shifts at once, or a set of shifted copies.
+    wavelet: The shape of the building blocks.
+    levels: How many sizes of detail are cleaned.
+    rule: How the cut-off is chosen.
+    mode: Whether kept details are also made smaller.
+    sigma: How strong the noise is. 0 measures it.
+    threshold: The cut-off for the fixed rule.
+    shifts: How many shifted copies cycle spinning averages.
+    border: How the image is extended past its edges.
+    channelScope: Which part of the color image is cleaned.
+  tryThis:
+    - Choose the Haar wavelet. Compare this filter with wavelet thresholding and look for square blotches.
+    - Switch to cycle spinning with 1 shift, then raise the shifts to 8.
+  pitfalls:
+    - Very large images with many levels. Every level keeps three full-size subbands.
+  demos: [noise-lab]
+related: [wavelet-threshold, wavelet-wiener, nlm, bilateral]
+docsPage: filters/multiscale/swt-denoise.md

@@ -1,0 +1,94 @@
+id: real-esrgan
+name: Real-ESRGAN
+aliases: [Real-ESRGAN general, realesr-general-x4v3]
+family: learned
+tags: [purpose:enhance]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: realesr-general-x4v3
+changesSize: true
+planNotes: Super-resolution. The compact general model, exported to ONNX once with tools/export_models.py.
+
+summary: Enlarges an image four times with the compact general model of Real-ESRGAN, which was trained on photos degraded by blur, noise, resizing and JPEG compression together. It invents plausible texture, so detail in the result may not exist in the original scene. It needs a downloaded model.
+purpose: Enlarge real photos, and compare learned super-resolution with classical reconstruction.
+classification: {linearity: nonlinear, domain: learned, operation: GAN-trained super-resolution}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: real_esrgan}
+supportRadius: '34'
+supportsMask: false
+preview: on-demand
+colorHandling: >-
+  Colors are premultiplied by alpha first, as Resize does, and alpha is enlarged with bicubic
+  (OpenCV INTER_CUBIC).
+boundary: The network pads with zeros. Large images run in tiles of 256 pixels with 40 pixels of margin.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: scale
+    label: Scale
+    type: integer
+    min: 4
+    max: 4
+    step: 1
+    default: 4
+    unit: x
+    description: How many times larger the image becomes in each direction. The model was trained for 4 times only.
+    effect: Fixed by the model.
+formula: |
+  \hat{x} = \text{PixelShuffle}_4\big(f_\theta(y)\big) + \text{nearest}_4(y)
+formulaExplanation: >-
+  The compact network runs 34 convolutions with PReLU at the small size, and a pixel shuffle turns
+  its 48 channels into a picture four times larger. The nearest-neighbor enlargement of the input
+  is added, so the network learns only the missing detail. Training with a GAN loss makes the
+  detail look real, not exact.
+symbols:
+  - {symbol: 'y', meaning: 'The small image'}
+  - {symbol: 'f_\theta', meaning: 'The network'}
+steps:
+  - Premultiply the colors by alpha.
+  - Run the network and rearrange its channels into a four times larger image.
+  - Add the nearest-neighbor enlargement.
+  - Enlarge alpha with bicubic.
+complexity:
+  time: O(N)
+  memory: O(16 N)
+  notes: N is the number of input pixels. The output has 16 times as many.
+useCases:
+  - Enlarging old or small photos for viewing.
+advantages:
+  - Copes with blur, noise and JPEG artifacts in the input.
+  - Small and fast for a GAN model.
+limitations:
+  - Invents texture. Never use it where detail must be true, such as evidence or measurement.
+artifacts:
+  - Painted, over-smooth skin and hair.
+  - False texture on fine patterns.
+references:
+  - kind: paper
+    text: Wang, X., Xie, L., Dong, C., and Shan, Y. Real-ESRGAN. Training real-world blind super-resolution with pure synthetic data. IEEE/CVF International Conference on Computer Vision Workshops, 1905 to 1914, 2021.
+    doi: 10.1109/ICCVW54120.2021.00217
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: real_esrgan}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A network enlarges the image and paints in plausible detail.
+  howItWorks:
+    - The network was trained on photos that were made small, blurred, noisy and compressed on purpose.
+    - It learned to undo all of that at once.
+    - It adds detail that looks real, but may not be.
+  academic: >-
+    The SRVGGNetCompact network of Real-ESRGAN, trained with a GAN loss on synthetic real-world
+    degradations, at 4x.
+  paramNotes:
+    scale: Four times.
+  tryThis:
+    - Compare with Super-resolution reconstruction on the same small image.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [sr-classical, edsr, srcnn]
+docsPage: filters/learned/real-esrgan.md

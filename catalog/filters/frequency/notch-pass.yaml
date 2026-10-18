@@ -1,0 +1,131 @@
+id: notch-pass
+name: Notch-pass
+aliases: [Notch pass filter, Notch filter (pass)]
+family: frequency
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Keeps only small regions of the spectrum around chosen frequencies, which extracts a periodic pattern.
+purpose: Pull out the periodic pattern in an image, to study it or to subtract it.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/notch.ts, symbol: notchResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side. With reflect and reflect 101, the extension mirrors a
+  pattern at (fx, fy) into one at (-fx, fy), so each notch also covers that point and its mirror.
+  The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: notches
+    label: Notches
+    type: points
+    default: "0.2 0.1"
+    unit: cycles/px
+    description: The notch centers as pairs of fx and fy in cycles per pixel, one per line. Click a peak in the Spectrum panel to add one.
+    effect: Each notch acts at its center and at its mirror points.
+  - key: shape
+    label: Notch shape
+    type: select
+    default: butterworth
+    options:
+      - {value: ideal, label: Ideal}
+      - {value: butterworth, label: Butterworth}
+      - {value: gaussian, label: Gaussian}
+    description: The shape of each notch, as for the low-pass and high-pass filters.
+    effect: Ideal notches have sharp edges and ring. Butterworth and Gaussian notches are smooth.
+  - key: radius
+    label: Notch radius
+    type: number
+    min: 0.002
+    max: 0.1
+    step: 0.001
+    default: 0.01
+    unit: cycles/px
+    description: The radius D_0 of each notch, in cycles per pixel.
+    effect: Larger notches remove more of the spectrum around each center.
+  - key: order
+    label: Order
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 2
+    description: The order n of Butterworth notches. Other shapes ignore it.
+    effect: Higher orders give notches with sharper edges.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  H = 1 - \prod_k H_k,\quad H_k = \frac{1}{1 + (D_0 / D_k)^{2n}},\quad D_k = \sqrt{(f_x - u_k)^2 + (f_y - v_k)^2},\ D_0 = {{radius}}
+formulaExplanation: >-
+  The formula shows Butterworth notches. Ideal notches are 0 within D_0 of a center and 1
+  elsewhere, and Gaussian notches are 1 - exp(-D_k^2 / 2 D_0^2). Each factor H_k is a high-pass
+  filter centered at (u_k, v_k), as in Gonzalez and Woods. A real image has a symmetric spectrum,
+  so a pattern at (fx, fy) also shows at (-fx, -fy), and every notch acts at both points. The notch-pass filter is 1 minus the notch-reject filter, so it keeps only the notched regions and the result has no mean brightness.
+symbols:
+  - {symbol: '(u_k, v_k)', meaning: 'The center of notch k: a notch, its mirror point through the origin, and with a mirror border also the mirror points across the axes'}
+  - {symbol: 'D_k', meaning: The distance from center k in cycles per pixel}
+  - {symbol: 'D_0', meaning: The notch radius}
+  - {symbol: 'n', meaning: The order of Butterworth notches}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N + N K)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of notch centers.
+useCases:
+  - Extracting a periodic interference pattern to see it on its own.
+  - Checking which part of an image a set of notches removes.
+advantages:
+  - Acts only near the chosen frequencies, so most of the image is left alone.
+  - The Spectrum panel shows where to place each notch.
+limitations:
+  - Notches must be placed on the peaks by hand. Periodic noise suppression finds them on its own.
+  - A pattern that does not fit the image a whole number of times leaks around its peak, so some of it stays near the image edges.
+artifacts:
+  - Faint waves near the image edges where the pattern was cut off.
+  - Ringing around strong edges with ideal notches.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/notch.ts, symbol: notchPassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Keep only the frequencies of a periodic pattern, so the pattern is all that remains.
+  howItWorks:
+    - Take the spectrum of the image with the FFT.
+    - Keep small regions around the chosen frequencies and set the rest to 0.
+    - Transform back.
+  academic: >-
+    The notch-pass filter of Gonzalez and Woods, 1 minus a product of high-pass filters centered at the notches and their mirror points.
+  paramNotes:
+    notches: Where the notches are, in cycles per pixel.
+    shape: How sharp the notch edges are.
+    radius: How large each notch is.
+    order: How sharp Butterworth notches are.
+  tryThis:
+    - Add periodic noise, open the Spectrum panel and click on one of the two bright peaks.
+  pitfalls:
+    - Placing a notch on frequency 0 or very close to it. That removes the brightness of the image.
+  demos: [frequency-explorer]
+related: [notch-reject, comb, periodic-noise, noise-periodic]
+docsPage: filters/frequency/notch-pass.md

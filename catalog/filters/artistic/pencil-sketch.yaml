@@ -1,0 +1,106 @@
+id: pencil-sketch
+name: Pencil sketch
+aliases: [Sketch effect, Color dodge sketch]
+family: artistic
+tags: [purpose:edge]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Turns the image into a light pencil drawing, where edges and dark details stay as gray lines and flat areas turn white.
+purpose: Make a quick drawing-like version of a photo.
+classification: {linearity: nonlinear, domain: spatial, operation: color dodge with a blurred negative}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/painterly.ts, symbol: sketchPlane}
+supportRadius: floor(3 * sigma + 0.5)
+supportsMask: true
+preview: live
+colorHandling: >-
+  By default the result is gray. With Keep colors on, the sketch replaces the luma and the color
+  differences of the image stay. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Blur
+    type: number
+    min: 1
+    max: 40
+    step: 0.5
+    default: 8
+    unit: px
+    description: The sigma of the Gaussian blur of the negative.
+    effect: Larger values give thicker, softer lines.
+  - key: colored
+    label: Keep colors
+    type: boolean
+    default: false
+    description: Keep the color differences of the image and replace only its luma by the sketch.
+    effect: Gives a colored pencil look.
+  - ref: border
+formula: |
+  N = 255 - Y,
+  \quad
+  B = G_\sigma * N,
+  \quad
+  S = 255 \cdot \begin{cases} 0 & Y = 0 \\ 1 & B = 255 \\ \min\left(1, \dfrac{Y / 255}{1 - B / 255}\right) & \text{otherwise} \end{cases},
+  \qquad \sigma = {{sigma}}
+formulaExplanation: >-
+  Y is the luma, N its negative and B the negative blurred with a Gaussian cut at 3 sigma. S is
+  the color dodge of the W3C Compositing and Blending spec, with Y as the backdrop and B as the
+  source. In flat areas B is close to N, so Y / (1 - B / 255) is close to 1 and the area turns
+  white. Near an edge the blur mixes in the other side, so the dodge stays below 1 and leaves a
+  gray line. The recipe of dodging with a blurred negative is PixelNexus's own choice, though
+  photo editors use the same idea. With Keep colors on, the color differences C - Y of the image
+  are added back to S.
+symbols:
+  - {symbol: 'Y', meaning: 'The luma 0.2126 R + 0.7152 G + 0.0722 B'}
+  - {symbol: 'N, B', meaning: 'The negative and the blurred negative'}
+  - {symbol: 'S', meaning: 'The sketch'}
+steps:
+  - Compute the luma and its negative.
+  - Blur the negative with a Gaussian.
+  - Blend the luma with the blurred negative by color dodge.
+  - With Keep colors on, add the color differences back.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels and r the radius of the Gaussian. The blur runs as two 1D passes.
+useCases:
+  - Drawing-like versions of photos and portraits.
+advantages:
+  - One parameter, and a convincing pencil look.
+limitations:
+  - Dark areas stay dark, since the dodge cannot lighten black.
+  - Noise turns into fine strokes.
+artifacts:
+  - Faint halos along strong edges at large blur.
+references:
+  - kind: standard
+    text: W3C. Compositing and Blending Level 1, section 10.1.7, the color-dodge blend mode. W3C Candidate Recommendation Draft, 21 March 2024.
+    url: https://www.w3.org/TR/compositing-1/
+implementation: {path: web/src/core/filters/artistic/painterly.ts, symbol: pencilSketchFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Blend the image with a blurred negative of itself, so flat areas turn white and only lines remain.
+  howItWorks:
+    - Make the image gray and invert it.
+    - Blur the inverted image.
+    - Divide the gray image by the inverted blur, a color dodge, so that flat areas reach white.
+  academic: >-
+    Color dodge blending of the luma with its Gaussian-blurred negative, a ratio that is 1 where
+    the image is locally flat and below 1 near edges.
+  paramNotes:
+    sigma: How thick and soft the lines are.
+    colored: Keep the colors for a colored pencil look.
+    border: How the blur is filled past the image edge.
+  tryThis:
+    - Compare blur 3 and blur 20 on a portrait.
+  pitfalls:
+    - Very dark photos. The dodge cannot lighten pure black.
+  demos: [line-profile]
+related: [outline, cartoon, emboss]
+docsPage: filters/artistic/pencil-sketch.md

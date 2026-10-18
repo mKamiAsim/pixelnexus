@@ -1,0 +1,168 @@
+id: blob-log
+name: LoG blob detection
+aliases: [Laplacian of Gaussian blobs, Blob detection]
+family: features
+tags: [purpose:analysis, purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+
+summary: Finds round blobs and their sizes with the scale-normalized Laplacian of Gaussian, as Lindeberg proposed. Each blob is a peak of the response over position and scale, and comes with its center, radius and score.
+purpose: Count and measure round spots, such as cells, stars, droplets or coins, and find their sizes at the same time.
+classification: {linearity: nonlinear, domain: spatial, operation: scale-normalized LoG extrema}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the luma with the BT.709 weights, scaled to 0 to 1 as scikit-image
+  expects. Alpha is ignored. The image does not change. The features go to the Features panel
+  and are drawn on the canvas.
+boundary: The Gaussian Laplacian of SciPy fills past the edge with reflect. Blobs near the edge are kept.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.blob_log, with scipy.ndimage.gaussian_laplace.'}
+
+params:
+  - key: blobs
+    label: Blobs
+    type: select
+    default: bright
+    options:
+      - {value: bright, label: Bright blobs}
+      - {value: dark, label: Dark blobs}
+    description: Whether the blobs are brighter or darker than their surroundings. Dark blobs are found as bright blobs of the negated luma.
+    effect: The wrong choice finds the gaps between blobs instead.
+  - key: minSigma
+    label: Smallest sigma
+    type: number
+    min: 0.5
+    max: 50
+    step: 0.5
+    default: 1
+    unit: px
+    description: The smallest scale. Blobs smaller than the matching radius are missed.
+    effect: Larger values ignore small blobs and single bright pixels.
+  - key: maxSigma
+    label: Largest sigma
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 50
+    unit: px
+    description: The largest scale. scikit-image uses 50. If it is below the smallest sigma, only the smallest is used.
+    effect: Larger values also find big blobs, and take longer.
+  - key: numSigma
+    label: Number of scales
+    type: integer
+    min: 2
+    max: 50
+    step: 1
+    default: 10
+    description: How many scales are tried between the smallest and the largest sigma.
+    effect: More scales give finer sizes, and take longer.
+  - key: logScale
+    label: Logarithmic scales
+    type: boolean
+    default: false
+    description: Space the scales evenly in log sigma instead of in sigma, so small scales are tried more closely.
+    effect: Turn it on when the blobs have very different sizes.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.2
+    description: The smallest response a blob needs, for an image from 0 to 1. scikit-image uses 0.2.
+    effect: Lower values find weaker blobs, and more false ones.
+  - key: overlap
+    label: Overlap
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: Of two blobs whose areas overlap by more than this share, the smaller goes. 1 keeps all.
+    effect: Lower values keep fewer blobs that touch.
+formula: |
+  R_\sigma(x) = -\sigma^2\, \nabla^2 (G_\sigma * I)(x),
+  \qquad
+  (x, \sigma) \text{ is a blob if } R_\sigma(x) = \max_{3 \times 3 \times 3} R \ge T,
+  \qquad
+  r = \sqrt{2}\, \sigma,\quad T = {{threshold}}
+formulaExplanation: >-
+  The Laplacian of a Gaussian blur is strongly negative in the middle of a bright blob whose
+  size matches the blur. Its size shrinks as sigma grows, so it is multiplied by sigma^2 to make
+  the scales comparable, the scale normalization of Lindeberg. The response R then has a peak
+  at the center of each blob, at the scale that matches its size. For a disk of radius r, that
+  scale is about sigma = r / sqrt(2). Here scikit-image builds R at evenly spaced scales. It keeps
+  the points that are the largest of their 3 x 3 x 3 neighbors in position and scale and reach
+  the threshold. Then it prunes blobs that overlap too much. The score is R at the peak.
+symbols:
+  - {symbol: 'I', meaning: 'The luma from 0 to 1, or 1 minus it for dark blobs'}
+  - {symbol: 'G_\sigma', meaning: 'A Gaussian of sigma'}
+  - {symbol: '\nabla^2', meaning: 'The Laplacian, the sum of the second derivatives'}
+  - {symbol: 'r', meaning: 'The radius of the blob'}
+  - {symbol: 'T', meaning: 'The threshold'}
+steps:
+  - Take the luma from 0 to 1, negated for dark blobs.
+  - Filter it with the Laplacian of Gaussian at each scale, times minus sigma squared.
+  - Keep the points that beat their 26 neighbors in position and scale and reach the threshold.
+  - Remove the smaller of two blobs that overlap too much.
+  - Report the center, the radius sqrt(2) sigma, sigma and the response.
+complexity:
+  time: O(S N sigma_max)
+  memory: O(S N)
+  notes: N is the number of pixels and S the number of scales. Each Gaussian Laplacian costs O(N sigma) with separable kernels.
+useCases:
+  - Counting cells, nuclei, colonies or droplets.
+  - Finding stars in astronomy images.
+  - Measuring the sizes of round objects.
+advantages:
+  - Gives the size of each blob along with its position.
+  - On the Disks image, the most accurate of the three blob detectors.
+limitations:
+  - Slow for large sigma, since every scale is a full Gaussian filter.
+  - The size is only as fine as the scales. With 10 scales from 1 to 50, they are 5.4 px apart.
+  - Elongated shapes give several blobs or none.
+artifacts:
+  - Single bright pixels and noise give blobs at the smallest scale.
+references:
+  - kind: paper
+    text: Lindeberg, T. Feature detection with automatic scale selection. International Journal of Computer Vision 30(2), 79 to 116, 1998.
+    doi: 10.1023/A:1008045108935
+  - kind: library
+    text: scikit-image documentation, skimage.feature.blob_log.
+implementation: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_log_filter}
+tests: [engine/tests/test_blobs.py]
+learn:
+  oneSentence: Find round spots and their sizes, by blurring at many scales and looking for peaks.
+  howItWorks:
+    - Blur the image at many sizes.
+    - At each size, measure how much each point looks like the middle of a spot of that size.
+    - Keep the points that stand out from their neighbors in place and size.
+    - Each one is a blob, with its center and radius.
+  academic: >-
+    Extrema of the scale-normalized Laplacian of Gaussian over position and scale, after
+    Lindeberg, with pruning of overlapping blobs.
+  paramNotes:
+    blobs: Bright or dark spots.
+    minSigma: The smallest spots to find.
+    maxSigma: The largest spots to find.
+    numSigma: How many sizes are tried.
+    logScale: Try small sizes more closely.
+    threshold: How strong a spot must be.
+    overlap: How much two spots may overlap.
+  tryThis:
+    - Open the Disks image and apply the filter. The Features panel lists the six disks and the four single bright pixels.
+    - Raise the smallest sigma to 3, and the single pixels disappear.
+  pitfalls:
+    - Too few scales. The radius jumps in large steps.
+  demos: [feature-viewer]
+related: [blob-dog, blob-doh, log, sift]
+docsPage: filters/features/blob-log.md

@@ -1,0 +1,178 @@
+id: ridgelet
+name: Ridgelet filtering
+aliases:
+- Ridgelet denoising
+- Ridgelet transform
+family: multiscale
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6b
+status: implemented-tested
+planNotes: Radon plus 1D wavelet. Labeled as an approximation.
+
+summary: An approximate ridgelet filter. It takes the Radon transform, applies a 1-D wavelet transform along each projection, sets the small coefficients to zero and rebuilds the image.
+purpose: Remove noise from images made of straight lines and edges, which the Radon transform turns into a few bright points.
+classification: {linearity: nonlinear, domain: transform, operation: ridgelet coefficient shrinkage}
+output: image
+representation: transform
+representationLabel: approximation
+representationSource: {path: engine/src/pixelnexus_engine/filters/radon.py, symbol: ridgelet_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is filtered, and the colors stay. With the RGB scope, each of the red,
+  green and blue channels is filtered on its own.
+boundary: >-
+  The image is placed in the middle of a square of zeros for the Radon transform. The 1-D
+  wavelet transform extends each projection symmetrically.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'The Radon transform (radon) and the filtered back projection (iradon).'}
+  - {name: PyWavelets, optional: false, note: The 1-D wavelet transform along each projection (wavedec and waverec).}
+
+params:
+  - key: angles
+    label: Angles
+    type: integer
+    min: 8
+    max: 720
+    step: 1
+    default: 180
+    description: How many projection angles, spread evenly over 180 degrees.
+    effect: Too few angles leave streaks. More angles take longer.
+  - key: wavelet
+    label: Wavelet
+    type: select
+    default: db4
+    options:
+      - {value: haar, label: Haar}
+      - {value: db2, label: Daubechies 2 (db2)}
+      - {value: db4, label: Daubechies 4 (db4)}
+      - {value: db8, label: Daubechies 8 (db8)}
+      - {value: sym4, label: Symlet 4 (sym4)}
+      - {value: sym8, label: Symlet 8 (sym8)}
+    description: The 1-D orthogonal wavelet applied along each projection. Its filter taps come from PyWavelets.
+    effect: Haar keeps sharp steps in the projections. Longer wavelets give smoother results.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    description: How many levels the 1-D transform has. It is capped at the deepest level the projection length allows.
+    effect: More levels also reach broader features.
+  - key: factor
+    label: Threshold factor
+    type: number
+    min: 0
+    max: 8
+    step: 0.1
+    default: 3
+    description: The threshold is this factor times the noise level of each projection, estimated from its finest details. 0 keeps every coefficient.
+    effect: Larger factors remove more noise and more faint lines.
+  - key: mode
+    label: Shrink rule
+    type: select
+    default: hard
+    options:
+      - {value: hard, label: Hard}
+      - {value: soft, label: Soft}
+    description: Hard thresholding sets small coefficients to 0 and keeps the others. Soft thresholding also moves the others toward 0 by T.
+    effect: Soft gives smoother results with less contrast.
+  - ref: channelScope
+    default: luminance
+formula: |
+  c_i = \operatorname{DWT}_{1D}\big(p_{\theta_i}\big),
+  \quad
+  T_i = k\, \hat{\sigma}_i,
+  \quad
+  \hat{\sigma}_i = \frac{\operatorname{median}(|d_{1,i}|)}{0.6745},
+  \qquad
+  \hat{I} = \operatorname{FBP}\Big(\operatorname{IDWT}_{1D}\big(\eta_{T_i}(c_i)\big)\Big),
+  \qquad
+  n = {{angles}},\ J = {{levels}},\ k = {{factor}}
+formulaExplanation: >-
+  A ridgelet is constant along lines in one direction and a wavelet across them. Candes and
+  Donoho showed that the ridgelet transform is a 1-D wavelet transform applied along the
+  projections of the Radon transform. A straight line in the image is a single point in the
+  sinogram, so it gives a few large ridgelet coefficients, while noise spreads over many small
+  ones. Here p_theta_i are the projections of the radon-filter entry, c_i their 1-D wavelet
+  coefficients and d_1,i the finest details of projection i. The noise level of each projection
+  is estimated from d_1,i, and the threshold T_i is k times that level. eta is the shrink rule
+  of wavelet thresholding. FBP is filtered back projection with the ramp filter. The sampled
+  Radon transform and FBP are not exact inverses, so this is an approximation. Do and Vetterli
+  built an exactly invertible finite ridgelet transform, which needs a prime image size.
+symbols:
+  - {symbol: 'p_{\theta_i}', meaning: The projection at angle theta_i}
+  - {symbol: 'c_i', meaning: 'The ridgelet coefficients of projection i, its 1-D wavelet coefficients'}
+  - {symbol: 'd_{1,i}', meaning: The finest details of projection i}
+  - {symbol: 'k', meaning: The threshold factor}
+  - {symbol: '\eta_T', meaning: The shrink rule with threshold T}
+  - {symbol: 'J', meaning: The number of levels of the 1-D transform}
+steps:
+  - Compute the sinogram of the channel with n angles.
+  - Apply a 1-D wavelet transform with J levels along each projection.
+  - Estimate the noise level of each projection from its finest details.
+  - Shrink all detail coefficients of each projection with k times its noise level.
+  - Invert the 1-D transforms and rebuild the channel by filtered back projection.
+complexity:
+  time: O(N n)
+  memory: O(N + n sqrt(N))
+  notes: N is the number of pixels and n the number of angles. The Radon transform and the back projection dominate. The 1-D transforms cost O(n sqrt(N) L) for L filter taps.
+useCases:
+  - Learning how ridgelets represent straight lines.
+  - Removing noise around straight lines, scratches and edges.
+advantages:
+  - Straight lines give few, large coefficients, so they survive a high threshold.
+limitations:
+  - Approximate. The Radon round trip alone loses fine detail. In the worked example it caps thin lines at about 29 dB even without noise.
+  - Curved edges spread over many angles, so they gain nothing.
+  - The noise in the sinogram is not white, so the noise level of a projection is only an average.
+  - Slow for large images.
+artifacts:
+  - Faint streaks along the angles of strong lines.
+  - The blur of the Radon round trip on fine detail.
+references:
+  - kind: paper
+    text: Candes, E. J., and Donoho, D. L. Ridgelets. A key to higher-dimensional intermittency? Philosophical Transactions of the Royal Society of London A 357(1760), 2495 to 2509, 1999.
+    doi: 10.1098/rsta.1999.0444
+  - kind: paper
+    text: Do, M. N., and Vetterli, M. The finite ridgelet transform for image representation. IEEE Transactions on Image Processing 12(1), 16 to 28, 2003.
+    doi: 10.1109/TIP.2002.806252
+  - kind: paper
+    text: Starck, J.-L., Candes, E. J., and Donoho, D. L. The curvelet transform for image denoising. IEEE Transactions on Image Processing 11(6), 670 to 684, 2002.
+    doi: 10.1109/TIP.2002.1014998
+  - kind: book
+    text: Kak, A. C., and Slaney, M. Principles of Computerized Tomographic Imaging. SIAM, 2001. Reprint of the IEEE Press edition of 1988.
+    doi: 10.1137/1.9780898719277
+implementation: {path: engine/src/pixelnexus_engine/filters/radon.py, symbol: ridgelet}
+tests: [engine/tests/test_radon.py]
+learn:
+  oneSentence: Turn straight lines into points with the Radon transform, clean the points with wavelets, and turn them back into lines.
+  howItWorks:
+    - Compute the sinogram, where each straight line is a bright point.
+    - Describe each row of the sinogram with wavelets.
+    - Keep the large wavelet values, which belong to lines, and drop the small ones.
+    - Rebuild the image from the cleaned sinogram.
+  academic: >-
+    Approximate digital ridgelet transform. A 1-D orthogonal wavelet transform runs along the
+    projections of a sampled Radon transform. Hard or soft thresholding at k times a
+    per-projection MAD noise estimate follows, then filtered back projection.
+  paramNotes:
+    angles: How many views to take.
+    wavelet: The shape of the building blocks along each view.
+    levels: How many sizes of detail are cleaned.
+    factor: How high the cut-off is, in noise levels.
+    mode: Whether kept values are also made smaller.
+    channelScope: Which part of the color image is cleaned.
+  tryThis:
+    - Draw straight lines, add noise with the Noise lab, and compare this filter with wavelet thresholding.
+    - Set the threshold factor to 0 to see what the Radon round trip alone does.
+  pitfalls:
+    - Images without straight lines. Wavelet thresholding works better there.
+  demos: [noise-lab]
+related: [radon-filter, wavelet-threshold, directional-curvelet, hough-lines]
+docsPage: filters/multiscale/ridgelet.md

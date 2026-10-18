@@ -1,0 +1,140 @@
+id: graph-cut
+name: Graph cuts
+aliases: [Interactive graph cuts, Boykov-Jolly, Min cut segmentation]
+family: segmentation
+tags: [purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+planNotes: Binary, with seeds. SciPy maximum flow.
+
+summary: Splits the image into object and background from seeds, after Boykov and Jolly. Every pixel is a node in a graph, joined to its neighbors and to two terminals. The cheapest cut that keeps the seeds on their own side gives the object. It weighs how well each pixel fits the seeds against the cost of cutting between similar neighbors.
+purpose: Cut out an object from a few marks, with a boundary that is the best one for its energy.
+classification: {linearity: nonlinear, domain: iterative, operation: minimum graph cut}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: graph_cut_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: markers
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, in pixel levels. The object goes to the
+  Features panel and is drawn over the image. The boundaries are a color image with the alpha of
+  the image.
+boundary: Pixels on the image edge have fewer neighbors. Nothing is padded.
+dependencies:
+  - {name: SciPy, optional: false, note: 'scipy.sparse.csgraph.maximum_flow with Dinic''s method.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Object}
+      - {value: boundaries, label: Boundaries over the image}
+    description: The object as a label map, drawn over the image and listed in the Features panel, or its boundary in yellow over the image.
+    effect: The object can become the selection from the Features panel.
+  - key: seeds
+    label: Seeds
+    type: select
+    default: border
+    options:
+      - {value: border, label: Selection and image edge}
+      - {value: map, label: Selection as a map}
+    description: With the selection and image edge, the selected pixels are object seeds and the unselected pixels on the image edge are background seeds. As a map, pixels selected at 192 or more are object seeds, those at 63 or less are background seeds, and partly selected pixels are unknown.
+    effect: Feather a selection to use it as a map. The click-select tool also sends a map.
+  - key: sigma
+    label: Edge contrast
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    unit: levels
+    description: The sigma in the boundary weight. Neighbors that differ by much more than sigma are cheap to cut apart. Boykov and Jolly set it from the camera noise. 10 is our choice.
+    effect: Lower values make weaker edges count as boundaries.
+  - key: lambda
+    label: Region weight
+    type: number
+    min: 0
+    max: 10
+    step: 0.05
+    default: 1
+    description: The weight lambda of the region terms against the boundary terms.
+    effect: At 0 only edges count, and the cut can shrink to the seeds. Higher values follow the brightness of the seeds more.
+formula: |
+  E(A) = \lambda \sum_p R_p(A_p) + \sum_{\{p,q\},\ A_p \ne A_q} B_{pq},
+  \qquad
+  B_{pq} = \exp\left(-\frac{(I_p - I_q)^2}{2\sigma^2}\right) \frac{1}{\operatorname{dist}(p,q)}
+formulaExplanation: >-
+  A labels every pixel p as object or background. The region term R is the cost of the label at
+  p. It is minus the log of how likely the brightness I at p is among the seeds of that label.
+  The boundary term B is the cost of cutting between neighbors p and q. It is high when they
+  look alike. Boykov and Jolly built a graph with one node per pixel and two terminals. The
+  source stands for the object, the sink for the background. Neighbor links carry B. Each
+  unknown pixel links to the source with lambda R(background) and to the sink with lambda
+  R(object). A seed links to its own terminal with a weight K. K is larger than any cut through
+  its neighbors, so a seed never changes side. A minimum cut of this graph is a minimum of E,
+  and a maximum flow finds it.
+symbols:
+  - {symbol: 'A_p', meaning: 'The label of pixel p, object or background'}
+  - {symbol: 'R_p', meaning: 'The region cost of the label at p'}
+  - {symbol: 'B_{pq}', meaning: 'The boundary cost between neighbors p and q'}
+  - {symbol: '\lambda', meaning: 'The region weight'}
+  - {symbol: '\sigma', meaning: 'The edge contrast'}
+steps:
+  - Read the object and background seeds from the selection.
+  - Count the brightness of each set of seeds in a histogram.
+  - Join every pixel to its 8 neighbors and to the two terminals.
+  - Find the maximum flow from the object terminal to the background terminal.
+  - The object is every pixel the object terminal still reaches.
+complexity:
+  time: O(N^2 E)
+  memory: O(N)
+  notes: N is the number of pixels and E the number of links, for Dinic's method in the worst case. Image graphs are much faster in practice.
+useCases:
+  - Cutting out an object from a few marks inside and around it.
+  - Teaching how an energy becomes a graph problem.
+advantages:
+  - Finds the best cut for its energy, not a local one.
+  - Seeds always keep their side.
+limitations:
+  - Only brightness, not color. Objects of the same brightness as the background need many seeds.
+  - Parts that look like the object seeds join the object unless a background seed marks them.
+artifacts:
+  - With a low region weight, the cut shrinks around the seeds.
+references:
+  - kind: paper
+    text: Boykov, Y. Y., and Jolly, M.-P. Interactive graph cuts for optimal boundary and region segmentation of objects in N-D images. Proceedings of the Eighth IEEE International Conference on Computer Vision (ICCV), volume 1, 105 to 112, 2001.
+    doi: 10.1109/ICCV.2001.937505
+  - kind: library
+    text: SciPy documentation, scipy.sparse.csgraph.maximum_flow.
+implementation: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: graph_cut}
+tests: [engine/tests/test_interactive.py]
+learn:
+  oneSentence: Mark a bit of the object and the background, and find the cheapest place to cut between them.
+  howItWorks:
+    - Every pixel becomes a point, tied to its neighbors with strings.
+    - Similar neighbors are tied with strong strings, edges with weak ones.
+    - Each pixel is also tied to the object and to the background, by how much it looks like each.
+    - Cutting the weakest set of strings that separates object from background gives the result.
+  academic: >-
+    Boykov-Jolly s-t minimum cut with histogram region terms and Gaussian boundary terms on the
+    8-connected grid, solved with Dinic's maximum flow in SciPy.
+  paramNotes:
+    output: Object or boundary.
+    seeds: Where the seeds come from.
+    sigma: How strong an edge must be.
+    lambda: Brightness against edges.
+  tryThis:
+    - Select a small area inside an object and apply. Then set the region weight to 0 and compare.
+  pitfalls:
+    - A second object as bright as the first. It joins the object unless you mark it as background.
+  demos: [stage-viewer]
+related: [random-walker, grabcut, marker-watershed]
+docsPage: filters/segmentation/graph-cut.md

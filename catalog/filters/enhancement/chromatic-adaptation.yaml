@@ -1,0 +1,132 @@
+id: chromatic-adaptation
+name: Chromatic adaptation
+aliases: [Von Kries adaptation, Bradford transform, White point conversion]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Von Kries and Bradford.
+
+summary: Converts colors seen under one light to how they would look under another, with a von Kries type adaptation such as Bradford.
+purpose: Correct for a known light source, such as tungsten or fluorescent, or prepare images for another white point.
+classification: {linearity: linear, domain: color, operation: cone space white point adaptation}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/color/adaptation.ts, symbol: adaptationMatrix}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix in linear light. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: source
+    label: Light in the image
+    type: select
+    default: A
+    options:
+      - {value: A, label: "A, tungsten (2856 K)"}
+      - {value: D50, label: "D50, horizon daylight"}
+      - {value: D55, label: "D55, mid-morning daylight"}
+      - {value: D65, label: "D65, noon daylight"}
+      - {value: D75, label: "D75, north sky daylight"}
+      - {value: F2, label: "F2, cool white fluorescent"}
+      - {value: F7, label: "F7, broadband daylight fluorescent"}
+      - {value: F11, label: "F11, narrow-band white fluorescent"}
+    description: The CIE illuminant that lit the scene.
+    effect: The filter removes the color of this light.
+  - key: target
+    label: Target light
+    type: select
+    default: D65
+    options:
+      - {value: A, label: "A, tungsten (2856 K)"}
+      - {value: D50, label: "D50, horizon daylight"}
+      - {value: D55, label: "D55, mid-morning daylight"}
+      - {value: D65, label: "D65, noon daylight"}
+      - {value: D75, label: "D75, north sky daylight"}
+      - {value: F2, label: "F2, cool white fluorescent"}
+      - {value: F7, label: "F7, broadband daylight fluorescent"}
+      - {value: F11, label: "F11, narrow-band white fluorescent"}
+    description: The CIE illuminant the colors should look as if under. D65 is the white of sRGB.
+    effect: The image takes on the color of this light, relative to D65.
+  - key: method
+    label: Method
+    type: select
+    default: bradford
+    options:
+      - {value: bradford, label: Bradford}
+      - {value: von-kries, label: Von Kries}
+      - {value: xyz-scaling, label: XYZ scaling}
+    description: The cone response space in which the white is adapted.
+    effect: Bradford is the usual choice. XYZ scaling is the simplest and the least accurate.
+formula: |
+  M = M_{\text{XYZ}}^{-1} M_A^{-1}
+  \begin{bmatrix} \rho_t / \rho_s & 0 & 0 \\ 0 & \gamma_t / \gamma_s & 0 \\ 0 & 0 & \beta_t / \beta_s \end{bmatrix}
+  M_A\, M_{\text{XYZ}},
+  \quad
+  (\rho, \gamma, \beta) = M_A\, W,
+  \quad
+  \text{from } {{source}} \text{ to } {{target}}
+formulaExplanation: >-
+  The color goes from linear sRGB to XYZ with M_XYZ, then to cone-like responses with M_A, the
+  matrix of the method. There each response is scaled by the ratio of the target white W_t to the
+  source white W_s, which is the von Kries idea. Then it goes back to XYZ and to linear sRGB.
+  The white points are those of the CIE illuminants in ASTM E308-01, and the Bradford and von
+  Kries matrices are those tabled by Lindbloom. XYZ scaling uses the identity for M_A. The whole
+  chain is one 3 by 3 matrix, applied in linear light. The source white turns into the target
+  white exactly.
+symbols:
+  - {symbol: 'M_{\text{XYZ}}', meaning: 'The linear sRGB to XYZ matrix'}
+  - {symbol: 'M_A', meaning: 'The cone response matrix of the method'}
+  - {symbol: 'W_s, W_t', meaning: 'The XYZ white points of the source and target lights'}
+  - {symbol: '\rho, \gamma, \beta', meaning: 'The cone-like responses of a white'}
+steps:
+  - Look up the white points of the two illuminants.
+  - Build the adaptation matrix of the method and combine it with the sRGB matrices.
+  - Decode each pixel to linear light, multiply by the matrix, encode back and clip.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The gains or the matrix are computed once per run.
+useCases:
+  - Photos taken under tungsten or fluorescent light with no neutral object to pick.
+  - Converting between D50 and D65 white points.
+advantages:
+  - Based on a model of how the eye adapts, so colors keep their relations.
+  - Exact for the white point.
+limitations:
+  - The light must match one of the listed illuminants.
+  - Real lights differ from the CIE illuminants, so some cast can remain.
+artifacts:
+  - Clipping of saturated colors, which can leave the sRGB range.
+references:
+  - kind: web
+    text: Lindbloom, B. Chromatic adaptation, with the cone response matrices and the white points of ASTM E308-01. Web Archive copy of 14 March 2026.
+    url: https://web.archive.org/web/20260314100017/http://brucelindbloom.com/Eqn_ChromAdapt.html
+implementation: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: chromaticAdaptationFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/color/adaptation.test.ts]
+learn:
+  oneSentence: Show the colors as they would look if the scene had been lit by a different light.
+  howItWorks:
+    - Turn each color into cone-like responses, as the eye sees it.
+    - Scale the responses by how the two lights differ.
+    - Turn the result back into red, green and blue.
+  academic: >-
+    Von Kries type chromatic adaptation transform M_A^-1 D M_A between CIE illuminant white
+    points, in Bradford, von Kries or XYZ cone spaces.
+  paramNotes:
+    source: The light the scene was taken under.
+    target: The light to convert to.
+    method: The model of the cone responses.
+  tryThis:
+    - Use A to D65 on a photo taken under household tungsten light.
+  pitfalls:
+    - Choosing a source that is far from the real light. The cast changes instead of going away.
+  demos: [line-profile]
+related: [temperature-tint, white-balance, gray-world]
+docsPage: filters/enhancement/chromatic-adaptation.md

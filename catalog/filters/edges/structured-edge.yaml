@@ -1,0 +1,136 @@
+id: structured-edge
+name: Structured Edge Detector
+aliases: [Structured forests, SED, Structured edge detection]
+family: edges
+tags: [purpose:edge]
+tier: optional
+engine: science
+phase: 6d
+status: optional-model
+model: structured-edge-bsds500
+planNotes: Needs a downloaded model file. License check first.
+
+summary: Finds the edges that people draw around objects, with a random forest trained on hand-drawn edges, after Dollar and Zitnick. It needs an optional model of 6.4 MB that downloads on your machine when you ask for it. The model is free for non-commercial use only, such as teaching and research.
+purpose: Find object outlines rather than every change in brightness, and compare a learned detector with Canny.
+classification: {linearity: nonlinear, domain: learned, operation: structured random forest}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/structured_edge.py, symbol: structured_edge_representation}
+supportRadius: '16'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The model reads the RGB image. The result is a gray image with the alpha of the image.
+boundary: OpenCV pads the image inside the detector.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.ximgproc.createStructuredEdgeDetection.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: edges
+    options:
+      - {value: edges, label: Edge probability}
+      - {value: thin, label: Thin edges}
+      - {value: orientation, label: Edge orientation}
+    description: The edge probability from 0 to 1 as gray, the edges thinned to one pixel, or the direction of the edges from 0 to 180 degrees as gray.
+    effect: Thin edges are what the paper scores against hand-drawn edges.
+  - key: nmsRadius
+    label: Thinning radius
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 2
+    unit: px
+    description: How far across the edge the thinning looks for a stronger value. OpenCV uses 2.
+    effect: Larger values remove more edges that run close together.
+  - key: boundaryRadius
+    label: Border radius
+    type: integer
+    min: 0
+    max: 20
+    step: 1
+    default: 0
+    unit: px
+    description: Edges this close to the image edge are removed. OpenCV uses 0.
+    effect: Removes edges along the border of the image.
+  - key: m
+    label: Thinning multiplier
+    type: number
+    min: 1
+    max: 2
+    step: 0.05
+    default: 1
+    description: A value must beat its neighbors across the edge times this to stay. OpenCV uses 1.
+    effect: Higher values thin more and keep fewer weak edges.
+formula: |
+  E(x) = \frac{1}{\lvert P(x) \rvert} \sum_{p \in P(x)} y_{t(p)}(x)
+formulaExplanation: >-
+  The image is turned into channels. They hold color in CIE LUV, the gradient magnitude, and
+  the gradient in 4 orientations, at two scales. Differences between cells of a 5 x 5 grid in a patch add
+  self-similarity features. Each tree of a random forest looks at a patch of 32 x 32
+  pixels. It predicts a whole edge patch y of 16 x 16 pixels, a structured output, instead of
+  one label. The model has 8 trees. At each position, every 2 pixels, 4 of them run, so the
+  edge patches overlap and every pixel collects many votes. E(x) averages the votes of the set
+  P(x) of predictions that cover pixel x, which gives the edge probability. Dollar and Zitnick
+  trained the forest on the BSDS500 images, where people drew the edges of objects. So it
+  learned which changes in an image people call edges, and it ignores texture that Canny
+  would mark.
+symbols:
+  - {symbol: 'E(x)', meaning: 'The edge probability at pixel x'}
+  - {symbol: 'y_t(p)', meaning: 'The edge patch that tree t predicts at position p'}
+  - {symbol: 'P(x)', meaning: 'The predictions whose edge patches cover x'}
+steps:
+  - Turn the RGB image into color and gradient channels.
+  - Run 4 of the 8 trees at every second pixel, each predicting an edge patch.
+  - Average the overlapping edge patches into an edge probability.
+  - For thin edges, find the orientation and keep only the strongest values across each edge.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each position runs 4 trees of fixed depth.
+useCases:
+  - Object outlines for later segmentation or contour grouping.
+  - Comparing a learned edge detector with gradient-based ones.
+advantages:
+  - Marks object boundaries and ignores much of the texture inside objects.
+  - Fast, with no GPU.
+limitations:
+  - Needs the optional model, which is licensed for non-commercial use only.
+  - It learned from natural photos, so drawings, scans and test images can give odd results.
+  - The model is fixed. It cannot be tuned to other kinds of edges here.
+artifacts:
+  - Soft, wide edges in the probability output, until they are thinned.
+references:
+  - kind: paper
+    text: Dollar, P., and Zitnick, C. L. Fast edge detection using structured forests. IEEE Transactions on Pattern Analysis and Machine Intelligence 37(8), 1558 to 1570, 2015.
+    doi: 10.1109/TPAMI.2014.2377715
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::StructuredEdgeDetection.
+implementation: {path: engine/src/pixelnexus_engine/filters/structured_edge.py, symbol: structured_edge}
+tests: [engine/tests/test_structured_edge.py]
+learn:
+  oneSentence: A detector that learned from people's drawings which edges matter, and finds those.
+  howItWorks:
+    - People drew the outlines of objects in many photos.
+    - A forest of decision trees learned to predict small patches of those outlines.
+    - It runs on small overlapping patches of your image.
+    - The overlapping guesses average into an edge probability.
+  academic: >-
+    Structured random forests mapping 32 x 32 feature patches to 16 x 16 edge masks, averaged
+    over overlapping predictions, after Dollar and Zitnick, with the BSDS500 model.
+  paramNotes:
+    output: Probability, thin edges, or orientation.
+    nmsRadius: How far the thinning looks.
+    boundaryRadius: How much of the border to clear.
+    m: How strict the thinning is.
+  tryThis:
+    - Compare it with Canny on a photo with textured objects. Texture inside objects stays quiet.
+  pitfalls:
+    - Synthetic test images. The model learned from photos.
+  demos: [model-pipeline, stage-viewer]
+related: [canny, phase-congruency, hough-linking]
+docsPage: filters/edges/structured-edge.md

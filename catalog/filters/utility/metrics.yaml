@@ -1,0 +1,93 @@
+id: metrics
+name: Quality metrics
+aliases: [PSNR, SSIM, MSE, MAE, Image comparison]
+family: utility
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: PSNR, SSIM, MSE and MAE.
+
+summary: Compares the active image with a reference and reports PSNR, SSIM, MSE and MAE.
+purpose: Measure how close a filtered image is to a clean reference, for example to compare denoising filters.
+classification: {linearity: nonlinear, domain: statistical, operation: image comparison}
+output: table
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/metrics/quality.ts, symbol: qualityMetrics}
+supportRadius: the whole image
+supportsMask: false
+preview: none
+colorHandling: >-
+  Red, green and blue are compared, and alpha is left out. MSE and MAE average over all three
+  channels. SSIM is computed per channel and averaged.
+boundary: SSIM blurs with the reflect mode and leaves out a 5-pixel frame at the image edge, as scikit-image does.
+
+params: []
+
+formula: |
+  \mathrm{MSE} = \frac{1}{3N} \sum (I - R)^2,
+  \qquad
+  \mathrm{PSNR} = 10 \log_{10} \frac{255^2}{\mathrm{MSE}},
+  \qquad
+  \mathrm{SSIM} = \frac{(2\mu_I \mu_R + C_1)(2\sigma_{IR} + C_2)}{(\mu_I^2 + \mu_R^2 + C_1)(\sigma_I^2 + \sigma_R^2 + C_2)}
+formulaExplanation: >-
+  I is the image and R the reference, over N pixels and three channels. MAE is the mean of the
+  absolute differences. PSNR is infinite for equal images. In SSIM the means, variances and
+  covariance are local, from a Gaussian window with sigma 1.5. C_1 = (0.01 x 255)^2 and
+  C_2 = (0.03 x 255)^2 keep the ratio stable in flat areas. The SSIM map is averaged over the
+  image without its 5-pixel frame, as in skimage.metrics.structural_similarity.
+symbols:
+  - {symbol: 'I, R', meaning: The image and the reference}
+  - {symbol: 'N', meaning: The number of pixels}
+  - {symbol: '\mu, \sigma', meaning: Local means and standard deviations}
+  - {symbol: '\sigma_{IR}', meaning: The local covariance}
+steps:
+  - Choose the reference, the original of this image or another open image of the same size.
+  - Add up the squared and absolute differences for MSE and MAE, and compute PSNR from MSE.
+  - Blur the images, their squares and their product with a Gaussian of sigma 1.5.
+  - Compute the SSIM map from these local moments and average it inside the frame.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. SSIM needs five separable Gaussian blurs per channel.
+useCases:
+  - Measure how well a filter removes added noise, against the clean original.
+  - Compare two filters or two settings on the same noisy image.
+advantages:
+  - PSNR and MSE are standard and simple to compare.
+  - SSIM follows perceived structure better than MSE.
+limitations:
+  - All four need an aligned reference of the same size.
+  - None of them fully matches how people judge quality.
+artifacts:
+  - None. The metrics do not change the image.
+references:
+  - kind: paper
+    text: Wang, Z., Bovik, A. C., Sheikh, H. R. and Simoncelli, E. P. Image quality assessment, from error visibility to structural similarity. IEEE Transactions on Image Processing 13(4), 600 to 612, 2004.
+    doi: 10.1109/TIP.2003.819861
+  - kind: library
+    text: scikit-image documentation, skimage.metrics.
+    url: https://scikit-image.org/docs/stable/api/skimage.metrics.html
+implementation: {path: web/src/core/metrics/quality.ts, symbol: qualityMetrics}
+tests: [web/src/core/metrics/quality.test.ts]
+learn:
+  oneSentence: Numbers that say how close an image is to a reference image.
+  howItWorks:
+    - Pick a reference, such as the clean original.
+    - Measure the average pixel difference, as MSE, MAE and PSNR.
+    - Measure how well local brightness, contrast and structure agree, as SSIM.
+  academic: >-
+    MSE and PSNR measure the error energy. SSIM, by Wang and others, multiplies a luminance,
+    a contrast and a structure term from local Gaussian-weighted statistics, and correlates
+    better with human judgments.
+  paramNotes: {}
+  tryThis:
+    - Add Gaussian noise with sigma 20, then compare a Gaussian blur and a bilateral filter by PSNR and SSIM against the original.
+  pitfalls:
+    - Comparing images that are shifted by a pixel. The metrics then report a large error.
+  demos: []
+related: [noise-gaussian, noise-salt-pepper, noise-speckle, noise-poisson]
+docsPage: filters/utility/metrics.md
+command: filter.metrics

@@ -1,0 +1,131 @@
+id: sauvola
+name: Sauvola threshold
+aliases: [Sauvola binarization]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Thresholds each pixel from its local mean and standard deviation, lowering the threshold where the contrast is low.
+purpose: Binarize documents with stains, shadows and uneven contrast, while keeping blank areas clean.
+classification: {linearity: nonlinear, domain: statistical, operation: local mean and deviation threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: sauvolaFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 151
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side of the square window around each pixel.
+    effect: Larger windows follow slower changes of lighting and ignore small details.
+  - key: k
+    label: k
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: How strongly the local deviation lowers the threshold.
+    effect: Higher values lower the threshold more in flat areas, which keeps them white.
+  - key: r
+    label: R
+    type: number
+    min: 1
+    max: 255
+    step: 1
+    default: 128
+    description: The dynamic range R of the standard deviation.
+    effect: Higher values lower the threshold everywhere.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  T = m \left(1 + k \left(\frac{s}{R} - 1\right)\right),
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > T \\ 0 & \text{otherwise} \end{cases},
+  \qquad k = {{k}},\ R = {{r}}
+formulaExplanation: >-
+  m and s are the mean and the population standard deviation of the window around the pixel.
+  Sauvola and Pietikainen use k = 0.5 and R = 128 for 8-bit images. Where the window is flat, s
+  is small and T falls to about m (1 - k), well below the mean, so noise stays black. Where
+  there is text, s is large and T moves toward m. The same formula is scikit-image's
+  threshold_sauvola. For dark text on a light page, use Invert so the text becomes white.
+  The result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with Invert.
+symbols:
+  - {symbol: 'm, s', meaning: 'The local mean and standard deviation'}
+  - {symbol: 'k', meaning: 'The weight of the deviation term'}
+  - {symbol: 'R', meaning: 'The dynamic range of the standard deviation'}
+steps:
+  - Compute the local mean and standard deviation with running sums of the values and their squares.
+  - Set the threshold to m (1 + k (s / R - 1)).
+  - Compare each pixel with its own threshold.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Running sums make the cost independent of the window size.
+useCases:
+  - Scanned and photographed documents, old books, receipts.
+advantages:
+  - Keeps blank areas clean, unlike Niblack.
+  - Adapts to stains and shadows.
+limitations:
+  - Low-contrast text on a dark background can vanish, since the threshold drops with the mean.
+artifacts:
+  - Thin strokes can break where the contrast is weak.
+references:
+  - kind: paper
+    text: Sauvola, J. and Pietikainen, M. Adaptive document image binarization. Pattern Recognition 33(2), 225 to 236, 2000.
+    doi: 10.1016/S0031-3203(99)00055-2
+  - kind: library
+    text: scikit-image documentation, skimage.filters.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: sauvolaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Compare each pixel with its neighbors, and lower the bar where the neighborhood is flat.
+  howItWorks:
+    - Find the average and the spread of the neighborhood.
+    - Where the spread is small, set the threshold well below the average.
+    - Make the pixel white if it is brighter than the threshold.
+  academic: >-
+    Sauvola's local threshold T = m (1 + k (s / R - 1)), a refinement of Niblack's method for
+    documents.
+  paramNotes:
+    size: How large the neighborhood is.
+    k: How much a flat neighborhood lowers the threshold.
+    r: The range of spreads that counts as full contrast.
+    invert: Swap white and black.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Use a photo of a stained page with Invert on. The text stays and the stains fade.
+  pitfalls:
+    - Expecting dark text to come out white without Invert.
+  demos: [line-profile]
+related: [niblack, wolf, threshold-adaptive-mean]
+docsPage: filters/segmentation/sauvola.md

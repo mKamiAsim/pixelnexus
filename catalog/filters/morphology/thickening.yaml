@@ -1,0 +1,99 @@
+id: thickening
+name: Thickening
+aliases: []
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Grows white shapes by thinning the background, so shapes grow without merging.
+purpose: Grow shapes up to, but not across, the gaps between them.
+classification: {linearity: nonlinear, domain: spatial, operation: thinning of the complement}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: thin}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background of the complement that is thinned. The filter always runs on the whole image.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: zhang-suen
+    options:
+      - {value: zhang-suen, label: Zhang-Suen}
+      - {value: guo-hall, label: Guo-Hall}
+    description: The thinning algorithm. Both remove pixels in two sub-iterations per iteration.
+    effect: Guo-Hall keeps diagonal lines a little thinner. Zhang-Suen is the classic choice.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 3
+    description: How many thinning iterations run on the background.
+    effect: More iterations grow the shapes further.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  A \odot = \left(\operatorname{thin}_n(A^c)\right)^c
+formulaExplanation: >-
+  Thickening is the dual of thinning: the background is thinned for n iterations and the result is complemented. The background never breaks apart, so shapes never merge.
+symbols:
+  - {symbol: 'A^c', meaning: The background}
+  - {symbol: 'n', meaning: The number of iterations}
+steps:
+  - Make the image binary and take the complement.
+  - Thin the complement for the chosen number of iterations.
+  - Take the complement again.
+complexity:
+  time: O(N n)
+  memory: O(N)
+  notes: N is the number of pixels per channel and n the number of iterations.
+useCases:
+  - Grow regions toward each other while keeping them apart.
+  - Approximate the borders between regions.
+advantages:
+  - Shapes grow but never merge.
+limitations:
+  - Growth follows the thinning rules, not a round shape.
+artifacts:
+  - Thin background lines remain between shapes.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: paper
+    text: Zhang, T. Y. and Suen, C. Y. A fast parallel algorithm for thinning digital patterns. Communications of the ACM 27(3), 236 to 239, 1984.
+    doi: 10.1145/357994.358023
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: thickeningFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Grow white shapes by thinning the black background between them.
+  howItWorks:
+    - Swap black and white.
+    - Thin the new white areas a few layers.
+    - Swap back.
+  academic: >-
+    The morphological dual of thinning, computed as the complement of the thinned complement.
+  paramNotes:
+    method: The thinning rules.
+    iterations: How far the shapes grow.
+  tryThis:
+    - Thicken a few dots with many iterations. The background between them shrinks to thin lines.
+  pitfalls:
+    - Expecting round growth like dilation. Thickening follows the thinning rules.
+  demos: [line-profile]
+related: [thinning, dilation]
+docsPage: filters/morphology/thickening.md

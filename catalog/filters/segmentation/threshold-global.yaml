@@ -1,0 +1,96 @@
+id: threshold-global
+name: Global threshold
+aliases: [Binary threshold, Fixed threshold]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Manual threshold.
+
+summary: Turns the image into black and white with one threshold for every pixel.
+purpose: Separate bright objects from a dark background, or the other way around, when the lighting is even.
+classification: {linearity: nonlinear, domain: statistical, operation: fixed threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: thresholdGlobalFilter}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - key: threshold
+    label: Threshold
+    type: integer
+    min: 0
+    max: 255
+    step: 1
+    default: 128
+    description: The level t. Values above it become white.
+    effect: Higher thresholds keep only the brightest parts.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  I_{\text{out}} = \begin{cases} 255 & I > t \\ 0 & I \le t \end{cases},\qquad t = {{threshold}}
+formulaExplanation: >-
+  Every pixel is compared with the same level t. The result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with Invert. This is the basic global thresholding
+  of Gonzalez and Woods. It works when objects and background have clearly different levels
+  everywhere in the image.
+symbols:
+  - {symbol: 'I', meaning: 'The input value from 0 to 255'}
+  - {symbol: 't', meaning: 'The threshold'}
+steps:
+  - Compare each value with the threshold.
+  - Write 255 above it and 0 at or below it, or the reverse with Invert.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels.
+useCases:
+  - Scanned documents and drawings with even lighting.
+  - Making a mask from a clear bright or dark region.
+advantages:
+  - Simple, fast and predictable.
+limitations:
+  - One level for the whole image fails under uneven lighting.
+  - The threshold must be chosen by hand. Otsu chooses it from the histogram.
+artifacts:
+  - Broken or merged objects where the lighting changes across the image.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 10, thresholding.
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: thresholdGlobalFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Every pixel brighter than the threshold turns white, every other pixel turns black.
+  howItWorks:
+    - Choose one brightness level.
+    - Make every pixel above it white.
+    - Make every other pixel black.
+  academic: >-
+    Global thresholding with a fixed level, the simplest segmentation by intensity.
+  paramNotes:
+    threshold: The brightness level that separates white from black.
+    invert: Swap white and black.
+  tryThis:
+    - Move the threshold over a photo of a page and watch the text appear and break up.
+  pitfalls:
+    - Uneven lighting. One part of the image turns all white or all black.
+  demos: [line-profile]
+related: [otsu, threshold-adaptive-mean, contrast-stretch]
+docsPage: filters/segmentation/threshold-global.md

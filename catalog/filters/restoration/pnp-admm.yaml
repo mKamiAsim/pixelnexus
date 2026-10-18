@@ -1,0 +1,235 @@
+id: pnp-admm
+name: Plug-and-play restoration
+aliases: [PnP-ADMM, Plug-and-play ADMM, Plug-and-play priors]
+family: restoration
+tags: [purpose:sharpening, purpose:denoise]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: ADMM with a choice of denoiser.
+
+summary: Undoes a known blur with ADMM, where the step that would use an image prior is done by a denoiser instead. You choose the denoiser.
+purpose: Deblur noisy images with a good denoiser, without writing down the prior that the denoiser stands for.
+classification: {linearity: nonlinear, domain: iterative, operation: plug-and-play ADMM deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/plugplay.py, symbol: pnp_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is restored, and the colors stay, since the denoisers are slow. With the
+  RGB scope, each of the red, green and blue channels is restored on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.fft2 and ifft2).'}
+  - {name: PyWavelets, optional: false, note: The wavelet denoisers.}
+  - {name: scikit-image, optional: false, note: The non-local means denoiser (denoise_nl_means).}
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: denoiser
+    label: Denoiser
+    type: select
+    default: stationary
+    options:
+      - {value: wavelet, label: Wavelet thresholding}
+      - {value: stationary, label: Stationary wavelet}
+      - {value: nlm, label: Non-local means}
+    description: 'The denoiser that takes the place of the prior. Wavelet thresholding and the stationary wavelet use BayesShrink with sym4, 3 levels and soft shrinking. Non-local means is the one of scikit-image, with h = 0.8 sigma, 5 x 5 patches, a search distance of 6 and the fast mode.'
+    effect: Non-local means gives the cleanest edges and is by far the slowest. Wavelet thresholding is the fastest and leaves blocky traces.
+  - key: lambda
+    label: Lambda
+    type: number
+    min: 0
+    max: 200
+    step: 0.1
+    default: 10
+    description: The weight of the prior. The denoiser works with sigma = sqrt(lambda / rho).
+    effect: Larger values make the denoiser work harder.
+  - key: rho
+    label: Rho
+    type: number
+    min: 0.001
+    max: 10
+    step: 0.001
+    default: 0.1
+    description: The ADMM penalty at the start. It sets how strongly the data step and the denoiser step must agree.
+    effect: Small values let the steps drift apart. Large values make each step small.
+  - key: gamma
+    label: Gamma
+    type: number
+    min: 1
+    max: 1.5
+    step: 0.01
+    default: 1
+    description: Rho is multiplied by gamma after every step. 1 keeps rho fixed.
+    effect: Values above 1 make the steps shrink, so the result settles, and the denoiser works less in later steps.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: How many ADMM steps to run. Each step runs the denoiser once.
+    effect: More iterations take longer. The result usually settles within 20.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  x_{k+1} = \mathcal{F}^{-1}\!\left(\frac{\overline{H}\, \mathcal{F} g + \rho_k\, \mathcal{F}(v_k - u_k)}{\lvert H \rvert^2 + \rho_k}\right),
+  \qquad
+  v_{k+1} = D_{\sigma_k}(x_{k+1} + u_k),
+  \quad
+  \sigma_k = \sqrt{\lambda / \rho_k},
+  \qquad
+  u_{k+1} = u_k + x_{k+1} - v_{k+1},
+  \quad
+  \rho_{k+1} = \gamma\, \rho_k,
+  \qquad
+  \lambda = {{lambda}},\ \rho_0 = {{rho}},\ \gamma = {{gamma}}
+formulaExplanation: >-
+  ADMM splits the energy 1/2 ||h * x - g||^2 + lambda phi(x) into two copies of the image: x for
+  the data and v for the prior. A scaled difference u makes them agree. The data step
+  has an exact solution in the Fourier domain. H is the transform of the PSF. The prior step is
+  a proximal map of lambda / rho phi, which is a denoising problem for Gaussian noise of
+  variance lambda / rho. Venkatakrishnan, Bouman and Wohlberg replaced it with any good
+  denoiser D, run with sigma = sqrt(lambda / rho). The prior phi is never written down. Chan,
+  Wang and Elgendy showed that the iteration settles when rho grows. Here rho is multiplied by
+  gamma after every step, a simple form of their rule. With gamma = 1, rho stays fixed. The
+  first estimate v is the photo and u starts at 0. The result is the last v.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'H', meaning: The Fourier transform of the PSF}
+  - {symbol: 'x, v', meaning: 'The data copy and the prior copy of the image'}
+  - {symbol: 'u', meaning: The scaled difference between the copies}
+  - {symbol: 'D_\sigma', meaning: The denoiser for Gaussian noise of standard deviation sigma}
+  - {symbol: '\rho_k', meaning: The ADMM penalty at step k}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with v equal to the extended image g, u equal to 0 and rho equal to rho_0.
+  - Solve the data step for x with the FFT.
+  - Denoise x + u with sigma = sqrt(lambda / rho). This is the new v.
+  - Add x - v to u, multiply rho by gamma, and repeat.
+  - Crop the last v to the image.
+complexity:
+  time: O(K (N log N + T))
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, K the number of iterations and T the cost of one run of the denoiser. Non-local means costs about 15 times as much as wavelet thresholding here.
+useCases:
+  - Learning how modern restoration combines a physical model with a denoiser.
+  - Deblurring noisy photos with a strong denoiser.
+advantages:
+  - Any denoiser can be used, so better denoisers give better deblurring.
+  - The blur is handled exactly in the Fourier domain.
+limitations:
+  - Slow with non-local means on large images.
+  - With gamma = 1 there is no general proof that the iteration settles. It did on every test image.
+  - The PSF must be known.
+artifacts:
+  - The artifacts of the denoiser, such as blocky traces with wavelet thresholding.
+  - Ringing next to strong edges when lambda is small.
+references:
+  - kind: paper
+    text: Venkatakrishnan, S. V., Bouman, C. A., and Wohlberg, B. Plug-and-play priors for model based reconstruction. IEEE Global Conference on Signal and Information Processing, 945 to 948, 2013.
+    doi: 10.1109/GlobalSIP.2013.6737048
+  - kind: paper
+    text: Chan, S. H., Wang, X., and Elgendy, O. A. Plug-and-play ADMM for image restoration. Fixed-point convergence and applications. IEEE Transactions on Computational Imaging 3(1), 84 to 98, 2017.
+    doi: 10.1109/TCI.2016.2629286
+  - kind: paper
+    text: Boyd, S., Parikh, N., Chu, E., Peleato, B., and Eckstein, J. Distributed optimization and statistical learning via the alternating direction method of multipliers. Foundations and Trends in Machine Learning 3(1), 1 to 122, 2011.
+    doi: 10.1561/2200000016
+  - kind: paper
+    text: Buades, A., Coll, B., and Morel, J.-M. A review of image denoising algorithms, with a new one. Multiscale Modeling and Simulation 4(2), 490 to 530, 2005.
+    doi: 10.1137/040616024
+implementation: {path: engine/src/pixelnexus_engine/filters/plugplay.py, symbol: pnp_admm_filter}
+tests: [engine/tests/test_plugplay.py]
+learn:
+  oneSentence: Take turns between matching the blurred photo and running a denoiser, until both agree.
+  howItWorks:
+    - Start from the blurred photo.
+    - Sharpen the guess so that its blurred copy matches the photo.
+    - Run a denoiser on the sharpened guess to remove the noise the sharpening raised.
+    - Keep track of how far the two guesses differ, and repeat until they agree.
+  academic: >-
+    Plug-and-play ADMM. A Gaussian denoiser with sigma = sqrt(lambda / rho) replaces the
+    proximal map of the prior. The FFT solves the data proximal map of the quadratic blur model
+    exactly. rho may grow geometrically, after Chan et al.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    denoiser: Which denoiser stands in for the prior.
+    lambda: How hard the denoiser works.
+    rho: How strongly the two guesses must agree.
+    gamma: How fast that agreement is tightened.
+    iterations: How many rounds to run.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Blur a photo with Apply a known blur, add noise with Add Gaussian noise, and compare the three denoisers.
+    - Open the Iteration viewer and watch how fast the result settles.
+  pitfalls:
+    - Non-local means on a large photo. It can take minutes.
+  demos: [iteration-viewer]
+related: [red, tv-deblur, sparse-fista, wavelet-threshold, nlm, richardson-lucy]
+docsPage: filters/restoration/pnp-admm.md

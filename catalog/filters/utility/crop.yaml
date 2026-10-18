@@ -1,0 +1,112 @@
+id: crop
+name: Crop
+aliases: [Trim, Crop to selection]
+family: utility
+tags: [purpose:geometry]
+tier: core
+engine: browser
+phase: '2'
+status: implemented-tested
+planNotes: Crop to the bounds of the selection or to a rectangle you type. Runs from Image > Crop.
+
+summary: Keeps a rectangle of the image and drops the rest. The rectangle starts at the bounds of the selection, or at the whole image. Pixel values do not change.
+purpose: Cut an image down to the part that matters, before filtering or export.
+classification: {linearity: linear, domain: geometric, operation: crop}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/image/transform.ts, symbol: crop}
+supportRadius: '0'
+supportsMask: false
+preview: none
+colorHandling: All four channels are copied as they are.
+boundary: A rectangle that reaches past the image is cut to the image first.
+
+params:
+  - key: x
+    label: Left
+    type: integer
+    min: 0
+    max: 65535
+    default: 0
+    unit: px
+    description: The column of the left edge of the rectangle.
+    effect: Moves the rectangle right.
+  - key: y
+    label: Top
+    type: integer
+    min: 0
+    max: 65535
+    default: 0
+    unit: px
+    description: The row of the top edge of the rectangle.
+    effect: Moves the rectangle down.
+  - key: width
+    label: Width
+    type: integer
+    min: 1
+    max: 65535
+    default: 1
+    unit: px
+    description: The width of the rectangle. The dialog starts at the selection or the image.
+    effect: The width of the result.
+  - key: height
+    label: Height
+    type: integer
+    min: 1
+    max: 65535
+    default: 1
+    unit: px
+    description: The height of the rectangle. The dialog starts at the selection or the image.
+    effect: The height of the result.
+formula: |
+  I_{\text{out}}(x', y') = I(x' + x_0,\; y' + y_0),\qquad 0 \le x' < w,\quad 0 \le y' < h
+formulaExplanation: >-
+  The output pixel at x', y' is the input pixel x_0 columns further right and y_0 rows further
+  down. Only the w x h pixels of the rectangle are kept. The selection is cropped the same way.
+symbols:
+  - {symbol: 'x_0, y_0', meaning: 'The left and top edges of the rectangle'}
+  - {symbol: 'w, h', meaning: 'The width and height of the rectangle'}
+steps:
+  - Cut the rectangle to the image.
+  - Copy each row of the rectangle into the new image.
+  - Crop the selection with the same rectangle.
+complexity:
+  time: O(w h)
+  memory: O(w h)
+  notes: w and h are the width and height of the result.
+useCases:
+  - Keep only the part of a photo that matters.
+  - Make a small test image from a large one.
+advantages:
+  - Lossless. Pixel values never change.
+limitations:
+  - Only rectangles parallel to the image edges.
+artifacts:
+  - None. Pixels are copied, not resampled.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018.
+implementation: {path: web/src/core/image/transform.ts, symbol: crop}
+tests: [web/src/core/image/transform.test.ts]
+learn:
+  oneSentence: Keep a rectangle of the image and drop the rest.
+  howItWorks:
+    - Choose the rectangle, or let the selection choose it.
+    - Every pixel inside it is copied to the new image as it is.
+  academic: >-
+    A crop is a translation of the coordinates followed by a restriction to a rectangle. No value
+    changes, so it commutes with every point and neighborhood filter away from the new edges.
+  paramNotes:
+    x: The left edge.
+    y: The top edge.
+    width: The width of the result.
+    height: The height of the result.
+  tryThis:
+    - Select an area with the marquee, then open Image > Crop. The rectangle starts at the selection.
+  pitfalls:
+    - A filter with a large window behaves differently at the new edges, so crop after filtering when the edges matter.
+  demos: []
+related: [resize, rotate-flip]
+docsPage: filters/utility/crop.md
+command: image.crop

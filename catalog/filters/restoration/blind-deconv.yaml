@@ -1,0 +1,184 @@
+id: blind-deconv
+name: Blind deconvolution
+aliases: [Blind Richardson-Lucy, Blind RL deconvolution]
+family: restoration
+tags: [purpose:sharpening]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: Alternating Richardson-Lucy. Labeled experimental.
+
+summary: Experimental. Estimates both the sharp image and the blur from one photo, by alternating Richardson-Lucy steps for the blur and for the image.
+purpose: Deblur a photo when the blur is not known, or see what blur the photo seems to have.
+classification: {linearity: nonlinear, domain: iterative, operation: alternating blind Richardson-Lucy deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: blind_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is deblurred, with one PSF, and the colors stay. With the RGB scope,
+  each of the red, green and blue channels gets its own PSF. Show PSF gives a gray picture of
+  the PSF with the brightness scope.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.fft2 and ifft2).'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: image
+    options:
+      - {value: image, label: Deblurred image}
+      - {value: psf, label: Show PSF}
+    description: The deblurred image, or the estimated PSF, enlarged in the middle of a black image with its largest weight at 255.
+    effect: Show PSF lets you see what blur the filter found.
+  - key: sigma
+    label: First guess sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 3
+    unit: px
+    description: The first PSF is a Gaussian of this sigma, cut to the support.
+    effect: A guess at least as wide as the real blur works best. A narrow guess tends to stay narrow.
+  - key: support
+    label: Support radius
+    type: integer
+    min: 1
+    max: 25
+    step: 1
+    default: 7
+    unit: px
+    description: The PSF is kept inside a square of 2 r + 1 pixels around its center.
+    effect: Choose it a little larger than the blur. Too large lets the PSF pick up noise.
+  - key: cycles
+    label: Cycles
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    description: How many rounds of PSF steps and image steps to run.
+    effect: More cycles refine both estimates and take longer.
+  - key: psfSteps
+    label: PSF steps per cycle
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 5
+    description: How many Richardson-Lucy steps update the PSF in each cycle, with the image fixed.
+    effect: More steps let the PSF move faster.
+  - key: imageSteps
+    label: Image steps per cycle
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 5
+    description: How many Richardson-Lucy steps update the image in each cycle, with the PSF fixed.
+    effect: More steps sharpen more and raise more noise.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  h \leftarrow \Pi\!\left(h \cdot \frac{f' * \big(g / (h * f)\big)}{\sum f}\right),
+  \qquad
+  f \leftarrow f \cdot \Big(h' * \big(g / (h * f)\big)\Big),
+  \qquad
+  f_0 = g,\ h_0 \propto e^{-(x^2 + y^2) / 2\sigma^2},
+  \qquad
+  \sigma = {{sigma}},\ r = {{support}},\ C = {{cycles}}
+formulaExplanation: >-
+  A blurred photo g is the sharp image f blurred with the PSF h. Blurring is symmetric in f and
+  h, so the Richardson-Lucy step that improves f with h fixed also improves h with f fixed. Fish,
+  Brinicombe, Pike and Walker alternated the two. Each cycle runs a few steps for the PSF, then a
+  few for the image. f' and h' are f and h turned by a half turn. In the PSF step, f plays the
+  role of the blur, so the sum of f takes the place of the sum of h. After each PSF step, Pi
+  keeps the PSF inside a square of radius r around its center, sets negative weights to 0 and
+  scales the sum to 1. The support and these rules are PixelNexus's choices. Values of h * f
+  below 1e-12 count as 1e-12. The pair of f and h is not unique. The sharp photo with a single
+  bright point as the PSF fits the data perfectly, and a narrow first guess tends to drift there.
+  So the filter is experimental.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: "f, f'", meaning: 'The estimate of the sharp image, and the same turned by a half turn'}
+  - {symbol: "h, h'", meaning: 'The estimate of the PSF, and the same turned by a half turn'}
+  - {symbol: '\Pi', meaning: 'Keeps the support, sets negative weights to 0 and scales the sum to 1'}
+  - {symbol: '\sigma', meaning: The sigma of the first Gaussian guess}
+  - {symbol: 'C', meaning: The number of cycles}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with f equal to the extended image and h a Gaussian of sigma, cut to the support.
+  - Run the PSF steps with f fixed. After each one, apply the support, set negative weights to 0 and scale the sum to 1.
+  - Run the image steps with h fixed, as in Richardson-Lucy.
+  - Repeat for the chosen number of cycles.
+  - Crop the image to its size, or show the PSF.
+complexity:
+  time: O(C (P + I) N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, C the number of cycles, and P and I the PSF and image steps per cycle. Each step takes three FFTs.
+useCases:
+  - Learning why blind deconvolution is hard.
+  - A first look at the blur of an old photo or a shaky shot.
+advantages:
+  - Needs no measured PSF.
+  - Values stay positive, as in Richardson-Lucy.
+limitations:
+  - Experimental. The result depends strongly on the first guess and the support.
+  - A first guess narrower than the real blur tends to stay narrow, so little changes.
+  - Noise and large flat areas make the PSF estimate unreliable.
+  - Assumes one blur for the whole image.
+artifacts:
+  - Ringing next to strong edges when the PSF is too wide.
+  - Speckles in flat areas after many image steps.
+references:
+  - kind: paper
+    text: Fish, D. A., Brinicombe, A. M., Pike, E. R., and Walker, J. G. Blind deconvolution by means of the Richardson-Lucy algorithm. Journal of the Optical Society of America A 12(1), 58 to 65, 1995.
+    doi: 10.1364/JOSAA.12.000058
+  - kind: paper
+    text: Richardson, W. H. Bayesian-based iterative method of image restoration. Journal of the Optical Society of America 62(1), 55 to 59, 1972.
+    doi: 10.1364/JOSA.62.000055
+  - kind: paper
+    text: Lucy, L. B. An iterative technique for the rectification of observed distributions. The Astronomical Journal 79, 745, 1974.
+    doi: 10.1086/111605
+implementation: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: blind_deconv}
+tests: [engine/tests/test_restoration.py]
+learn:
+  oneSentence: Guess the blur and the sharp image together, improving one while holding the other still.
+  howItWorks:
+    - Start with the photo as the sharp image and a soft blob as the blur.
+    - Hold the image still and improve the blur so that blurring the image matches the photo better.
+    - Hold the blur still and improve the image, as in Richardson-Lucy.
+    - Repeat, and keep the blur small, positive and summing to 1.
+  academic: >-
+    Alternating Richardson-Lucy updates for the image and the PSF after Fish et al., with a
+    square support, non-negativity and unit sum enforced on the PSF after each update.
+  paramNotes:
+    output: The deblurred image, or the blur the filter found.
+    sigma: The size of the first guess of the blur.
+    support: How far the blur may reach.
+    cycles: How many rounds to run.
+    psfSteps: How fast the blur is refined.
+    imageSteps: How fast the image is sharpened.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Blur a photo with Apply a known blur, then choose Show PSF. Compare the PSF with the blur you applied.
+    - Set the first guess sigma to 0.5 and watch the PSF stay a single point.
+  pitfalls:
+    - Expecting a unique answer. Another first guess can give another pair of image and blur.
+  demos: [stage-viewer]
+related: [richardson-lucy, regularized-rl, wiener-deconv, tv-deblur]
+docsPage: filters/restoration/blind-deconv.md

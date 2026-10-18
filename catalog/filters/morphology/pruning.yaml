@@ -1,0 +1,88 @@
+id: pruning
+name: Pruning
+aliases: [Spur removal]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Removes short branches, or spurs, from thinned lines while keeping the main lines at their full length.
+purpose: Clean up the short branches that thinning leaves from bumps on outlines.
+classification: {linearity: nonlinear, domain: spatial, operation: end point removal and regrowth}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: prune}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background. The filter follows shapes across the whole image, so it always runs on the whole image.
+
+params:
+  - key: length
+    label: Spur length
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 3
+    unit: px
+    description: Branches up to this many pixels long are removed.
+    effect: Larger values remove longer branches.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  X_4 = X_1 \cup \left( (X_2 \oplus H) \cap A \right)^{(n)}
+formulaExplanation: >-
+  X_1 is A with its end points removed n times. This deletes every branch up to n pixels long and shortens the main lines by n. X_2 holds the end points of X_1. They grow back n times with the 3 x 3 square H, but only inside A, which restores the ends of the main lines. X_4 joins both. The four steps follow Gonzalez and Woods. The end point rule is this filter's own. A pixel is an end point when its neighbors are one corner pixel alone, or one side pixel with none, one or both of the corners next to it. All end points go at once in each removal step.
+symbols:
+  - {symbol: 'n', meaning: The spur length}
+  - {symbol: 'H', meaning: The 3 x 3 square}
+steps:
+  - Make the image binary.
+  - Remove the end points, all at once, n times.
+  - Find the end points that are left.
+  - Grow them back n times with the 3 x 3 square, inside the original image.
+  - Join the two results.
+complexity:
+  time: O(N n)
+  memory: O(N)
+  notes: N is the number of pixels per channel and n the spur length.
+useCases:
+  - Clean skeletons and thinned text before analysis.
+advantages:
+  - Main lines keep their full length.
+limitations:
+  - A spur next to the end of a main line can grow back with it.
+artifacts:
+  - Restored spur pixels close to line ends.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: pruningFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Cut short branches off thinned lines, then let the main lines grow back to full length.
+  howItWorks:
+    - Shorten every line end by a few pixels, which removes short branches.
+    - Find the line ends that are left.
+    - Let them grow back along the original lines.
+  academic: >-
+    Pruning by conditional regrowth of end points, the standard spur removal step after thinning.
+  paramNotes:
+    length: The longest branch to remove.
+  tryThis:
+    - Thin a thresholded shape, then prune it with length 3 and compare.
+  pitfalls:
+    - Pruning shapes that are not thin. Use thinning first.
+  demos: [line-profile]
+related: [thinning, hit-or-miss]
+docsPage: filters/morphology/pruning.md

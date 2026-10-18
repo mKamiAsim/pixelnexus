@@ -1,0 +1,158 @@
+id: cls
+name: Constrained least squares
+aliases: [CLS filter, Constrained least squares filtering, CLS restoration]
+family: restoration
+tags: [purpose:sharpening, purpose:denoise]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Undoes a known blur with a smoothness penalty whose weight is set from the noise level, so the result fits the image as closely as the noise allows.
+purpose: Deblur without tuning a weight by hand, given the level of the noise.
+classification: {linearity: nonlinear, domain: frequency, operation: constrained least squares}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: clsGamma}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: noiseSigma
+    label: Noise sigma
+    type: number
+    min: 0.1
+    max: 50
+    step: 0.1
+    default: 5
+    unit: levels
+    description: The standard deviation sigma of the noise, in 8-bit levels.
+    effect: Higher values give a smoother result. The residual of the result is made to match this noise.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{F}(f) = \frac{\overline{H(f)}}{|H(f)|^2 + \gamma |P(f)|^2}\, G(f),\quad \frac{1}{N} \| g - h * \hat{f} \|^2 = \sigma^2,\quad \sigma = {{noiseSigma}}
+formulaExplanation: >-
+  Constrained least squares follows Gonzalez and Woods. It minimizes the roughness |p * f|^2.
+  The constraint is that the blurred estimate differs from the image by as much as the noise. P is
+  the transform of the 4-neighbor Laplacian kernel p. The solution has the form of the Tikhonov
+  filter with weight gamma. Gamma is chosen so that the mean square of the residual g - h * f,
+  per sample of the FFT grid, equals sigma^2. Gonzalez and Woods adjust gamma step by step. This
+  filter finds it by 60 bisection steps on log10 gamma from -10 to 4, its own search. The
+  residual grows with gamma, so the bisection always converges. If no gamma in the range fits,
+  the nearest end is used. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'G, H, F', meaning: 'The spectra of the blurred image, the PSF and the estimate'}
+  - {symbol: 'P', meaning: The transform of the Laplacian kernel}
+  - {symbol: '\gamma', meaning: The weight found from the noise level}
+  - {symbol: 'N', meaning: The number of FFT samples}
+  - {symbol: '\sigma', meaning: The noise standard deviation}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT of the image and of the PSF placed at the grid origin.
+  - Find gamma by bisection so the residual matches sigma^2.
+  - Multiply each frequency by conj(H) / (|H|^2 + gamma |P|^2).
+  - Take the inverse FFT, keep the real part and crop the extension.
+complexity:
+  time: O(N log N + 60 N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image. Each bisection step sums over the spectrum once.
+useCases:
+  - Deblurring when the noise level is known or can be measured.
+advantages:
+  - The weight follows from the noise level, so there is no free parameter to tune.
+limitations:
+  - Needs the noise level and the blur.
+  - The residual is measured on the extended image, so the border mode affects gamma a little.
+artifacts:
+  - Ringing near strong edges and the image border.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, image restoration and reconstruction.
+implementation: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: clsFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Undo a blur and keep the result as smooth as possible, while its error matches the noise you expect.
+  howItWorks:
+    - Tikhonov regularization needs a weight lambda.
+    - Here the weight is chosen so the estimate, blurred again, differs from the image as much as the noise does.
+    - Then the regularized division runs once with that weight.
+  academic: >-
+    Constrained least squares restoration with a Laplacian smoothness criterion, the Lagrange
+    multiplier found by bisection on the residual constraint.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    noiseSigma: The noise level the result may differ by.
+  tryThis:
+    - Add noise of sigma 5 to a blurred image, then set the noise sigma to 5.
+  pitfalls:
+    - A noise sigma far below the real noise. Gamma becomes tiny and the noise is raised.
+  demos: [noise-lab]
+related: [tikhonov, wiener-deconv, inverse-filter]
+docsPage: filters/restoration/cls.md

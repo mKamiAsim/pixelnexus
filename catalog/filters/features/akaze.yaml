@@ -1,0 +1,139 @@
+id: akaze
+name: AKAZE
+aliases: [Accelerated KAZE]
+family: features
+tags: [purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+planNotes: Extra. OpenCV 5 keeps it in cv2.xfeatures2d.
+
+summary: Finds keypoints in a nonlinear scale space, which smooths flat areas but keeps edges, with AKAZE. Keypoints are maxima of the Hessian determinant, each with a size and an orientation. Only the detector runs, not the descriptor.
+purpose: Find keypoints that sit well on object boundaries, since the scale space does not blur edges away.
+classification: {linearity: nonlinear, domain: spatial, operation: Hessian determinant in a nonlinear scale space}
+output: features
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: keypoint_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the 8-bit luma with the BT.709 weights. Alpha is ignored. The image does
+  not change. The keypoints go to the Features panel and are drawn on the canvas, each as a
+  circle of its radius with a line for its angle.
+boundary: Keypoints closer to the edge than their window are dropped.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.xfeatures2d.AKAZE_create and detect.'}
+
+params:
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0.0001
+    max: 0.05
+    step: 0.0001
+    default: 0.001
+    description: The smallest Hessian response a keypoint needs, for an image from 0 to 1. OpenCV uses 0.001.
+    effect: Higher values keep fewer keypoints.
+  - key: octaves
+    label: Octaves
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    description: The number of octaves. OpenCV uses 4.
+    effect: More octaves find larger keypoints.
+  - key: octaveLayers
+    label: Layers per octave
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    description: The number of layers in each octave. OpenCV uses 4.
+    effect: More layers find finer sizes.
+  - key: diffusivity
+    label: Diffusivity
+    type: select
+    default: pm-g2
+    options:
+      - {value: pm-g1, label: Perona-Malik g1}
+      - {value: pm-g2, label: Perona-Malik g2}
+      - {value: weickert, label: Weickert}
+      - {value: charbonnier, label: Charbonnier}
+    description: How strongly edges stop the smoothing. OpenCV uses Perona-Malik g2.
+    effect: Each one lets different edges stop the smoothing, so the keypoints change. The Inspector shows its formula.
+formula: |
+  \frac{\partial L}{\partial t} = \operatorname{div}\big(g(\lvert \nabla L_\sigma \rvert)\, \nabla L\big),
+  \qquad
+  g = \frac{1}{1 + \lvert \nabla L_\sigma \rvert^2 / k^2} \text{ (Perona-Malik g2)},
+  \qquad
+  R = L_{xx} L_{yy} - L_{xy}^2
+formulaExplanation: >-
+  A Gaussian scale space blurs edges as much as flat areas. AKAZE instead lets the image
+  diffuse with a conductance g that falls where the gradient is large, so edges stay sharp.
+  The contrast factor k comes from the gradients of the image. Fast explicit diffusion solves
+  the equation in steps of varying length, which is much faster than the implicit scheme of
+  KAZE. Keypoints are maxima of the determinant of the Hessian, with derivatives scaled to
+  each level, above the threshold. The orientation is the dominant direction of the first
+  derivatives in a circle around the keypoint, found with a sliding window of 60 degrees. The
+  Inspector shows the formula of the chosen diffusivity.
+symbols:
+  - {symbol: 'L', meaning: 'The image as it diffuses over time t'}
+  - {symbol: 'g', meaning: 'The conductance, small at strong edges'}
+  - {symbol: 'k', meaning: 'The contrast factor'}
+  - {symbol: 'R', meaning: 'The determinant of the Hessian'}
+  - {symbol: 'x, y', meaning: 'The keypoint position, with the center of the top-left pixel at 0, 0'}
+  - {symbol: '\theta', meaning: 'The orientation, counterclockwise from the x axis'}
+steps:
+  - Build a nonlinear scale space with fast explicit diffusion.
+  - Find maxima of the Hessian determinant in position and scale.
+  - Drop weak ones below the threshold.
+  - Give each one the dominant direction of its derivatives.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each diffusion step costs O(N), and the number of steps depends on the scales.
+useCases:
+  - Matching images where object boundaries matter, such as in man-made scenes.
+  - Comparing linear and nonlinear scale spaces.
+advantages:
+  - Keypoints sit on boundaries more precisely than with a Gaussian scale space.
+  - Faster than KAZE.
+limitations:
+  - The contrast factor depends on the image, so the same scene at another contrast gives other keypoints.
+  - Only the detector runs. The binary descriptors are not computed.
+artifacts:
+  - On the Siemens star, no keypoint lies within 39 pixels of the center, where the spokes are fine. 104 of the 246 lie on the rim, where the spokes meet the gray ground.
+references:
+  - kind: paper
+    text: Alcantarilla, P. F., Nuevo, J., and Bartoli, A. Fast explicit diffusion for accelerated features in nonlinear scale spaces. British Machine Vision Conference, 13.1 to 13.11, 2013.
+    doi: 10.5244/C.27.13
+  - kind: library
+    text: OpenCV documentation, cv2.xfeatures2d.AKAZE_create and detect.
+implementation: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: akaze}
+tests: [engine/tests/test_keypoints.py]
+learn:
+  oneSentence: Find keypoints in a version of the image that is smoothed but keeps its edges.
+  howItWorks:
+    - Smooth the image in steps, but less where the brightness changes strongly.
+    - At each step, find points where the brightness curves the same way in all directions.
+    - Keep the strong ones that stand out in place and size.
+    - Give each a direction from the brightness change around it.
+  academic: >-
+    Hessian determinant extrema in a nonlinear scale space built by fast explicit diffusion, with dominant-orientation estimation, after Alcantarilla et al.
+  paramNotes:
+    threshold: How strong a keypoint must be.
+    octaves: How many sizes are tried.
+    octaveLayers: How finely the sizes are tried.
+    diffusivity: How strongly edges stop the smoothing.
+  tryThis:
+    - Compare the keypoints of AKAZE and SIFT on the Siemens star.
+  pitfalls:
+    - Comparing thresholds with SIFT or ORB. Each detector has its own scale of response.
+  demos: [feature-viewer]
+related: [sift, orb, brisk, anisotropic-diffusion]
+docsPage: filters/features/akaze.md

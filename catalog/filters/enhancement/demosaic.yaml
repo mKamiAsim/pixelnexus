@@ -1,0 +1,130 @@
+id: demosaic
+name: Demosaicing
+aliases: [Debayering, Bayer demosaicing, CFA interpolation, Malvar-He-Cutler demosaicing]
+family: enhancement
+tags: [purpose:color, purpose:simulation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Simulates a Bayer mosaic, then demosaics (bilinear and Malvar-He-Cutler).
+
+summary: Keeps one color per pixel, as a camera sensor with a Bayer filter does, then rebuilds the missing two colors with bilinear or Malvar-He-Cutler interpolation.
+purpose: Show how a camera turns its single-color samples into a full color image, and compare demosaicing methods and their artifacts.
+classification: {linearity: linear, domain: spatial, operation: color filter array sampling and interpolation}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/demosaic.ts, symbol: DEMOSAIC_TAPS}
+supportRadius: 2 for Malvar-He-Cutler, 1 for bilinear
+supportsMask: true
+preview: live
+colorHandling: >-
+  Works on red, green and blue together. Each pixel keeps the channel that the pattern puts at
+  its image position, and the other two are estimated from the neighbors. Alpha is kept.
+boundary: >-
+  Always reflect 101. It keeps the Bayer phase, since the pixel at -1 copies the pixel at 1,
+  which has the same color in the pattern.
+
+params:
+  - key: pattern
+    label: Pattern
+    type: select
+    default: rggb
+    options:
+      - {value: rggb, label: RGGB}
+      - {value: bggr, label: BGGR}
+      - {value: grbg, label: GRBG}
+      - {value: gbrg, label: GBRG}
+    description: The colors of the top-left 2 x 2 block of the Bayer filter, row by row.
+    effect: Changes which pixels see which color. The image row and column decide, so the pattern stays the same across tiles.
+  - key: method
+    label: Method
+    type: select
+    default: malvar
+    options:
+      - {value: malvar, label: Malvar-He-Cutler}
+      - {value: bilinear, label: Bilinear}
+    description: How the missing colors are estimated.
+    effect: Malvar-He-Cutler adds a correction from the known channel, which gives sharper edges and less false color.
+  - key: output
+    label: Show
+    type: select
+    default: image
+    options:
+      - {value: image, label: Demosaiced image}
+      - {value: mosaic, label: Bayer mosaic}
+    description: Show the rebuilt image, or the mosaic that the sensor would record, each pixel in its own color.
+    effect: The mosaic view shows what information is really there.
+formula: |
+  \hat G = \hat G^{bl} + \alpha\, \Delta_R,
+  \quad
+  \hat R = \hat R^{bl} + \beta\, \Delta_G \text{ (at green)},
+  \quad
+  \hat R = \hat R^{bl} + \gamma\, \Delta_B \text{ (at blue)},
+  \qquad \alpha = \tfrac{1}{2},\ \beta = \tfrac{5}{8},\ \gamma = \tfrac{3}{4}
+formulaExplanation: >-
+  The hat with bl is the bilinear estimate. For G it is the mean of the 4 axial neighbors. For R or
+  B at a green pixel it is the mean of the 2 nearest samples. For R at B or B at R it is the mean
+  of the 4 diagonal samples. Malvar, He and Cutler add a Laplacian of the channel that is known at the
+  pixel. Delta_R is the red value minus the mean of the 4 red samples 2 pixels away. Delta_G is a
+  9-point Laplacian of green and Delta_B a 5-point Laplacian of blue. Blue is estimated like red. They chose alpha, beta and
+  gamma for the smallest mean squared error on the Kodak image set, rounded to dyadic fractions.
+  The result is eight 5 x 5 filters with weights in eighths, as Getreuer's IPOL article shows
+  them. Bilinear is the same without the correction.
+symbols:
+  - {symbol: '\hat G^{bl}, \hat R^{bl}', meaning: 'The bilinear estimates'}
+  - {symbol: '\Delta_R, \Delta_G, \Delta_B', meaning: 'Laplacians of the channel known at the pixel'}
+  - {symbol: '\alpha, \beta, \gamma', meaning: 'The weights of the corrections'}
+steps:
+  - Keep at each pixel only the channel that the Bayer pattern puts there.
+  - At each pixel, estimate each missing channel with the 5 x 5 filter for that case, or with the bilinear mean.
+  - Keep the recorded channel as it is.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. At most 11 taps per missing channel.
+useCases:
+  - Teaching how a single-sensor camera makes color.
+  - Comparing demosaicing artifacts such as zippers and false color.
+advantages:
+  - Malvar-He-Cutler is linear and fast, yet much better than bilinear.
+  - The mosaic view shows exactly what the sensor records.
+limitations:
+  - The input is a full color image. A real raw file would also need black level, white balance and the camera's own pattern.
+  - Fine detail near the sampling limit still turns into false color and moire.
+artifacts:
+  - Zipper patterns along sharp edges, strongest with bilinear.
+  - False color on fine gray detail.
+references:
+  - kind: paper
+    text: Malvar, H. S., He, L.-w. and Cutler, R. High-quality linear interpolation for demosaicing of Bayer-patterned color images. IEEE International Conference on Acoustics, Speech, and Signal Processing, volume 3, 485 to 488, 2004.
+    doi: 10.1109/ICASSP.2004.1326587
+  - kind: paper
+    text: Getreuer, P. Malvar-He-Cutler Linear Image Demosaicking. Image Processing On Line 1, 83 to 89, 2011.
+    doi: 10.5201/ipol.2011.g_mhcd
+  - kind: library
+    text: OpenCV documentation, color conversions, Bayer to RGB.
+    url: https://docs.opencv.org/4.x/de/d25/imgproc_color_conversions.html
+implementation: {path: web/src/core/filters/enhancement/demosaic.ts, symbol: demosaicFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/cfa.test.ts]
+learn:
+  oneSentence: A camera sensor sees one color per pixel, and demosaicing guesses the other two from the neighbors.
+  howItWorks:
+    - Keep only red, green or blue at each pixel, in the Bayer pattern of a camera.
+    - Estimate each missing color from the nearest pixels that recorded it.
+    - With Malvar-He-Cutler, correct the estimate with how the known color changes around the pixel.
+  academic: >-
+    Bayer color filter array interpolation: bilinear, and the gradient-corrected linear filters of
+    Malvar, He and Cutler.
+  paramNotes:
+    pattern: Which colors the top-left 2 x 2 block records.
+    method: How the missing colors are guessed.
+    output: Show the result, or what the sensor records.
+  tryThis:
+    - Open the Siemens star test image and compare bilinear with Malvar-He-Cutler near the center, where the spokes are finest.
+  pitfalls:
+    - Expecting a perfect copy. Detail finer than the mosaic can hold is lost.
+  demos: [line-profile]
+related: [color-threshold, resize]
+docsPage: filters/enhancement/demosaic.md

@@ -1,0 +1,93 @@
+id: posterize
+name: Posterize
+aliases: [Posterization, Quantize levels]
+family: artistic
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Reduces each channel to a few flat levels, for a poster-like look with bands of color.
+purpose: Create a graphic, poster-like style, and show what too few intensity levels do to an image.
+classification: {linearity: nonlinear, domain: point, operation: quantization transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: posterizeTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - key: levels
+    label: Levels
+    type: integer
+    min: 2
+    max: 64
+    step: 1
+    default: 4
+    description: How many output levels each channel keeps.
+    effect: Fewer levels give flatter, bolder bands.
+  - ref: channelScope
+formula: |
+  I_{\text{out}} = \frac{255}{n - 1} \min\!\left(n - 1,\ \left\lfloor \frac{n I}{256} \right\rfloor\right),
+  \qquad n = {{levels}}
+formulaExplanation: >-
+  The range 0 to 255 is cut into n bins of equal width 256 / n. Each bin maps to one of n levels
+  spread evenly from 0 to 255, so black and white stay. This bin rule is PixelNexus's own.
+  Programs differ here. Pillow's ImageOps.posterize keeps the top bits of each value instead,
+  and others round to the nearest level. Gonzalez and Woods show the same effect when they
+  reduce the number of intensity levels.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: 'n', meaning: 'The number of levels'}
+steps:
+  - Build the 256-entry table of bins and levels.
+  - Look up every pixel value in the table.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Poster and pop-art styles.
+  - Teaching intensity resolution and false contours.
+advantages:
+  - Simple and fast. Black and white stay.
+limitations:
+  - The bins have fixed edges, so the bands do not follow the image content.
+artifacts:
+  - False contours, visible steps in smooth gradients.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, intensity resolution.
+  - kind: library
+    text: Pillow documentation, the ImageOps module.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageOps.html
+implementation: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: posterizeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep only a few brightness levels per channel, so smooth shading turns into flat bands.
+  howItWorks:
+    - Split the range 0 to 255 into equal bins.
+    - Give every value in a bin the same output level.
+    - Spread the output levels evenly from black to white.
+  academic: >-
+    Uniform quantization of each channel to n levels, the cause of false contouring at low
+    intensity resolution.
+  paramNotes:
+    levels: How many levels each channel keeps.
+    channelScope: Posterize the colors, or the brightness only.
+  tryThis:
+    - Open the gray ramp test image with 4 levels. The ramp turns into four steps.
+  pitfalls:
+    - Expecting smooth gradients to survive. They always turn into bands.
+  demos: [point-op-curve]
+related: [solarize, dithering, kmeans-color]
+docsPage: filters/artistic/posterize.md

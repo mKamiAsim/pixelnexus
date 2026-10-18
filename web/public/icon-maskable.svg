@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>PixelNexus</title>
+  <rect width="512" height="512" fill="#1f63d6"/>
+  <rect x="130" y="130" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.35"/>
+  <rect x="220" y="130" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.6"/>
+  <rect x="310" y="130" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.35"/>
+  <rect x="130" y="220" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.6"/>
+  <rect x="220" y="220" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="1"/>
+  <rect x="310" y="220" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.6"/>
+  <rect x="130" y="310" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.35"/>
+  <rect x="220" y="310" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.6"/>
+  <rect x="310" y="310" width="72" height="72" rx="10.08" fill="#ffffff" fill-opacity="0.35"/>
+</svg>

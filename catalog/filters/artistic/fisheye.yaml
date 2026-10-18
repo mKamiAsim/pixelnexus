@@ -1,0 +1,101 @@
+id: fisheye
+name: Fisheye distortion
+aliases: [Fisheye lens, Bulge]
+family: artistic
+tags: [purpose:geometry]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Bends the image as a fisheye lens would, enlarging the center and pressing the edges together.
+purpose: Give a photo the round, bulging look of a fisheye lens.
+classification: {linearity: linear, domain: geometric, operation: fisheye radial mapping}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/distort.ts, symbol: fisheyeSource}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All channels move together, and alpha moves with them, so transparency stays with its colors.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. It fills positions that the
+  mapping reads from outside the image. With the constant border they are black and transparent.
+  The mapping depends on the position in the whole image, so the filter always runs on the whole
+  image.
+
+params:
+  - key: fov
+    label: Field of view
+    type: number
+    min: 10
+    max: 170
+    step: 1
+    default: 120
+    unit: deg
+    description: The diagonal field of view of the fisheye, in degrees.
+    effect: Larger values bulge the center more.
+  - ref: border
+formula: |
+  r_s = \frac{\tan(r\, \theta_m)}{\tan \theta_m},
+  \qquad \theta_m = \frac{ {{fov}}^{\circ} }{2}
+formulaExplanation: >-
+  An equidistant fisheye lens maps the angle theta of a ray to an image radius proportional to
+  theta, one of the projections that Kannala and Brandt describe. A normal, rectilinear lens maps
+  it to a radius proportional to tan theta. The filter treats the image as a rectilinear view
+  with the same diagonal field and redraws it as an equidistant fisheye. A pixel at radius r
+  shows the ray at angle r theta_m, which the source shows at tan(r theta_m) / tan(theta_m).
+  Near the center r_s is less than r, so the center is enlarged, while the corners stay where
+  they are. Each output pixel reads the source at the mapped position with bilinear interpolation, the inverse mapping of Gonzalez and Woods, so no holes appear.
+symbols:
+  - {symbol: 'r', meaning: 'The distance of an output pixel from the image center, as a share of half the diagonal'}
+  - {symbol: 'r_s', meaning: 'The distance of the source position it reads, in the same unit'}
+  - {symbol: '\theta_m', meaning: 'Half the field of view'}
+steps:
+  - For each output pixel, find its distance r from the center.
+  - Compute the source distance tan(r theta_m) / tan(theta_m), in the same direction.
+  - Read the source there with bilinear interpolation, using the border mode outside the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each output pixel reads four source pixels.
+useCases:
+  - Fisheye and action-camera looks.
+  - Showing how lens projections differ.
+advantages:
+  - Based on a real lens projection.
+  - The corners stay fixed, so the frame stays filled.
+limitations:
+  - Real fisheye photos have a circular or very wide field. This filter keeps the frame.
+artifacts:
+  - Soft corners, where the source is pressed together.
+references:
+  - kind: paper
+    text: Kannala, J. and Brandt, S. S. A generic camera model and calibration method for conventional, wide-angle, and fish-eye lenses. IEEE Transactions on Pattern Analysis and Machine Intelligence 28(8), 1335 to 1340, 2006.
+    doi: 10.1109/TPAMI.2006.153
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, geometric transformations and image interpolation.
+implementation: {path: web/src/core/filters/artistic/distort.ts, symbol: fisheyeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Bend the image as a fisheye lens would, with a big center and squeezed edges.
+  howItWorks:
+    - Measure how far each pixel is from the center.
+    - Read the image from closer to the center, more so near the middle.
+    - Keep the corners where they are.
+  academic: >-
+    Reprojection of a rectilinear image into the equidistant fisheye model r = f theta with the
+    same diagonal field of view, by inverse mapping and bilinear interpolation.
+  paramNotes:
+    fov: How wide the imagined lens is. Wider bulges more.
+    border: How positions outside the image are filled.
+  tryThis:
+    - Use the checkerboard test image with field of view 160.
+  pitfalls:
+    - Expecting more of the scene. The filter can only rearrange pixels that are there.
+  demos: [line-profile]
+related: [barrel, pincushion, swirl]
+docsPage: filters/artistic/fisheye.md

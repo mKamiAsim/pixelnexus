@@ -1,0 +1,84 @@
+id: outline
+name: Outline
+aliases: [Contour, Pillow CONTOUR]
+family: artistic
+tags: [purpose:edge]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Fixed kernel.
+
+summary: Turns flat areas white and draws the darker side of every edge as a dark line, like a pen outline.
+purpose: Make a line-drawing look from a photo or a graphic.
+classification: {linearity: linear, domain: spatial, operation: Laplacian with offset}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/kernels.ts, symbol: CONTOUR_ROWS}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is outlined on its own, so edges get colored lines. With the
+  brightness scope, the lines are gray. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. Pillow leaves the outermost pixels unchanged instead.
+
+params:
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  I_{\text{out}} = 255 + 8\, I(x, y) - \sum_{\text{8 neighbors}} I
+formulaExplanation: >-
+  This is Pillow's CONTOUR filter: 8 in the center and -1 at the 8 neighbors, plus 255. The sum
+  without the offset is a Laplacian, 0 in flat areas. So flat areas turn white. A pixel darker
+  than its neighbors gives a negative sum and a dark line. A pixel brighter than its neighbors
+  gives a value above 255, which clips to white. So each edge gets a dark line on its darker side.
+symbols:
+  - {symbol: 'I(x, y)', meaning: 'The input at the pixel'}
+steps:
+  - Multiply the pixel by 8 and subtract its 8 neighbors.
+  - Add 255 and clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Line-drawing and coloring-book looks.
+  - Finding the outlines of flat shapes.
+advantages:
+  - Simple and fast, and the same as Pillow's CONTOUR away from the edge.
+limitations:
+  - Noise and texture become many small dark marks. Smooth the image first.
+  - Lines appear only on the darker side of an edge.
+artifacts:
+  - Speckle in textured areas.
+references:
+  - kind: library
+    text: Pillow documentation, ImageFilter module, built-in filters.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageFilter.html
+implementation: {path: web/src/core/filters/artistic/kernels.ts, symbol: outlineFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Make flat areas white and draw dark lines where the image is darker than its surroundings.
+  howItWorks:
+    - Compare each pixel with the mean of its 8 neighbors.
+    - Turn flat areas white.
+    - Turn pixels darker than their neighbors dark, which draws the edges.
+  academic: >-
+    An 8-neighbor Laplacian plus an offset of 255, as in Pillow's CONTOUR kernel.
+  paramNotes:
+    border: How the window is filled past the image edge.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Outline each color or only the brightness.
+  tryThis:
+    - Blur a photo slightly, then outline it. Compare with outlining it directly.
+  pitfalls:
+    - Outlining a noisy image. Every grain becomes a dot.
+  demos: [line-profile]
+related: [emboss, laplacian, pencil-sketch]
+docsPage: filters/artistic/outline.md

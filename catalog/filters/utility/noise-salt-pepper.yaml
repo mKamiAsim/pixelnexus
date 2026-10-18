@@ -1,0 +1,122 @@
+id: noise-salt-pepper
+name: Add salt-and-pepper noise
+aliases: [Impulse noise, Salt and pepper noise]
+family: utility
+tags: [purpose:simulation, noise:impulse]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Noise lab.
+
+summary: Turns a random share of pixels pure white or pure black.
+purpose: Make test images with impulse noise, the kind the median filter removes well.
+classification: {linearity: nonlinear, domain: statistical, operation: random impulse replacement}
+output: image
+representation: random-process
+representationLabel: exact
+representationSource: {path: web/src/core/math/random.ts, symbol: positionUniform}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: A noisy pixel gets the same value, 0 or 255, in all three channels. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value and position.
+
+params:
+  - key: amount
+    label: Amount
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.05
+    description: The share of pixels that become white or black.
+    effect: 0.05 changes about 5 in every 100 pixels.
+  - key: salt
+    label: Salt share
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: Of the noisy pixels, the share that becomes white. The rest become black.
+    effect: 1 gives only white dots, 0 only black dots.
+  - key: seed
+    label: Seed
+    type: integer
+    min: 0
+    max: 999999
+    step: 1
+    default: 1
+    description: The starting number of the random generator.
+    effect: The same seed always gives the same noise. Change it to get different noise.
+
+formula: |
+  I_{\text{out}}(x,y) =
+  \begin{cases}
+  255 & \text{if } u < p \text{ and } v < s \\
+  0 & \text{if } u < p \text{ and } v \ge s \\
+  I(x,y) & \text{otherwise}
+  \end{cases}
+  \qquad
+  p = {{amount}}, \quad s = {{salt}}
+formulaExplanation: >-
+  Two uniform random numbers u and v between 0 and 1 are made for each pixel from the seed and
+  the position. If u is below the amount p, the pixel becomes noise: white when v is below the
+  salt share s, black otherwise. All three channels change together.
+symbols:
+  - {symbol: 'I', meaning: 'Input pixel'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output pixel'}
+  - {symbol: 'u, v', meaning: 'Uniform random numbers between 0 and 1 for this pixel'}
+  - {symbol: 'p', meaning: 'Amount, the probability that a pixel becomes noise'}
+  - {symbol: 's', meaning: 'Salt share, the probability that a noisy pixel is white'}
+steps:
+  - For each pixel, hash the seed and the position into two uniform numbers u and v.
+  - If u is at least the amount, keep the pixel.
+  - Otherwise set red, green and blue to 255 when v is below the salt share, and to 0 when it is not.
+  - Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Test images for the median filter and other rank filters.
+  - Show why linear blurs handle impulse noise badly.
+advantages:
+  - The share of noisy pixels is known, so a repair can be measured.
+  - The same seed always gives the same noise.
+limitations:
+  - Real impulse noise, such as dead pixels, sits at fixed positions and may not be pure white or black.
+artifacts:
+  - Isolated white and black dots.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5.
+  - kind: web
+    text: Wellons, C. Prospecting for hash functions, 2018. The source of the integer hash.
+    url: https://nullprogram.com/blog/2018/07/31/
+implementation: {path: web/src/core/filters/utility/noise.ts, symbol: saltPepperNoiseFilter}
+tests: [web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It turns a few random pixels pure white or pure black, like specks of salt and pepper.
+  howItWorks:
+    - For each pixel, roll a random number.
+    - If it falls below the amount, the pixel becomes noise.
+    - Roll again to choose white or black.
+    - All other pixels stay as they are.
+  academic: >-
+    Impulse noise replaces values instead of adding to them. A noisy value carries no
+    information about the true value, which is why averaging handles it badly and the median
+    handles it well.
+  paramNotes:
+    amount: The share of pixels that become noise.
+    salt: Of the noisy pixels, the share that turns white.
+    seed: Which random numbers to use. The same seed repeats the same noise.
+  tryThis:
+    - Add noise with amount 0.1. Compare a 3x3 median with a 3x3 box filter.
+  pitfalls:
+    - Using an amount above about 0.5 with a 3x3 median. Then the median often lands on noise too.
+  demos: [line-profile]
+related: [noise-gaussian, median, box]
+docsPage: filters/utility/noise-salt-pepper.md

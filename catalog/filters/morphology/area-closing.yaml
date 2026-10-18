@@ -1,0 +1,112 @@
+id: area-closing
+name: Area closing
+aliases: [Area closing filter, Grayscale area closing]
+family: morphology
+tags: [purpose:morphology]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: Max-tree.
+
+summary: Removes dark spots smaller than a given area, whatever their shape, after Vincent. Unlike a closing with a structuring element, it keeps thin long structures whose area is large, and it never changes the shape of what it keeps.
+purpose: Remove small dark specks and pits by size, while keeping every larger structure exactly.
+classification: {linearity: nonlinear, domain: morphological, operation: connected attribute filter}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: attribute_stages}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Each plane of the channel scope is rounded to 8 bits and filtered on its own. By default these
+  are the red, green and blue channels.
+boundary: Components end at the image edge. Nothing is padded.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.morphology.area_closing.'}
+
+params:
+  - key: area
+    label: Area
+    type: integer
+    min: 1
+    max: 100000
+    step: 1
+    default: 64
+    unit: px
+    description: Dark components with fewer pixels than this are removed. scikit-image uses 64.
+    effect: Larger values remove larger pits.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: "8 (sides and corners)"}
+      - {value: "4", label: "4 (sides only)"}
+    description: Which neighbors join a component. scikit-image uses 4, its connectivity 1. 8 is our choice, as for connected-component labeling.
+    effect: With 8 neighbors, diagonal touches join components, so fewer of them count as small.
+  - ref: channelScope
+    default: rgb
+formula: |
+  \phi_a(I) = \bigwedge \{ \phi_B(I) : B \text{ connected},\ \lvert B \rvert \ge a \}
+formulaExplanation: >-
+  Threshold the image at every level. At each level, the dark pixels split into connected
+  components. The area closing removes every component with fewer than a pixels, so a pixel
+  rises to the lowest level at which it still belongs to a large enough
+  component. Vincent showed this equals the infimum of all closings with connected structuring
+  elements of at least a pixels. So no fixed shape is imposed, and what is kept is kept
+  exactly. scikit-image computes it on a max-tree, after Salembier, Oliveras and Garrido, of the inverted image.
+symbols:
+  - {symbol: 'a', meaning: 'The area'}
+  - {symbol: 'B', meaning: 'A connected structuring element'}
+steps:
+  - Build the tree of the dark components of all threshold levels.
+  - Mark the components with fewer pixels than the area.
+  - Give each pixel the level of the nearest component that is kept.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels, for building the tree.
+useCases:
+  - Removing small dark holes and specks from scans and microscope images.
+  - Cleaning a gray image before a threshold, without rounding the edges of objects.
+advantages:
+  - Keeps the shape of every structure it does not remove.
+  - Thin long structures survive if their area is large.
+limitations:
+  - Only size counts, so a small but important feature goes.
+  - Noise can join a small spot to a large region, which then survives.
+artifacts:
+  - Flat plateaus where pits were filled.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological area openings and closings for grey-scale images. In Shape in Picture, Springer, 197 to 208, 1994.
+    doi: 10.1007/978-3-662-03039-4_13
+  - kind: paper
+    text: Salembier, P., Oliveras, A., and Garrido, L. Antiextensive connected operators for image and sequence processing. IEEE Transactions on Image Processing 7(4), 555 to 570, 1998.
+    doi: 10.1109/83.663500
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.area_closing.
+implementation: {path: engine/src/pixelnexus_engine/filters/tree_morphology.py, symbol: area_closing_filter}
+tests: [engine/tests/test_tree_morphology.py]
+learn:
+  oneSentence: Remove every dark spot smaller than a size, and leave the rest exactly as it was.
+  howItWorks:
+    - Find the dark connected areas at every brightness level.
+    - Remove the areas with fewer pixels than the limit.
+    - Large structures, thin or not, stay untouched.
+  academic: >-
+    Grayscale area closing of Vincent on the max-tree of the inverted image, as in scikit-image.
+  paramNotes:
+    area: The smallest area to keep.
+    connectivity: Which neighbors join an area.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Compare it with a closing of a similar size on thin lines. The lines survive here.
+  pitfalls:
+    - An area larger than the objects you want. They go too.
+  demos: [line-profile]
+related: [closing, area-opening, attribute-opening]
+docsPage: filters/morphology/area-closing.md

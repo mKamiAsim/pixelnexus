@@ -1,0 +1,38 @@
+id: object-select-classical
+name: Object selection (classical)
+group: auto
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+planNotes: Box to GrabCut.
+params: []
+summary: "Select > Object turns a rough box around an object into a selection of the object, with GrabCut and no AI."
+steps:
+  - "Take the rectangle around the current selection as the box."
+  - "Send the image and the selection to the engine, which runs the GrabCut filter with its defaults."
+  - "Everything outside the box is background. GrabCut learns the colors inside and outside, and cuts."
+  - "The object replaces the selection, as one history step."
+implementation:
+  path: "web/src/app/seedActions.ts"
+  symbol: "selectObject"
+tests:
+  - "engine/tests/test_interactive.py"
+  - "web/tests/e2e/filters.spec.ts"
+references:
+  - kind: "paper"
+    text: "Rother, C., Kolmogorov, V., and Blake, A. GrabCut, interactive foreground extraction using iterated graph cuts. ACM Transactions on Graphics 23(3), 309 to 314, 2004."
+    doi: "10.1145/1015706.1015720"
+learn:
+  oneSentence: "Draw a box around an object, then choose Select > Object."
+  howItWorks:
+    - "Everything outside your box counts as background."
+    - "The colors inside and outside are learned."
+    - "A graph cut splits the box along the colors and edges."
+  academic: "GrabCut of Rother, Kolmogorov and Blake, as in OpenCV, from the rectangle around the selection. See the GrabCut filter for the details."
+  tryThis:
+    - "Draw a loose rectangle around a colored object with the marquee, then choose Select > Object."
+  pitfalls:
+    - "A box that cuts through the object. Parts outside the box never join."
+  demos: []
+docsPage: "selection/seeds.md"

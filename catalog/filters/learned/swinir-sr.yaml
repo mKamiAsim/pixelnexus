@@ -1,0 +1,97 @@
+id: swinir-sr
+name: SwinIR super-resolution
+aliases: [SwinIR 2x, Transformer super-resolution]
+family: learned
+tags: [purpose:enhance]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: swinir-lightweight-x2
+changesSize: true
+planNotes: The lightweight 2x model of SwinIR, a variant of the SwinIR entry. Official weights, exported to ONNX once with tools/export_models.py, for tiles of 128 pixels.
+
+summary: Enlarges an image two times with the lightweight SwinIR model, a small network of Swin Transformer blocks trained on clean images shrunk with bicubic. It rebuilds detail that bicubic resizing leaves soft, but it cannot recover what blur or noise destroyed. It needs a downloaded model.
+purpose: Compare a transformer super-resolution model with bicubic, FSRCNN and Real-ESRGAN.
+classification: {linearity: nonlinear, domain: learned, operation: transformer super-resolution}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: swinir_sr}
+supportRadius: '32'
+supportsMask: false
+preview: on-demand
+colorHandling: >-
+  Colors are premultiplied by alpha first, as Resize does, and alpha is enlarged with bicubic
+  (OpenCV INTER_CUBIC).
+boundary: >-
+  The image is mirrored past its edges. It runs in tiles of 128 pixels that overlap by 32 pixels
+  on each side, and only the center of each tile is kept. The result is close to a run on the
+  whole image, not equal.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: scale
+    label: Scale
+    type: integer
+    min: 2
+    max: 2
+    step: 1
+    default: 2
+    unit: x
+    description: How many times larger the image becomes in each direction. The model was trained for 2 times only.
+    effect: Fixed by the model.
+formula: |
+  F_0 = H_{SF}(y),\quad F_{DF} = H_{DF}(F_0),\quad \hat{x} = \text{PixelShuffle}_2\big(H_{REC}(F_{DF} + F_0)\big)
+formulaExplanation: >-
+  y is the small image. A convolution H_SF gives shallow features. Four residual Swin
+  Transformer groups H_DF give deep features, with attention inside windows of 8 x 8 pixels.
+  The windows shift by 4 pixels in every second block. A last convolution H_REC gives 12 channels, and the
+  pixel shuffle turns them into a picture two times larger.
+symbols:
+  - {symbol: 'y', meaning: 'The small image'}
+  - {symbol: 'H_{SF}, H_{DF}, H_{REC}', meaning: 'Shallow features, deep features and reconstruction'}
+  - {symbol: '\hat{x}', meaning: 'The enlarged image'}
+steps:
+  - Premultiply the colors by alpha and mirror the image past its edges.
+  - Cut it into tiles of 128 pixels that overlap by 32 pixels on each side.
+  - Run the network on each tile and keep the center, now two times larger.
+  - Enlarge alpha with bicubic.
+complexity:
+  time: O(N M^2)
+  memory: O(4 N)
+  notes: N is the number of input pixels and M = 8 the window side. The output has 4 times as many pixels. About 0.91 million weights.
+useCases:
+  - Enlarging clean small images two times with sharper edges than bicubic.
+advantages:
+  - Small for a transformer, and sharper than bicubic on clean images.
+limitations:
+  - Trained on clean images shrunk with bicubic. Noise, blur and JPEG artifacts in the input stay or get stronger.
+  - Two times only.
+artifacts:
+  - Over-sharp, slightly wavy edges on text and fine lines.
+references:
+  - kind: paper
+    text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+    doi: 10.1109/ICCVW54120.2021.00210
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: swinir_sr}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A small transformer network enlarges the image two times and rebuilds sharp edges.
+  howItWorks:
+    - The network was trained on clean images that were shrunk on purpose.
+    - It learned how the lost detail usually looked.
+    - Its last layer turns many channels into a two times larger picture.
+  academic: >-
+    The lightweight SwinIR model for 2x: four residual Swin Transformer groups of six blocks and
+    a direct pixel-shuffle upsampler, run in overlapping tiles.
+  paramNotes:
+    scale: Two times.
+  tryThis:
+    - Shrink an image with Resize, then compare SwinIR with bicubic Resize and FSRCNN.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [srcnn, real-esrgan, edsr, swinir]
+docsPage: filters/learned/swinir-sr.md

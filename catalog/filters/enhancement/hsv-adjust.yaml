@@ -1,0 +1,124 @@
+id: hsv-adjust
+name: Hue, saturation and value adjustment
+aliases: [HSV adjustment, Hue/Saturation]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Shifts the hue and scales the saturation and the value of every pixel in the HSV color model.
+purpose: Adjust colors the way people describe them, by which color, how strong and how bright.
+classification: {linearity: nonlinear, domain: color, operation: HSV adjustment}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: hsvAdjustFilter}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each pixel goes to HSV and back. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: hue
+    label: Hue
+    type: angle
+    min: -180
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The angle added to the hue.
+    effect: Turns all colors around the color wheel.
+  - key: saturation
+    label: Saturation
+    type: number
+    min: 0
+    max: 300
+    step: 1
+    default: 130
+    unit: "%"
+    description: The factor for the HSV saturation, in percent.
+    effect: Values above 100 give stronger colors. 0 gives gray.
+  - key: value
+    label: Value
+    type: number
+    min: 0
+    max: 300
+    step: 1
+    default: 100
+    unit: "%"
+    description: The factor for the HSV value, the largest channel, in percent.
+    effect: Values above 100 brighten, below 100 darken.
+formula: |
+  (H, S, V) = \operatorname{hsv}(R, G, B),
+  \quad
+  H' = H + \Delta H,
+  \quad
+  S' = \min(1, f_S S),
+  \quad
+  V' = \min(1, f_V V),
+  \quad
+  (R', G', B') = \operatorname{rgb}(H', S', V'),
+  \qquad
+  \Delta H = {{hue}}^{\circ},\ f_S = \frac{ {{saturation}} }{100},\ f_V = \frac{ {{value}} }{100}
+formulaExplanation: >-
+  HSV is the hexcone model of Smith. V is the largest channel, S = (max - min) / max, and H is the
+  angle around the color wheel. The hue shift wraps around at 360 degrees. Saturation and value
+  are scaled and capped at 1, so no channel leaves the range. The conversion works on the
+  encoded sRGB values.
+symbols:
+  - {symbol: 'H, S, V', meaning: 'Hue in degrees, saturation and value from 0 to 1'}
+  - {symbol: '\Delta H', meaning: 'The hue shift'}
+  - {symbol: 'f_S, f_V', meaning: 'The saturation and value factors'}
+steps:
+  - Convert the pixel to HSV.
+  - Add the hue shift, and scale the saturation and the value, capped at 1.
+  - Convert back to RGB.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Recoloring, and making colors stronger or weaker.
+  - Brightening an image without changing its colors.
+advantages:
+  - The three controls match how people describe color.
+  - Exact hue steps in HSV terms.
+limitations:
+  - HSV value is not perceived brightness. A hue shift can change how bright a color looks.
+  - Capping at 1 flattens strong colors when the factors are high.
+artifacts:
+  - Hue jumps in noisy, nearly gray areas, where the hue is unstable.
+references:
+  - kind: paper
+    text: Smith, A. R. Color gamut transform pairs. ACM SIGGRAPH Computer Graphics 12(3), 12 to 19, 1978.
+    doi: 10.1145/965139.807361
+  - kind: web
+    text: GIMP documentation, the Hue-Saturation tool.
+    url: https://docs.gimp.org/2.10/en/gimp-tool-hue-saturation.html
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: hsvAdjustFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Change which color a pixel is, how strong its color is, and how bright it is.
+  howItWorks:
+    - Describe each pixel by hue, saturation and value.
+    - Turn the hue, and scale the saturation and the value.
+    - Turn the result back into red, green and blue.
+  academic: >-
+    A point transformation in Smith's hexcone HSV model: a hue offset and multiplicative
+    saturation and value gains, capped at the gamut boundary.
+  paramNotes:
+    hue: How far to turn the colors around the wheel.
+    saturation: How strong the colors are.
+    value: How bright the colors are.
+  tryThis:
+    - Set the hue to 180 on the hue sweep test image. Every color turns into its opposite.
+  pitfalls:
+    - Large hue shifts on nearly gray, noisy areas. Their hue jumps around.
+  demos: [line-profile]
+related: [hue-rotate, saturation, vibrance]
+docsPage: filters/enhancement/hsv-adjust.md

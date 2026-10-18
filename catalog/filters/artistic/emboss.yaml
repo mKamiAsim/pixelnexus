@@ -1,0 +1,85 @@
+id: emboss
+name: Emboss
+aliases: [Relief, Emboss filter]
+family: artistic
+tags: [purpose:edge]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Fixed kernel.
+
+summary: Subtracts a diagonal neighbor from each pixel and adds mid gray, so edges look raised or pressed in, like a relief.
+purpose: Give an image the look of a stamped or carved surface.
+classification: {linearity: linear, domain: spatial, operation: directional difference with offset}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/kernels.ts, symbol: EMBOSS_ROWS}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is embossed on its own, so colored edges stay colored. With the
+  brightness scope, only luma is embossed. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. Pillow leaves the outermost pixels unchanged instead.
+
+params:
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  I_{\text{out}}(x, y) = I(x, y) - I(x - 1, y + 1) + 128
+formulaExplanation: >-
+  This is Pillow's EMBOSS filter. Pillow lists its kernel with -1 at the top left and 1 in the
+  center, but applies the first row of a kernel to the row below the pixel. So the -1 falls on the
+  pixel below and to the left, as a single bright pixel shows. y grows downward. Flat areas turn
+  mid gray, 128. Where the image gets brighter toward the top right, the result is lighter, and
+  where it gets darker, the result is darker.
+symbols:
+  - {symbol: 'I(x, y)', meaning: 'The input at column x and row y, with y growing downward'}
+steps:
+  - Subtract the pixel below and to the left from each pixel.
+  - Add 128 and clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - A relief or stamped-metal look.
+  - Showing the direction of edges and texture.
+advantages:
+  - Simple and fast, and the same as Pillow's EMBOSS away from the edge.
+limitations:
+  - The light comes from one fixed direction. Edges along that direction do not show.
+  - Noise is embossed too.
+artifacts:
+  - Gray, flat look in areas without edges.
+references:
+  - kind: library
+    text: Pillow documentation, ImageFilter module, built-in filters.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageFilter.html
+implementation: {path: web/src/core/filters/artistic/kernels.ts, symbol: embossFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Compare each pixel with its neighbor below and to the left, so edges look like a relief.
+  howItWorks:
+    - Subtract the neighbor below and to the left from each pixel.
+    - Add mid gray, so flat areas become gray.
+    - Edges facing one way turn light and the other way dark.
+  academic: >-
+    A directional first difference with an offset of 128, as in Pillow's EMBOSS kernel.
+  paramNotes:
+    border: How the window is filled past the image edge.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Emboss each color or only the brightness.
+  tryThis:
+    - Emboss a photo of text with the brightness scope. Then compare with the RGB scope.
+  pitfalls:
+    - Expecting edges that run from the bottom left to the top right to show. The difference along them is 0.
+  demos: [line-profile]
+related: [outline, edge-enhance, sobel]
+docsPage: filters/artistic/emboss.md

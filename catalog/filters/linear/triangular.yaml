@@ -1,0 +1,113 @@
+id: triangular
+name: Triangular filter
+aliases:
+- Tent filter
+family: linear
+tags: [purpose:smoothing, purpose:denoise]
+tier: core
+engine: browser
+phase: 5a
+status: implemented-tested
+planNotes: Tent filter.
+
+summary: Blurs with weights that rise in equal steps to the center and fall again.
+purpose: Smooth an image more gently than a box filter, with a simple, cheap kernel.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/triangular.ts, symbol: tentRow}
+supportRadius: (size - 1) / 2
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same kernel. Alpha is kept. Values are sRGB
+  encoded unless Linear light is on.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Size
+    type: integer
+    min: 3
+    max: 31
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width of the square window, 2r + 1.
+    effect: Larger sizes blur more. Size 5 has the weights 1, 2, 3, 2, 1.
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Blur linear light values instead of sRGB encoded values.
+    effect: Bright details spread more like real optical blur.
+    advanced: true
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=-r}^{r} \sum_{i=-r}^{r} w_i \, w_j \, I(x+i,\, y+j),
+  \qquad
+  w_i = \frac{r + 1 - \lvert i \rvert}{(r+1)^2},
+  \qquad
+  r = \frac{n-1}{2},
+  \quad
+  n = {{size}}
+formulaExplanation: >-
+  The weights fall in a straight line from the center to the edge of the window and add up to
+  1. A triangle of width 2r + 1 is a box of width r + 1 convolved with itself, so the tent
+  filter blurs like two box filters in a row. The 2D weight is the product of two 1D weights.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'n', meaning: 'Window size in pixels, odd'}
+  - {symbol: 'r', meaning: 'Window radius in pixels'}
+  - {symbol: 'w_i', meaning: 'Normalized tent weight at offset i'}
+steps:
+  - Build the 1D weights r + 1 - |i| for i from -r to r and divide them by (r + 1) squared.
+  - Pad each row with the border mode and filter it with these weights.
+  - Pad each column of that result and filter it with the same weights.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,n)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The kernel is separable.
+useCases:
+  - A smoother blur than the box filter at the same cost.
+  - Teaching how repeated box filters approach a Gaussian.
+advantages:
+  - All weights are positive, so the result never overshoots near edges.
+  - The frequency response is a squared sinc, so it has no negative lobes, unlike the box filter.
+limitations:
+  - The kernel has corners, so the blur is a little stronger along the diagonals than along the axes.
+  - Edges blur as much as noise does.
+artifacts:
+  - Soft edges, as with every blur.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.correlate1d.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.correlate1d.html
+implementation: {path: web/src/core/filters/linear/triangular.ts, symbol: triangularFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes a weighted average of its neighbors, and the weights fall off in a straight line.
+  howItWorks:
+    - Give the center the largest weight.
+    - Give each step away from the center one unit less.
+    - Divide by the sum, average along the rows, then along the columns.
+  academic: >-
+    The tent is the convolution of two boxes of width r + 1. Its Fourier transform is the
+    square of the box's sinc, so it is never negative and fine patterns do not reverse.
+  paramNotes:
+    size: The width of the window. Larger sizes give a stronger blur.
+  tryThis:
+    - Blur a zone plate with the box filter and with the tent filter of the same size. Compare the fine rings.
+  pitfalls:
+    - Using a tent where you need the same blur in every direction. Use the Gaussian or disk filter then.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [box, gaussian, binomial]
+docsPage: filters/linear/triangular.md

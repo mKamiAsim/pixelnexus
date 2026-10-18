@@ -1,0 +1,127 @@
+id: surf-inspired
+name: SURF-inspired detector
+aliases: [SURF-inspired speeded features, Fast-Hessian detector]
+family: features
+tags: [purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+planNotes: Fast-Hessian with box filters. Our own code. Real SURF is non-free in OpenCV and not shipped.
+
+summary: Finds blob keypoints with the Fast-Hessian detector of SURF, in PixelNexus's own code. Box filters on the integral image approximate the Hessian at many sizes for the same cost, and each keypoint gets an orientation from Haar wavelets. Only the detector and the orientation are built, not the descriptor.
+purpose: Find blob keypoints with their size and orientation fast, and see how SURF gets its speed from box filters.
+classification: {linearity: nonlinear, domain: spatial, operation: box-filter Hessian determinant extrema}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/surf.py, symbol: surf_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the luma with the BT.709 weights, from 0 to 1. Alpha is ignored. The
+  image does not change. The keypoints go to the Features panel and are drawn on the canvas.
+boundary: >-
+  Box sums count pixels outside the image as 0. Keypoints closer to the edge than half the
+  largest filter of their octave are dropped.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The integral image and the box sums.'}
+  - {name: SciPy, optional: false, note: 'The 3 x 3 x 3 maximum filter and the grouping of equal maxima (scipy.ndimage).'}
+
+params:
+  - key: octaves
+    label: Octaves
+    type: integer
+    min: 1
+    max: 4
+    step: 1
+    default: 4
+    description: The number of octaves. Each one doubles the filter sizes, from 9 to 27 px in the first to 51 to 195 px in the fourth.
+    effect: More octaves find larger blobs, and take longer.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0.0001
+    max: 0.1
+    step: 0.0001
+    default: 0.005
+    description: The smallest box-filter Hessian determinant a keypoint needs, for an image from 0 to 1.
+    effect: Lower values find weaker blobs. On the Siemens star, 0.001 gives about 3000 keypoints and 0.005 about 830.
+  - key: orientation
+    label: Orientation
+    type: boolean
+    default: true
+    description: Give each keypoint an orientation from Haar wavelet responses. Off gives every keypoint the angle 0, as upright SURF does.
+    effect: Off is faster.
+formula: |
+  \det H \approx D_{xx} D_{yy} - (0.9\, D_{xy})^2,
+  \qquad
+  \sigma = 1.2\, \frac{L}{9},
+  \qquad
+  \det H \ge {{threshold}}
+formulaExplanation: >-
+  The Hessian determinant is large at the middle of blobs. SURF approximates the Gaussian
+  second derivatives by box filters of size L with lobes of L / 3 pixels. With the integral
+  image, each box takes four lookups, so a large filter costs as much as a small one. Instead
+  of shrinking the image, the filters grow. The first octave has the sizes 9, 15, 21 and 27,
+  and each next octave doubles the step. Each response is divided by L^2. The weight 0.9
+  balances the box D_xy against the others, as in the paper. Keypoints are maxima over their
+  3 x 3 x 3 neighbors in position and size, above the threshold. The orientation is the
+  longest sum of Haar wavelet responses within a window of 60 degrees. The sign of the
+  Laplacian D_xx + D_yy tells bright blobs (negative) from dark ones (positive).
+symbols:
+  - {symbol: 'D_{xx}, D_{yy}, D_{xy}', meaning: 'The box-filter second derivatives, divided by L^2'}
+  - {symbol: 'L', meaning: 'The filter size'}
+  - {symbol: '\sigma', meaning: 'The scale the filter stands for'}
+steps:
+  - Take the luma from 0 to 1 and its integral image.
+  - At each filter size, compute the three box responses and the determinant at every pixel.
+  - Keep maxima over position and size above the threshold, one per group of equal maxima.
+  - Give each keypoint the dominant direction of its Haar wavelet responses.
+  - Report the position, sigma, filter size, angle, determinant and the sign of the Laplacian.
+complexity:
+  time: O(S N)
+  memory: O(N)
+  notes: N is the number of pixels and S the number of filter sizes. Each box costs four lookups, whatever its size.
+useCases:
+  - Fast blob keypoints for matching and tracking.
+  - Teaching how integral images make large filters cheap.
+advantages:
+  - Every filter size costs the same.
+  - The Laplacian sign tells bright from dark blobs.
+limitations:
+  - This is PixelNexus's own code after the paper, not SURF itself. It computes responses at every pixel and has no subpixel refinement, so positions and sizes are coarser than in SURF.
+  - The descriptor is not built.
+  - A blob can be found in two octaves, since the filter sizes of neighboring octaves overlap.
+  - On a round blob, the angle only roughly follows the brightness around it. On a disk on a ramp, it is within about 30 degrees of the direction of the ramp.
+artifacts:
+  - Many keypoints along fine, high-contrast patterns, such as the spokes of the Siemens star.
+references:
+  - kind: paper
+    text: Bay, H., Ess, A., Tuytelaars, T., and Van Gool, L. Speeded-up robust features (SURF). Computer Vision and Image Understanding 110(3), 346 to 359, 2008.
+    doi: 10.1016/j.cviu.2007.09.014
+implementation: {path: engine/src/pixelnexus_engine/filters/surf.py, symbol: surf_inspired}
+tests: [engine/tests/test_surf.py]
+learn:
+  oneSentence: Find blobs fast with box filters that cost the same at every size.
+  howItWorks:
+    - Add up the image into an integral image, so any box sum is quick.
+    - Measure how the brightness curves with box filters of many sizes.
+    - Keep the points that stand out in place and size.
+    - Point each one along the brightness change around it.
+  academic: >-
+    The Fast-Hessian detector of SURF: box-filter Hessian determinants on the integral image
+    with growing filter sizes, non-maximum suppression in position and scale, and Haar-wavelet
+    orientation, in PixelNexus's own code.
+  paramNotes:
+    octaves: How many sizes of blobs are tried.
+    threshold: How strong a blob must be.
+    orientation: Whether each keypoint gets a direction.
+  tryThis:
+    - Compare the keypoints with Determinant of Hessian blob detection, which uses similar box filters in scikit-image.
+  pitfalls:
+    - Expecting SURF itself. This is a teaching version of its detector.
+  demos: [feature-viewer]
+related: [blob-doh, sift, orb, hessian]
+docsPage: filters/features/surf-inspired.md

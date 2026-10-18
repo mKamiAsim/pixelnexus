@@ -1,0 +1,136 @@
+id: random-walker
+name: Random walker
+aliases: [Random walk segmentation, Grady random walker]
+family: segmentation
+tags: [purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+
+summary: Splits the image into object and background from seeds, after Grady. Imagine a walker that starts at a pixel and steps to neighbors at random, rarely across edges. The pixel joins the seed that its walker most likely reaches first. scikit-image solves this as a linear system, with no walking.
+purpose: Cut out an object from a few marks, even where its edges are weak or broken.
+classification: {linearity: nonlinear, domain: iterative, operation: random walk on a graph}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: random_walker_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: markers
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, scaled from 0 to 1. The object goes to the
+  Features panel and is drawn over the image. The boundaries are a color image and the
+  probability a gray image, both with the alpha of the image.
+boundary: Pixels on the image edge have fewer neighbors. Nothing is padded.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.random_walker.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Object}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: probability, label: Object probability}
+    description: The object as a label map, drawn over the image and listed in the Features panel. Or its boundary in yellow over the image. Or the probability of the object at each pixel, from black for 0 to white for 1.
+    effect: The object can become the selection from the Features panel.
+  - key: seeds
+    label: Seeds
+    type: select
+    default: border
+    options:
+      - {value: border, label: Selection and image edge}
+      - {value: map, label: Selection as a map}
+    description: With the selection and image edge, the selected pixels are object seeds and the unselected pixels on the image edge are background seeds. As a map, pixels selected at 192 or more are object seeds, those at 63 or less are background seeds, and partly selected pixels are unknown.
+    effect: Feather a selection to use it as a map. The click-select tool also sends a map.
+  - key: beta
+    label: Edge strength
+    type: number
+    min: 1
+    max: 2000
+    step: 1
+    default: 130
+    description: The beta in the edge weights. scikit-image divides it by 10 times the standard deviation of the luma. scikit-image uses 130.
+    effect: Higher values make edges harder to cross, so boundaries follow them more.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    min: 0.00001
+    max: 0.1
+    step: 0.00001
+    default: 0.001
+    description: When the conjugate gradient solver stops. scikit-image uses 0.001.
+    effect: Lower values give more exact probabilities and take longer.
+formula: |
+  w_{ij} = \exp\left(-\frac{\beta}{10\,\sigma_Y} (Y_i - Y_j)^2\right),
+  \qquad
+  L_U\, x_U = -B^T x_M
+formulaExplanation: >-
+  Each pixel is a node joined to its 4 neighbors with the weight w, high between similar pixels.
+  Y is the luma from 0 to 1 and sigma Y its standard deviation over the image. A walker at a
+  pixel steps to a neighbor with a chance in proportion to w. Grady showed that the chance x of
+  reaching an object seed first solves a Dirichlet problem on the graph. The Laplacian L of the
+  graph splits into the unknown pixels U and the seeds M, with the block B between them. The
+  chance x is 1 at object seeds and 0 at background seeds. Solving for the unknown x gives the
+  probability at every pixel. Each pixel takes the label with the higher probability.
+symbols:
+  - {symbol: 'w_{ij}', meaning: 'The weight between neighbors i and j'}
+  - {symbol: '\beta', meaning: 'The edge strength'}
+  - {symbol: '\sigma_Y', meaning: 'The standard deviation of the luma'}
+  - {symbol: 'L_U', meaning: 'The Laplacian of the graph on the unknown pixels'}
+  - {symbol: 'x', meaning: 'The probability of the object'}
+steps:
+  - Read the object and background seeds from the selection.
+  - Weigh each link between neighbors by how alike they are.
+  - Solve the linear system for the object probability of every unknown pixel.
+  - Each pixel joins the object where its probability is at least one half.
+complexity:
+  time: O(N k)
+  memory: O(N)
+  notes: N is the number of pixels and k the number of conjugate gradient steps.
+useCases:
+  - Cutting out an object with weak or broken edges.
+  - Medical images, where Grady first used it.
+advantages:
+  - Every result comes with a probability, so unsure areas are visible.
+  - Bridges gaps in edges well.
+limitations:
+  - Only brightness, not color.
+  - A region with no seed goes to the side it is best linked to, which may be the wrong one.
+artifacts:
+  - Boundaries that cut straight across an area far from all seeds.
+references:
+  - kind: paper
+    text: Grady, L. Random walks for image segmentation. IEEE Transactions on Pattern Analysis and Machine Intelligence 28(11), 1768 to 1783, 2006.
+    doi: 10.1109/TPAMI.2006.233
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.random_walker.
+implementation: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: random_walker_filter}
+tests: [engine/tests/test_interactive.py]
+learn:
+  oneSentence: Each pixel joins the mark that a random walk from it would most likely reach first.
+  howItWorks:
+    - Mark a bit of the object and of the background.
+    - Picture a walker at each pixel stepping to neighbors at random.
+    - Edges are hard to cross, so the walker tends to stay on its side.
+    - The pixel joins the mark the walker most likely reaches first.
+  academic: >-
+    Grady's random walker: the combinatorial Dirichlet problem on the 4-connected graph with
+    Gaussian weights, solved with preconditioned conjugate gradients in scikit-image.
+  paramNotes:
+    output: Object, boundary, or the probability.
+    seeds: Where the seeds come from.
+    beta: How hard edges are to cross.
+    tolerance: How exact the solver is.
+  tryThis:
+    - Show the object probability. Gray areas are the ones the walker is unsure about.
+  pitfalls:
+    - A second object with no seed. It can go to either side.
+  demos: [stage-viewer]
+related: [graph-cut, grabcut, marker-watershed]
+docsPage: filters/segmentation/random-walker.md

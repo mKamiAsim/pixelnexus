@@ -1,0 +1,105 @@
+id: alpha-trimmed-mean
+name: Alpha-trimmed mean filter
+aliases: [Trimmed mean filter]
+family: nonlinear
+tags: [purpose:denoise, noise:impulse, noise:gaussian]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+
+summary: Drops the smallest and largest values of each window and averages the rest.
+purpose: Reduce a mix of impulse noise and Gaussian noise with one filter.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/means.ts, symbol: trimOf}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately. With the brightness scope, luma is rounded to
+  whole values first. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows smooth more.
+  - key: trim
+    label: Trim per end
+    type: integer
+    min: 0
+    max: 112
+    default: 2
+    description: How many of the smallest values, and how many of the largest, are dropped. It is d / 2 in the textbook form. At most (n - 1) / 2, so one value is left.
+    effect: 0 gives the plain mean. The largest trim gives the median. Values between mix the two.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \frac{1}{n - 2t} \sum_{k = t + 1}^{n - t} W_{(k)},
+  \qquad
+  n = {{size}}^2,\quad t = {{trim}}
+formulaExplanation: >-
+  W with index (k) is the k-th smallest value of the window. The t smallest and the t largest
+  values are dropped, and the n - 2t values in the middle are averaged. Gonzalez and Woods
+  write d = 2t for the number of dropped values.
+symbols:
+  - {symbol: 'W_{(k)}', meaning: The k-th smallest value of the window}
+  - {symbol: 'n', meaning: Number of values in the window}
+  - {symbol: 't', meaning: Values dropped at each end}
+steps:
+  - Limit the trim to (n - 1) / 2.
+  - Pad the image with the border mode.
+  - Keep a 256-bin histogram of the window as it slides along each row.
+  - Skip t values from the bottom of the histogram, add up the next n - 2t values, and divide by n - 2t.
+complexity:
+  time: O(N\,(k + 256))
+  memory: O(N)
+  notes: N is the number of pixels per channel and k is the window width. Each step updates one column of the histogram and scans its 256 bins.
+useCases:
+  - Clean images that have both salt-and-pepper noise and Gaussian noise.
+  - Get a local mean that ignores a few outliers.
+advantages:
+  - Combines the outlier resistance of the median with the smoothing of the mean.
+  - One parameter moves smoothly between the two.
+limitations:
+  - When more than t values in a window are impulses, they leak into the mean.
+  - Blurs edges more than the median.
+artifacts:
+  - Slight blur along edges, like a small box filter.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, alpha-trimmed mean filter.
+implementation: {path: web/src/core/filters/nonlinear/means.ts, symbol: alphaTrimmedMeanFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Sort the neighbors, drop a few at each end, and average the rest.
+  howItWorks:
+    - Take the window around the pixel and sort its values.
+    - Drop the t smallest and the t largest values.
+    - Average the values that are left.
+  academic: >-
+    A trimmed mean, an L-estimator from robust statistics. With t = 0 it is the arithmetic mean
+    and with t = (n - 1) / 2 it is the median. Trimming removes outliers before averaging.
+  paramNotes:
+    trim: Values dropped at each end. Raise it until the specks are gone.
+  tryThis:
+    - Add Gaussian noise and then salt-and-pepper noise. Compare trim 0, 2 and 4 with a 3x3 window.
+    - Put the Rank stepper on a speck. The marked values are the ones that are averaged.
+  pitfalls:
+    - Setting a trim smaller than the number of specks in a window. The specks then pull the mean.
+  demos: [rank-stepper, line-profile, noise-lab]
+related: [median, box, midpoint, rank-order]
+docsPage: filters/nonlinear/alpha-trimmed-mean.md

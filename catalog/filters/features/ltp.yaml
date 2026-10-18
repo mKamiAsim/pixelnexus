@@ -1,0 +1,115 @@
+id: ltp
+name: Local Ternary Pattern
+aliases: [LTP, Local ternary patterns]
+family: features
+tags: [purpose:texture, purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+
+summary: Describes the texture around each pixel like a local binary pattern, but with three states, after Tan and Triggs. A neighbor counts as brighter, darker or about the same as the center, within a threshold t, so small noise no longer flips the code. The pattern is split into an upper and a lower binary code.
+purpose: Describe texture like LBP, but without the noise in flat areas.
+classification: {linearity: nonlinear, domain: spatial, operation: local ternary codes}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: ltp_representation}
+supportRadius: '1'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit luma with the BT.709 weights and gives a gray result. Alpha is
+  kept. The histogram output goes to the Features panel as a table.
+boundary: Set by the Border mode parameter. The default is reflect 101. It fills the neighbors past the image edge.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The comparisons with the 8 neighbors.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: upper
+    options:
+      - {value: upper, label: Upper code}
+      - {value: lower, label: Lower code}
+      - {value: histogram, label: Histogram table}
+    description: The upper code, from the brighter neighbors, the lower code, from the darker ones, or a table of how often each code occurs in both.
+    effect: The two codes together hold the ternary pattern.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 50
+    step: 1
+    default: 5
+    unit: levels
+    description: The band t around the center in which a neighbor counts as about the same.
+    effect: Larger values ignore more noise and also more fine texture. With 0 the upper code is the local binary pattern.
+  - ref: border
+formula: |
+  s_k = \begin{cases} +1 & n_k \ge c + t \\ 0 & \lvert n_k - c \rvert < t \\ -1 & n_k \le c - t \end{cases},
+  \qquad
+  U = \sum_{k=0}^{7} [s_k = +1]\, 2^k,
+  \qquad
+  L = \sum_{k=0}^{7} [s_k = -1]\, 2^k,
+  \qquad
+  t = {{threshold}}
+formulaExplanation: >-
+  A local binary pattern sets a bit for every neighbor at least as bright as the center, so in
+  a flat, noisy area noise alone decides the bits. Tan and Triggs added a dead band of width t:
+  a neighbor within t of the center counts as 0, neither brighter nor darker. The ternary code
+  has 3^8 values, too many for a histogram, so it is split into two binary codes. The upper
+  code U has a bit for each neighbor that is clearly brighter, and the lower code L for each
+  that is clearly darker. Bit k belongs to the neighbor at 45 k degrees, counterclockwise from
+  the right. With t = 0, the upper code is the local binary pattern of the 8 neighbors.
+symbols:
+  - {symbol: 'c', meaning: 'The center pixel'}
+  - {symbol: 'n_k', meaning: 'The neighbor at 45 k degrees, counterclockwise from the right'}
+  - {symbol: 't', meaning: 'The threshold'}
+  - {symbol: 'U, L', meaning: 'The upper and lower codes'}
+steps:
+  - Take the 8-bit luma.
+  - Compare each of the 8 neighbors with the center, with the dead band t.
+  - Set a bit of the upper code for each brighter neighbor and of the lower code for each darker one.
+  - Show one code as an image, or count both in a histogram.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Texture and face description under noise and uneven lighting.
+advantages:
+  - Flat, noisy areas give the code 0 instead of random codes.
+limitations:
+  - The threshold is in gray levels, so it no longer ignores contrast changes as LBP does.
+  - This version uses the 8 direct neighbors only, not a circle of any radius.
+artifacts:
+  - Codes that change suddenly where a difference crosses the threshold.
+references:
+  - kind: paper
+    text: Tan, X., and Triggs, B. Enhanced local texture feature sets for face recognition under difficult lighting conditions. IEEE Transactions on Image Processing 19(6), 1635 to 1650, 2010.
+    doi: 10.1109/TIP.2010.2042645
+implementation: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: ltp}
+tests: [engine/tests/test_texture.py]
+learn:
+  oneSentence: Like a binary pattern, but neighbors that are about as bright as the center count as the same.
+  howItWorks:
+    - Compare each of the 8 neighbors with the center pixel.
+    - Clearly brighter, clearly darker, or about the same, within a small band.
+    - Write one code for the brighter neighbors and one for the darker ones.
+    - Flat, noisy areas now give a quiet code.
+  academic: >-
+    Local ternary patterns with a dead band t on the 8-neighborhood, split into upper and lower
+    binary codes, after Tan and Triggs.
+  paramNotes:
+    output: Which code to show, or a table of both.
+    threshold: How different a neighbor must be to count.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Compare the upper code with Local Binary Pattern on a noisy image, then raise the threshold.
+  pitfalls:
+    - A threshold of 0. The ternary pattern then behaves like a binary one.
+  demos: [line-profile]
+related: [lbp, glcm, laws]
+docsPage: filters/features/ltp.md

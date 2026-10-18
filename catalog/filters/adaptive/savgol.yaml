@@ -1,0 +1,119 @@
+id: savgol
+name: Savitzky-Golay filter
+aliases:
+- Regression-based filters
+- Local polynomial regression
+family: adaptive
+tags: [purpose:smoothing, purpose:denoise]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Regression-based filters. Local polynomial fit. Has a fixed kernel.
+
+summary: Fits a polynomial to each window by least squares and takes its value at the center, a smoothing that keeps peaks.
+purpose: Smooth noise while keeping the height and width of peaks and ridges better than a box or Gaussian filter.
+classification: {linearity: linear, domain: spatial, operation: separable convolution from least squares}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/savgol.ts, symbol: savgolCoefficients}
+supportRadius: (size - 1) / 2
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same kernel. With the brightness scope, only luma
+  is filtered. Alpha is kept. The kernel has negative weights, so results are clipped to 0 to 255.
+boundary: Set by the Border mode parameter. The default is reflect 101, the mirror mode of scipy.signal.savgol_filter.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: The number of values n in each row and column of the fit.
+    effect: Larger windows smooth more.
+  - key: order
+    label: Polynomial degree
+    type: integer
+    min: 0
+    max: 10
+    default: 2
+    description: The degree p of the fitted polynomial. It is lowered to size - 1 when it is larger.
+    effect: Higher degrees follow peaks more closely and smooth less. Degree 0 and 1 give the box filter.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  c = \bigl[(A^{\mathsf T} A)^{-1} A^{\mathsf T}\bigr]_{0},
+  \qquad
+  A_{ij} = (i - m)^j,
+  \qquad
+  I_{\text{out}} = c \ast_{x} (c \ast_{y} I)
+formulaExplanation: >-
+  A has one row per window position i, from 0 to n - 1, and one column per power j, from 0
+  to p. m = (n - 1) / 2 is the center. The least-squares fit of a polynomial to the window
+  values y has coefficients (A^T A)^-1 A^T y. Its value at the center is the first coefficient,
+  so the weights c are the first row of that matrix. They do not depend on the data, so the
+  filter is a fixed kernel. It runs along rows, then along columns.
+symbols:
+  - {symbol: 'c', meaning: The smoothing weights}
+  - {symbol: 'A', meaning: The matrix of powers of the positions}
+  - {symbol: 'm', meaning: 'The center position, (n - 1) / 2'}
+  - {symbol: 'p', meaning: The polynomial degree}
+steps:
+  - Build A from the window size and degree, and solve the normal equations for the weights.
+  - Pad the image with the border mode.
+  - Correlate each row with the weights, then each column.
+  - Clip the result to 0 to 255.
+complexity:
+  time: O(N\,n)
+  memory: O(N)
+  notes: N is the number of pixels per channel and n the window size. The weights are computed once.
+useCases:
+  - Smooth images with peaks or thin ridges, such as spectra shown as images or star fields.
+  - Smooth before taking derivatives.
+advantages:
+  - Keeps the height and width of peaks better than a box or Gaussian filter of the same size.
+  - A fixed, separable kernel, so it is fast.
+limitations:
+  - Removes less noise than a Gaussian of the same size.
+  - Negative weights can overshoot near steps.
+artifacts:
+  - Small ripples next to sharp edges with high degrees.
+references:
+  - kind: paper
+    text: Savitzky, A. and Golay, M. J. E. Smoothing and differentiation of data by simplified least squares procedures. Analytical Chemistry 36(8), 1627 to 1639, 1964.
+    doi: 10.1021/ac60214a047
+  - kind: library
+    text: SciPy documentation, scipy.signal.savgol_coeffs and scipy.signal.savgol_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
+implementation: {path: web/src/core/filters/adaptive/savgol.ts, symbol: savgolFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Fit a smooth curve to the neighbors and read it off at the center.
+  howItWorks:
+    - Fit a polynomial to the values of the window by least squares.
+    - Read the value of the polynomial at the center.
+    - The weights of this read-off are the same everywhere, so it is a kernel.
+  academic: >-
+    Local polynomial regression with uniform weights. For each window size and degree it is a
+    linear filter whose weights are the first row of the pseudo-inverse of the Vandermonde
+    matrix. It keeps moments of a peak up to the degree p.
+  paramNotes:
+    size: The number of values in the fit, in each direction.
+    order: The degree. 2 or 3 is common. 0 and 1 give the plain mean.
+  tryThis:
+    - Compare degree 0 and degree 4 with size 9 on the Zone plate. Degree 4 keeps more of the rings.
+    - Open the Inspector to see the negative weights near the ends of the kernel.
+  pitfalls:
+    - Expecting strong noise removal. It is built to keep shapes, not to smooth hard.
+  demos: [impulse-response, line-profile]
+related: [box, gaussian, binomial]
+docsPage: filters/adaptive/savgol.md

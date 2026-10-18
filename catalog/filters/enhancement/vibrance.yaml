@@ -1,0 +1,96 @@
+id: vibrance
+name: Vibrance
+aliases: [Smart saturation]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Raises the saturation of muted colors more than of colors that are already strong.
+purpose: Make colors livelier without overdoing colors that are already vivid.
+classification: {linearity: nonlinear, domain: color, operation: saturation-weighted color mix}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: vibranceFilter}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each color moves away from or toward its gray by a factor that depends on its own saturation. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: vibrance
+    label: Vibrance
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 50
+    unit: "%"
+    description: The amount a, in percent.
+    effect: Positive values boost muted colors most. Negative values mute them most.
+formula: |
+  S = \frac{\max(R, G, B) - \min(R, G, B)}{\max(R, G, B)},
+  \quad
+  k = 1 + a (1 - S),
+  \quad
+  C' = Y + k (C - Y),
+  \qquad
+  a = \frac{ {{vibrance}} }{100}
+formulaExplanation: >-
+  S is the HSV saturation of the pixel, 0 for gray and 1 for a pure color. Each channel C moves
+  from the gray Y = 0.213 R + 0.715 G + 0.072 B by the factor k, as in the saturation filter.
+  The factor shrinks as S grows. A muted color gets nearly the full factor 1 + a, and a pure
+  color gets 1, so it does not change. This rule is PixelNexus's own. Photo editors offer
+  vibrance controls with the same aim, but their rules are not published. The results are
+  clipped to 0 to 255.
+symbols:
+  - {symbol: 'S', meaning: 'The HSV saturation of the pixel, from 0 to 1'}
+  - {symbol: 'a', meaning: 'The amount, from -1 to 1'}
+  - {symbol: 'k', meaning: 'The saturation factor for this pixel'}
+  - {symbol: 'Y', meaning: 'The gray value with the weights of the saturation filter'}
+steps:
+  - Compute the HSV saturation S of the pixel.
+  - Compute the factor k = 1 + a (1 - S).
+  - Move each channel from the gray Y by the factor k.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Portraits and outdoor photos, where skin and sky should not oversaturate.
+advantages:
+  - Vivid colors stay as they are, so they do not clip.
+limitations:
+  - Pure grays do not change, since they have no color to boost.
+  - The rule is PixelNexus's own, so the result differs from other programs.
+artifacts:
+  - Muted noise can pick up color at high amounts.
+references:
+  - kind: standard
+    text: W3C. Filter Effects Module Level 1, section 13.1, the filter functions. W3C Working Draft, 18 December 2018.
+    url: https://www.w3.org/TR/filter-effects-1/
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: vibranceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Boost the dull colors and leave the already strong ones nearly alone.
+  howItWorks:
+    - Measure how saturated the pixel already is.
+    - Choose a boost that is large for dull colors and small for vivid ones.
+    - Push the color away from its gray by that boost.
+  academic: >-
+    A saturation gain that falls linearly with the HSV saturation of the pixel, applied as a
+    luma-preserving interpolation between color and gray.
+  paramNotes:
+    vibrance: How much muted colors are boosted. Negative values mute them.
+  tryThis:
+    - Compare vibrance 100 with saturation 200 on a photo with a red flower and a gray sky.
+  pitfalls:
+    - Expecting a gray image to get color. Grays have no color to boost.
+  demos: [line-profile]
+related: [saturation, hsv-adjust]
+docsPage: filters/enhancement/vibrance.md

@@ -1,0 +1,100 @@
+id: line-detector
+name: Line detectors
+aliases:
+- Horizontal line detector
+- Vertical line detector
+- Diagonal line detectors
+family: features
+tags: [purpose:analysis, purpose:edge]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+planNotes: Horizontal, vertical and diagonal masks of Gonzalez and Woods.
+
+summary: Finds thin bright lines with four 3x3 masks for horizontal, vertical and the two diagonal directions.
+purpose: Detect one-pixel lines in a chosen direction, or the strongest line in any of four directions.
+classification: {linearity: nonlinear, domain: spatial, operation: template matching}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/compass.ts, symbol: LINE_MASKS}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: max
+    options:
+      - {value: max, label: Strongest of the four}
+      - {value: horizontal, label: Horizontal}
+      - {value: vertical, label: Vertical}
+      - {value: falling, label: Diagonal from top left}
+      - {value: rising, label: Diagonal from bottom left}
+    description: One direction, or the largest response of all four masks.
+    effect: A single direction finds only lines that run that way.
+  - ref: outputMapping
+    default: clip
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  L_{\text{h}} = \begin{bmatrix} -1 & -1 & -1 \\ 2 & 2 & 2 \\ -1 & -1 & -1 \end{bmatrix},
+  \qquad
+  R = \max_{d} \bigl( L_d \star I \bigr)
+formulaExplanation: >-
+  Each mask has a row of 2s along one direction and -1 elsewhere, so its weights add up to 0. A bright line one pixel wide along that direction gives a large positive response, flat areas give 0. The other masks are the same pattern turned to vertical and the two diagonals. With the max output, the strongest of the four responses is kept.
+symbols:
+  - {symbol: 'L_d', meaning: The line mask for direction d}
+  - {symbol: 'R', meaning: The response}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with the chosen line mask, or with all four.
+  - Keep the response, or the largest of the four.
+  - Map the result to 8 bits. Clipping keeps only bright lines.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. One to four 3x3 correlations per pixel.
+useCases:
+  - Find thin wires, scratches or road lines in a known direction.
+  - Teach template matching with simple masks.
+advantages:
+  - Simple whole-number masks with a clear meaning.
+  - Direction-selective.
+limitations:
+  - Finds bright lines. Dark lines give negative responses, which the clip mapping hides.
+  - Only four directions and one-pixel width. Other line mask families, such as Laplacian-based or oriented line filters, are not included in this entry.
+artifacts:
+  - Responses on edges as well as lines, weaker but not zero.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2, line detection.
+implementation: {path: web/src/core/filters/edges/compass.ts, symbol: lineDetectorFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Masks that answer most strongly to a thin bright line in one direction.
+  howItWorks:
+    - Weight the pixels along a line by 2 and the rest by -1.
+    - Add up the weighted window. Flat areas give 0.
+    - A bright line along the mask gives a large value.
+  academic: >-
+    Matched filters for one-pixel lines. Each mask is zero-mean, so it ignores the local brightness and responds to the line pattern.
+  paramNotes:
+    output: One direction, or the strongest of the four.
+  tryThis:
+    - Use the horizontal mask on the Checkerboard. Only the horizontal borders respond.
+  pitfalls:
+    - Looking for dark lines with the clip mapping. Use the absolute or offset mapping.
+  demos: [impulse-response]
+related: [laplacian, frei-chen, matched-vessel]
+docsPage: filters/features/line-detector.md

@@ -1,0 +1,199 @@
+id: tv-deblur
+name: Total variation restoration
+aliases: [TV deconvolution, Total variation deblurring, ROF deconvolution]
+family: restoration
+tags: [purpose:sharpening, purpose:denoise]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: Chambolle-Pock primal-dual.
+
+summary: Undoes a known blur by finding the image whose blurred copy matches the photo, with a total variation penalty that keeps flat areas flat and edges sharp.
+purpose: Deblur noisy images of objects with clear edges, such as text, drawings and simple shapes, without raising the noise.
+classification: {linearity: nonlinear, domain: iterative, operation: total variation regularized deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: tv_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.fft2 and ifft2).'}
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: lambda
+    label: Lambda
+    type: number
+    min: 0
+    max: 50
+    step: 0.1
+    default: 3
+    description: The weight of the total variation term, in pixel values. 0 leaves only the data term.
+    effect: Larger values give flatter areas and less noise, and wash out fine texture.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 1000
+    step: 1
+    default: 100
+    description: How many primal-dual steps to run.
+    effect: More iterations come closer to the minimum and take longer.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{f} = \arg\min_f\ \tfrac{1}{2} \lVert h * f - g \rVert^2 + \lambda \sum_{x} \lvert \nabla f(x) \rvert,
+  \qquad
+  p \leftarrow \frac{p + \sigma \nabla \bar{f}}{\max(1,\, \lvert p + \sigma \nabla \bar{f} \rvert / \lambda)},
+  \quad
+  f' = \mathcal{F}^{-1}\!\left(\frac{\mathcal{F}(f + \tau \operatorname{div} p) + \tau \overline{H}\, \mathcal{F} g}{1 + \tau \lvert H \rvert^2}\right),
+  \quad
+  \bar{f} = 2 f' - f,
+  \qquad
+  \lambda = {{lambda}},\ K = {{iterations}}
+formulaExplanation: >-
+  The filter looks for the image f whose blurred copy h * f is close to the photo g. Many images
+  fit a blurred photo, and most are full of noise. The total variation term, the sum of the
+  gradient length over all pixels, picks the one with the least jumping around. Rudin, Osher and
+  Fatemi used this term to remove noise. It keeps sharp edges, since one edge costs the same as
+  a slow ramp of the same height. The sum has no gradient where the image is flat, so the filter
+  uses the primal-dual algorithm of Chambolle and Pock. A dual field p, one 2-D vector per pixel,
+  lives in the disk of radius lambda. Each step moves p along the gradient of the extrapolated
+  image f bar and pulls it back into the disk. Then f moves along the divergence of p, and the
+  data term is solved exactly with the FFT. H is the transform of the PSF. The steps tau and
+  sigma are both 1 / sqrt(8), since the squared norm of the gradient is at most 8. Differences
+  wrap around at the edges of the extended image. The first estimate is the photo, and p starts
+  at 0. The PSF is the same as for Richardson-Lucy.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'f', meaning: The estimate of the sharp image}
+  - {symbol: 'h, H', meaning: The PSF and its Fourier transform}
+  - {symbol: 'p', meaning: 'The dual field, one 2-D vector per pixel'}
+  - {symbol: '\lambda', meaning: The weight of the total variation term}
+  - {symbol: '\tau, \sigma', meaning: 'The primal and dual step sizes, both 1 / sqrt(8)'}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with f equal to the extended image g and p equal to 0.
+  - Move p along the gradient of f bar and pull every vector back into the disk of radius lambda.
+  - Move f along the divergence of p and solve the data term exactly with the FFT.
+  - Set f bar to 2 f' - f, and repeat for the chosen number of iterations.
+  - Crop the last estimate to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations. Each iteration takes two FFTs.
+useCases:
+  - Deblurring scans of text and drawings.
+  - Deblurring noisy images of objects with clear edges.
+advantages:
+  - Edges stay sharp while flat areas stay clean.
+  - It minimizes a clear energy, so the result does not depend on when you stop, once it has converged.
+limitations:
+  - Fine texture and gentle shading turn into flat patches with large lambda (staircasing).
+  - The PSF must be known.
+  - Slower than Wiener deconvolution.
+artifacts:
+  - Flat patches with sharp steps, like a cartoon, where the image has smooth shading.
+  - Faint ringing next to strong edges with small lambda.
+references:
+  - kind: paper
+    text: Rudin, L. I., Osher, S., and Fatemi, E. Nonlinear total variation based noise removal algorithms. Physica D 60(1 to 4), 259 to 268, 1992.
+    doi: 10.1016/0167-2789(92)90242-F
+  - kind: paper
+    text: Chambolle, A., and Pock, T. A first-order primal-dual algorithm for convex problems with applications to imaging. Journal of Mathematical Imaging and Vision 40(1), 120 to 145, 2011.
+    doi: 10.1007/s10851-010-0251-1
+  - kind: paper
+    text: Chambolle, A. An algorithm for total variation minimization and applications. Journal of Mathematical Imaging and Vision 20(1 to 2), 89 to 97, 2004.
+    doi: 10.1023/B:JMIV.0000011325.36760.1e
+implementation: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: tv_deblur}
+tests: [engine/tests/test_restoration.py]
+learn:
+  oneSentence: Find the sharp image whose blurred copy matches the photo, while keeping the image as flat as possible between edges.
+  howItWorks:
+    - Start from the blurred photo.
+    - Blur the current guess and compare it with the photo.
+    - Fix the guess where it differs, and smooth it where it wiggles without reason.
+    - Repeat until the guess settles.
+  academic: >-
+    Total variation regularized deconvolution, solved with the first-order primal-dual algorithm
+    of Chambolle and Pock with an exact proximal step for the quadratic data term in the Fourier
+    domain.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    lambda: How hard the filter flattens the image.
+    iterations: How long to refine the guess.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Blur a drawing with Apply a known blur, then use Add Gaussian noise. Raise lambda from 0 to 10. Watch the noise fade and the flat areas grow.
+  pitfalls:
+    - A PSF that does not match the real blur. Edges then get halos or stay soft.
+  demos: [iteration-viewer]
+related: [richardson-lucy, regularized-rl, wiener-deconv, sparse-fista, tv-denoise]
+docsPage: filters/restoration/tv-deblur.md

@@ -1,0 +1,89 @@
+id: swinir
+name: SwinIR
+aliases: [Transformer-based denoising, SwinIR denoising]
+family: learned
+tags: [purpose:denoise]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: swinir-color-dn25
+planNotes: Color denoising for noise 25. The 2x super-resolution model is swinir-sr. Official weights, exported to ONNX once with tools/export_models.py, for tiles of 256 pixels.
+
+summary: Removes noise with SwinIR, a network of Swin Transformer blocks that compare pixels inside small windows that shift from block to block. This model was trained for Gaussian noise of sigma 25 in color photos. It needs a downloaded model.
+purpose: Compare a transformer denoiser with the convolutional DnCNN and with classical denoisers.
+classification: {linearity: nonlinear, domain: learned, operation: transformer denoising}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: swinir_representation}
+supportRadius: '32'
+supportsMask: true
+preview: on-demand
+colorHandling: Runs on RGB. Alpha stays.
+boundary: >-
+  The image is mirrored past its edges. It runs in tiles of 256 pixels that overlap by 32 pixels
+  on each side. Only the center of each tile is kept, as in the tile mode of SwinIR's test
+  script. Shifted windows reach further than that, so the result is close to a run on the whole
+  image, not equal.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params: []
+formula: |
+  F_0 = H_{SF}(y),\quad F_{DF} = H_{DF}(F_0),\quad \hat{x} = y + H_{REC}(F_{DF} + F_0),\quad
+  \operatorname{Attention}(Q, K, V) = \operatorname{SoftMax}\!\left(\frac{Q K^{\top}}{\sqrt{d}} + B\right) V
+formulaExplanation: >-
+  y is the noisy image. A convolution H_SF gives shallow features. Six residual Swin Transformer
+  groups H_DF give deep features. In each block, attention compares the pixels inside a window of
+  8 x 8 pixels, with a learned bias B for their relative position. Every second block shifts the
+  windows by 4 pixels, so information crosses window borders. A last convolution H_REC turns the
+  features into a correction, which is added to the image.
+symbols:
+  - {symbol: 'y', meaning: 'The noisy image'}
+  - {symbol: 'H_{SF}, H_{DF}, H_{REC}', meaning: 'Shallow features, deep features and reconstruction'}
+  - {symbol: 'Q, K, V', meaning: 'Queries, keys and values of the pixels in one window'}
+  - {symbol: 'd', meaning: 'The length of each query and key'}
+  - {symbol: 'B', meaning: 'The learned bias for relative positions in the window'}
+  - {symbol: '\hat{x}', meaning: 'The restored image'}
+steps:
+  - Scale the pixels to 0 to 1 and mirror the image past its edges.
+  - Cut it into tiles of 256 pixels that overlap by 32 pixels on each side.
+  - Run the network on each tile and keep the center.
+  - Put the centers together.
+complexity:
+  time: O(N M^2)
+  memory: O(N)
+  notes: N is the number of pixels and M = 8 the window side. About 11.5 million weights. Much slower than DnCNN, so a GPU helps.
+useCases:
+  - Removing Gaussian noise near sigma 25 from color photos.
+advantages:
+  - Attention adapts to the content of each window, so edges and textures keep more detail than with a fixed kernel.
+limitations:
+  - Trained for one noise level. Much weaker or stronger noise is handled less well.
+  - Slow on a processor without a GPU.
+artifacts:
+  - Over-smooth fine texture where it looks like noise.
+references:
+  - kind: paper
+    text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+    doi: 10.1109/ICCVW54120.2021.00210
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: swinir}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A transformer network removes noise by comparing each pixel with its neighbors in small windows.
+  howItWorks:
+    - The image is cut into windows of 8 by 8 pixels.
+    - Inside each window, every pixel looks at the others and weighs them by how alike they are.
+    - The windows shift from layer to layer, so pixels also learn from beyond their window.
+  academic: >-
+    SwinIR color denoising for sigma 25: six residual Swin Transformer groups of six blocks,
+    window attention with a relative position bias, run in overlapping tiles.
+  paramNotes: {}
+  tryThis:
+    - Add Gaussian noise of sigma 25, then compare SwinIR with DnCNN and nonlocal means.
+  pitfalls:
+    - A learned model can change detail. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [dncnn, ffdnet, nlm, bm3d-lite]
+docsPage: filters/learned/swinir.md

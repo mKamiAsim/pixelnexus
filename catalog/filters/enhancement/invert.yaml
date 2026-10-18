@@ -1,0 +1,76 @@
+id: invert
+name: Invert
+aliases: [Negative, Image negative]
+family: enhancement
+tags: [purpose:brightness]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Extra. Point operation.
+
+summary: Turns the image into its negative, so black becomes white and white becomes black.
+purpose: Make negatives, and make dark detail on a bright background easier to see, or the other way around.
+classification: {linearity: nonlinear, domain: point, operation: negative transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: invertTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - ref: channelScope
+formula: |
+  I_{\text{out}} = 255 - I
+formulaExplanation: >-
+  The image negative of Gonzalez and Woods, with L - 1 = 255. Each value is mirrored around the
+  middle of the range. With RGB scope every color turns into its complement. With the
+  brightness scope only luma is mirrored, so hues stay and light and dark swap.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+steps:
+  - Subtract every value from 255.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Viewing medical or scientific images where small dark features matter.
+  - Turning scanned film negatives into positives.
+advantages:
+  - Exact and reversible. Inverting twice gives the image back.
+limitations:
+  - Does not undo the orange mask of color film negatives.
+artifacts:
+  - None.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: Pillow documentation, the ImageOps module.
+    url: https://pillow.readthedocs.io/en/stable/reference/ImageOps.html
+implementation: {path: web/src/core/filters/enhancement/point-ops.ts, symbol: invertFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Black becomes white, white becomes black, and every color turns into its opposite.
+  howItWorks:
+    - Subtract each value from 255.
+  academic: >-
+    The image negative s = L - 1 - r, a decreasing linear point transformation.
+  paramNotes:
+    channelScope: Invert the colors, or the brightness only.
+  tryThis:
+    - Compare RGB scope and the brightness scope on a colorful photo.
+  pitfalls:
+    - Expecting a scanned color negative to look right. Film negatives also need color balancing.
+  demos: [point-op-curve]
+related: [solarize, contrast-stretch]
+docsPage: filters/enhancement/invert.md

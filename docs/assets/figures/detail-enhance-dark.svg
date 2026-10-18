@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="105.24pt" viewBox="0 0 360 105.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 105.24 
+L 360 105.24 
+L 360 0 
+L 0 0 
+L 0 105.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#pc3570a3e82)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAAClElEQVR4nO3XMYrjQBRF0RrTstGGvC0vv7AqmI56oDMPFfz/4GTSraSQ4MH583w+/97v93Ecx5hzjsfjMeacQ/usvV6vcRzHr/M5p/Zhu53nOa7rGmutcZ7neL/fQ/u/ttb6da593r5+XuacY4zx71n7rP182A53SWy3DguS3rqtSlK7Vf+89Nbth6a1r+u6ymc4ua212twlsUEIhEBIcoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhEBIcoMQCClv3VYlqUHIZoMQCClv3VYlqUEIhJS2b1B7hqTz8sxoAAAAAElFTkSuQmCC" id="image1d7bf2ce6c" width="160" height="100" transform="matrix(0.715 0 0 0.715 3.6 16.87)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="60.8" y="12.87" transform="rotate(-0 60.8 12.87)">Input</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p17abd7bac4)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAAFh0lEQVR4nO3aWU/yahSG4cdPEwVlbC2FUhFxQMT//0McMOIEbXlbCliGeKT59lEbPdwmO13Nfo4wywnC8l65ErdardZf27Zh2zZubm7QarVwe3uLLM1s28b9/T0sy4JlWRgMBmg0Gnh4eEC9XodpmhgOhzAMA8/PzzAMA7qu4/X1FbquYzQaoVKpoFqtYjweo1wuYzKZoFgsolgsQimF/f19+L6PfD6PXC4HpRR2dnZwf3+P7e1t7O3tJZ+fTCYoFAooFAqYTCYolUpwXRflchmVSgXj8RjVahWj0QiapiXPxTAMDIdD1Go1mKaJx8dH1Ot1PDw8oNFooNFoYDAYwLIs3N3dwbIsHB0d4fb2NnlsNpuZmv3p9/twHAeO4+D6+hqj0QhZmzmOg16vB8/z4Hkeut0uPM/DxcUFlFJQSqHT6cD3fZycnGA6nSIMQxwfH2M6ncK2bSwWCywWCzSbTURRhHq9juVyieVyCcMwsFqtoOs61us11us1NE3Dx8cHNE3DZrPBer2GrutYrVao1WpYLpeIogimaeL9/R2NRgPz+Ryz2Qy2bWM+n6PVaiEMQ4RhiHa7jSAIcHp6iiAI4Ps+zs/PMZlMktfjeR4uLy/hui6urq7gui7G4zH6/X7ymLXZVr/f/yupZr+ZNZvN5K9rMBigXq/DsqykgI+PjzBNE4Zh4OnpCYZh4OXlBbquQ9d1vL29QdM0jMdjVCoVlMtluK6b1K9QKODg4ABKKeTzefi+j93d3aSAOzs7UEohl8shl8vB9/3k6wuFAkqlEjzPQ7lchuM4SW1Ho9GPEn8v9HA4hGmaSQHjx7jyd3d3sG1bVM1+M/sjrWa/ncVF6Ha7UErB8zycn59DKYWzszP4vg/f99FutzGdTnF8fIzZbPajSJZlJSWMCxjXbLlc4vDwMKlfXL3447h+6/UahmEk3xtFUVLAuLDz+fxHAeMSB0GATqeDIAhwdnYGpVRSwPjRdd2kgI7jiKrZb2Z/pC3Sv531er3kTYnPcPyGxcsXn+AgCJJzF4ZhsgDz+RzNZhOLxQKWZeH9/R1RFCXLV6vVsFqtfpzharWKr68vbDYbaJr24wR/P8OmaSKKouRnx79rNpshDEMcHR1hOp0mfxi+76PT6fx47t9fU3yC4yWUski/nW0RIUQIEUKEECFSakaEECHiCkeEECFiZ0SIjEUiQogQESeVCCFCMjUjQogQIoQIIULELBIRQoSkflKJECIkUzMiREbNiBAiRFzhiBAiRPSMCCFCiBAihAgRUTMihAhJvWZECBEirnBECBEidkaEyFgkIoQIEXFSiRAiJFMzIoQIIUKIECJEzCIRIURI6ieVCCFCMjUjQmTUjAghQsQVjgghQkTPiBAihAghQogQETUjQoiQ1GtGhBAh4gpHhBAhYmdEiIxFIkKIEBEnlQghQjI1I0KIECKECCFCxCwSEUKEpH5SiRAiJFMzIkRGzYgQIkRc4YgQIkT0jAghQogQIoQIEVEzIoQISb1mRAgRIq5wRAgRInZGhMhYJCKECBFxUokQIiRTMyKECCFCiBAiRMwiESFESOonlQghQjI1I0Jk1IwIIULEFY4IIUJEz4gQIoQIIUKIEBE1I0KIkNRrRoQQIeIKR4QQIWJnRIiMRSJCiBARJ5UIIUIyNSNCiBAihAghQsQsEhFChKR+UokQIiRTMyJERs2IECJEXOGIECJE9IwIIUKIECKECBFRMyKECEm9ZkQIESKucEQIESJ2ljZC4iUkQogQIkTASSVCiJBMzYgQIoQIIUKIEDGLRIQQIamfVCKECMnUjAiRUTMihAgRVzgi5D9ESPyfMEQIEZIKQj4/P4kQIoQIkXRSiRAiJFMzIoQIIUKIECJEzCIRIf8vhPwDKxshBAdA5w4AAAAASUVORK5CYII=" id="imaged6e1dd5c8f" width="160" height="100" transform="matrix(0.715 0 0 0.715 122.8 16.87)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="180" y="12.87" transform="rotate(-0 180 12.87)">Guided base</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#pb80bff3280)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAACoklEQVR4nO3XwY3iUBBF0T+ow8CQgJ0J2dsJgMljZkWvGf1F1ZPOytZd+kllnT/3+/3vsixjWZax7/u43+/jOI6hfdcej8e4Xq/jdruN4zh+n9p37bKu6zjPc5znObZtG8/nc2j/197v93i9XmNd19+n9l37+XzE4zjGGGNs2zb2fde+bJ+P+Wmfd+27dulwQZJb9QVJb5dug6a1boOmtZ/zPMt/Y8nt/X6X/8aSG4RACIQkNwiBEAgJbhACIRCS3CAEQspbt6uS1CAEQkobhEAIhCS3boOmNQiZbBACIeWt21VJahACIaUNQiAEQpJbt0HTGoRMNgiBkPLW7aokNQiBkNIGIRACIcmt26BpDUImG4RASHnrdlWSGoRASGmDEAiBkOTWbdC0BiGTDUIgpLx1uypJDUIgpLRBCIRASHLrNmhag5DJBiEQUt66XZWkBiEQUtogBEIgJLl1GzStQchkgxAIKW/drkpSgxAIKW0QAiEQkty6DZrWIGSyQQiElLduVyWpQQiElDYIgRAISW7dBk1rEDLZIARCylu3q5LUIARCShuEQAiEJLdug6Y1CJlsEAIh5a3bVUlqEAIhpQ1CIARCklu3QdMahEw2CIGQ8tbtqiQ1CIGQ0gYhEAIhya3boGkNQiYbhEBIeet2VZIahEBIaYMQCIGQ5NZt0LQGIZMNQiCkvHW7KkkNQiCktEEIhEBIcus2aFqDkMkGIRBS3rpdlaQGIRBS2iAEQiAkuXUbNK1ByGSDEAgpb92uSlKDEAgpbRACIRCS3LoNmtYgZLJBCISUt25XJalBCISUNgiBEAhJbt0GTWsQMtkgBELKW7erktQgBEJKG4RACIQkt26DpjUImWwQAiHlrdtVSWoQAiGlDUIgBEKSW7dB09o/8EaRhHuZOJ4AAAAASUVORK5CYII=" id="image57d8022f44" width="160" height="100" transform="matrix(0.715 0 0 0.715 242 16.87)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="299.2" y="12.87" transform="rotate(-0 299.2 12.87)">Bilateral base</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc3570a3e82">
+   <rect x="3.6" y="16.87" width="114.4" height="71.5"/>
+  </clipPath>
+  <clipPath id="p17abd7bac4">
+   <rect x="122.8" y="16.87" width="114.4" height="71.5"/>
+  </clipPath>
+  <clipPath id="pb80bff3280">
+   <rect x="242" y="16.87" width="114.4" height="71.5"/>
+  </clipPath>
+ </defs>
+</svg>

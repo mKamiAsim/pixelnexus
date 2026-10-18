@@ -1,0 +1,116 @@
+id: asf
+name: Alternating sequential filter
+aliases: [ASF]
+family: morphology
+tags: [purpose:morphology, purpose:denoise]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Openings and closings with elements of growing size, one pair per size. It removes bright and dark details up to a size, step by step.
+purpose: Simplify an image by removing both bright and dark details up to a chosen size, more gently than one large opening and closing.
+classification: {linearity: nonlinear, domain: spatial, operation: openings and closings of growing size}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: morphology}
+supportRadius: 2 size (size + 1)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full reach of all steps, so strips and whole images agree.
+
+params:
+  - key: shape
+    label: Element shape
+    type: select
+    default: disk
+    options:
+      - {value: disk, label: Disk}
+      - {value: square, label: Square}
+      - {value: diamond, label: Diamond}
+    description: The shape of the elements. Size i uses disk i, the square of side 2 i + 1, or diamond i.
+    effect: The shape decides which details count as small.
+  - key: size
+    label: Largest size
+    type: integer
+    min: 1
+    max: 6
+    step: 1
+    default: 3
+    description: The number of sizes. Each size adds an opening and a closing.
+    effect: Larger values remove larger details.
+  - key: order
+    label: Order
+    type: select
+    default: open-close
+    options:
+      - {value: open-close, label: Opening first}
+      - {value: close-open, label: Closing first}
+    description: Whether each size opens before it closes, or closes before it opens.
+    effect: Opening first favors dark structures a little, closing first bright ones.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  f_i = (f_{i-1} \circ B_i) \bullet B_i,\quad i = 1, \dots, n
+formulaExplanation: >-
+  f_0 is the image and B_i the element of size i. Each size opens and then closes, or closes and then opens. Growing the size step by step removes small details first, so large structures are disturbed less than with one large opening and closing.
+symbols:
+  - {symbol: 'B_i', meaning: The element of size i}
+  - {symbol: 'n', meaning: The largest size}
+steps:
+  - Extend the image by the full reach of all steps with the border mode.
+  - For each size from 1 to n, open and close with the element of that size, in the chosen order.
+  - Cut the extension off.
+complexity:
+  time: O(N n^3)
+  memory: O(N)
+  notes: N is the number of pixels per channel and n the largest size. Element i holds about i^2 pixels.
+useCases:
+  - Remove noise of both signs before segmentation.
+  - Simplify textures while keeping large shapes.
+advantages:
+  - Removes bright and dark details of a chosen size.
+  - Gentler on large structures than one large opening and closing.
+limitations:
+  - Slow for large sizes.
+  - The order of opening and closing changes the result a little.
+artifacts:
+  - Shapes take on the outline of the element.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Serra, J. Image Analysis and Mathematical Morphology, Volume 2. Academic Press, 1988.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: asfFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Open and close with a small element, then a larger one, and so on, to remove details step by step.
+  howItWorks:
+    - Open and close with a small element.
+    - Do it again with a larger element.
+    - Continue up to the largest size.
+  academic: >-
+    A composition of alternating filters of increasing size. Each one is a morphological filter, idempotent and increasing, and the sequence keeps those properties.
+  paramNotes:
+    shape: The element shape.
+    size: How large the removed details may be.
+    order: Which comes first in each size.
+  tryThis:
+    - Apply an ASF of size 3 to the Noise patches image and compare it with the median filter.
+  pitfalls:
+    - Using a large size on a large image. The cost grows with the cube of the size.
+  demos: [line-profile]
+related: [opening, closing, leveling, median]
+docsPage: filters/morphology/asf.md

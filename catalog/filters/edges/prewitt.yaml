@@ -1,0 +1,113 @@
+id: prewitt
+name: Prewitt
+aliases:
+- Prewitt X
+- Prewitt Y
+family: edges
+tags: [purpose:edge, purpose:gradient]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+planNotes: Prewitt X and Y.
+
+summary: Estimates the brightness gradient with two 3x3 kernels that average plainly along the edge.
+purpose: Find edges, their strength and their direction, with the simplest smoothing.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/gradients.ts, symbol: GRADIENT_PAIRS}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: gx, label: Horizontal change (Px)}
+      - {value: gy, label: Vertical change (Py)}
+      - {value: direction, label: Direction}
+    description: Which part of the gradient to show.
+    effect: The two derivatives are signed. Magnitude is never negative. Direction is an angle.
+  - key: norm
+    label: Magnitude norm
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (square root of the sum of squares)}
+      - {value: l1, label: L1 (sum of absolute values)}
+    description: How the two derivatives are combined into the magnitude.
+    effect: L1 gives slightly larger values on diagonal edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  G_x = P_x \star I, \quad G_y = P_y \star I,
+  \qquad
+  P_x = \begin{bmatrix} -1 & 0 & 1 \\ -1 & 0 & 1 \\ -1 & 0 & 1 \end{bmatrix},
+  \quad
+  P_y = P_x^{\mathsf T}
+formulaExplanation: >-
+  P_x takes a difference across the edge and a plain sum of three rows along it. P_y is the same turned by 90 degrees. The magnitude and direction combine G_x and G_y as for the Sobel filter. Compared with Sobel, the plain sum smooths less and treats the three rows equally.
+symbols:
+  - {symbol: 'P_x, P_y', meaning: The Prewitt kernels}
+  - {symbol: '\star', meaning: 'Correlation, without flipping'}
+steps:
+  - Pad the image with the border mode.
+  - Correlate with a difference along x and a sum along y for G_x, and the reverse for G_y.
+  - Combine G_x and G_y into the chosen output.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each kernel runs as two passes of 3 taps.
+useCases:
+  - Find edges in images with little noise.
+  - Teach how a difference and a smoothing make a gradient kernel.
+advantages:
+  - Simple whole-number weights.
+  - Separable, so it is fast.
+limitations:
+  - Less rotation invariant than Sobel or Scharr. Diagonal edges come out weaker.
+  - Sensitive to noise.
+artifacts:
+  - Thick edges, two or three pixels wide.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 10.2.
+  - kind: library
+    text: scikit-image documentation, skimage.filters.prewitt.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.prewitt
+implementation: {path: web/src/core/filters/edges/gradients.ts, symbol: prewittFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Two small kernels measure how fast brightness changes left to right and top to bottom.
+  howItWorks:
+    - Take the difference between the right and left columns of the 3x3 window.
+    - Take the difference between the bottom and top rows.
+    - Combine the two into a strength and a direction.
+  academic: >-
+    A separable first-derivative operator: a central difference times a three-tap box. Its frequency response is less isotropic than that of Sobel.
+  paramNotes:
+    output: The part of the gradient to show.
+    norm: How the two derivatives combine into the magnitude.
+  tryThis:
+    - Compare Prewitt and Sobel on the Siemens star. Look at the diagonal spokes.
+  pitfalls:
+    - Using it on a noisy image without smoothing first.
+  demos: [impulse-response, gradient-explorer]
+related: [sobel, scharr, roberts]
+docsPage: filters/edges/prewitt.md

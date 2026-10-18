@@ -1,0 +1,179 @@
+id: jpeg-cleanup
+name: JPEG artifact removal (classical)
+aliases: [JPEG cleanup, JPEG artifact reduction]
+family: restoration
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: Deblock plus dering. The learned version is in section 12.
+
+summary: Cleans strongly compressed JPEG images in two steps. Deblocking re-applies JPEG on shifted grids, then deringing smooths the ripples next to strong edges.
+purpose: Make strongly compressed JPEG images look cleaner, without a learned model.
+classification: {linearity: nonlinear, domain: transform, operation: deblocking followed by deringing}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: jpeg_cleanup_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  Deblocking works on the Y'CbCr of JFIF, as JPEG does. Deringing finds edges on the luma and,
+  by default, smooths only luma. With the RGB scope, it smooths each of the red, green and blue
+  channels. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The 8 x 8 DCT and the edge zone steps.'}
+  - {name: OpenCV, optional: false, note: 'The bilateral filter (cv2.bilateralFilter).'}
+
+params:
+  - key: quality
+    label: JPEG quality
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 50
+    description: The quality the image was saved with, from 1 to 100, as in the IJG library. It sets the quantization tables of the deblocking step.
+    effect: Use the quality of the file, or a little lower. Lower values smooth more.
+  - key: shifts
+    label: Shifts per axis
+    type: select
+    default: '8'
+    options:
+      - {value: '1', label: '1 (1 grid)'}
+      - {value: '2', label: '2 (4 grids)'}
+      - {value: '4', label: '4 (16 grids)'}
+      - {value: '8', label: '8 (64 grids)'}
+    description: How many shifts of the 8 x 8 grid the deblocking step averages along each axis.
+    effect: More shifts smooth block edges better and take longer.
+  - key: channels
+    label: Deblock channels
+    type: select
+    default: all
+    options:
+      - {value: all, label: 'Y, Cb and Cr'}
+      - {value: luma, label: Luma only}
+    description: Which planes of the Y'CbCr of JFIF the deblocking step processes.
+    effect: Luma only is faster and leaves color blocks.
+  - key: threshold
+    label: Edge threshold
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: Strong edges are where the gradient of the smoothed luma reaches this many levels per pixel.
+    effect: Lower values also treat weaker edges, so more of the image is smoothed.
+  - key: radius
+    label: Zone radius
+    type: integer
+    min: 1
+    max: 15
+    step: 1
+    default: 4
+    unit: px
+    description: How far from a strong edge the smoothing reaches. Ringing of JPEG stays within its 8 x 8 block.
+    effect: Larger zones catch ringing further out and smooth more texture.
+  - key: sigmaColor
+    label: Range sigma
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 25
+    description: The range sigma of the bilateral filter, in pixel values. Differences well above it are kept.
+    effect: Larger values smooth stronger ripples and also more texture.
+  - key: sigmaSpace
+    label: Space sigma
+    type: number
+    min: 0.5
+    max: 6
+    step: 0.1
+    default: 2
+    unit: px
+    description: The spatial sigma of the bilateral filter. Its window has a radius of ceil(2 sigma).
+    effect: Larger values smooth over wider areas.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  \hat{I} = \operatorname{dering}\big(\operatorname{deblock}(I)\big),
+  \qquad
+  \operatorname{deblock}(I) = \frac{1}{n^2} \sum_s S_{-s}\, J\big(S_s I\big),
+  \qquad
+  \operatorname{dering}(I) = w\, \operatorname{bilateral}(I) + (1 - w)\, I,
+  \qquad
+  q = {{quality}},\ T = {{threshold}}
+formulaExplanation: >-
+  JPEG leaves two kinds of damage. Block edges come from rounding each 8 x 8 block on its own,
+  and ringing comes from the rounding of the fine detail next to strong edges. The first step is
+  the deblocking filter, Nosratinia's re-application of JPEG. J is the lossy step of JPEG with
+  the quantization tables of quality q, and S_s shifts the image within the 8 x 8 grid. The
+  second step is the deringing filter. w is the soft weight of the zone around strong edges, and
+  the bilateral filter smooths the ripples there. See those two filters for the details. The
+  deblocking step also removes some ringing, so the deringing step has less to do.
+symbols:
+  - {symbol: 'J', meaning: 'The lossy step of JPEG for quality q'}
+  - {symbol: 'S_s', meaning: 'A shift of the image within the 8 x 8 grid'}
+  - {symbol: 'w', meaning: The blend weight of the zone around strong edges}
+  - {symbol: 'T', meaning: The edge threshold of the deringing step}
+steps:
+  - Deblock with the re-application of JPEG, averaged over the shifts.
+  - Find strong edges on the luma of the deblocked image and build the zone around them.
+  - Smooth the zone with the bilateral filter and blend it in.
+complexity:
+  time: O(n^2 N + N r_s^2)
+  memory: O(N)
+  notes: N is the number of pixels, n the shifts per axis and r_s the radius of the bilateral window.
+useCases:
+  - Strongly compressed photos, screenshots and web images.
+  - A classical baseline to compare learned JPEG restoration with.
+advantages:
+  - Handles both block edges and ringing.
+  - Needs no model download.
+limitations:
+  - The quality must be known or guessed.
+  - The deringing zone rule is approximate, as in the deringing filter.
+  - Lost detail does not come back.
+artifacts:
+  - Slight blur of fine texture near edges.
+references:
+  - kind: paper
+    text: Nosratinia, A. Enhancement of JPEG-compressed images by re-application of JPEG. Journal of VLSI Signal Processing Systems 27(1 to 2), 69 to 79, 2001.
+    doi: 10.1023/A:1008167430544
+  - kind: paper
+    text: Tomasi, C., and Manduchi, R. Bilateral filtering for gray and color images. Sixth International Conference on Computer Vision, 839 to 846, 1998.
+    doi: 10.1109/ICCV.1998.710815
+implementation: {path: engine/src/pixelnexus_engine/filters/artifacts.py, symbol: jpeg_cleanup}
+tests: [engine/tests/test_artifacts.py]
+learn:
+  oneSentence: First blend away the 8 x 8 blocks, then smooth the ripples next to strong edges.
+  howItWorks:
+    - Compress the image again on shifted grids and average, so block edges fade.
+    - Find the strong edges of the result.
+    - Smooth only the ripples in a thin zone around them.
+  academic: >-
+    Nosratinia's shift-averaged re-application of JPEG, followed by bilateral filtering in a
+    feathered zone around strong edges.
+  paramNotes:
+    quality: How hard the image was compressed.
+    shifts: How many shifted grids are averaged.
+    channels: Whether the color planes are deblocked too.
+    threshold: How strong an edge must be for deringing.
+    radius: How far from the edge the deringing reaches.
+    sigmaColor: How large the ripples may be that are smoothed.
+    sigmaSpace: How wide the smoothing is.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image deringing smooths.
+  tryThis:
+    - Compare this filter with Deblocking alone on a JPEG of text. The ripples around the letters go too.
+  pitfalls:
+    - A quality much lower than the file's. Fine detail is smoothed away.
+  demos: [line-profile]
+related: [deblock, dering, wavelet-threshold]
+docsPage: filters/restoration/jpeg-cleanup.md

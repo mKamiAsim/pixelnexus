@@ -1,0 +1,141 @@
+id: lbp
+name: Local Binary Pattern
+aliases: [LBP, Local binary patterns]
+family: features
+tags: [purpose:texture, purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+planNotes: scikit-image.
+
+summary: Describes the texture around each pixel with a small binary code, after Ojala, Pietikainen and Maenpaa. Each of P points on a circle around the pixel gives one bit, 1 when it is at least as bright as the center. The codes become a gray image, or a histogram that describes the texture of the whole image.
+purpose: Describe and compare textures in a way that does not change with the brightness or the contrast of the image.
+classification: {linearity: nonlinear, domain: spatial, operation: local binary codes}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: lbp_representation}
+supportRadius: ceil(radius) + 1
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit luma with the BT.709 weights and gives a gray result. Alpha is
+  kept. The histogram output goes to the Features panel as a table.
+boundary: scikit-image counts sample points outside the image as 0.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.local_binary_pattern.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: codes
+    options:
+      - {value: codes, label: Codes as an image}
+      - {value: histogram, label: Histogram table}
+    description: The code of every pixel as a gray image, or a table with how often each code occurs. With the variance method, the output is always an image.
+    effect: The histogram is the texture descriptor that classifiers use.
+  - key: points
+    label: Points
+    type: integer
+    min: 4
+    max: 24
+    step: 1
+    default: 8
+    description: The number P of sample points on the circle. Each gives one bit.
+    effect: More points describe the texture more finely and give many more codes.
+  - key: radius
+    label: Radius
+    type: number
+    min: 1
+    max: 8
+    step: 0.5
+    default: 1
+    unit: px
+    description: The radius R of the circle of sample points.
+    effect: Larger radii describe coarser texture.
+  - key: method
+    label: Method
+    type: select
+    default: default
+    options:
+      - {value: default, label: Default (all codes)}
+      - {value: ror, label: Rotation invariant}
+      - {value: uniform, label: 'Uniform, rotation invariant'}
+      - {value: nri_uniform, label: 'Uniform, not rotation invariant'}
+      - {value: var, label: Variance}
+    description: How the bits become a code. The names are those of scikit-image.
+    effect: Uniform codes group most natural texture into few labels.
+formula: |
+  \mathrm{LBP}_{P,R} = \sum_{p=0}^{P-1} s(g_p - g_c)\, 2^p,
+  \qquad
+  s(z) = \begin{cases} 1 & z \ge 0 \\ 0 & z < 0 \end{cases},
+  \qquad
+  P = {{points}},\ R = {{radius}}
+formulaExplanation: >-
+  The center pixel is g_c, and g_p are P points on a circle of radius R around it. They start
+  at the right and go counterclockwise. Points between pixels are interpolated. Each point
+  gives a bit: 1 when it is at least as bright as the center. Only the signs of the
+  differences count. So adding a constant to the image or stretching its contrast leaves
+  the codes as they are. The rotation invariant method turns each code to its smallest
+  rotation. Uniform codes have at most two changes between 0 and 1 around the circle. Ojala
+  and coworkers found that they cover most of natural texture. So the uniform method labels
+  them by the number of 1s and puts all others under one label. The variance
+  method gives the variance of the samples instead, a measure of local contrast. The codes are
+  scaled to the full gray range for the image output.
+symbols:
+  - {symbol: 'g_c', meaning: 'The center pixel'}
+  - {symbol: 'g_p', meaning: 'The sample points on the circle'}
+  - {symbol: 'P, R', meaning: 'The number of points and the radius'}
+steps:
+  - Take the 8-bit luma.
+  - Sample P points on a circle of radius R around each pixel.
+  - Set a bit for each point that is at least as bright as the center.
+  - Turn the bits into a code with the chosen method.
+  - Scale the codes to an image, or count them in a histogram.
+complexity:
+  time: O(P N)
+  memory: O(N)
+  notes: N is the number of pixels and P the number of points.
+useCases:
+  - Texture classification, such as materials, fabric or bark.
+  - Face description.
+advantages:
+  - Does not change with the brightness or contrast of the image.
+  - Fast and simple.
+limitations:
+  - Noise in flat areas flips bits, since any difference counts.
+  - With many points, the default method gives very many codes, too many for a useful histogram.
+artifacts:
+  - Speckled codes in flat, noisy areas.
+references:
+  - kind: paper
+    text: Ojala, T., Pietikainen, M., and Maenpaa, T. Multiresolution gray-scale and rotation invariant texture classification with local binary patterns. IEEE Transactions on Pattern Analysis and Machine Intelligence 24(7), 971 to 987, 2002.
+    doi: 10.1109/TPAMI.2002.1017623
+  - kind: library
+    text: scikit-image documentation, skimage.feature.local_binary_pattern.
+implementation: {path: engine/src/pixelnexus_engine/filters/texture.py, symbol: lbp}
+tests: [engine/tests/test_texture.py]
+learn:
+  oneSentence: Describe each pixel by which of its neighbors are brighter than it.
+  howItWorks:
+    - Look at a few points on a small circle around each pixel.
+    - Write 1 for each point at least as bright as the center, else 0.
+    - Read the bits around the circle as one number, the code.
+    - Similar textures give similar mixes of codes.
+  academic: >-
+    Local binary patterns with P interpolated samples at radius R, in default, rotation
+    invariant, uniform or variance form, after Ojala et al.
+  paramNotes:
+    output: An image of codes, or a table of how often each occurs.
+    points: How many points are on the circle.
+    radius: How large the circle is.
+    method: How the bits become a code.
+  tryThis:
+    - Choose the uniform method and the histogram output, and compare the tables of two textures.
+  pitfalls:
+    - Flat, noisy areas. Noise alone decides the bits there.
+  demos: [line-profile]
+related: [ltp, glcm, laws, gabor-bank]
+docsPage: filters/features/lbp.md

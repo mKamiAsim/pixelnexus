@@ -1,0 +1,121 @@
+id: enhanced-lee
+name: Enhanced Lee filter
+aliases: [Enhanced Lee speckle filter]
+family: adaptive
+tags: [purpose:denoise, noise:speckle]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Speckle.
+
+summary: A Lee filter with three classes. Flat areas get the mean, strong targets stay unchanged, and areas between are blended.
+purpose: Reduce speckle more in flat areas and keep edges and point targets better than the Lee filter.
+classification: {linearity: nonlinear, domain: statistical, operation: classified local estimator for multiplicative noise}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/speckle.ts, symbol: enhancedLeeValue}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own statistics. With the
+  brightness scope, only luma is filtered. Alpha is kept. The filter is meant for intensity
+  images, where values are 0 or more.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: Width and height of the window for the local statistics.
+    effect: Larger windows give steadier statistics and smooth more.
+  - key: cu
+    label: Speckle variation C_u
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.25
+    description: The coefficient of variation of the speckle, its standard deviation over its mean. For an L-look intensity image it is 1 over the square root of L.
+    effect: Larger values treat more of the image as speckle and smooth more.
+  - key: damping
+    label: Damping K
+    type: number
+    min: 0
+    max: 10
+    step: 0.1
+    default: 1
+    description: How fast the blend moves from the mean to the pixel as the variation grows.
+    effect: Larger values keep more detail in the middle class.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{R} =
+  \begin{cases}
+  m & C_I \le C_u \\
+  m\,W + z\,(1 - W),\quad W = e^{-K \frac{C_I - C_u}{C_{\max} - C_I}} & C_u < C_I < C_{\max} \\
+  z & C_I \ge C_{\max}
+  \end{cases},
+  \qquad
+  C_{\max} = \sqrt{1 + 2 C_u^2}
+formulaExplanation: >-
+  Lopes, Touzi and Nezry split the image into three classes by the local coefficient of variation C_I. Below C_u the window is pure speckle, so the output is the mean m. Above C_max it holds a strong target or edge, so the pixel z is kept. Between, the weight W blends the two, with the damping K. C_max = sqrt(1 + 2 C_u^2) is the largest variation pure speckle is expected to reach.
+symbols:
+  - {symbol: 'C_I', meaning: The coefficient of variation of the window}
+  - {symbol: 'C_u', meaning: The coefficient of variation of the speckle}
+  - {symbol: 'C_{\max}', meaning: The upper class limit}
+  - {symbol: 'K', meaning: The damping}
+steps:
+  - Pad the image with the border mode.
+  - Compute the mean and variance of each window with running sums.
+  - Compute C_I and find its class.
+  - Write the mean, the pixel, or the blend with weight W.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel.
+useCases:
+  - Reduce speckle in radar images with bright point targets.
+  - Smooth flat fields strongly while keeping field borders.
+advantages:
+  - Flat areas are fully smoothed.
+  - Point targets and strong edges are kept exactly.
+limitations:
+  - Needs C_u and the damping.
+  - Class borders can show as a change in texture.
+artifacts:
+  - Small patches where neighboring pixels fall into different classes.
+references:
+  - kind: paper
+    text: Lopes, A., Touzi, R. and Nezry, E. Adaptive speckle filters and scene heterogeneity. IEEE Transactions on Geoscience and Remote Sensing 28(6), 992 to 1000, 1990.
+    doi: 10.1109/36.62623
+implementation: {path: web/src/core/filters/adaptive/speckle.ts, symbol: enhancedLeeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Smooth fully where it is only speckle, keep strong targets, and blend in between.
+  howItWorks:
+    - Measure the variation of the window.
+    - Below the speckle variation, use the mean. Above C_max, keep the pixel.
+    - In between, blend the two with a weight that falls as the variation grows.
+  academic: >-
+    A heterogeneity-based classification on top of the Lee estimator. The limits C_u and C_max come from the statistics of fully developed speckle.
+  paramNotes:
+    cu: The speckle variation.
+    damping: How fast the middle class moves from smoothing to keeping.
+  tryThis:
+    - Compare it with the Lee filter on a speckled image with a few bright dots.
+  pitfalls:
+    - Setting C_u too low. Then most of the image falls into the middle class.
+  demos: [rank-stepper, line-profile]
+related: [lee, gamma-map, frost, kuan]
+docsPage: filters/adaptive/enhanced-lee.md

@@ -1,0 +1,220 @@
+id: sparse-fista
+name: Sparse regularization
+aliases: [FISTA deconvolution, Wavelet-regularized deconvolution, L1 wavelet deblurring]
+family: restoration
+tags: [purpose:sharpening, purpose:denoise]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: FISTA with a wavelet L1 prior.
+
+summary: Undoes a known blur by finding the image whose blurred copy matches the photo and whose wavelet details are sparse, with the fast iterative shrinkage algorithm FISTA.
+purpose: Deblur noisy images while keeping only the wavelet details that the photo really supports.
+classification: {linearity: nonlinear, domain: iterative, operation: wavelet L1 regularized deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: fista_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. A little more is added
+  to reach a multiple of 2^J. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+dependencies:
+  - {name: PyWavelets, optional: false, note: 'The orthogonal wavelet transform (wavedec2 and waverec2, periodization mode).'}
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.fft2 and ifft2).'}
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: wavelet
+    label: Wavelet
+    type: select
+    default: sym8
+    options:
+      - {value: haar, label: Haar}
+      - {value: db2, label: Daubechies 2 (db2)}
+      - {value: db4, label: Daubechies 4 (db4)}
+      - {value: sym4, label: Symlet 4 (sym4)}
+      - {value: sym8, label: Symlet 8 (sym8)}
+    description: The orthogonal wavelet of the prior. Its filter taps come from PyWavelets.
+    effect: Haar favors flat blocks. Longer wavelets favor smooth shading.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 6
+    step: 1
+    default: 3
+    description: How many levels the wavelet transform has. It is capped at the deepest level the image size allows.
+    effect: More levels also penalize broader details.
+  - key: lambda
+    label: Lambda
+    type: number
+    min: 0
+    max: 50
+    step: 0.05
+    default: 1
+    description: The weight of the L1 term, in pixel values. It is also the soft threshold of each step. 0 leaves only the data term.
+    effect: Larger values remove more noise and more fine detail.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 1000
+    step: 1
+    default: 100
+    description: How many FISTA steps to run.
+    effect: More iterations come closer to the minimum and take longer.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{f} = \arg\min_f\ \tfrac{1}{2} \lVert h * f - g \rVert^2 + \lambda \lVert D W f \rVert_1,
+  \qquad
+  x_k = W^{-1} \eta_\lambda\big(W (y_k - h' * (h * y_k - g))\big),
+  \qquad
+  t_{k+1} = \tfrac{1 + \sqrt{1 + 4 t_k^2}}{2},
+  \quad
+  y_{k+1} = x_k + \tfrac{t_k - 1}{t_{k+1}} (x_k - x_{k-1}),
+  \qquad
+  \lambda = {{lambda}},\ J = {{levels}},\ K = {{iterations}}
+formulaExplanation: >-
+  The filter looks for the image f whose blurred copy h * f is close to the photo g. Its wavelet
+  details should also be sparse, with few large values and many zeros. W is an orthogonal wavelet
+  transform and D keeps its detail bands, so the coarse approximation costs nothing. The L1
+  norm, the sum of absolute values, is the convex penalty that favors zeros. Daubechies, Defrise
+  and De Mol showed that alternating a gradient step on the data term with soft thresholding,
+  eta, converges to the minimum (ISTA). Beck and Teboulle added a momentum step that makes the
+  error fall like 1 / k^2 instead of 1 / k (FISTA). h' is the PSF turned by a half turn. The PSF
+  is normalized and has no negative weights, so |H| is at most 1 and the step can be 1. Then
+  the threshold of each step is lambda itself. W is orthogonal, so thresholding in W and
+  transforming back is the exact proximal map. The first estimate is the photo, and t_1 = 1.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
+  - {symbol: 'W', meaning: The orthogonal wavelet transform}
+  - {symbol: 'D', meaning: Keeps the detail bands and drops the approximation}
+  - {symbol: '\eta_\lambda', meaning: 'Soft thresholding of the details at lambda'}
+  - {symbol: 'x_k, y_k, t_k', meaning: 'The estimate, the extrapolated point and the momentum weight'}
+steps:
+  - Extend the image with the border mode to a fast FFT size that is a multiple of 2^J.
+  - Start with x_0 and y_1 equal to the extended image g, and t_1 = 1.
+  - Take a gradient step on the data term from y_k.
+  - Transform with W, soft-threshold the details at lambda and transform back. This is x_k.
+  - Update t and extrapolate y from the last two estimates, and repeat.
+  - Crop the last estimate x to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations. Each iteration takes four FFTs and two wavelet transforms of O(N L) for L filter taps.
+useCases:
+  - Learning how sparsity priors and proximal algorithms work.
+  - Deblurring photos with natural detail, where total variation looks too flat.
+advantages:
+  - Converges much faster than plain iterative shrinkage.
+  - The energy is convex, so the result does not depend on the start, once it has converged.
+limitations:
+  - A decimated wavelet transform is not shift invariant, so results change a little when the image moves.
+  - Edges keep less contrast than with total variation on images of flat shapes.
+  - The PSF must be known.
+artifacts:
+  - Blocky or wavy patterns shaped like the wavelet with large lambda.
+  - Ringing next to strong edges with small lambda.
+references:
+  - kind: paper
+    text: Beck, A., and Teboulle, M. A fast iterative shrinkage-thresholding algorithm for linear inverse problems. SIAM Journal on Imaging Sciences 2(1), 183 to 202, 2009.
+    doi: 10.1137/080716542
+  - kind: paper
+    text: Daubechies, I., Defrise, M., and De Mol, C. An iterative thresholding algorithm for linear inverse problems with a sparsity constraint. Communications on Pure and Applied Mathematics 57(11), 1413 to 1457, 2004.
+    doi: 10.1002/cpa.20042
+implementation: {path: engine/src/pixelnexus_engine/filters/restoration.py, symbol: sparse_fista}
+tests: [engine/tests/test_restoration.py]
+learn:
+  oneSentence: Find the sharp image whose blurred copy matches the photo, using as few wavelet details as possible.
+  howItWorks:
+    - Start from the blurred photo.
+    - Correct the guess where its blurred copy differs from the photo.
+    - Describe the guess with wavelets and drop the small details.
+    - Give the next step a push in the direction the guess is moving, and repeat.
+  academic: >-
+    Synthesis-equals-analysis L1 regularization with an orthogonal wavelet basis, solved with
+    FISTA: a gradient step on the quadratic data term, wavelet soft thresholding as the proximal
+    map, and Nesterov momentum.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    wavelet: The shape of the building blocks.
+    levels: How many sizes of detail are penalized.
+    lambda: How many details are dropped.
+    iterations: How long to refine the guess.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Compare this filter with Total variation restoration on a photo and on a drawing.
+    - Set lambda to 0 to see what the data term alone does after 100 steps.
+  pitfalls:
+    - Large lambda on photos with fine texture. The texture turns into wavelet-shaped blobs.
+  demos: [iteration-viewer]
+related: [tv-deblur, wavelet-threshold, richardson-lucy, landweber, wiener-deconv]
+docsPage: filters/restoration/sparse-fista.md

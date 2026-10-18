@@ -1,0 +1,145 @@
+id: orb
+name: ORB
+aliases: [ORB-inspired binary features, Oriented FAST and rotated BRIEF]
+family: features
+tags: [purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+planNotes: ORB-inspired binary features. OpenCV.
+
+summary: Finds corners quickly with ORB. It looks for FAST corners on an image pyramid, ranked by the Harris measure, each with an orientation from the intensity centroid. Only the detector runs, not the binary descriptor.
+purpose: Find many corner keypoints fast, with their scale and orientation, as in real-time tracking and mapping.
+classification: {linearity: nonlinear, domain: spatial, operation: oriented FAST corners on a pyramid}
+output: features
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: keypoint_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the 8-bit luma with the BT.709 weights. Alpha is ignored. The image does
+  not change. The keypoints go to the Features panel and are drawn on the canvas, each as a
+  circle of its radius with a line for its angle.
+boundary: Keypoints closer than 31 pixels to the edge of each pyramid level are dropped, since the patch must fit.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.ORB_create and detect.'}
+
+params:
+  - key: maxFeatures
+    label: Most keypoints
+    type: integer
+    min: 10
+    max: 5000
+    step: 1
+    default: 500
+    description: Keep at most this many keypoints, the strongest over all levels. OpenCV uses 500.
+    effect: Higher values keep weaker corners too.
+  - key: scaleFactor
+    label: Scale factor
+    type: number
+    min: 1.05
+    max: 2
+    step: 0.05
+    default: 1.2
+    description: The image shrinks by this factor from one pyramid level to the next. OpenCV uses 1.2.
+    effect: Larger factors cover more sizes with fewer levels, but coarser.
+  - key: levels
+    label: Pyramid levels
+    type: integer
+    min: 1
+    max: 16
+    step: 1
+    default: 8
+    description: The number of pyramid levels. OpenCV uses 8.
+    effect: More levels find larger corners.
+  - key: fastThreshold
+    label: FAST threshold
+    type: integer
+    min: 1
+    max: 100
+    step: 1
+    default: 20
+    description: How much brighter or darker the circle must be than the center, in levels. OpenCV uses 20.
+    effect: Higher values keep only sharp, strong corners.
+  - key: scoreType
+    label: Ranking
+    type: select
+    default: harris
+    options:
+      - {value: harris, label: Harris measure}
+      - {value: fast, label: FAST score}
+    description: How corners are ranked before the strongest are kept. OpenCV uses the Harris measure.
+    effect: The FAST score is a little faster and gives slightly less stable keypoints.
+formula: |
+  \text{corner if 9 contiguous pixels of the 16-pixel circle differ from } I(p) \text{ by more than } t,
+  \qquad
+  \theta = \operatorname{atan2}(m_{01}, m_{10}),
+  \qquad
+  t = {{fastThreshold}}
+formulaExplanation: >-
+  ORB looks for FAST corners on each level of an image pyramid. A pixel is a FAST corner when 9
+  pixels in a row on the circle of 16 around it differ from it by more than the threshold.
+  They must be all brighter or all darker. Corners are ranked by the Harris measure det M - 0.04 tr(M)^2 of a
+  7 x 7 window. The strongest over all levels are kept. The orientation comes from the
+  intensity centroid. The moments m_10 and m_01 of the brightness in a disk 31 pixels wide
+  around the corner point toward its brighter side.
+symbols:
+  - {symbol: 't', meaning: 'The FAST threshold'}
+  - {symbol: 'm_{pq}', meaning: 'The moments of the brightness in the patch, the sum of x^p y^q I'}
+  - {symbol: 'M', meaning: 'The structure tensor of the Harris measure'}
+  - {symbol: 'x, y', meaning: 'The keypoint position, with the center of the top-left pixel at 0, 0'}
+  - {symbol: '\theta', meaning: 'The orientation, counterclockwise from the x axis'}
+steps:
+  - Build an image pyramid with the scale factor.
+  - Find FAST corners on each level.
+  - Rank them by the Harris measure and keep the strongest.
+  - Give each one the direction of its intensity centroid.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The pyramid levels together cost a few times the first level.
+useCases:
+  - Real-time tracking, odometry and mapping.
+  - Fast matching where SIFT is too slow.
+advantages:
+  - Very fast.
+  - Free of patents, unlike SURF.
+limitations:
+  - Finds corners only, not blobs.
+  - Keypoints near the image border are missing, since the patch must fit.
+  - Only the detector runs. The binary descriptors are not computed.
+artifacts:
+  - Keypoints on smooth curved edges, which have no true corner. On the Disks image, about 9 in 10 lie within 3 pixels of a disk edge.
+references:
+  - kind: paper
+    text: Rublee, E., Rabaud, V., Konolige, K., and Bradski, G. ORB. An efficient alternative to SIFT or SURF. IEEE International Conference on Computer Vision, 2564 to 2571, 2011.
+    doi: 10.1109/ICCV.2011.6126544
+  - kind: library
+    text: OpenCV documentation, cv2.ORB_create and detect.
+implementation: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: orb}
+tests: [engine/tests/test_keypoints.py]
+learn:
+  oneSentence: Find many corners fast, at several sizes, each with a direction.
+  howItWorks:
+    - Shrink the image step by step.
+    - At each size, find pixels with a ring of much brighter or darker pixels around them.
+    - Keep the strongest corners.
+    - Point each one toward the brighter side of its patch.
+  academic: >-
+    Oriented FAST corners on a scale pyramid, ranked by the Harris measure, with intensity-centroid orientation, after Rublee et al.
+  paramNotes:
+    maxFeatures: How many keypoints to keep.
+    scaleFactor: How much the image shrinks per level.
+    levels: How many sizes are tried.
+    fastThreshold: How strong a corner must be.
+    scoreType: How corners are ranked.
+  tryThis:
+    - Lower the FAST threshold from 20 to 5 on the Disks image. The count grows from 355 to 443, almost all on the disk edges.
+  pitfalls:
+    - Expecting keypoints at the border. Corners closer than the patch size are dropped.
+  demos: [feature-viewer]
+related: [sift, brisk, fast, harris]
+docsPage: filters/features/orb.md

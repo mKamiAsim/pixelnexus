@@ -1,0 +1,95 @@
+id: edsr
+name: EDSR
+aliases: [Enhanced deep super-resolution]
+family: learned
+tags: [purpose:enhance]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: edsr-x4
+changesSize: true
+planNotes: Super-resolution through OpenCV's dnn_superres module.
+
+summary: Enlarges an image four times with EDSR, a deep residual network trained on clean, bicubically shrunk images. It is accurate on that kind of input and does not invent texture the way GAN models do. OpenCV's dnn_superres module runs it. It needs a downloaded model.
+purpose: Super-resolution that aims for accuracy, for comparison with Real-ESRGAN and classical methods.
+classification: {linearity: nonlinear, domain: learned, operation: residual CNN super-resolution}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: edsr}
+supportRadius: global
+supportsMask: false
+preview: on-demand
+colorHandling: >-
+  Colors are premultiplied by alpha first, as Resize does, and alpha is enlarged with bicubic
+  (OpenCV INTER_CUBIC).
+boundary: OpenCV handles the border inside the network.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.dnn_superres.DnnSuperResImpl, model edsr.'}
+
+params:
+  - key: scale
+    label: Scale
+    type: integer
+    min: 4
+    max: 4
+    step: 1
+    default: 4
+    unit: x
+    description: How many times larger the image becomes in each direction. The model was trained for 4 times only.
+    effect: Fixed by the model.
+formula: |
+  \hat{x} = U_4\big(h_0 + \textstyle\sum_{k} r_k(h)\big),\quad h_0 = c(y)
+formulaExplanation: >-
+  A first convolution c turns the image into features h_0. Residual blocks r_k, without batch
+  normalization, refine them, and their sum is added to h_0. An upsampling part U with pixel
+  shuffles enlarges the result four times. The model was trained with an L1 loss, so it aims at
+  the true image.
+symbols:
+  - {symbol: 'y', meaning: 'The small image'}
+  - {symbol: 'r_k', meaning: 'A residual block'}
+  - {symbol: 'U_4', meaning: 'The upsampling part'}
+steps:
+  - Premultiply the colors by alpha.
+  - Run EDSR through OpenCV.
+  - Enlarge alpha with bicubic.
+complexity:
+  time: O(N)
+  memory: O(16 N)
+  notes: N is the number of input pixels. EDSR is large, so it is slow on the CPU.
+useCases:
+  - Enlarging clean images where accuracy matters more than crisp texture.
+advantages:
+  - No invented texture.
+limitations:
+  - Trained on bicubic shrinking only, so real blur and noise stay or grow.
+  - Slow on large images.
+artifacts:
+  - Soft results on real photos.
+references:
+  - kind: paper
+    text: Lim, B., Son, S., Kim, H., Nah, S., and Lee, K. M. Enhanced deep residual networks for single image super-resolution. IEEE Conference on Computer Vision and Pattern Recognition Workshops, 1132 to 1140, 2017.
+    doi: 10.1109/CVPRW.2017.151
+  - kind: library
+    text: OpenCV documentation, dnn_superres module.
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: edsr}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A deep network enlarges the image four times, aiming at accuracy.
+  howItWorks:
+    - Many residual blocks learn the detail lost when an image is shrunk.
+    - Pixel shuffles turn channels into a larger picture.
+    - The result is close to the true image when the input was shrunk the same way.
+  academic: >-
+    EDSR of Lim et al., residual blocks without batch normalization and an L1 loss, through
+    OpenCV dnn_superres.
+  paramNotes:
+    scale: Four times.
+  tryThis:
+    - Compare with Real-ESRGAN on a photo and on a shrunk test image.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [real-esrgan, srcnn, sr-classical]
+docsPage: filters/learned/edsr.md

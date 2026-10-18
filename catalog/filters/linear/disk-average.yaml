@@ -1,0 +1,123 @@
+id: disk-average
+name: Disk averaging filter
+aliases:
+- Circular averaging filter
+- Defocus blur
+family: linear
+tags: [purpose:smoothing, purpose:blur, purpose:simulation]
+tier: core
+engine: browser
+phase: 5a
+status: implemented-tested
+planNotes: Circular averaging filter. Defocus blur (uniform disk PSF model). Anti-aliased disk.
+
+summary: Averages a round window, the blur of an out-of-focus lens.
+purpose: Simulate defocus, or blur the same amount in every direction with a sharp-edged window.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/disk-average.ts, symbol: diskKernel}
+supportRadius: ceil(radius - 0.5)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same kernel. Alpha is kept. Turn on Linear light
+  for a defocus that treats light as a camera does.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: radius
+    label: Radius
+    type: number
+    min: 0.5
+    max: 25
+    step: 0.1
+    default: 3
+    unit: px
+    description: Radius of the disk in pixels. Partly covered pixels at its edge get partial weights.
+    effect: Larger radii blur more. Bright points become round spots of this radius.
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Blur linear light values instead of sRGB encoded values.
+    effect: Bright points spread into clear round spots, as in a real defocused photo.
+    advanced: true
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=-r}^{r} \sum_{i=-r}^{r} D(i,j)\, I(x+i,\, y+j),
+  \qquad
+  D(i,j) = \frac{\left| \mathcal{C}_R \cap \square_{i,j} \right|}{\pi R^2},
+  \qquad
+  r = \lceil R - \tfrac{1}{2} \rceil,
+  \quad
+  R = {{radius}}
+formulaExplanation: >-
+  Each weight is the area of the disk of radius R that lies inside that pixel's square,
+  divided by the area of the whole disk. So the weights add up to 1, and pixels on the edge of
+  the disk count only for the part the disk covers. The areas are exact, from the integral of
+  the circle's height.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'R', meaning: 'Disk radius in pixels'}
+  - {symbol: 'r', meaning: 'Half-size of the kernel in pixels'}
+  - {symbol: '\mathcal{C}_R', meaning: 'The disk of radius R around the center'}
+  - {symbol: '\square_{i,j}', meaning: 'The unit square of the kernel cell at offset (i, j)'}
+  - {symbol: '\lvert \cdot \rvert', meaning: 'Area'}
+steps:
+  - Compute the area of the disk inside each kernel cell, exactly.
+  - Divide every area by the sum, so the weights add up to 1.
+  - Pad the image with the border mode and correlate it with the kernel.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,(2r+1)^2)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The disk is not separable, so large radii are slow.
+useCases:
+  - Simulate an out-of-focus camera, for example to test deblurring.
+  - Make bokeh-like round highlights with Linear light on.
+advantages:
+  - The blur is the same in every direction, with a sharp outer edge like a real lens aperture.
+  - The anti-aliased edge weights avoid a jagged, square-ish kernel for small radii.
+limitations:
+  - Not separable, so the cost grows with the square of the radius.
+  - Its frequency response has zeros and negative lobes, so some fine patterns reverse their contrast.
+artifacts:
+  - Ringing patterns on fine repeating detail, from the negative lobes.
+  - Round bright spots around small highlights.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5.
+  - kind: web
+    text: MathWorks documentation, fspecial with the disk type.
+    url: https://www.mathworks.com/help/images/ref/fspecial.html
+  - kind: library
+    text: SciPy documentation, scipy.integrate.quad, used for the reference kernel.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.quad.html
+implementation: {path: web/src/core/filters/linear/disk-average.ts, symbol: diskAverageFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes the plain average of a round window, like the blur of a lens that is out of focus.
+  howItWorks:
+    - Draw a disk around the pixel.
+    - Give every neighbor inside the disk the same weight. Neighbors on the edge count for the part inside.
+    - Add up the weighted neighbors.
+  academic: >-
+    The kernel is the uniform disk point spread function of geometric defocus, sampled by exact
+    area integration over each pixel. Its Fourier transform is an Airy-like Bessel pattern with
+    zero crossings.
+  paramNotes:
+    radius: The radius of the disk. Bright points become round spots of this size.
+  tryThis:
+    - Turn on Linear light and blur the Disks and dots test image. Small dots become round spots.
+    - Compare a disk of radius 3 with a Gaussian of sigma 1.5. The disk keeps a harder edge.
+  pitfalls:
+    - Using a very large radius. The cost grows with the square of the radius.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [box, gaussian, motion-blur]
+docsPage: filters/linear/disk-average.md

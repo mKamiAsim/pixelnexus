@@ -1,0 +1,135 @@
+id: joint-bilateral
+name: Joint bilateral filter
+aliases: [Cross bilateral filter]
+family: nonlinear
+tags: [purpose:smoothing, purpose:denoise]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Guide is the image luma or another open image of the same size.
+
+summary: A bilateral filter that takes its edges from a guide image, so it smooths one image along the edges of another.
+purpose: Denoise a noisy image with the edges of a cleaner one, such as a flash photo, or smooth colors along brightness edges.
+classification: {linearity: nonlinear, domain: spatial, operation: weighted mean with weights from a guide}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/bilateral.ts, symbol: bilateralWeights}
+supportRadius: ceil(3 sigma_s)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All three channels share one set of weights from the guide, so colors do not mix across
+  guide edges. The guide is its luma or its colors, as chosen. Without a guide image, the luma
+  of the image itself guides. Alpha is kept.
+boundary: Set by the Border mode parameter, for the image and the guide alike. The default is reflect 101.
+
+params:
+  - key: guide
+    label: Guide image
+    type: image
+    default: ""
+    description: Another open image of the same size whose edges steer the smoothing. This image is used when no other is chosen.
+    effect: Edges in the guide are kept in the result, even where the image itself is too noisy to show them.
+  - key: guideRange
+    label: Guide difference
+    type: select
+    default: luma
+    options:
+      - {value: luma, label: Guide brightness}
+      - {value: color, label: Guide color distance}
+    description: Measure the difference in the guide by its luma or by the distance between its RGB colors.
+    effect: Color distance also keeps edges between colors of equal brightness.
+  - key: sigmaSpace
+    label: Spatial sigma
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 3
+    unit: px
+    description: The spread of the distance weight. The window is the disk of radius 3 sigma, rounded up.
+    effect: Larger values reach further and smooth more.
+  - key: sigmaRange
+    label: Range sigma
+    type: number
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: The spread of the guide weight, in 8-bit levels of the guide.
+    effect: Small values follow even weak guide edges. Large values smooth across them.
+  - ref: border
+
+formula: |
+  I_{\text{out}}(p) = \frac{\sum_{q \in \Omega_p} w(p,q)\, I(q)}{\sum_{q \in \Omega_p} w(p,q)},
+  \qquad
+  w(p,q) = e^{-\frac{\lVert p - q \rVert^2}{2\sigma_s^2}}\; e^{-\frac{d(G(p),\, G(q))^2}{2\sigma_r^2}}
+formulaExplanation: >-
+  The same weighted mean as the bilateral filter, but the value weight compares the guide G
+  at the two pixels, not the image. Where the guide has an edge, neighbors across it get almost no
+  weight, even if the image is too noisy to show that edge. The difference d is that of the guide
+  luma, or the distance between guide colors. With the image itself as the guide and the color
+  difference, this is the bilateral filter in its color mode.
+symbols:
+  - {symbol: 'G', meaning: The guide image}
+  - {symbol: 'I', meaning: The image to filter}
+  - {symbol: '\sigma_s, \sigma_r', meaning: The spatial and range sigmas}
+  - {symbol: '\Omega_p', meaning: The disk-shaped window around p}
+steps:
+  - Pad the image and the guide with the border mode.
+  - For each pixel, visit every neighbor in the disk of radius ceil(3 sigma_s).
+  - Multiply the distance weight by the guide weight of the neighbor.
+  - Write the weighted mean of the image values.
+complexity:
+  time: O(N\,\sigma_s^2)
+  memory: O(N)
+  notes: N is the number of pixels. The disk holds about 28 sigma_s squared pixels.
+useCases:
+  - Combine a noisy no-flash photo with a clean flash photo of the same scene.
+  - Smooth color noise along the brightness edges of the same image.
+  - Upsample or refine a mask or depth map along the edges of a photo.
+advantages:
+  - Keeps edges that are too faint or noisy in the image itself.
+  - All channels share the weights, so there are no color fringes.
+limitations:
+  - The guide must be aligned with the image, pixel for pixel.
+  - Edges in the guide that are not in the scene, such as flash shadows, are copied into the result.
+artifacts:
+  - Texture from the guide can appear in the result when the range sigma is small.
+references:
+  - kind: paper
+    text: Petschnigg, G., Szeliski, R., Agrawala, M., Cohen, M., Hoppe, H. and Toyama, K. Digital photography with flash and no-flash image pairs. ACM Transactions on Graphics 23(3), 664 to 672, 2004.
+    doi: 10.1145/1015706.1015777
+  - kind: paper
+    text: Eisemann, E. and Durand, F. Flash photography enhancement via intrinsic relighting. ACM Transactions on Graphics 23(3), 673 to 678, 2004.
+    doi: 10.1145/1015706.1015778
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::jointBilateralFilter.
+    url: https://docs.opencv.org/4.x/da/d17/group__ximgproc__filters.html
+implementation: {path: web/src/core/filters/nonlinear/bilateral.ts, symbol: jointBilateralFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/engine-client/engine.browser.test.ts]
+learn:
+  oneSentence: A blur that stops at the edges of another image.
+  howItWorks:
+    - Give each neighbor a weight that falls with its distance.
+    - Multiply it by a weight that falls with the difference in the guide image, not in this image.
+    - Average the neighbors of this image with these weights.
+  academic: >-
+    The cross or joint bilateral filter. The range kernel is evaluated on a second, aligned
+    image. Petschnigg and others, and Eisemann and Durand, introduced it for flash and no-flash
+    pairs. The flash image has clean edges, and the no-flash image has the right colors.
+  paramNotes:
+    guide: The image whose edges steer the smoothing. It must have the same size.
+    guideRange: Brightness only, or the full color distance of the guide.
+    sigmaSpace: How far the filter reaches, in pixels.
+    sigmaRange: How large a guide difference still counts as similar.
+  tryThis:
+    - Open a test image twice. Add strong noise to one copy, then filter it with the clean copy as the guide.
+  pitfalls:
+    - Using a guide that is not aligned. Then edges land in the wrong place.
+  demos: [line-profile]
+related: [bilateral, guided]
+docsPage: filters/nonlinear/joint-bilateral.md

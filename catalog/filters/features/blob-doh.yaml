@@ -1,0 +1,159 @@
+id: blob-doh
+name: Determinant of Hessian
+aliases: [DoH blob detection, Hessian determinant blobs]
+family: features
+tags: [purpose:analysis, purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+
+summary: Finds blobs and their sizes with the determinant of the Hessian, computed with box filters on the integral image as in SURF. It is the fastest of the three blob detectors and finds bright and dark blobs alike.
+purpose: Find blobs quickly, including large ones, and see the detector behind SURF.
+classification: {linearity: nonlinear, domain: spatial, operation: Hessian determinant extrema}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the luma with the BT.709 weights, scaled to 0 to 1 as scikit-image
+  expects. Alpha is ignored. The image does not change. The features go to the Features panel
+  and are drawn on the canvas.
+boundary: Box sums are clipped at the image edge, as scikit-image does.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.feature.blob_doh, with its box-filter Hessian determinant.'}
+
+params:
+  - key: minSigma
+    label: Smallest sigma
+    type: number
+    min: 0.5
+    max: 50
+    step: 0.5
+    default: 1
+    unit: px
+    description: The smallest scale. Blobs smaller than the matching radius are missed.
+    effect: Larger values ignore small blobs and single bright pixels.
+  - key: maxSigma
+    label: Largest sigma
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 30
+    unit: px
+    description: The largest scale. scikit-image uses 30. If it is below the smallest sigma, only the smallest is used.
+    effect: Larger values also find big blobs, and take longer.
+  - key: numSigma
+    label: Number of scales
+    type: integer
+    min: 2
+    max: 50
+    step: 1
+    default: 10
+    description: How many scales are tried between the smallest and the largest sigma.
+    effect: More scales give finer sizes, and take longer.
+  - key: logScale
+    label: Logarithmic scales
+    type: boolean
+    default: false
+    description: Space the scales evenly in log sigma instead of in sigma, so small scales are tried more closely.
+    effect: Turn it on when the blobs have very different sizes.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 0.2
+    step: 0.001
+    default: 0.01
+    description: The smallest determinant a blob needs, for an image from 0 to 1. scikit-image uses 0.01.
+    effect: Lower values find weaker blobs, and more false ones.
+  - key: overlap
+    label: Overlap
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: Of two blobs whose areas overlap by more than this share, the smaller goes. 1 keeps all.
+    effect: Lower values keep fewer blobs that touch.
+formula: |
+  R_\sigma(x) = D_{xx}(x)\, D_{yy}(x) - 0.81\, D_{xy}(x)^2,
+  \qquad
+  (x, \sigma) \text{ is a blob if } R_\sigma(x) = \max_{3 \times 3 \times 3} R \ge T,
+  \qquad
+  r \approx \sigma,\quad T = {{threshold}}
+formulaExplanation: >-
+  The Hessian is the matrix of second derivatives. At the middle of a blob, both curvatures
+  have the same sign, so its determinant is large and positive. Bay and coworkers replaced the
+  Gaussian second derivatives by box filters that the integral image sums in constant time, so
+  every scale costs the same. Here scikit-image uses boxes that span floor(3 sigma) pixels and
+  divides each sum by the square of that size. It weights the mixed term by 0.81 = 0.9^2, as
+  SURF does. For true second derivatives, a negated image has the same determinant, so bright
+  and dark blobs are both found. The boxes of scikit-image only sum to zero when floor(3 sigma)
+  is a multiple of 3, so the brightness level itself also adds a little to the response.
+  On the negated Disks image, the same blobs come out with slightly different sizes and scores,
+  and one more appears in a corner. Peaks over position and scale above the threshold are blobs, and overlapping
+  blobs are pruned. The radius is about sigma. The score is R at the peak.
+symbols:
+  - {symbol: 'D_{xx}, D_{yy}, D_{xy}', meaning: 'Box-filter second derivatives at scale sigma'}
+  - {symbol: 'r', meaning: 'The radius of the blob'}
+  - {symbol: 'T', meaning: 'The threshold'}
+steps:
+  - Take the luma from 0 to 1 and its integral image.
+  - At each scale, find the box-filter second derivatives and the determinant.
+  - Keep the points that beat their 26 neighbors in position and scale and reach the threshold.
+  - Remove the smaller of two blobs that overlap too much, and report the rest.
+complexity:
+  time: O(S N)
+  memory: O(S N)
+  notes: N is the number of pixels and S the number of scales. Each scale costs the same, whatever its size.
+useCases:
+  - Fast blob detection on large images and at large scales.
+  - Seeing the detector behind SURF.
+advantages:
+  - Every scale costs the same, so large blobs are cheap.
+  - Finds bright and dark blobs in one run.
+limitations:
+  - scikit-image notes that the box filters are not accurate below sigma 3.
+  - On the Disks image, the centers come out one or two pixels up and to the left of the true ones.
+  - Blobs larger than the largest sigma are found in the wrong place. With the defaults, the disk of radius 48 on the Disks image is found 27 pixels from its center.
+  - The boxes do not always sum to zero, and they are clipped at the image edge. So even a flat gray image can give a false blob at a large scale.
+  - It cannot tell bright blobs from dark ones.
+artifacts:
+  - Square-looking responses, from the box filters.
+references:
+  - kind: paper
+    text: Bay, H., Ess, A., Tuytelaars, T., and Van Gool, L. Speeded-up robust features (SURF). Computer Vision and Image Understanding 110(3), 346 to 359, 2008.
+    doi: 10.1016/j.cviu.2007.09.014
+  - kind: library
+    text: scikit-image documentation, skimage.feature.blob_doh.
+implementation: {path: engine/src/pixelnexus_engine/filters/blobs.py, symbol: blob_doh_filter}
+tests: [engine/tests/test_blobs.py]
+learn:
+  oneSentence: Find spots where the brightness curves the same way in every direction.
+  howItWorks:
+    - Measure how the brightness curves around each point, with fast box filters.
+    - At the middle of a spot, it curves the same way in all directions.
+    - Do this for many spot sizes, and keep the points that stand out.
+    - Each one is a blob, with its center and radius.
+  academic: >-
+    Extrema of the box-filter determinant of the Hessian over position and scale, as in the
+    Fast-Hessian detector of SURF.
+  paramNotes:
+    minSigma: The smallest spots to find.
+    maxSigma: The largest spots to find.
+    numSigma: How many sizes are tried.
+    logScale: Try small sizes more closely.
+    threshold: How strong a spot must be.
+    overlap: How much two spots may overlap.
+  tryThis:
+    - Apply it to the Disks image and compare the centers in the Features panel with LoG blob detection.
+  pitfalls:
+    - Small sigma. Below 3, the box filters are rough.
+  demos: [feature-viewer]
+related: [blob-log, blob-dog, hessian, surf-inspired]
+docsPage: filters/features/blob-doh.md

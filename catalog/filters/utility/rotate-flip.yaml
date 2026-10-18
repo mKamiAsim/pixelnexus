@@ -1,0 +1,86 @@
+id: rotate-flip
+name: Rotate and flip
+aliases: [Quarter turn, Mirror, Flip horizontal, Flip vertical]
+family: utility
+tags: [purpose:geometry]
+tier: core
+engine: browser
+phase: '2'
+status: implemented-tested
+planNotes: 90 degree steps and mirrors. Runs from Image > Rotate and flip, and from the five Image menu commands.
+
+summary: Turns the image by a quarter or half turn, or mirrors it left to right or top to bottom. Whole pixels move, so no value changes.
+purpose: Fix the orientation of a photo without any loss.
+classification: {linearity: linear, domain: geometric, operation: pixel permutation}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/image/transform.ts, symbol: rotate}
+supportRadius: '0'
+supportsMask: false
+preview: none
+colorHandling: All four channels move together.
+boundary: No pixels come from outside the image.
+
+params:
+  - key: operation
+    label: Operation
+    type: select
+    default: cw
+    options:
+      - {value: cw, label: Rotate 90 degrees clockwise}
+      - {value: ccw, label: Rotate 90 degrees counterclockwise}
+      - {value: half, label: Rotate 180 degrees}
+      - {value: horizontal, label: Flip horizontal (left to right)}
+      - {value: vertical, label: Flip vertical (top to bottom)}
+    description: Which turn or mirror to apply.
+    effect: Quarter turns swap the width and the height.
+formula: |
+  \text{cw: } I'(x, y) = I(y,\, H - 1 - x),\qquad \text{horizontal: } I'(x, y) = I(W - 1 - x,\, y)
+formulaExplanation: >-
+  W and H are the width and height of the input. A clockwise quarter turn makes an image H pixels
+  wide and W high. Its pixel x, y comes from column y and row H - 1 - x of the input. A horizontal
+  flip takes column W - 1 - x. The other turns and the vertical flip follow the same pattern.
+symbols:
+  - {symbol: 'W, H', meaning: 'The width and height of the input'}
+  - {symbol: "I'", meaning: 'The output image'}
+steps:
+  - Create the output, with width and height swapped for a quarter turn.
+  - Copy each pixel to its new place, as one 32-bit word.
+  - Move the selection the same way.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Straighten photos taken with the camera on its side.
+  - Mirror an image for a print or a test.
+advantages:
+  - Lossless and fast. Every pixel keeps its value.
+limitations:
+  - Only steps of 90 degrees. Other angles need Rotate by angle, which resamples.
+artifacts:
+  - None.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018.
+implementation: {path: web/src/core/image/transform.ts, symbol: rotate}
+tests: [web/src/core/image/transform.test.ts]
+learn:
+  oneSentence: Turn the image by a quarter or half turn, or mirror it, without changing any pixel.
+  howItWorks:
+    - Each pixel moves to its new place. No pixel is mixed with another.
+    - A quarter turn swaps the width and the height.
+  academic: >-
+    Quarter turns and mirrors are permutations of the pixel grid, the members of the dihedral
+    group of the square that keep the grid in place.
+  paramNotes:
+    operation: The turn or mirror.
+  tryThis:
+    - Rotate clockwise four times. The image comes back exactly.
+  pitfalls:
+    - For other angles use Rotate by angle, which resamples and softens the image.
+  demos: []
+related: [rotate-free, crop, resize]
+docsPage: filters/utility/rotate-flip.md
+command: image.rotate-flip

@@ -1,0 +1,143 @@
+id: matched-vessel
+name: Matched vessel filter
+aliases: [Chaudhuri matched filter, Matched filter for blood vessels]
+family: features
+tags: [purpose:analysis, purpose:segmentation]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+
+summary: Finds thin dark or bright lines with a Gaussian profile, such as blood vessels, by matching kernels in many directions.
+purpose: Enhance vessels and other curved lines in medical and microscope images before thresholding.
+classification: {linearity: nonlinear, domain: spatial, operation: oriented matched filters and maximum}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/features/matched-vessel.ts, symbol: vesselKernel}
+supportRadius: ceil(sqrt((3 sigma)^2 + (length / 2)^2))
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  filtered on its own. In retinal photos the green channel often shows vessels best.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 8
+    step: 0.1
+    default: 2
+    unit: px
+    description: The width of the Gaussian profile across the vessel. The kernel ends at 3 sigma.
+    effect: Match it to the vessel width. Larger values find wider vessels.
+  - key: length
+    label: Length
+    type: number
+    min: 1
+    max: 41
+    step: 1
+    default: 9
+    unit: px
+    description: How far the kernel reaches along the vessel.
+    effect: Longer kernels average more along the vessel, which removes noise but fits curved vessels worse.
+  - key: orientations
+    label: Directions
+    type: number
+    min: 1
+    max: 24
+    step: 1
+    default: 12
+    description: How many vessel directions to try, spread evenly over 180 degrees.
+    effect: 12 directions are 15 degrees apart. More directions follow curves better, at a higher cost.
+  - key: polarity
+    label: Vessels are
+    type: select
+    default: dark
+    options:
+      - {value: dark, label: Darker than the background}
+      - {value: bright, label: Brighter than the background}
+    description: Whether the lines to find are dark or bright.
+    effect: Retinal photos show dark vessels. Angiograms often show bright ones.
+  - key: output
+    label: Output
+    type: select
+    default: response
+    options:
+      - {value: response, label: Largest response}
+      - {value: angle, label: Direction of the largest response}
+    description: The strength of the best match, or the vessel direction in degrees.
+    effect: Threshold the response to get a vessel mask.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  K_{\phi}(x, y) = -\exp\!\left(-\frac{u^2}{2\sigma^2}\right) - m_{\phi} \;\text{ for } |u| \le 3\sigma,\ |v| \le \tfrac{L}{2},\qquad R(p) = \max_{\phi} (K_{\phi} \star I)(p)
+formulaExplanation: >-
+  For the vessel direction phi, u = x sin phi + y cos phi is the offset across the vessel and
+  v = x cos phi - y sin phi the offset along it. The y axis points down, so phi turns
+  counterclockwise on screen. The term m_phi is the mean of the Gaussian part over the offsets
+  inside the window, so each kernel adds up to 0 and flat areas give 0. Offsets outside the window
+  have weight 0. Bright vessels use the kernel with the opposite sign. The angle output is the
+  direction of the largest response. When several are within 1e-9 times max(1, |R|) of it, the
+  first wins. The choice of grid offsets inside the window is this filter's own discrete rule.
+symbols:
+  - {symbol: '\phi', meaning: The vessel direction}
+  - {symbol: 'u, v', meaning: Offsets across and along the vessel}
+  - {symbol: 'L', meaning: The length}
+  - {symbol: 'm_{\phi}', meaning: The mean of the Gaussian part inside the window}
+steps:
+  - For each direction, build the kernel on the grid offsets inside the window and subtract its mean.
+  - Correlate the image with every kernel.
+  - Keep the largest response, or the direction where it is reached.
+complexity:
+  time: O(D N w^2)
+  memory: O(D N)
+  notes: D directions, N pixels per channel and a kernel w pixels wide. The kernels are not separable.
+useCases:
+  - Vessel enhancement in retinal photos.
+  - Finding cracks, fibers and roads with a known width.
+advantages:
+  - Matched to a known line profile, so it ignores many other structures.
+  - The zero mean removes slow changes in brightness.
+limitations:
+  - Steps and edges also give a response, though weaker than lines.
+  - One sigma fits one vessel width. Wide and thin vessels need different settings.
+  - Strongly curved vessels fit the straight kernel poorly.
+artifacts:
+  - Thin false lines next to strong edges, such as the border of the optic disk.
+references:
+  - kind: paper
+    text: Chaudhuri, S., Chatterjee, S., Katz, N., Nelson, M. and Goldbaum, M. Detection of blood vessels in retinal images using two-dimensional matched filters. IEEE Transactions on Medical Imaging 8(3), 263 to 269, 1989.
+    doi: 10.1109/42.34715
+implementation: {path: web/src/core/filters/features/matched-vessel.ts, symbol: matchedVesselFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Slide a small picture of a vessel over the image in many directions and keep the best match.
+  howItWorks:
+    - Make a kernel that looks like a short dark line with soft edges.
+    - Turn it to many directions.
+    - At each pixel, keep the direction that matches best.
+  academic: >-
+    A bank of oriented matched filters for a Gaussian line profile. Each kernel has zero mean,
+    so the response measures how well the local pattern fits the profile, not its brightness.
+  paramNotes:
+    sigma: The vessel width it looks for.
+    length: How long a straight piece it compares.
+    orientations: How many directions it tries.
+    polarity: Dark or bright vessels.
+    output: Match strength or direction.
+  tryThis:
+    - Draw a few dark lines on a light image and compare the response with sigma 1 and sigma 3.
+  pitfalls:
+    - Choosing the wrong polarity. Dark vessels then give low values and edges stand out instead.
+  demos: [impulse-response, line-profile]
+related: [line-detector, steerable, gabor-bank, frangi]
+docsPage: filters/features/matched-vessel.md

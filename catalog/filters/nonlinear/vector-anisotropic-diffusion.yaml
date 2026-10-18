@@ -1,0 +1,130 @@
+id: vector-anisotropic-diffusion
+name: Vector anisotropic diffusion
+aliases: [Color anisotropic diffusion]
+family: nonlinear
+tags: [purpose:smoothing, purpose:denoise, purpose:color]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Color version with shared diffusivity.
+
+summary: Anisotropic diffusion for color images, with one conduction for all channels from the color difference.
+purpose: Smooth color images while keeping edges, without color bleeding at edges.
+classification: {linearity: nonlinear, domain: iterative, operation: nonlinear diffusion}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/diffusion.ts, symbol: conduction}
+supportRadius: iterations
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  The conduction comes from the length of the color difference, the square root of the sum of
+  the squared channel differences. All three channels use it, so an edge in any channel stops
+  the flow in all of them. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect, the zero-flux boundary. The image is
+  extended once by one pixel per iteration.
+
+params:
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 100
+    default: 15
+    description: How many update steps run.
+    effect: More steps smooth more.
+  - key: kappa
+    label: Edge threshold K
+    type: number
+    min: 1
+    max: 150
+    step: 1
+    default: 30
+    description: The color difference, in 8-bit levels, at which the conduction falls off.
+    effect: A gray edge of contrast c has color difference c times the square root of 3, so K here is larger than in the scalar version.
+  - key: lambda
+    label: Step size
+    type: number
+    min: 0.01
+    max: 0.25
+    step: 0.01
+    default: 0.2
+    description: How far each step moves a color toward its neighbors. At most 0.25 keeps the scheme stable.
+    effect: Larger steps smooth faster per iteration.
+  - key: conduction
+    label: Conduction
+    type: select
+    default: exponential
+    options:
+      - {value: exponential, label: 'Exponential, exp(-(d/K)^2)'}
+      - {value: quadratic, label: 'Rational, 1 / (1 + (d/K)^2)'}
+    description: The function g that turns a color difference into a conduction.
+    effect: The exponential favors high-contrast edges.
+  - ref: border
+    default: reflect
+
+formula: |
+  \mathbf{I}^{t+1} = \mathbf{I}^{t} + \lambda \sum_{n \in \{N,S,E,W\}} g\bigl(\lVert \nabla_n \mathbf{I}^{t} \rVert\bigr)\, \nabla_n \mathbf{I}^{t}
+formulaExplanation: >-
+  Bold I is the color vector (R, G, B). nabla_n is the color difference to the neighbor in
+  direction n. Its length is the Euclidean distance between the two colors. All channels
+  share the conduction g of that length, as Sapiro and Ringach propose for multivalued images.
+symbols:
+  - {symbol: '\mathbf{I}', meaning: The color vector of a pixel}
+  - {symbol: '\lVert \nabla_n \mathbf{I} \rVert', meaning: The length of the color difference to neighbor n}
+  - {symbol: 'g', meaning: The conduction function}
+  - {symbol: '\lambda', meaning: The step size}
+steps:
+  - Extend the image by one pixel per iteration with the border mode.
+  - For each pixel and neighbor, compute the color difference and its length.
+  - Add lambda times the difference times the conduction of the length, to all three channels.
+  - Repeat, then cut the extension off.
+complexity:
+  time: O(N\,T)
+  memory: O(N)
+  notes: N is the number of pixels and T the number of iterations.
+useCases:
+  - Smooth noisy color photos while keeping color edges clean.
+  - Prepare color images for segmentation.
+advantages:
+  - No color bleeding. An edge in one channel protects all channels.
+  - The same controls as the scalar version.
+limitations:
+  - Noise in one channel can block smoothing in the others.
+  - Many iterations are slow.
+artifacts:
+  - Flat color patches after many iterations.
+references:
+  - kind: paper
+    text: Sapiro, G. and Ringach, D. L. Anisotropic diffusion of multivalued images with applications to color filtering. IEEE Transactions on Image Processing 5(11), 1582 to 1586, 1996.
+    doi: 10.1109/83.541429
+  - kind: paper
+    text: Perona, P. and Malik, J. Scale-space and edge detection using anisotropic diffusion. IEEE Transactions on Pattern Analysis and Machine Intelligence 12(7), 629 to 639, 1990.
+    doi: 10.1109/34.56205
+implementation: {path: web/src/core/filters/nonlinear/diffusion.ts, symbol: vectorAnisotropicDiffusionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Colors flow to their neighbors, and an edge in any channel stops the flow in all of them.
+  howItWorks:
+    - Find the color difference between each pixel and its four neighbors.
+    - Turn the length of each difference into one conduction for all channels.
+    - Move each color toward its neighbors by that conduction, and repeat.
+  academic: >-
+    Diffusion of a vector-valued image with a scalar conduction from the norm of the color
+    gradient. Coupling the channels keeps their edges in the same place.
+  paramNotes:
+    kappa: The color difference at which the flow stops. Gray edges look sqrt(3) times stronger here.
+    iterations: The number of steps.
+    lambda: The step size, at most 0.25.
+    conduction: The shape of g.
+  tryThis:
+    - Compare it with the scalar version on a colorful image with noise. Look at red and green edges.
+  pitfalls:
+    - Using the same K as in the scalar version. Color differences are larger.
+  demos: [line-profile, iteration-viewer]
+related: [anisotropic-diffusion, bilateral]
+docsPage: filters/nonlinear/vector-anisotropic-diffusion.md

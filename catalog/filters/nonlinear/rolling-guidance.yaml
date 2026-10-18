@@ -1,0 +1,133 @@
+id: rolling-guidance
+name: Rolling guidance filter
+aliases: [Rolling guidance, RGF]
+family: nonlinear
+tags: [purpose:smooth]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: OpenCV ximgproc.
+
+summary: Removes small structures, such as texture, noise and fine detail, while keeping large edges sharp, after Zhang, Shen, Xu and Jia. It first blurs everything, then lets the large edges roll back in with a few joint bilateral filters guided by the last result.
+purpose: Separate large structures from small ones by scale, with sharp edges.
+classification: {linearity: nonlinear, domain: iterative, operation: iterated joint bilateral filtering}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: rolling_guidance_representation}
+supportRadius: '3 * sigmaSpace'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter works on the 8-bit RGB image. The color distance in the bilateral weights uses all
+  three channels. The alpha stays.
+boundary: OpenCV's Gaussian blur and joint bilateral filter use its default border, which reflects at the image edge.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.GaussianBlur, cv2.ximgproc.jointBilateralFilter and rollingGuidanceFilter.'}
+
+params:
+  - key: sigmaSpace
+    label: Scale
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 3
+    unit: px
+    description: The spatial sigma s. Structures smaller than about this scale are removed. OpenCV uses 3.
+    effect: Larger values remove larger structures.
+  - key: sigmaColor
+    label: Color sigma
+    type: number
+    min: 1
+    max: 255
+    step: 1
+    default: 25
+    unit: levels
+    description: The color sigma r of the joint bilateral filters. OpenCV uses 25.
+    effect: Larger values let more edges blur. Smaller values bring back weaker edges.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 4
+    description: The number of steps, the first one included. OpenCV uses 4.
+    effect: Large edges come back over the first steps. More steps change little.
+  - key: start
+    label: Start
+    type: select
+    default: paper
+    options:
+      - {value: paper, label: 'Gaussian blur, as in the paper'}
+      - {value: opencv, label: 'The image, as in OpenCV'}
+    description: Zhang et al. start with a Gaussian blur, which removes small structures before the edges come back. OpenCV's rollingGuidanceFilter starts from the image itself, so its first step is an ordinary bilateral filter.
+    effect: The paper start removes small structures far better. See the worked example.
+formula: |
+  J^{1} = G_{\sigma_s} * I,
+  \qquad
+  J^{t+1}(p) = \frac{1}{K_p} \sum_{q \in N(p)} e^{-\frac{\lVert p - q \rVert^2}{2\sigma_s^2} - \frac{\lVert J^t(p) - J^t(q) \rVert^2}{2\sigma_r^2}} \, I(q)
+formulaExplanation: >-
+  I is the image and J the guide. The first step is a Gaussian blur of sigma s, which removes every
+  structure smaller than the scale, and blurs large edges too. Each further step is a joint
+  bilateral filter of the original image. Neighbors q weigh by their distance from p, and by how
+  close the guide's colors at p and q are. K p is the sum of the weights. Where the blurred guide
+  still shows a large edge, the weights follow it, and the edge comes back sharp from I. Small
+  structures were wiped from the guide, so nothing brings them back. That is the rolling of the
+  guidance.
+symbols:
+  - {symbol: 'I', meaning: 'The image'}
+  - {symbol: 'J^t', meaning: 'The guide after step t'}
+  - {symbol: '\sigma_s', meaning: 'The scale'}
+  - {symbol: '\sigma_r', meaning: 'The color sigma'}
+  - {symbol: 'K_p', meaning: 'The sum of the weights at p'}
+steps:
+  - Blur the image with a Gaussian of the scale.
+  - Filter the original image with a joint bilateral filter guided by the blur.
+  - Use the result as the new guide, and repeat.
+complexity:
+  time: O(N K S^2)
+  memory: O(N)
+  notes: N is the number of pixels, K the number of steps and S the side of the bilateral window.
+useCases:
+  - Removing texture while keeping object outlines.
+  - Splitting an image into a base layer and a detail layer by scale.
+advantages:
+  - Controls structure removal by size, with one scale.
+  - Large edges stay sharp.
+limitations:
+  - Small objects with strong edges also vanish, since only their size counts.
+  - Slow for large scales.
+artifacts:
+  - Rounded corners on large shapes.
+references:
+  - kind: paper
+    text: Zhang, Q., Shen, X., Xu, L., and Jia, J. Rolling guidance filter. European Conference on Computer Vision (ECCV), Lecture Notes in Computer Science, 815 to 830, 2014.
+    doi: 10.1007/978-3-319-10578-9_53
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::rollingGuidanceFilter and jointBilateralFilter.
+implementation: {path: engine/src/pixelnexus_engine/filters/edge_preserving.py, symbol: rolling_guidance}
+tests: [engine/tests/test_edge_preserving.py]
+learn:
+  oneSentence: Blur away everything small, then let the big edges roll back in, sharp.
+  howItWorks:
+    - Blur the image so all small things vanish.
+    - Use the blur as a guide to smooth the original image, without crossing the edges the guide still shows.
+    - Repeat, so the big edges sharpen step by step.
+  academic: >-
+    Rolling guidance of Zhang, Shen, Xu and Jia: a Gaussian start followed by joint bilateral
+    filters of the image guided by the last result.
+  paramNotes:
+    sigmaSpace: The size of structures to remove.
+    sigmaColor: How strong an edge must be to come back.
+    iterations: How many steps.
+    start: Gaussian start or OpenCV's start.
+  tryThis:
+    - Run it on a textured photo with the paper start, then with the OpenCV start, and compare.
+  pitfalls:
+    - Small objects you want to keep. They go too, if they are smaller than the scale.
+  demos: [line-profile, noise-lab]
+related: [bilateral, domain-transform, guided]
+docsPage: filters/nonlinear/rolling-guidance.md

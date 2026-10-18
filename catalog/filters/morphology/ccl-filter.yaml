@@ -1,0 +1,112 @@
+id: ccl-filter
+name: Connected-component filtering
+aliases: [Area filter, Remove small objects]
+family: morphology
+tags: [purpose:morphology, purpose:segmentation]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Keeps the white objects whose area lies in a range and removes the others.
+purpose: Remove small specks or very large regions from a binary image by object size.
+classification: {linearity: nonlinear, domain: spatial, operation: component labeling and area test}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: labelComponents}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background. The filter follows shapes across the whole image, so it always runs on the whole image.
+
+params:
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which foreground pixels count as one object.
+    effect: With 4 neighbors, pixels that touch only at a corner belong to different objects.
+  - key: minArea
+    label: Smallest area
+    type: integer
+    min: 0
+    max: 1000000
+    step: 1
+    default: 10
+    unit: px
+    description: Objects with fewer pixels are removed.
+    effect: Higher values remove more small specks.
+  - key: maxArea
+    label: Largest area
+    type: integer
+    min: 1
+    max: 1000000
+    step: 1
+    default: 100000
+    unit: px
+    description: Objects with more pixels are removed.
+    effect: Lower values remove large regions such as the background.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  \bigcup \{\, C_i : a_{\min} \le |C_i| \le a_{\max} \,\}
+formulaExplanation: >-
+  C_i are the objects, the connected parts of the foreground, and |C_i| their areas in pixels. Objects with an area in the range are kept, all others become background.
+symbols:
+  - {symbol: 'C_i', meaning: The objects}
+  - {symbol: 'a_{\\min}, a_{\\max}', meaning: The smallest and largest area}
+steps:
+  - Make the image binary.
+  - Label its objects with 4 or 8 neighbors.
+  - Count the pixels of each object.
+  - Keep the objects in the area range.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel.
+useCases:
+  - Remove specks after a threshold.
+  - Keep only objects of an expected size.
+advantages:
+  - Removes small objects without changing the shape of the others.
+limitations:
+  - Area alone ignores shape.
+artifacts:
+  - Thin long objects count as large even when they are thin.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.label.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: cclFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep the white objects of the right size and remove the rest.
+  howItWorks:
+    - Find the separate objects.
+    - Count the pixels of each.
+    - Keep the ones in the size range.
+  academic: >-
+    Connected component labeling followed by an area criterion, a simple attribute filter on binary images.
+  paramNotes:
+    connectivity: Which pixels form one object.
+    minArea: The smallest object to keep.
+    maxArea: The largest object to keep.
+  tryThis:
+    - Threshold a noisy image and remove objects smaller than 20 pixels.
+  pitfalls:
+    - Forgetting that the white background counts as one huge object in an inverted image.
+  demos: [line-profile]
+related: [convex-hull, opening-by-reconstruction]
+docsPage: filters/morphology/ccl-filter.md

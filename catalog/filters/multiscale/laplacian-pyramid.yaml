@@ -1,0 +1,167 @@
+id: laplacian-pyramid
+name: Laplacian pyramid filtering
+aliases: [Laplacian pyramid, Band-pass pyramid, Multiscale detail enhancement]
+family: multiscale
+tags: [purpose:sharpening, purpose:smoothing]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+planNotes: Per-level gains.
+
+summary: Splits the image into detail levels of growing size plus a small coarse image, multiplies each detail level by a gain, and adds them back.
+purpose: Boost or soften detail of one size at a time, such as fine texture, small features or larger shapes.
+classification: {linearity: linear, domain: transform, operation: band-pass decomposition and rebuild}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/multiscale/pyramid.ts, symbol: laplacianRebuild}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. Positions outside a level
+  follow the border mode on that level. The result depends on where each pixel falls in the
+  pyramid grid, so the filter always runs on the whole image.
+
+params:
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    unit: levels
+    description: How many times the image is reduced. Each level halves the width and the height. The pyramid stops early when a level is one pixel.
+    effect: More levels reach coarser detail.
+  - key: gain1
+    label: Gain, level 1
+    type: number
+    min: 0
+    max: 4
+    step: 0.05
+    default: 1
+    description: The gain a_0 on L_0, the finest detail level.
+    effect: Above 1 sharpens the finest detail, below 1 softens it, and 0 removes it.
+  - key: gain2
+    label: Gain, level 2
+    type: number
+    min: 0
+    max: 4
+    step: 0.05
+    default: 1
+    description: The gain a_1 on L_1, detail about twice as large as in level 1.
+    effect: Above 1 boosts this size of detail, below 1 softens it.
+  - key: gain3
+    label: Gain, level 3
+    type: number
+    min: 0
+    max: 4
+    step: 0.05
+    default: 1
+    description: The gain a_2 on L_2, detail about four times as large as in level 1.
+    effect: Above 1 boosts this size of detail, below 1 softens it.
+  - key: gain4
+    label: Gain, level 4
+    type: number
+    min: 0
+    max: 4
+    step: 0.05
+    default: 1
+    description: The gain a_3 on L_3, detail about eight times as large as in level 1. Levels above 4 keep gain 1.
+    effect: Above 1 boosts larger shapes and local contrast, below 1 flattens them.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+formula: |
+  L_k = G_k - \operatorname{EXPAND}(G_{k+1}),
+  \qquad
+  \hat{G}_L = G_L,
+  \quad
+  \hat{G}_k = \operatorname{EXPAND}(\hat{G}_{k+1}) + a_k L_k,
+  \quad
+  I_{\text{out}} = \hat{G}_0,
+  \quad
+  (a_0, a_1, a_2, a_3) = ({{gain1}}, {{gain2}}, {{gain3}}, {{gain4}}),
+  \quad
+  L = {{levels}},
+  \qquad
+  G_{k+1}(i,j) = \sum_{m=-2}^{2} \sum_{n=-2}^{2} w(m)\, w(n)\, G_k(2i+m,\, 2j+n),
+  \qquad
+  \operatorname{EXPAND}(G)(i,j) = 4 \sum_{\substack{m,n=-2 \\ i-m,\ j-n \text{ even}}}^{2} w(m)\, w(n)\, G\!\left(\tfrac{i-m}{2},\, \tfrac{j-n}{2}\right),
+  \qquad
+  w = \tfrac{1}{16}[1, 4, 6, 4, 1]
+formulaExplanation: >-
+  G_0 is the image and G_{k+1} is level k reduced. REDUCE filters level k with the 5-tap kernel w along rows and columns. It keeps every second pixel, starting with the first, so a level of n pixels gives ceil(n / 2). EXPAND goes back up. Each output pixel sums the coarse pixels that land on it, weighted by 2 w(m) along each axis. So a flat level stays flat. Burt and Adelson define w by one number a, with w(0) = a, w(1) = 1/4 and w(2) = 1/4 - a/2. This filter uses a = 0.375, which gives the binomial weights [1, 4, 6, 4, 1] / 16. Each detail level L_k is a
+  level minus the expanded level above it. So it holds the detail that the reduce step removed.
+  Each band holds sizes about twice as large as the band before. The rebuild starts at the top level
+  and adds the detail back one level at a time, each multiplied by its gain a_k. With all gains
+  1 the image comes back exactly. Gains above 1 boost detail of that size and gains below 1
+  soften it. The filter is linear, but not shift invariant.
+symbols:
+  - {symbol: 'G_k', meaning: Level k of the Gaussian pyramid. G_0 is the image.}
+  - {symbol: 'L_k', meaning: Detail level k of the Laplacian pyramid}
+  - {symbol: 'a_k', meaning: The gain on detail level k. Levels above 4 keep gain 1.}
+  - {symbol: '\hat{G}_k', meaning: The rebuilt level k}
+  - {symbol: 'w', meaning: 'The 5-tap kernel [1, 4, 6, 4, 1] / 16'}
+  - {symbol: 'L', meaning: The number of levels}
+steps:
+  - Set G_0 to the image.
+  - Reduce G_k to G_{k+1} for each level, with the border mode at the edges of each level.
+  - Take each detail level L_k as G_k minus the expansion of G_{k+1}.
+  - Start the rebuild with the top level G_L.
+  - For k from L - 1 down to 0, expand the rebuilt level and add a_k times L_k.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. All levels together have about 4 N / 3 pixels.
+useCases:
+  - Sharpening fine texture without raising coarse contrast, or the other way around.
+  - Softening noise in the finest level while keeping larger shapes.
+  - Raising local contrast with gains above 1 on the coarser levels.
+advantages:
+  - Each gain acts on one band of sizes, about one octave wide.
+  - With all gains 1 the image comes back exactly, so small changes stay small.
+  - Linear and fast.
+limitations:
+  - Not shift invariant. The result depends on where the image falls in the pyramid grid.
+  - The bands overlap, so a gain also touches nearby sizes a little.
+  - The level sizes are fixed in steps of 2.
+artifacts:
+  - Halos near strong edges when coarse gains are well above 1.
+  - Clipping at black and white when the gains raise detail past the 0 to 255 range.
+references:
+  - kind: paper
+    text: Burt, P. J. and Adelson, E. H. The Laplacian pyramid as a compact image code. IEEE Transactions on Communications 31(4), 532 to 540, 1983.
+    doi: 10.1109/TCOM.1983.1095851
+implementation: {path: web/src/core/filters/multiscale/pyramid.ts, symbol: laplacianPyramidFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/multiscale/multiscale.test.ts]
+learn:
+  oneSentence: Split the image into layers of detail by size, turn each layer up or down, and stack them back together.
+  howItWorks:
+    - Build a Gaussian pyramid, the image halved again and again.
+    - Expand each level and subtract it from the level below. What is left is the detail that level lost.
+    - Multiply each detail level by its gain.
+    - Rebuild from the smallest level up, adding the detail back at each size.
+  academic: >-
+    Laplacian pyramid of Burt and Adelson, a band-pass decomposition by REDUCE and EXPAND with
+    the generating kernel a = 0.375, rebuilt with a gain on each band.
+  paramNotes:
+    levels: How many detail levels to split off.
+    gain1: The strength of the finest detail.
+    gain2: The strength of detail about twice as large.
+    gain3: The strength of detail about four times as large.
+    gain4: The strength of detail about eight times as large.
+  tryThis:
+    - Set gain 1 to 0 and the others to 1. Fine noise and texture fade, larger shapes stay.
+    - Set gain 3 and gain 4 to 2. Local contrast rises, as in a clarity control.
+  pitfalls:
+    - High gains on coarse levels. Halos appear around strong edges.
+  demos: [noise-lab]
+related: [gaussian-pyramid, unsharp-mask, high-boost, dog]
+docsPage: filters/multiscale/laplacian-pyramid.md

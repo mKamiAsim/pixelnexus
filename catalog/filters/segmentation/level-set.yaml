@@ -1,0 +1,164 @@
+id: level-set
+name: Level sets
+aliases: [Morphological geodesic active contour, MorphGAC, Geodesic active contour]
+family: segmentation
+tags: [purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+planNotes: Morphological geodesic active contour.
+
+summary: Moves the outline of your selection until it rests on the edges of the image, with the morphological geodesic active contour of Marquez-Neila, Baumela and Alvarez. A balloon force shrinks or grows the outline, and edges stop it. The outline can split and merge, so one selection can end on several objects.
+purpose: Fit a loose selection to the edges of an object.
+classification: {linearity: nonlinear, domain: morphological, operation: level set evolution}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: level_set_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: contour
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, scaled from 0 to 1. The inside goes to the
+  Features panel and is drawn over the image. The boundaries are a color image and the edge
+  stopping image a gray one, both with the alpha of the image.
+boundary: The gradient repeats the edge pixels. The contour stops at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.morphological_geodesic_active_contour and inverse_gaussian_gradient.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Inside}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: edgeStopping, label: Edge stopping image}
+    description: The inside of the final contour as a label map, drawn over the image and listed in the Features panel. Or its boundary in yellow over the image. Or the edge stopping image g as gray, white in flat areas and dark on edges.
+    effect: The inside can become the selection from the Features panel. The other outputs change the image.
+  - key: balloon
+    label: Balloon force
+    type: number
+    min: -5
+    max: 5
+    step: 0.5
+    default: -1
+    description: Below 0 the contour shrinks, above 0 it grows, by one pixel per step where the image is flat enough. A larger size lets it push past weaker edges. scikit-image uses 0.
+    effect: Shrink from a selection drawn around the object. Grow from a small selection inside it.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 1000
+    step: 1
+    default: 100
+    description: The number of steps. Each step moves the contour by at most about one pixel.
+    effect: Use at least the distance in pixels from the selection to the edges.
+  - key: smoothing
+    label: Smoothing
+    type: integer
+    min: 0
+    max: 4
+    step: 1
+    default: 1
+    description: How many times the curvature smoothing runs in each step. scikit-image uses 1.
+    effect: Higher values give rounder contours that skip small dents.
+  - key: sigma
+    label: Edge smoothing
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The sigma of the Gaussian in the gradient of the edge stopping image. scikit-image uses 5. We use 2, which kept the contour closer to a disk with a sharp edge in our tests.
+    effect: Higher values ignore noise but round off corners and move the contour off thin edges.
+  - key: alpha
+    label: Edge contrast
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 100
+    description: The steepness alpha of the edge stopping image. scikit-image uses 100.
+    effect: Higher values make weaker edges stop the contour.
+formula: |
+  g = \frac{1}{\sqrt{1 + \alpha \, \lvert \nabla (G_\sigma * Y) \rvert}},
+  \qquad
+  \frac{\partial u}{\partial t} = g \, \lvert \nabla u \rvert \left(\operatorname{div}\frac{\nabla u}{\lvert \nabla u \rvert} + \nu\right) + \nabla g \cdot \nabla u
+formulaExplanation: >-
+  u is 1 inside the contour and 0 outside, and starts as the selection. The image g is near 1 in flat
+  areas and near 0 on edges. The equation is the geodesic active contour of Caselles, Kimmel and
+  Sapiro. Marquez-Neila, Baumela and Alvarez replaced each of its terms with a morphological
+  step. The balloon force nu becomes a dilation or erosion by one pixel. It acts only where g
+  is above a threshold divided by the size of nu. The scikit-image code sets the threshold to the 40th
+  percentile of g. The term grad g dot grad u pulls the contour into the valleys of g, the edges.
+  The curvature term becomes a smoothing with the operators SI and IS, run the given number of
+  times. Every step only switches pixels between 0 and 1, so there is no step size to choose.
+symbols:
+  - {symbol: 'u', meaning: 'The inside of the contour, 1 or 0'}
+  - {symbol: 'g', meaning: 'The edge stopping image'}
+  - {symbol: '\nu', meaning: 'The balloon force'}
+  - {symbol: '\alpha', meaning: 'The steepness of g'}
+  - {symbol: 'G_\sigma', meaning: 'A Gaussian of sigma'}
+steps:
+  - Make the edge stopping image g from the gradient of the blurred luma.
+  - Start the contour from the selection.
+  - Dilate or erode it by one pixel where g is high, with the balloon force.
+  - Move pixels on the contour toward the edges.
+  - Smooth the contour, and repeat.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels and K the number of steps.
+useCases:
+  - Fitting a rough selection to an object with clear edges.
+  - Outlining several objects from one large selection.
+advantages:
+  - Fast and stable, with no step size.
+  - The contour can split into several and merge again.
+limitations:
+  - Needs edges. A soft border lets the balloon force push through.
+  - It needs a selection near the object.
+artifacts:
+  - Contours that leak through gaps in an edge.
+  - Corners rounded off by the smoothing.
+references:
+  - kind: paper
+    text: Marquez-Neila, P., Baumela, L., and Alvarez, L. A morphological approach to curvature-based evolution of curves and surfaces. IEEE Transactions on Pattern Analysis and Machine Intelligence 36(1), 2 to 17, 2014.
+    doi: 10.1109/TPAMI.2013.106
+  - kind: paper
+    text: Caselles, V., Kimmel, R., and Sapiro, G. Geodesic active contours. International Journal of Computer Vision 22(1), 61 to 79, 1997.
+    doi: 10.1023/A:1007979827043
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.morphological_geodesic_active_contour.
+implementation: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: level_set}
+tests: [engine/tests/test_contours.py]
+learn:
+  oneSentence: Draw a loose selection, and its outline shrinks or grows until it rests on the edges.
+  howItWorks:
+    - Mark the edges of the image as walls.
+    - Start from the outline of your selection.
+    - Shrink or grow it one pixel at a time, stopping at the walls.
+    - Smooth the outline after each step.
+  academic: >-
+    Morphological geodesic active contour of Marquez-Neila, Baumela and Alvarez on the inverse
+    Gaussian gradient, started from the selection, as in scikit-image.
+  paramNotes:
+    output: Inside, boundary, or the edge stopping image.
+    balloon: Shrink or grow, and how hard.
+    iterations: How many steps.
+    smoothing: How round the contour stays.
+    sigma: How much to blur before the gradient.
+    alpha: How weak an edge still stops the contour.
+  tryThis:
+    - Select a loose box around an object and apply. Then select a small spot inside it, set the balloon force to 1 and apply again.
+  pitfalls:
+    - Too few iterations. The contour stops before it reaches the edges.
+  demos: [stage-viewer]
+related: [active-contour, chan-vese, marker-watershed]
+docsPage: filters/segmentation/level-set.md

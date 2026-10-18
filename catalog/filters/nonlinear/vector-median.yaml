@@ -1,0 +1,104 @@
+id: vector-median
+name: Vector median filter
+family: nonlinear
+tags: [purpose:denoise, noise:impulse, purpose:color]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Color vectors, L2 distance.
+
+summary: Replaces each pixel with the window color that is closest, in total, to all the other window colors.
+purpose: Remove impulse noise from color images without making new colors.
+classification: {linearity: nonlinear, domain: spatial, operation: vector order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/vector-median.ts, symbol: vectorMedianIndex}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  Red, green and blue form one vector per pixel. The output is always a whole color from the
+  window, so no new colors appear at color edges. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. The constant mode reads black outside the image.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 7
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows remove bigger specks. The cost grows with the fourth power of the size.
+  - key: norm
+    label: Distance
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (straight line)}
+      - {value: l1, label: L1 (sum of channel differences)}
+    description: How the distance between two colors is measured.
+    effect: L2 is the usual choice. L1 is a little faster and gives similar results.
+  - ref: border
+
+formula: |
+  I_{\text{out}}(x,y) = \operatorname*{arg\,min}_{v_i \in W} \sum_{v_j \in W} \lVert v_i - v_j \rVert
+formulaExplanation: >-
+  W holds the color vectors (R, G, B) of the window. For each one, the filter adds up its
+  distances to all the others. The vector with the smallest sum is the output. On a tie, the
+  first vector in reading order wins. For a gray image, this is the plain median.
+symbols:
+  - {symbol: 'W', meaning: The color vectors of the window}
+  - {symbol: 'v_i, v_j', meaning: Color vectors in the window}
+  - {symbol: '\lVert\cdot\rVert', meaning: The L1 or L2 distance}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel, collect the n color vectors of its window.
+  - For every pair of vectors, compute their distance and add it to both sums.
+  - Write the vector with the smallest sum.
+complexity:
+  time: O(N\,k^4)
+  memory: O(N)
+  notes: N is the number of pixels and k is the window width. Each window has k^2 vectors and about k^4 / 2 pairs.
+useCases:
+  - Remove salt-and-pepper noise from color images.
+  - Clean color specks without the color fringes of a per-channel median.
+advantages:
+  - Never makes a color that is not in the window.
+  - Treats the three channels together, so edges between colors stay clean.
+limitations:
+  - Slow for large windows, because it compares every pair of window colors.
+  - Works on RGB only.
+artifacts:
+  - Small patches of one color in textured areas with large windows.
+references:
+  - kind: paper
+    text: Astola, J., Haavisto, P. and Neuvo, Y. Vector median filters. Proceedings of the IEEE 78(4), 678 to 689, 1990.
+    doi: 10.1109/5.54807
+implementation: {path: web/src/core/filters/nonlinear/vector-median.ts, symbol: vectorMedianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Each pixel takes the window color that is most typical of the window.
+  howItWorks:
+    - Collect the colors of the window.
+    - For each color, add up its distances to all the other colors.
+    - Use the color with the smallest total.
+  academic: >-
+    The vector median generalizes the median to vectors. The scalar median minimizes the sum
+    of absolute differences, and the vector median minimizes the sum of vector distances, with
+    the output limited to the window samples.
+  paramNotes:
+    norm: L2 measures straight-line distance between colors, L1 adds up the channel differences.
+  tryThis:
+    - Add salt-and-pepper noise to a colorful image. Compare the median filter with the vector median at a red and green edge.
+  pitfalls:
+    - Using a 7x7 window on a large image. It compares about 1200 pairs per pixel.
+  demos: [line-profile]
+related: [median, dead-pixel, bilateral]
+docsPage: filters/nonlinear/vector-median.md

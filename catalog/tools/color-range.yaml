@@ -1,0 +1,93 @@
+id: color-range
+name: Color Range
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: preset
+    label: Select
+    type: select
+    default: sampled
+    options:
+      - {value: sampled, label: Sampled colors}
+      - {value: highlights, label: Highlights}
+      - {value: midtones, label: Midtones}
+      - {value: shadows, label: Shadows}
+    description: What to select. Sampled colors uses the colors you click. The tone presets use brightness.
+    effect: The tone presets need no samples and ignore the other settings.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    default: 0
+    min: 0
+    max: 255
+    step: 1
+    description: Color distance from a sample up to which a pixel is fully selected.
+    effect: Higher values fully select a wider range of colors.
+  - key: fuzziness
+    label: Fuzziness
+    type: number
+    default: 40
+    min: 0
+    max: 255
+    step: 1
+    description: Extra color distance over which the selection fades from full to none.
+    effect: Higher values give a softer, wider selection. 0 gives a hard edge.
+  - key: colorSpace
+    label: Color space
+    type: select
+    default: lab
+    options:
+      - {value: rgb, label: RGB}
+      - {value: hsv, label: HSV}
+      - {value: lab, label: Lab}
+    description: Where the color distance is measured.
+    effect: Lab follows how people see differences. HSV puts more weight on hue in bright, colorful areas.
+  - key: localized
+    label: Localized colors
+    type: boolean
+    default: false
+    description: Weight each sample by how near the pixel is to the place you clicked.
+    effect: Similar colors far from your samples are selected less or not at all.
+  - key: range
+    label: Range
+    type: number
+    default: 25
+    min: 1
+    max: 100
+    step: 1
+    unit: '%'
+    description: For localized colors, how far a sample reaches, in percent of the longer image side.
+    effect: Smaller values keep the selection close to the samples.
+summary: "Selects all pixels near sampled colors, or the shadows, midtones or highlights."
+steps:
+  - "For sampled colors, read the color of each sample."
+  - "For each pixel, find the nearest sample in the chosen color space."
+  - "Select it fully up to the tolerance, then fade the selection to 0 over the fuzziness."
+  - "With localized colors, also fade by the distance in pixels from each sample."
+  - "For a tone preset, weight each pixel by its BT.709 luma instead."
+  - "Combine with the current selection by the mode chosen in the dialog."
+implementation:
+  path: "web/src/core/selection/range.ts"
+  symbol: "colorRange"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "Color Range selects every pixel of a color, with a soft edge in color."
+  howItWorks:
+    - "Click the preview to sample a color. Shift-click adds more samples."
+    - "Pixels close to a sample are fully selected. Farther ones fade out over the fuzziness."
+    - "The tone presets select shadows, midtones or highlights instead."
+  paramNotes:
+    fuzziness: "The color distance over which the selection fades out. It gives a soft selection."
+    localized: "Localized colors also fade with the distance in pixels from your samples."
+  tryThis:
+    - "Select the highlights, then darken them with a curve or gamma filter."
+    - "Sample a skin tone with localized colors on, so similar colors elsewhere stay out."
+  pitfalls:
+    - "Similar colors in other places are selected too, unless you use localized colors."
+  demos: []
+docsPage: "selection/color-range.md"

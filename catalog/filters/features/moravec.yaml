@@ -1,0 +1,135 @@
+id: moravec
+name: Moravec corner detector
+aliases: [Moravec interest operator]
+family: features
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+
+summary: Finds corners as points where a small window changes in every direction it is moved.
+purpose: Show the oldest corner detector, which tests a few shifts of a window directly.
+classification: {linearity: nonlinear, domain: spatial, operation: minimum of shifted differences}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/features/corners.ts, symbol: moravecResponse}
+supportRadius: window + 1, plus the minimum distance for the corners output
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  processed on its own.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full support, so strips
+  and whole images agree.
+
+params:
+  - key: window
+    label: Window half width
+    type: number
+    min: 1
+    max: 5
+    step: 1
+    default: 1
+    unit: px
+    description: The window is 2 times this plus 1 pixels wide. 1 gives a 3 x 3 window.
+    effect: Larger windows ignore noise but find fewer, coarser corners.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 25
+    step: 0.01
+    default: 0.1
+    description: The smallest response that counts as a corner. Values are on a 0 to 1 scale.
+    effect: Higher values keep only the strongest corners.
+  - key: output
+    label: Output
+    type: select
+    default: response
+    options:
+      - {value: response, label: Moravec response}
+      - {value: corners, label: Corner points}
+    description: The response at every pixel, or the corner points as white pixels.
+    effect: Corner points keep local maxima at or above the threshold.
+  - key: distance
+    label: Minimum distance
+    type: number
+    min: 1
+    max: 20
+    step: 1
+    default: 3
+    unit: px
+    description: A corner must have the largest response within this many pixels in x and in y.
+    effect: Larger values keep fewer corners that lie farther apart.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  E_s(p) = \sum_{|q|_\infty \le w} \left(I(p + q) - I(p + q + s)\right)^2,\qquad R(p) = \min_{s} E_s(p)
+formulaExplanation: >-
+  The shifts s are (1, 0), (1, 1), (0, 1) and (-1, 1), the four directions that Harris and
+  Stephens list for Moravec's operator. Values are on a 0 to 1 scale and w is the window half
+  width. A flat area changes for no shift, an edge for some, and a corner for all, so the
+  smallest change marks corners. The corners output keeps pixels whose response is at least the
+  threshold and the largest within the minimum distance. Plateaus keep every pixel.
+  skimage.feature.corner_moravec compares only the four diagonal shifts, so it gives other
+  values.
+symbols:
+  - {symbol: 'E_s', meaning: The change of the window for the shift s}
+  - {symbol: 'w', meaning: The window half width}
+steps:
+  - Extend the image by the support with the border mode and scale it to 0 to 1.
+  - For each of the four shifts, sum the squared differences over the window.
+  - Keep the smallest sum as the response.
+  - For corner points, keep the local maxima at or above the threshold, and cut the extension off.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the window size free.
+useCases:
+  - Teaching the idea behind corner detection.
+  - Fast corner points where rotation does not matter.
+advantages:
+  - Very simple. The response follows directly from the definition of a corner.
+limitations:
+  - Not rotation invariant. Edges between the four directions give a high response.
+  - Noisy, because each shift is tested on its own.
+artifacts:
+  - False corners along diagonal edges that fall between the tested directions.
+references:
+  - kind: book
+    text: Moravec, H. P. Obstacle avoidance and navigation in the real world by a seeing robot rover. PhD thesis, Stanford University, 1980.
+  - kind: paper
+    text: Harris, C. and Stephens, M. A combined corner and edge detector. Proceedings of the Alvey Vision Conference, 23.1 to 23.6, 1988. It describes Moravec's operator and its four shifts.
+    doi: 10.5244/C.2.23
+implementation: {path: web/src/core/filters/features/corners.ts, symbol: moravecFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Move a small window a little in four directions. Where it changes for every move, there is a corner.
+  howItWorks:
+    - Take a small window around each pixel.
+    - Move it one pixel in four directions and measure how much it changes.
+    - Keep the smallest change. It is large only at corners.
+  academic: >-
+    The minimum over a few discrete shifts of the windowed sum of squared differences. Harris
+    and Stephens replaced the discrete shifts with the structure tensor, which covers every
+    direction.
+  paramNotes:
+    window: The size of the window.
+    threshold: How strong a corner must be.
+    output: Response map or points.
+    distance: How close two corners may be.
+  tryThis:
+    - Compare Moravec and Harris on the Siemens star. Moravec responds along some spoke edges.
+  pitfalls:
+    - Expecting the same values as scikit-image, which tests only the diagonal shifts.
+  demos: [line-profile]
+related: [harris, shi-tomasi, fast]
+docsPage: filters/features/moravec.md

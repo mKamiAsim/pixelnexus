@@ -1,0 +1,145 @@
+id: ransac-surface
+name: RANSAC surface fit
+aliases: [RANSAC-based robust estimation, RANSAC background removal]
+family: adaptive
+tags: [purpose:enhance]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: RANSAC-based robust estimation. Fits a background surface and removes it.
+
+summary: Fits a smooth polynomial surface to the background brightness with RANSAC, after Fischler and Bolles, and removes it. Objects on the background are outliers, so they do not bend the surface. The result has an even background with the objects kept.
+purpose: Remove uneven lighting or shading from scans, microscope images and documents.
+classification: {linearity: nonlinear, domain: statistical, operation: robust fit of a surface}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/robust.py, symbol: ransac_surface_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The surface is fitted to the luma with the BT.709 weights. The correction subtracts the same
+  amount from the red, green and blue channels, so colors keep their differences. The background
+  and inlier outputs are a gray and a color image. The alpha stays.
+boundary: The surface is a polynomial over the whole image, so the edge needs no padding.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.measure.ransac.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: corrected
+    options:
+      - {value: corrected, label: Corrected image}
+      - {value: background, label: Fitted background}
+      - {value: inliers, label: Inlier samples}
+    description: The image with the background removed, the fitted surface as gray, or the image darkened with the grid samples that fit the surface marked in yellow.
+    effect: The inliers show what RANSAC took as background.
+  - key: degree
+    label: Degree
+    type: integer
+    min: 1
+    max: 3
+    step: 1
+    default: 2
+    description: The degree of the polynomial in x and y. 1 is a tilted plane, 2 can bend once, 3 twice.
+    effect: Higher degrees follow more complex lighting, and are more likely to bend into large objects.
+  - key: threshold
+    label: Inlier threshold
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 10
+    unit: levels
+    description: A sample is an inlier when its luma is within this distance of the surface. Our choice.
+    effect: It should be above the noise and below the contrast of the objects.
+  - key: step
+    label: Grid step
+    type: integer
+    min: 2
+    max: 64
+    step: 1
+    default: 8
+    unit: px
+    description: The samples are the pixels of a grid with this spacing. Our choice.
+    effect: Smaller steps use more samples and take longer.
+  - key: trials
+    label: Trials
+    type: integer
+    min: 10
+    max: 2000
+    step: 10
+    default: 200
+    description: How many random samples RANSAC tries. The random seed is fixed, so the result repeats. Our choice.
+    effect: More trials make a good fit more likely when objects cover much of the image.
+formula: |
+  B(x, y) = \sum_{i + j \le d} a_{ij}\, x^i y^j,
+  \qquad
+  I'(p) = I(p) - \bigl(B(p) - \bar B\bigr)
+formulaExplanation: >-
+  B is a polynomial surface of degree d, with x and y scaled to -1 to 1. Each RANSAC trial picks
+  as many random grid samples as B has coefficients, and fits B to them by least squares. It then
+  counts the inliers, the samples within the threshold of B. Fischler and Bolles keep the trial
+  with the most inliers. scikit-image then fits B to all of its inliers. The corrected image I'
+  subtracts B minus its mean from each channel, so the background becomes even and the mean
+  brightness stays. Objects are outliers, so they do not bend the fit.
+symbols:
+  - {symbol: 'B', meaning: 'The fitted background surface'}
+  - {symbol: 'a_{ij}', meaning: 'The coefficients of the surface'}
+  - {symbol: 'd', meaning: 'The degree'}
+  - {symbol: '\bar B', meaning: 'The mean of the surface over the image'}
+steps:
+  - Sample the luma on a grid.
+  - Fit the surface to random sets of samples, and count the samples close to each fit.
+  - Keep the fit with the most inliers, and fit it again to all of them.
+  - Subtract the surface minus its mean from every channel.
+complexity:
+  time: O(T M + N)
+  memory: O(N)
+  notes: N is the number of pixels, M the number of samples and T the number of trials.
+useCases:
+  - Uneven lighting in scans, microscope slides and photos of documents.
+  - Flattening the background before a global threshold.
+advantages:
+  - Objects do not bend the background, unlike a large blur or a plain fit.
+  - The result repeats, since the seed is fixed.
+limitations:
+  - The background must be smooth enough for a low degree polynomial.
+  - When objects cover most of the image, RANSAC can take them as the background.
+artifacts:
+  - A faint ramp left where the surface cannot follow the lighting.
+references:
+  - kind: paper
+    text: Fischler, M. A., and Bolles, R. C. Random sample consensus, a paradigm for model fitting with applications to image analysis and automated cartography. Communications of the ACM 24(6), 381 to 395, 1981.
+    doi: 10.1145/358669.358692
+  - kind: library
+    text: scikit-image documentation, skimage.measure.ransac.
+implementation: {path: engine/src/pixelnexus_engine/filters/robust.py, symbol: ransac_surface}
+tests: [engine/tests/test_robust.py]
+learn:
+  oneSentence: Fit a smooth surface to the background, ignoring the objects, and take it away.
+  howItWorks:
+    - Pick a few random sample points and fit a smooth surface through them.
+    - Count how many other samples lie close to that surface.
+    - Repeat many times and keep the surface most samples agree with.
+    - Subtract that surface, so the background becomes even.
+  academic: >-
+    Random sample consensus of Fischler and Bolles for a polynomial background surface, refitted
+    to its inliers, as in scikit-image.
+  paramNotes:
+    output: Corrected image, background, or inliers.
+    degree: How bent the background may be.
+    threshold: How close a sample must be to count.
+    step: How dense the samples are.
+    trials: How many random tries.
+  tryThis:
+    - Show the inlier samples. Samples on objects are missing, since they are outliers.
+  pitfalls:
+    - A degree that is too high. The surface bends into large objects.
+  demos: [line-profile]
+related: [tophat, m-estimator]
+docsPage: filters/adaptive/ransac-surface.md

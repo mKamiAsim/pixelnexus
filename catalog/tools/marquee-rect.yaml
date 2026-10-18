@@ -1,0 +1,91 @@
+id: marquee-rect
+name: Rectangular marquee
+group: marquee
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: style
+    label: Style
+    type: select
+    default: normal
+    options:
+      - {value: normal, label: Normal}
+      - {value: ratio, label: Fixed ratio}
+      - {value: size, label: Fixed size}
+    description: How dragging sets the shape.
+    effect: Normal follows the pointer. Fixed ratio keeps the width to height ratio. Fixed size places a shape of the given size at the pointer.
+  - key: ratioWidth
+    label: Ratio width
+    type: number
+    default: 1
+    min: 0.01
+    max: 1000
+    step: 0.01
+    description: Width part of the fixed ratio.
+  - key: ratioHeight
+    label: Ratio height
+    type: number
+    default: 1
+    min: 0.01
+    max: 1000
+    step: 0.01
+    description: Height part of the fixed ratio.
+  - key: sizeWidth
+    label: Width
+    type: integer
+    default: 64
+    min: 1
+    max: 16384
+    unit: px
+    description: Width of the fixed size.
+  - key: sizeHeight
+    label: Height
+    type: integer
+    default: 64
+    min: 1
+    max: 16384
+    unit: px
+    description: Height of the fixed size.
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+summary: "Selects a rectangle that you drag on the image."
+steps:
+  - "Snap the two corners of the drag to whole pixels."
+  - "With Shift, make the sides equal. With Alt, use the start point as the center."
+  - "With a fixed ratio or size, set the width and height from the settings."
+  - "Fill the rectangle with 255 in a new mask. Pixels outside stay 0."
+  - "Feather the shape when the feather setting is above 0."
+  - "Combine it with the current selection by the mode."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "rectMask"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The rectangular marquee selects a box that you drag."
+  howItWorks:
+    - "Press where one corner should be and drag to the opposite corner."
+    - "The box snaps to whole pixels, so its edges are sharp."
+    - "Shift makes a square. Alt draws from the center."
+  paramNotes:
+    style: "Normal lets you drag any box. Fixed ratio keeps the shape. Fixed size places a box of an exact size."
+    feather: "Feather softens the edge after you draw, so a filter fades in at the edge."
+  tryThis:
+    - "Select a box, then apply a blur with Apply to set to Selection."
+    - "Hold Shift at the start of a second drag to add a box to the first one."
+  pitfalls:
+    - "A click without a drag removes the selection. Use Select > Reselect to get it back."
+  demos: []
+docsPage: "selection/marquee.md"

@@ -1,0 +1,95 @@
+id: midpoint
+name: Midpoint filter
+aliases: [Mid-range filter]
+family: nonlinear
+tags: [purpose:denoise, noise:uniform]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+
+summary: Replaces each pixel with the value halfway between the smallest and largest in its window.
+purpose: Reduce noise with a flat spread of values, such as uniform noise.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/min-max.ts, symbol: midpointFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately. With the brightness scope, only luma changes and
+  the colors stay. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows smooth more and blur edges more.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \tfrac{1}{2}\Bigl(\min_{(s,t) \in S_{xy}} I(s,t) + \max_{(s,t) \in S_{xy}} I(s,t)\Bigr)
+formulaExplanation: >-
+  S_xy is the size by size window around (x, y). The output is the mean of the first and last
+  values of the sorted window. It uses only these two values, so a single extreme value moves
+  the result by half of its distance.
+symbols:
+  - {symbol: 'I', meaning: Input channel value}
+  - {symbol: 'I_{\text{out}}', meaning: Output channel value}
+  - {symbol: 'S_{xy}', meaning: 'The window around pixel (x, y)'}
+steps:
+  - Pad the image with the border mode.
+  - Find the minimum of each window with a row pass and a column pass.
+  - Find the maximum of each window the same way.
+  - Write the mean of the two to the output pixel.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k is the window width. It runs the min and max filters and averages them.
+useCases:
+  - Reduce uniform noise, whose values are spread evenly over a range.
+  - Reduce Gaussian noise a little, when the noise is light.
+advantages:
+  - For uniform noise, the midpoint estimates the center of the range better than the mean.
+  - Cheap. It costs two separable passes.
+limitations:
+  - Very sensitive to impulse noise. One salt or pepper pixel pulls the result halfway.
+  - Blurs edges, because a window on an edge gives the halfway value.
+artifacts:
+  - Blocky patches around isolated bright or dark pixels.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 5.3, order-statistic filters.
+implementation: {path: web/src/core/filters/nonlinear/min-max.ts, symbol: midpointFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes the value halfway between the darkest and the brightest neighbor.
+  howItWorks:
+    - Take the window around the pixel.
+    - Find the smallest and the largest value.
+    - Use the value halfway between them.
+  academic: >-
+    The midpoint, or mid-range, is the mean of the first and last order statistics. For noise
+    that is uniform on an interval, it is a better estimate of the center than the sample mean.
+    For noise with long tails, it is much worse.
+  paramNotes:
+    size: Width of the square window.
+  tryThis:
+    - Add Gaussian noise and compare the midpoint with the box filter. Then try salt-and-pepper noise.
+  pitfalls:
+    - Using it on salt-and-pepper noise. Each speck spreads into a square of half its brightness.
+  demos: [rank-stepper, line-profile]
+related: [min, max, alpha-trimmed-mean, box]
+docsPage: filters/nonlinear/midpoint.md

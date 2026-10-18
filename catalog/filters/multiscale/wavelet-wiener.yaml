@@ -1,0 +1,176 @@
+id: wavelet-wiener
+name: Wavelet Wiener filtering
+aliases:
+- Locally adaptive wavelet Wiener filter
+- LAWML denoising
+- Mihcak wavelet denoising
+family: multiscale
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6b
+status: implemented-tested
+
+summary: Multiplies each wavelet detail coefficient by a Wiener gain from 0 to 1, set by how much signal its neighborhood holds.
+purpose: Remove Gaussian noise with a smooth gain instead of a hard cut, keeping textures where the local energy is high.
+classification: {linearity: nonlinear, domain: transform, operation: locally adaptive Wiener shrinkage}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: wavelet_wiener_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, with its own
+  noise estimate. With the brightness scope, only luma is filtered and the colors stay. With the
+  color scope, only Cb and Cr are filtered.
+boundary: >-
+  Set by the Border mode parameter, which picks the PyWavelets extension mode. The default is
+  reflect, the symmetric mode of PyWavelets. The local windows mirror the subband at its edges.
+dependencies:
+  - {name: PyWavelets, optional: false, note: The 2-D transform (wavedec2 and waverec2) and the filter taps.}
+  - {name: SciPy, optional: false, note: The window means (ndimage.uniform_filter).}
+
+params:
+  - key: wavelet
+    label: Wavelet
+    type: select
+    default: db4
+    options:
+      - {value: haar, label: Haar}
+      - {value: db2, label: Daubechies 2 (db2)}
+      - {value: db4, label: Daubechies 4 (db4)}
+      - {value: db8, label: Daubechies 8 (db8)}
+      - {value: sym4, label: Symlet 4 (sym4)}
+      - {value: sym8, label: Symlet 8 (sym8)}
+      - {value: coif1, label: Coiflet 1 (coif1)}
+      - {value: coif3, label: Coiflet 3 (coif3)}
+    description: The orthogonal wavelet. Its filter taps come from PyWavelets.
+    effect: Haar gives blocky results. Wavelets with more taps have smoother shapes, so their artifacts are smoother but reach farther.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 8
+    step: 1
+    default: 4
+    description: How many times the transform splits the low-pass part. It is capped at the deepest level the image size allows.
+    effect: More levels also reach coarser noise, and touch larger structures.
+  - key: window
+    label: Window
+    type: select
+    default: min
+    options:
+      - {value: min, label: Smallest of 3x3 to 9x9}
+      - {value: 3x3, label: 3 x 3}
+      - {value: 5x5, label: 5 x 5}
+      - {value: 7x7, label: 7 x 7}
+      - {value: 9x9, label: 9 x 9}
+    description: The square neighborhood of coefficients that estimates the local signal variance. The first option computes it for 3x3, 5x5, 7x7 and 9x9 and keeps the smallest estimate.
+    effect: Small windows follow edges closely but estimate noisily. Large windows estimate steadily but blur across edges. The smallest estimate removes the most noise.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal details.
+    effect: Larger values lower every gain, so more is removed.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat{\sigma}_x^2(k) = \min_{W} \max\Big(0,\ \frac{1}{W^2} \sum_{j \in N_W(k)} w_j^2 - \sigma^2\Big),
+  \qquad
+  \hat{w}(k) = \frac{\hat{\sigma}_x^2(k)}{\hat{\sigma}_x^2(k) + \sigma^2}\, w(k),
+  \qquad
+  \hat{I} = \operatorname{IDWT}\big(a_J,\ \hat{w}\big),
+  \quad
+  J = {{levels}}
+formulaExplanation: >-
+  Mihcak, Kozintsev, Ramchandran and Moulin model each detail coefficient w(k) as a Gaussian
+  signal value plus Gaussian noise of variance sigma^2. Each signal value has its own variance
+  sigma_x^2(k). Neighboring coefficients have similar variances, so the mean of w^2 over a W x W
+  window N_W(k), minus sigma^2, estimates sigma_x^2(k). The max with 0 keeps the estimate from
+  going negative. For a Gaussian signal in Gaussian noise, the estimate with the least mean
+  squared error is w times the Wiener gain sigma_x^2 / (sigma_x^2 + sigma^2). With the first
+  window option, the estimate is computed for W = 3, 5, 7 and 9, and the smallest is kept. Lukas, Fridrich and
+  Goljan used this form of the filter. Where the neighborhood holds only noise, the gain
+  is near 0. Where it holds strong edges or texture, the gain is near 1. The noise sigma comes
+  from the median absolute value of the finest diagonal details divided by 0.6745, as in
+  wavelet thresholding. The approximation a_J is kept.
+symbols:
+  - {symbol: 'w(k)', meaning: 'A detail coefficient at position k in its subband'}
+  - {symbol: 'N_W(k)', meaning: 'The W x W window of coefficients around k, in the same subband'}
+  - {symbol: '\hat{\sigma}_x^2(k)', meaning: The estimated local variance of the signal}
+  - {symbol: '\sigma', meaning: The standard deviation of the noise}
+  - {symbol: 'a_J', meaning: The approximation after J levels}
+steps:
+  - Split the channel with the 2-D discrete wavelet transform into an approximation and J levels of details.
+  - Estimate the noise sigma from the diagonal details of the finest level, unless it is set.
+  - In every detail subband, compute the mean of the squared coefficients in each window, for each window size.
+  - Subtract sigma squared, clip at 0, and keep the smallest estimate when there are several windows.
+  - Multiply each coefficient by its Wiener gain.
+  - Rebuild the channel with the inverse transform.
+complexity:
+  time: O(N (L + K))
+  memory: O(N)
+  notes: N is the number of pixels, L the number of filter taps and K the number of window sizes. The window means are separable, so their cost does not grow with the window size.
+useCases:
+  - Removing Gaussian noise while keeping fine texture.
+  - Extracting the noise residual of a camera sensor, the image minus its denoised version, as in sensor fingerprint studies.
+advantages:
+  - A smooth gain instead of a cut, so there are fewer isolated spots than with hard thresholding.
+  - Adapts to the local content inside each subband, not only to the subband as a whole.
+limitations:
+  - The model assumes white Gaussian noise of the same strength everywhere.
+  - The decimated transform is not shift invariant, so small blotches near edges remain.
+  - The minimum over windows also lowers the gain on weak true detail.
+artifacts:
+  - Noise left in a narrow band along strong edges, where the windows include the edge and raise the gain.
+  - Faint blotches near edges, from the decimated transform.
+references:
+  - kind: paper
+    text: Mihcak, M. K., Kozintsev, I., Ramchandran, K., and Moulin, P. Low-complexity image denoising based on statistical modeling of wavelet coefficients. IEEE Signal Processing Letters 6(12), 300 to 303, 1999.
+    doi: 10.1109/97.803428
+  - kind: paper
+    text: Lukas, J., Fridrich, J., and Goljan, M. Digital camera identification from sensor pattern noise. IEEE Transactions on Information Forensics and Security 1(2), 205 to 214, 2006.
+    doi: 10.1109/TIFS.2006.873602
+  - kind: paper
+    text: Donoho, D. L., and Johnstone, I. M. Ideal spatial adaptation by wavelet shrinkage. Biometrika 81(3), 425 to 455, 1994.
+    doi: 10.1093/biomet/81.3.425
+  - kind: library
+    text: Lee, G. R., Gommers, R., Waselewski, F., Wohlfahrt, K., and O'Leary, A. PyWavelets. A Python package for wavelet analysis. Journal of Open Source Software 4(36), 1237, 2019.
+    doi: 10.21105/joss.01237
+implementation: {path: engine/src/pixelnexus_engine/filters/wavelets.py, symbol: wavelet_wiener}
+tests: [engine/tests/test_wavelet_variants.py]
+learn:
+  oneSentence: Turn each wavelet detail down by a factor from 0 to 1, depending on how much more than noise its neighborhood holds.
+  howItWorks:
+    - Split the image into a small blurred copy and layers of detail.
+    - For each detail value, measure the energy of its neighbors.
+    - Subtract the energy that noise alone would give.
+    - Keep the detail in proportion to what is left, and rebuild the image.
+  academic: >-
+    Locally adaptive wavelet-domain Wiener filtering: per-coefficient signal variance by
+    windowed maximum likelihood, after Mihcak et al., with the minimum over several window
+    sizes, and the empirical Wiener gain.
+  paramNotes:
+    wavelet: The shape of the building blocks.
+    levels: How many sizes of detail are cleaned.
+    window: How many neighbors judge each detail.
+    sigma: How strong the noise is. 0 measures it.
+    border: How the image is extended past its edges.
+    channelScope: Which part of the color image is cleaned.
+  tryThis:
+    - Compare the 3 x 3 and 9 x 9 windows on an image with fine texture.
+    - Open the Noise lab and compare this filter with wavelet thresholding.
+  pitfalls:
+    - A noise sigma set too low. Every gain stays near 1, and little noise is removed.
+  demos: [noise-lab]
+related: [wavelet-threshold, swt-denoise, wiener-denoise, wiener-adaptive, nlm]
+docsPage: filters/multiscale/wavelet-wiener.md

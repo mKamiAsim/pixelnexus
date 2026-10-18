@@ -1,0 +1,133 @@
+id: mad-outlier
+name: Median absolute deviation thresholding
+aliases:
+- MAD thresholding
+- Hampel filter
+- Hampel identifier
+family: adaptive
+tags: [purpose:denoise, noise:impulse]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Marks or repairs pixels far from the local median.
+
+summary: Marks or repairs values that lie more than t times the robust scale S from the local median.
+purpose: Find and repair outliers with a threshold that adapts to the local noise level.
+classification: {linearity: nonlinear, domain: statistical, operation: outlier test with robust statistics}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/mad-outlier.ts, symbol: medianAndScale}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  Each channel is tested and repaired with its own median and MAD. In the mark view a pixel is
+  white when any channel is an outlier. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 9
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the square window for the median and the MAD.
+    effect: Larger windows give steadier estimates of the local noise.
+  - key: t
+    label: Threshold t
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 3
+    description: How many times the robust scale S a value may be from the median.
+    effect: 3 is the usual choice. Lower values find more outliers.
+  - key: output
+    label: Show
+    type: select
+    default: repair
+    options:
+      - {value: repair, label: Repaired image}
+      - {value: mark, label: Outliers}
+    description: Replace outliers by the median, or show white where any channel is an outlier.
+    effect: Outliers shows what the filter finds, as a black and white image.
+  - ref: border
+
+formula: |
+  S = 1.4826\,\operatorname{median}_{w \in W} |w - m|,
+  \qquad
+  I_{\text{out}} =
+  \begin{cases}
+  m & |I - m| > t\,S \\
+  I & \text{otherwise}
+  \end{cases},
+  \qquad t = {{t}}
+formulaExplanation: >-
+  m is the median of the window W, and the MAD is the median of the distances from m. The
+  factor 1.4826, which is 1 divided by the 75th percentile of the standard normal
+  distribution, makes S estimate the standard deviation of Gaussian noise. A value further than
+  t S from the median is an outlier. In a perfectly flat window S is 0, so any different value
+  counts.
+symbols:
+  - {symbol: 'm', meaning: The median of the window}
+  - {symbol: 'S', meaning: The scaled median absolute deviation}
+  - {symbol: 't', meaning: The threshold in units of S}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel and channel, sort the window and take its median m.
+  - Sort the distances to m and take their median, times 1.4826, as S.
+  - Where the value is further than t S from m, write m or mark the pixel. Elsewhere keep the value.
+complexity:
+  time: O(N\,k^2 \log k)
+  memory: O(N)
+  notes: N is the number of pixels and k is the window width. Each window is sorted twice per channel.
+useCases:
+  - Find impulse noise and other outliers in images with varying texture.
+  - Clean measurement images before further analysis.
+advantages:
+  - The threshold follows the local noise. Busy areas tolerate more variation than flat areas.
+  - The median and the MAD both ignore up to half of the window as outliers.
+limitations:
+  - In flat areas S is 0 or very small, so tiny real changes count as outliers.
+  - Sorting each window twice makes it slower than the median filter.
+artifacts:
+  - Fine texture in flat surroundings can be flattened.
+references:
+  - kind: paper
+    text: Hampel, F. R. The influence curve and its role in robust estimation. Journal of the American Statistical Association 69(346), 383 to 393, 1974.
+    doi: 10.1080/01621459.1974.10482962
+  - kind: paper
+    text: Pearson, R. K., Neuvo, Y., Astola, J. and Gabbouj, M. Generalized Hampel filters. EURASIP Journal on Advances in Signal Processing 2016, article 87, 2016.
+    doi: 10.1186/s13634-016-0383-6
+  - kind: library
+    text: SciPy documentation, scipy.stats.median_abs_deviation.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.median_abs_deviation.html
+implementation: {path: web/src/core/filters/adaptive/mad-outlier.ts, symbol: madOutlierFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: A value is an outlier when it is much further from the local median than its neighbors usually are.
+  howItWorks:
+    - Find the median of the window.
+    - Measure how far the window values usually are from it, with the median of the distances.
+    - Call a value an outlier when it is more than t times that usual distance away.
+  academic: >-
+    The Hampel identifier replaces the mean and standard deviation of the three-sigma rule with
+    the median and the scaled MAD. Both have a breakdown point of 50 percent, so outliers cannot
+    hide by inflating the scale estimate.
+  paramNotes:
+    t: The threshold in units of the robust scale S. 3 is the common choice.
+    output: Outliers shows the detections as white pixels.
+  tryThis:
+    - Add Gaussian noise and 2 percent salt-and-pepper noise. Show the outliers with t = 3, then repair them.
+  pitfalls:
+    - Using it on clean flat areas. The MAD is near 0 there, so tiny changes count as outliers.
+  demos: [line-profile]
+related: [switching-median, dead-pixel, median]
+docsPage: filters/adaptive/mad-outlier.md

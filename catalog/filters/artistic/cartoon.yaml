@@ -1,0 +1,141 @@
+id: cartoon
+name: Cartoon effect
+aliases: [Cartoonize, Toon effect]
+family: artistic
+tags: [purpose:smoothing]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Bilateral smoothing with an edge mask.
+
+summary: Flattens colors with repeated edge-preserving smoothing and draws black lines along the edges, for a comic-book look.
+purpose: Turn a photo into a cartoon-like image.
+classification: {linearity: nonlinear, domain: spatial, operation: bilateral smoothing with line mask}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/painterly.ts, symbol: cartoonLines}
+supportRadius: max(passes * ceil(3 sigmaSpace), 2 + (lineSize - 1) / 2)
+supportsMask: true
+preview: live
+colorHandling: >-
+  The filter works on all three channels together. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigmaSpace
+    label: Smoothing size
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.5
+    default: 3
+    unit: px
+    description: The spatial sigma of each bilateral pass.
+    effect: Larger values smooth larger areas.
+  - key: sigmaRange
+    label: Color tolerance
+    type: number
+    min: 1
+    max: 150
+    step: 1
+    default: 40
+    description: The range sigma of each bilateral pass, a distance between RGB colors.
+    effect: Larger values merge more different colors.
+  - key: passes
+    label: Passes
+    type: integer
+    min: 1
+    max: 5
+    step: 1
+    default: 2
+    description: How many times the bilateral filter runs.
+    effect: More passes give flatter colors and take longer.
+  - key: lineSize
+    label: Line window
+    type: integer
+    min: 3
+    max: 31
+    step: 2
+    oddOnly: true
+    default: 9
+    unit: px
+    description: The window of the local mean that the lines compare with.
+    effect: Larger windows find coarser edges.
+  - key: lineOffset
+    label: Line threshold
+    type: number
+    min: 0
+    max: 30
+    step: 0.5
+    default: 4
+    description: How much darker than its surroundings a pixel must be to become a line.
+    effect: Lower values draw more lines.
+  - ref: border
+formula: |
+  C_s = \operatorname{bilateral}^{k}(C),
+  \quad
+  M = \operatorname{med}_{5 \times 5}\left(\operatorname{round}(Y)\right),
+  \quad
+  C' = \begin{cases} 0 & M < \operatorname{mean}_{s \times s}(M) - d \\ C_s & \text{otherwise} \end{cases},
+  \qquad k = {{passes}},\ s = {{lineSize}},\ d = {{lineOffset}}
+formulaExplanation: >-
+  The colors are smoothed by k passes of the bilateral filter of Tomasi and Manduchi in color
+  mode, which flattens areas while keeping edges. The lines come from the luma Y, rounded to
+  whole levels and median filtered over 5 by 5 to remove noise. A pixel is a line where this
+  median is darker than its local mean over s by s by more than d, the rule of the adaptive mean
+  threshold. Lines are black, and all other pixels take the smoothed color. The recipe is
+  PixelNexus's own.
+symbols:
+  - {symbol: 'C_s', meaning: 'The smoothed color'}
+  - {symbol: 'M', meaning: 'The median filtered luma'}
+  - {symbol: 'k, s, d', meaning: 'The passes, the line window and the line threshold'}
+steps:
+  - Smooth the colors with the bilateral filter in color mode, the chosen number of times.
+  - Round the luma to whole levels and take its 5 by 5 median.
+  - Mark the pixels whose median is darker than its local mean by more than the threshold.
+  - Paint the marked pixels black and the others with the smoothed colors.
+complexity:
+  time: O(N k r^2)
+  memory: O(N)
+  notes: N is the number of pixels, k the passes and r the bilateral radius, 3 sigma.
+useCases:
+  - Comic and cartoon looks for photos.
+advantages:
+  - Clean flat areas and clear outlines.
+  - Each part can be tuned on its own.
+limitations:
+  - Slow with large smoothing sizes and many passes.
+  - Fine texture can still give many small lines.
+artifacts:
+  - Speckled lines in noisy or textured areas.
+references:
+  - kind: paper
+    text: Tomasi, C. and Manduchi, R. Bilateral filtering for gray and color images. Sixth International Conference on Computer Vision, 839 to 846, 1998.
+    doi: 10.1109/ICCV.1998.710815
+implementation: {path: web/src/core/filters/artistic/painterly.ts, symbol: cartoonFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Flatten the colors while keeping edges, then draw black lines along the edges.
+  howItWorks:
+    - Smooth the colors with the bilateral filter, which keeps edges.
+    - Find pixels darker than their surroundings, after a median removes noise.
+    - Paint those pixels black.
+  academic: >-
+    Iterated vector bilateral filtering combined with a line mask from an adaptive mean
+    threshold of the median filtered luma.
+  paramNotes:
+    sigmaSpace: How far the smoothing reaches.
+    sigmaRange: How different two colors can be and still blend.
+    passes: How many times to smooth.
+    lineSize: How coarse the edges are that get lines.
+    lineOffset: How strong an edge must be to get a line.
+    border: How windows are filled past the image edge.
+  tryThis:
+    - Raise the line threshold until only the main outlines remain.
+  pitfalls:
+    - Noisy photos. Lower the noise first, or raise the line threshold.
+  demos: [line-profile]
+related: [bilateral, oil-painting, posterize, threshold-adaptive-mean]
+docsPage: filters/artistic/cartoon.md

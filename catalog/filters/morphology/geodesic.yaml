@@ -1,0 +1,119 @@
+id: geodesic
+name: Geodesic filtering
+aliases: [Geodesic dilation, Geodesic erosion]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: A fixed number of geodesic dilation or erosion steps. The marker grows under the image, or shrinks over it, one pixel per step.
+purpose: Show how reconstruction spreads, one step at a time, or limit how far it reaches.
+classification: {linearity: nonlinear, domain: spatial, operation: geodesic dilation or erosion}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: geodesic}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  No border is needed for the reconstruction, which stays inside the image. The filter always runs on the whole image.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: dilation
+    options:
+      - {value: dilation, label: By dilation (bright parts)}
+      - {value: erosion, label: By erosion (dark parts)}
+    description: Whether the marker grows up under the image or shrinks down over it.
+    effect: By dilation flattens bright peaks. By erosion fills dark valleys.
+  - key: h
+    label: Height h
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 20
+    description: The marker is the image moved down by h for dilation, or up by h for erosion.
+    effect: Peaks or valleys less than h deep are flattened. Deeper ones lose h at their top or bottom.
+  - key: steps
+    label: Steps
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 5
+    description: How many geodesic steps to run.
+    effect: Each step lets the marker spread one more pixel. With enough steps the result is the reconstruction.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined when the reconstruction spreads.
+    effect: With 4 neighbors, regions that touch only at a corner stay apart.
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  J_{k+1} = \delta_N(J_k) \wedge f
+formulaExplanation: >-
+  J_0 is the image moved down by h, clamped below the image f. Each step dilates J with the 3 x 3 element N and takes the minimum with f. Geodesic erosion swaps dilation with erosion and minimum with maximum, starting from the image moved up by h. After enough steps, the result is the reconstruction.
+symbols:
+  - {symbol: 'J_k', meaning: The marker after k steps}
+  - {symbol: 'N', meaning: The 3 x 3 cross or square}
+steps:
+  - Build the marker, the image moved down by h for dilation or up for erosion.
+  - Repeat the chosen number of times. Dilate the marker with N and take the minimum with the image, or erode and take the maximum.
+complexity:
+  time: O(N n)
+  memory: O(N)
+  notes: N is the number of pixels per channel and n the number of steps.
+useCases:
+  - Teaching how reconstruction spreads.
+  - Reconstruction that may reach only a limited distance.
+advantages:
+  - The number of steps limits how far the marker spreads.
+limitations:
+  - Slower than reconstruction when many steps are needed.
+artifacts:
+  - Partly restored peaks when the steps run out.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: geodesicFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Grow a lowered copy of the image a few pixels at a time, never above the image.
+  howItWorks:
+    - Lower the image by h.
+    - Grow it by one pixel, and cap it at the image.
+    - Repeat for each step.
+  academic: >-
+    Elementary geodesic dilations of size n of a marker with respect to a mask. Their limit is the reconstruction by dilation.
+  paramNotes:
+    method: Grow under or shrink over.
+    h: How far the marker starts from the image.
+    steps: How far it may spread.
+    connectivity: Which pixels count as joined.
+  tryThis:
+    - Raise the number of steps until the result stops changing. It then equals the reconstruction.
+  pitfalls:
+    - Expecting each step to cover a large distance. Each step spreads one pixel.
+  demos: [line-profile]
+related: [reconstruction, dilation, erosion]
+docsPage: filters/morphology/geodesic.md

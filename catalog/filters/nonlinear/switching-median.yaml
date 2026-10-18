@@ -1,0 +1,112 @@
+id: switching-median
+name: Switching median filter
+family: nonlinear
+tags: [purpose:denoise, noise:impulse]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Replaces only pixels detected as impulses.
+
+summary: Replaces a pixel by the window median only when it differs from that median by more than a threshold.
+purpose: Remove impulse noise and leave the other pixels untouched.
+classification: {linearity: nonlinear, domain: spatial, operation: switching order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/switching-median.ts, symbol: switchValue}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are tested and repaired separately. With the brightness scope, only luma
+  is tested and repaired. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window for the median.
+    effect: Larger windows handle clusters of noisy pixels.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 40
+    description: How far a pixel may differ from the window median before it counts as an impulse.
+    effect: Lower values repair more pixels, including some real detail. 0 gives the plain median filter.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) =
+  \begin{cases}
+  m(x,y) & |I(x,y) - m(x,y)| > T \\
+  I(x,y) & \text{otherwise}
+  \end{cases},
+  \qquad T = {{threshold}}
+formulaExplanation: >-
+  m is the median of the window. A pixel far from the median of its neighbors is taken as an
+  impulse and replaced by that median. Pixels close to it keep their own value. This switching
+  between the median and the input is the idea of Sun and Neuvo (1994).
+symbols:
+  - {symbol: 'm(x, y)', meaning: The median of the window around the pixel}
+  - {symbol: 'T', meaning: The detection threshold}
+steps:
+  - Pad the image with the border mode.
+  - Compute the median of every window with a sliding histogram.
+  - Compare each pixel with its median.
+  - Write the median where the difference is above T, and the pixel itself elsewhere.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k is the window width, as for the median filter.
+useCases:
+  - Remove sparse salt-and-pepper noise from images with fine texture or text.
+  - Repair isolated bad pixels while leaving the rest exactly as it was.
+advantages:
+  - Pixels that are not impulses keep their exact values.
+  - One threshold trades detection against damage.
+limitations:
+  - Fine bright or dark details that differ from the median by more than T are removed as well.
+  - Impulses close to the local values, below T, stay.
+artifacts:
+  - With a low threshold, thin lines break up, as with the median filter.
+references:
+  - kind: paper
+    text: Sun, T. and Neuvo, Y. Detail-preserving median based filters in image processing. Pattern Recognition Letters 15(4), 341 to 347, 1994.
+    doi: 10.1016/0167-8655(94)90082-5
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.median_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.median_filter.html
+implementation: {path: web/src/core/filters/nonlinear/switching-median.ts, symbol: switchingMedianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Only pixels that stand out from their neighbors get the median, the rest stay as they are.
+  howItWorks:
+    - Find the median of the window around the pixel.
+    - If the pixel is far from the median, call it noise and use the median.
+    - Otherwise keep the pixel as it is.
+  academic: >-
+    An impulse detector switches between the identity and the median filter. The detector here
+    is the absolute difference to the window median, compared with a threshold T. Pixels that
+    pass keep their exact value, which avoids the blur that a median filter adds everywhere.
+  paramNotes:
+    threshold: The largest difference to the median that still counts as a real value.
+  tryThis:
+    - Add 5 percent salt-and-pepper noise to an image with text. Compare the median filter with the switching median at thresholds 20 and 60.
+  pitfalls:
+    - Setting the threshold so low that real detail counts as noise.
+  demos: [rank-stepper, line-profile, noise-lab]
+related: [median, adaptive-median, dead-pixel, mad-outlier]
+docsPage: filters/nonlinear/switching-median.md

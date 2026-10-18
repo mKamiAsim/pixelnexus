@@ -1,0 +1,127 @@
+id: grabcut
+name: GrabCut
+aliases: [GrabCut-inspired interactive segmentation, Iterated graph cuts]
+family: segmentation
+tags: [purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+planNotes: GrabCut-inspired interactive segmentation. OpenCV.
+
+summary: Cuts out the object inside a box, after Rother, Kolmogorov and Blake, with OpenCV. Everything outside the rectangle around your selection is background. It learns the colors of object and background, cuts the image with a graph cut, and repeats with the colors of the new result.
+purpose: Cut out an object from a rough box around it, using color.
+classification: {linearity: nonlinear, domain: iterative, operation: iterated graph cuts}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: grabcut_representation}
+supportRadius: global
+supportsMask: true
+needsSelection: true
+selectionRole: markers
+preview: on-demand
+colorHandling: >-
+  The filter reads the RGB image as 8 bits, in OpenCV's BGR order. The object goes to the
+  Features panel and is drawn over the image. The boundaries are a color image with the alpha of
+  the image.
+boundary: OpenCV joins each pixel to the neighbors inside the image. Nothing is padded.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.grabCut.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Object}
+      - {value: boundaries, label: Boundaries over the image}
+    description: The object as a label map, drawn over the image and listed in the Features panel, or its boundary in yellow over the image.
+    effect: The object can become the selection from the Features panel.
+  - key: start
+    label: Start
+    type: select
+    default: box
+    options:
+      - {value: box, label: Box around the selection}
+      - {value: map, label: Selection as a map}
+    description: With the box, the rectangle around the selection holds the object and everything outside it is background. As a map, pixels selected at 192 or more are certain object and at 128 to 191 probable object. Pixels at 64 to 127 are probable background, and at 63 or less certain background.
+    effect: A map lets you fix a box result, by marking parts that must be object or background.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 5
+    description: How many rounds of fitting the color models and cutting. Our choice of 5.
+    effect: More rounds let the color models settle. The result often stops changing after a few.
+formula: |
+  E(\alpha, k, \theta, z) = U(\alpha, k, \theta, z) + V(\alpha, z),
+  \qquad
+  V = \gamma \sum_{\{m,n\}} \frac{[\alpha_n \ne \alpha_m]}{\operatorname{dist}(m,n)} \, e^{-\beta \lVert z_m - z_n \rVert^2}
+formulaExplanation: >-
+  z is the color of each pixel and alpha its label, object or background. Each side has a
+  Gaussian mixture model of 5 colors, with the parameters theta. k says which of the 5 colors a
+  pixel belongs to. The data term U is minus the log likelihood of each color under the model of
+  its label. The smoothness term V costs gamma whenever neighbors get different labels. It costs
+  less across a strong color change and between diagonal neighbors. Rother, Kolmogorov and Blake
+  set gamma to 50 and beta from the mean color difference of neighbors. Each round assigns
+  pixels to mixture colors, fits the mixtures, and finds the best labels with a graph cut.
+  Pixels outside the box or marked certain never change.
+symbols:
+  - {symbol: '\alpha', meaning: 'The label of each pixel, object or background'}
+  - {symbol: 'z', meaning: 'The color of each pixel'}
+  - {symbol: 'k', meaning: 'Which mixture color each pixel belongs to'}
+  - {symbol: '\theta', meaning: 'The two Gaussian mixture models'}
+  - {symbol: 'U, V', meaning: 'The data term and the smoothness term'}
+steps:
+  - Mark everything outside the box as certain background, and the inside as probable object.
+  - Fit a mixture of 5 colors to the object pixels and one to the background pixels.
+  - Cut the graph to find the cheapest labels.
+  - Fit the mixtures again to the new labels, and repeat.
+complexity:
+  time: O(K C)
+  memory: O(N)
+  notes: N is the number of pixels, K the number of rounds and C the cost of one graph cut.
+useCases:
+  - Cutting out a photo subject from a rough box.
+  - Object Select in PixelNexus without an AI model.
+advantages:
+  - Uses color, so it separates objects of the same brightness as their surroundings.
+  - Needs only a box for many photos.
+limitations:
+  - Colors shared by object and background confuse the mixtures.
+  - On gray images with strong noise it can find nothing. In our tests it returned an empty object at noise sigma 30 on a gray image, while a color image worked at sigma 60.
+artifacts:
+  - Thin parts such as hair cut off or kept with background.
+references:
+  - kind: paper
+    text: Rother, C., Kolmogorov, V., and Blake, A. GrabCut, interactive foreground extraction using iterated graph cuts. ACM Transactions on Graphics 23(3), 309 to 314, 2004.
+    doi: 10.1145/1015706.1015720
+  - kind: library
+    text: OpenCV documentation, cv::grabCut.
+implementation: {path: engine/src/pixelnexus_engine/filters/interactive.py, symbol: grabcut}
+tests: [engine/tests/test_interactive.py]
+learn:
+  oneSentence: Draw a box around an object, and the colors inside and outside tell it apart.
+  howItWorks:
+    - Everything outside the box is background.
+    - The colors inside and outside are summed up as a few typical colors each.
+    - A graph cut splits the box by those colors, preferring cuts along edges.
+    - The typical colors are updated from the result, and the cut runs again.
+  academic: >-
+    GrabCut of Rother, Kolmogorov and Blake: iterated graph cuts with Gaussian mixture color
+    models of 5 components, as in OpenCV.
+  paramNotes:
+    output: Object or boundary.
+    start: Box or map.
+    iterations: How many rounds.
+  tryThis:
+    - Select a box around a colored object and apply. Then feather the selection and use the map start.
+  pitfalls:
+    - A box that cuts through the object. Everything outside the box stays background.
+  demos: [stage-viewer]
+related: [graph-cut, random-walker, object-select-classical]
+docsPage: filters/segmentation/grabcut.md

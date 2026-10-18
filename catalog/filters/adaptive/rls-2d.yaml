@@ -1,0 +1,140 @@
+id: rls-2d
+name: 2D RLS adaptive filter
+aliases: [RLS adaptive filter, Recursive least squares predictor]
+family: adaptive
+tags: [purpose:denoise, noise:gaussian]
+tier: advanced
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: The 2D predictor of the LMS entry with the recursive least squares update, with an honest label.
+
+summary: Predicts each pixel from its neighbors, like the 2D LMS filter, but updates the weights with recursive least squares. The weights at each pixel are the best fit to all pixels before it, with older pixels counting less. It learns much faster than LMS.
+purpose: Compare the fast, costly RLS update with the slow, cheap LMS update on the same prediction task.
+classification: {linearity: nonlinear, domain: statistical, operation: adaptive linear prediction}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/scan.ts, symbol: rls2dFilter}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own weights. With the brightness
+  scope, only luma is filtered. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 5
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: The window of neighbors that predict the center, which itself is left out.
+    effect: A 5x5 window has 24 weights. Each step then costs 24 x 24 operations, about 9 times as many as with 3x3.
+  - key: lambda
+    label: Forgetting factor lambda
+    type: number
+    min: 0.95
+    max: 1
+    step: 0.001
+    default: 0.999
+    description: How much each older pixel still counts. Pixel n steps back counts lambda to the power n.
+    effect: At 1 every pixel counts the same. Lower values forget fast and follow local changes, but keep more noise.
+  - key: delta
+    label: Start regularization delta
+    type: number
+    min: 0.001
+    max: 10
+    step: 0.001
+    default: 0.01
+    description: P starts as the identity divided by delta. A small delta trusts the first pixels a lot.
+    effect: Matters only for the first pixels.
+  - key: output
+    label: Output
+    type: select
+    default: prediction
+    options:
+      - {value: prediction, label: Prediction (denoised)}
+      - {value: error, label: Prediction error (around mid gray)}
+    description: The prediction from the neighbors, or the pixel minus its prediction, shown around 128.
+    effect: The error is high at edges and at noise.
+  - ref: border
+  - ref: channelScope
+formula: |
+  \hat{d}(n) = \mathbf{w}^{\top} \mathbf{x},\quad
+  \mathbf{k} = \frac{P \mathbf{x}}{\lambda + \mathbf{x}^{\top} P \mathbf{x}},\quad
+  \mathbf{w} \leftarrow \mathbf{w} + \mathbf{k}\, e(n),\quad
+  P \leftarrow \frac{P - \mathbf{k}\, \mathbf{x}^{\top} P}{\lambda}
+formulaExplanation: >-
+  d is the pixel, scaled to 0 to 1, and x holds its neighbors in the window without the center.
+  P tracks the inverse of the weighted correlation matrix of the neighbors. The gain k says how
+  far each weight moves for this error. With lambda = 1 the weights at each pixel solve the
+  least-squares fit to all pixels before it, regularized toward the start weights by delta.
+  In flat areas the neighbors carry little new information, and with forgetting P grows
+  without bound until the weights explode, which is called windup. After each step P is made
+  symmetric again and its trace is capped at its starting trace. This safeguard is PixelNexus's
+  own.
+symbols:
+  - {symbol: 'd(n)', meaning: 'The pixel, from 0 to 1'}
+  - {symbol: '\mathbf{x}', meaning: 'Its neighbors in the window, without the center'}
+  - {symbol: '\mathbf{w}', meaning: 'The weights'}
+  - {symbol: 'P', meaning: 'The inverse correlation matrix, started as I / delta'}
+  - {symbol: '\mathbf{k}', meaning: 'The gain vector'}
+  - {symbol: '\lambda', meaning: 'The forgetting factor'}
+steps:
+  - Start with weights that give the mean of the neighbors, and P = I / delta.
+  - For each pixel in raster order, predict it from its neighbors.
+  - Write the prediction, or the error.
+  - Compute the gain, move the weights by the gain times the error, and update P.
+  - Make P symmetric and cap its trace, against rounding and windup.
+complexity:
+  time: O(N k^4)
+  memory: O(N + k^4)
+  notes: N is the number of pixels per channel and k the window width. The window has k^2 - 1 neighbors, and P has their square. The scan cannot be split into tiles, so the filter is global.
+useCases:
+  - Comparing adaptive update rules.
+  - Prediction errors that settle within a few rows.
+advantages:
+  - Learns in a few pixels where LMS needs thousands.
+  - Needs no step size.
+limitations:
+  - Costs (k^2 - 1)^2 operations per pixel, where LMS costs k^2 - 1.
+  - The result depends on the scan order.
+artifacts:
+  - With lambda well below 1, the weights follow the noise, and the result is noisy.
+references:
+  - kind: book
+    text: Haykin, S. Adaptive Filter Theory, 4th edition. Prentice Hall, 2002.
+  - kind: paper
+    text: Hadhoud, M. M., and Thomas, D. W. The two-dimensional adaptive LMS (TDLMS) algorithm. IEEE Transactions on Circuits and Systems 35(5), 485 to 494, 1988.
+    doi: 10.1109/31.1775
+implementation: {path: web/src/core/filters/adaptive/scan.ts, symbol: rls2dFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Guess each pixel from its neighbors with the weights that fit all pixels so far best.
+  howItWorks:
+    - Keep a running summary of how the neighbors relate to each other.
+    - After each pixel, solve again for the weights that fit every pixel so far, cheaply, from that summary.
+    - Older pixels count less, so the weights can follow changes in the image.
+  academic: >-
+    Recursive least squares with exponential forgetting on a two-dimensional noncausal predictor
+    that leaves out the center. With lambda 1 it gives the regularized least-squares weights at
+    every step.
+  paramNotes:
+    size: The window of neighbors.
+    lambda: The forgetting factor.
+    delta: The start regularization.
+    output: The prediction, or the error.
+  tryThis:
+    - Compare the error images of RLS and LMS on the same noisy image. RLS settles in the first row.
+  pitfalls:
+    - A low forgetting factor fits the noise.
+  demos: [line-profile, noise-lab]
+related: [lms-2d, kalman, wiener-adaptive]
+docsPage: filters/adaptive/rls-2d.md

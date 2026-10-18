@@ -1,0 +1,126 @@
+id: laplacian
+name: Laplacian
+aliases: [Discrete Laplacian, Laplace operator]
+family: linear
+alsoIn: [edges]
+tags: [purpose:edge, purpose:sharpening]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: 4 and 8 neighbor variants. Sign convention shown. Cross-listed in edges.
+
+summary: Measures how much each pixel differs from the average of its neighbors.
+purpose: Find fine detail, edges and isolated points, or build a sharpening mask.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/laplacian.ts, symbol: laplacianKernel}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own Laplacian.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: neighbors
+    label: Neighbors
+    type: select
+    default: "4"
+    options:
+      - {value: "4", label: 4 neighbors}
+      - {value: "8", label: 8 neighbors}
+    description: Which neighbors the kernel compares with the center.
+    effect: 8 neighbors also count the diagonals. The response is stronger and closer to the same in every direction.
+  - key: sign
+    label: Sign
+    type: select
+    default: negative-center
+    options:
+      - {value: negative-center, label: Negative center (approximates the Laplacian)}
+      - {value: positive-center, label: Positive center (the same kernel times -1)}
+    description: Which sign convention the kernel uses.
+    effect: Flips the result. Bright spots become negative or positive.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=-1}^{1} \sum_{i=-1}^{1} L(i,j)\, I(x+i,\, y+j),
+  \qquad
+  \nabla^2 I = \frac{\partial^2 I}{\partial x^2} + \frac{\partial^2 I}{\partial y^2},
+  \qquad
+  \text{neighbors} = {{neighbors}}
+formulaExplanation: >-
+  The kernel L is shown in the Operator tab. With 4 neighbors and a negative center, the result
+  is the standard finite-difference approximation of the Laplacian: the sum of the second
+  differences along x and along y. The weights add up to 0, so flat areas and straight ramps
+  give 0. The positive-center kernel is the same kernel times -1.
+symbols:
+  - {symbol: 'I', meaning: 'Input values. Luma by default.'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output value before the output mapping'}
+  - {symbol: 'L(i, j)', meaning: 'Kernel weight at offset i to the right and j down'}
+  - {symbol: '\nabla^2 I', meaning: 'The Laplacian, the sum of the second derivatives along x and y'}
+steps:
+  - Convert to luma when the scope is brightness only.
+  - Pad the image with the border mode.
+  - Correlate with the selected 3x3 kernel.
+  - Map the signed values to 0 to 255 with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The kernel has 5 or 9 weights.
+useCases:
+  - Show fine detail and edges.
+  - Find isolated bright or dark points.
+  - Build a sharpening mask, as in I - c times the Laplacian.
+advantages:
+  - Responds to edges in every direction with one kernel.
+  - Very fast.
+limitations:
+  - A second derivative amplifies noise strongly. Smooth first on noisy images, as the Laplacian of Gaussian does.
+  - Gives a double response on each edge, one positive and one negative.
+  - Gives no direction. Use Sobel when the direction matters.
+artifacts:
+  - Thin double lines along edges.
+  - Speckled output on noisy images.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.laplace.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.laplace.html
+  - kind: library
+    text: OpenCV documentation, image filtering, Laplacian.
+    url: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html
+implementation: {path: web/src/core/filters/linear/laplacian.ts, symbol: laplacianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It measures how much each pixel stands out from the neighbors around it.
+  howItWorks:
+    - Look at the pixel and its 4 or 8 closest neighbors.
+    - Add up the neighbors.
+    - Subtract the center pixel, counted as many times as there are neighbors.
+    - The result is 0 on flat areas and large where the pixel differs from its surroundings.
+  academic: >-
+    With 4 neighbors the kernel is the sum of the second differences along x and y, the
+    standard approximation of the Laplacian. The weights add up to 0, so the filter ignores
+    constant brightness and linear ramps.
+  paramNotes:
+    neighbors: Whether the diagonal neighbors count too.
+    sign: Whether the center weight is negative or positive. It flips the result.
+  tryThis:
+    - Open the step edge test image. The edge gives a dark line next to a bright line.
+    - Add Gaussian noise first, then run the Laplacian. Watch how much the noise grows.
+  pitfalls:
+    - Running it on a noisy image without smoothing first.
+    - Reading the result without the output mapping in mind. Offset by 128 shows 0 as middle gray.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [sobel, unsharp-mask, gaussian]
+docsPage: filters/linear/laplacian.md

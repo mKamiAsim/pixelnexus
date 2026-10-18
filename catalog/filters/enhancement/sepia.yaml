@@ -1,0 +1,91 @@
+id: sepia
+name: Sepia
+aliases: [Sepia tone, Sepia toning]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Cross-listed in artistic.
+
+summary: Gives the image the warm brown tone of old photographs.
+purpose: Create a vintage look.
+classification: {linearity: linear, domain: color, operation: color matrix}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: sepiaMatrix}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: amount
+    label: Amount
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 100
+    unit: "%"
+    description: How far to move toward the full sepia matrix.
+    effect: 0 keeps the image, 100 gives full sepia.
+formula: |
+  \begin{bmatrix} R' \\ G' \\ B' \end{bmatrix} =
+  \begin{bmatrix}
+  0.393 + 0.607 k & 0.769 - 0.769 k & 0.189 - 0.189 k \\
+  0.349 - 0.349 k & 0.686 + 0.314 k & 0.168 - 0.168 k \\
+  0.272 - 0.272 k & 0.534 - 0.534 k & 0.131 + 0.869 k
+  \end{bmatrix}
+  \begin{bmatrix} R \\ G \\ B \end{bmatrix},
+  \qquad k = 1 - \frac{ {{amount}} }{100}
+formulaExplanation: >-
+  This is the matrix of the CSS sepia() function in the W3C Filter Effects spec. With k = 0 it is
+  the full sepia matrix. Its rows add up to more than 1 for red and green and less than 1 for
+  blue, so white turns cream and gray turns brown. With k = 1 it is the identity. The matrix acts on the encoded sRGB values from 0 to 255, and the results are clipped to 0 to 255.
+symbols:
+  - {symbol: 'R, G, B', meaning: 'The encoded channel values from 0 to 255'}
+  - {symbol: 'k', meaning: 'One minus the amount, from 0 to 1'}
+steps:
+  - Build the matrix for the amount.
+  - Multiply each pixel's color by it.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Vintage and nostalgic looks.
+advantages:
+  - One slider. The same result as the CSS sepia() function on encoded values.
+limitations:
+  - Bright areas clip, since the red and green rows add up to more than 1.
+artifacts:
+  - Flat, clipped highlights at full amount.
+references:
+  - kind: standard
+    text: W3C. Filter Effects Module Level 1, section 13.1, the filter functions. W3C Working Draft, 18 December 2018.
+    url: https://www.w3.org/TR/filter-effects-1/
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: sepiaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Mix the colors with a fixed recipe that turns everything warm brown.
+  howItWorks:
+    - Take red, green and blue of a pixel.
+    - Mix them into new red, green and blue with fixed weights.
+    - The weights favor red and green, which gives the brown tone.
+  academic: >-
+    A linear color transformation by a 3 by 3 matrix, interpolated with the identity by the
+    amount.
+  paramNotes:
+    amount: How strong the sepia tone is.
+  tryThis:
+    - Set the amount to 50 for a softer, half-toned look.
+  pitfalls:
+    - Expecting highlights to stay white. Full sepia turns them cream or clips them.
+  demos: [line-profile]
+related: [bw-mix, grayscale, channel-mixer]
+docsPage: filters/enhancement/sepia.md

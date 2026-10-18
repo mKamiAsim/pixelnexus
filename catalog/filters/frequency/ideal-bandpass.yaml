@@ -1,0 +1,107 @@
+id: ideal-bandpass
+name: Ideal band-pass
+aliases: [Ideal band pass filter]
+family: frequency
+tags: [purpose:texture, purpose:analysis]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Keeps only a ring of frequencies, which leaves the detail of one size. The cutoff is sharp.
+purpose: Keep detail of one size, such as a texture or a pattern.
+classification: {linearity: linear, domain: frequency, operation: frequency response}
+output: image
+representation: frequency-response
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/passband.ts, symbol: passResponse}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: center
+    label: Band center
+    type: number
+    min: 0.01
+    max: 0.5
+    step: 0.005
+    default: 0.2
+    unit: cycles/px
+    description: The frequency D_0 in the middle of the band, in cycles per pixel.
+    effect: Higher values move the band to finer detail.
+  - key: width
+    label: Band width
+    type: number
+    min: 0.005
+    max: 0.5
+    step: 0.005
+    default: 0.1
+    unit: cycles/px
+    description: The width W of the band, in cycles per pixel.
+    effect: Wider bands keep detail of more sizes.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  H = \begin{cases} 1 & D_0 - \frac{W}{2} \le D \le D_0 + \frac{W}{2} \\ 0 & \text{otherwise} \end{cases},\quad D = \sqrt{f_x^2 + f_y^2},\ D_0 = {{center}},\ W = {{width}}
+formulaExplanation: >-
+  D is the distance of a frequency from the center of the spectrum, in cycles per pixel, so the filter does the same thing on any image size. Gonzalez and Woods measure D in samples of the padded spectrum. Divide their value by the padded size to get the one here. The band-pass filter is 1 minus the Ideal band-reject filter. Ringing near edges comes from the impulse response of H, which is wider the sharper the cutoff.
+symbols:
+  - {symbol: 'D', meaning: The distance from the center of the spectrum in cycles per pixel}
+  - {symbol: 'f_x, f_y', meaning: The frequency along x and y in cycles per pixel}
+  - {symbol: 'D_0', meaning: The center of the band}
+  - {symbol: 'W', meaning: The width of the band}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Multiply each frequency by H.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Picking out a texture or pattern of one scale.
+  - Analysis of periodic structures.
+advantages:
+  - The cutoff is exact. Every frequency is either kept or removed.
+limitations:
+  - The sharp cutoff makes strong ringing next to edges.
+  - A ring keeps all directions. Use notch filters for one direction.
+artifacts:
+  - Ringing, ripples that run parallel to strong edges.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 4, filtering in the frequency domain.
+implementation: {path: web/src/core/filters/frequency/passband.ts, symbol: idealBandpassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Keep only the detail of one size.
+  howItWorks:
+    - Split the image into waves of many frequencies with the FFT.
+    - Keep the waves in a ring around the center of the spectrum.
+    - Add the kept waves back together.
+  academic: >-
+    The ideal band-pass transfer function of Gonzalez and Woods. Its impulse response is a sinc-like function with side lobes, the cause of ringing.
+  paramNotes:
+    center: Which size of detail the band holds.
+    width: How many sizes the band holds.
+  tryThis:
+    - Move the band center across a striped image. The stripes appear when the band reaches their frequency.
+  pitfalls:
+    - Expecting a clean result. The sharp cutoff rings next to edges.
+  demos: [frequency-explorer]
+related: [butterworth-bandpass, gaussian-bandpass, ideal-bandreject]
+docsPage: filters/frequency/ideal-bandpass.md

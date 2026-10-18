@@ -1,0 +1,97 @@
+id: local-variance
+name: Local variance filter
+aliases: [Variance filter]
+family: adaptive
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Feature map output.
+
+summary: Maps the variance of the window around each pixel, a measure of local contrast and texture.
+purpose: Show where an image is busy or flat, for texture analysis and as an input to adaptive filters.
+classification: {linearity: nonlinear, domain: statistical, operation: local second moment}
+output: features
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localVarianceFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each of red, green and blue gets its own map. With the brightness scope, the map is computed
+  on luma and shown in gray. Alpha is kept. Variance can reach 16256 squared levels, so the default mapping stretches the result to the full range.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows give smoother maps with wider responses at edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \sigma^2(x,y) = \frac{1}{n} \sum_{w \in W_{xy}} w^2 - \Bigl(\frac{1}{n} \sum_{w \in W_{xy}} w\Bigr)^2
+formulaExplanation: >-
+  The population variance of the n values in the window W_xy: the mean of the squares minus the square of the mean. It is 0 in flat areas and large on edges and texture. The unit is levels squared.
+symbols:
+  - {symbol: 'W_{xy}', meaning: 'The window around (x, y)'}
+  - {symbol: 'n', meaning: Number of values in the window}
+steps:
+  - Pad the image with the border mode.
+  - Sum the values and their squares over each window with running sums in float64.
+  - Divide both by n, and subtract the squared mean from the mean square.
+  - Map the result to 8 bits with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Find textured or busy regions.
+  - Measure the local noise level in a flat area.
+  - Build a weight map for blending or adaptive filtering.
+advantages:
+  - Fast for any window size.
+  - The exact quantity that the Lee and Wiener filters use.
+limitations:
+  - Mixes edges and texture. Both have a high variance.
+  - The unit is levels squared, so values are hard to read without the mapping.
+artifacts:
+  - Bright bands along edges, as wide as the window.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 3.3, local histogram statistics.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.generic_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.generic_filter.html
+implementation: {path: web/src/core/filters/adaptive/local-stats.ts, symbol: localVarianceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel shows how much its neighbors differ from their mean.
+  howItWorks:
+    - Take the window around the pixel.
+    - Find the mean of the values and the mean of their squares.
+    - The variance is the second minus the square of the first.
+  academic: >-
+    The second central moment of the window, computed as E[w^2] - E[w]^2 with running sums. It is the square of the local standard deviation.
+  paramNotes:
+    size: Width of the window. Larger windows average the statistic over more pixels.
+  tryThis:
+    - Open Noise patches and compare the variance of the clean and the noisy quadrants.
+  pitfalls:
+    - Reading the values directly. With the stretch mapping, the gray levels depend on the largest variance in the image.
+  demos: [rank-stepper, line-profile]
+related: [local-std, local-range, local-entropy, wiener-adaptive]
+docsPage: filters/adaptive/local-variance.md

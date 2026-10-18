@@ -1,0 +1,104 @@
+id: select-hsv
+name: Select by hue and saturation
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: hue
+    label: Hue
+    type: angle
+    default: 0
+    min: 0
+    max: 360
+    step: 1
+    unit: deg
+    description: Center of the hue range on the color circle. 0 is red, 120 is green and 240 is blue.
+    effect: Picks which colors are selected.
+  - key: hueWidth
+    label: Hue width
+    type: number
+    default: 30
+    min: 0
+    max: 180
+    step: 1
+    unit: deg
+    description: How far the hue may be from the center on each side. 180 accepts every hue.
+    effect: Higher values select more neighboring colors.
+  - key: saturationMin
+    label: Saturation from
+    type: number
+    default: 20
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: Lowest saturation that is fully selected.
+    effect: Raise it to leave out grayish pixels, which have no clear hue.
+  - key: saturationMax
+    label: Saturation to
+    type: number
+    default: 100
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: Highest saturation that is fully selected.
+    effect: Lower it to leave out the most vivid pixels.
+  - key: valueMin
+    label: Value from
+    type: number
+    default: 10
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: Lowest HSV value (the largest of R, G and B) that is fully selected.
+    effect: Raise it to leave out dark pixels.
+  - key: valueMax
+    label: Value to
+    type: number
+    default: 100
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: Highest HSV value that is fully selected.
+    effect: Lower it to leave out bright pixels.
+  - key: softness
+    label: Softness
+    type: number
+    default: 10
+    min: 0
+    max: 90
+    step: 1
+    description: Fade outside every range, in degrees for hue and percent for saturation and value.
+    effect: Higher values give a smoother selection edge.
+summary: "Selects pixels by hue, saturation and value ranges."
+steps:
+  - "Convert each pixel to hue, saturation and value."
+  - "Measure how far the hue is from the center hue, around the color circle."
+  - "Measure how far saturation and value are outside their ranges."
+  - "Fade each part to 0 over the softness, and take the smallest of the three."
+implementation:
+  path: "web/src/core/selection/range.ts"
+  symbol: "selectHsv"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "Select by hue and saturation picks one family of colors, such as all the greens."
+  howItWorks:
+    - "Hue is the position on the color circle, from 0 to 360 degrees."
+    - "Saturation is how colorful a pixel is. Value is its largest channel."
+    - "A pixel is selected when all three lie in their ranges."
+  paramNotes:
+    hueWidth: "How many degrees on each side of the center hue still count."
+    saturationMin: "Raise it to leave out grayish pixels, whose hue means little."
+  tryThis:
+    - "Select the greens of the Hue sweep test image, then rotate them with a hue filter."
+  pitfalls:
+    - "Gray pixels have no real hue. Keep the saturation minimum above 0 to leave them out."
+  demos: []
+docsPage: "selection/color-range.md"

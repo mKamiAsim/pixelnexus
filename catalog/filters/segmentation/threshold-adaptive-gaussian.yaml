@@ -1,0 +1,121 @@
+id: threshold-adaptive-gaussian
+name: Adaptive Gaussian threshold
+aliases: [Local Gaussian threshold, Gaussian adaptive thresholding]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Thresholds each pixel against the mean of its own neighborhood, minus an offset, so it copes with uneven lighting.
+purpose: Binarize documents and other images whose lighting changes across the frame.
+classification: {linearity: nonlinear, domain: statistical, operation: local mean threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: adaptiveGaussianFilter}
+supportRadius: floor(4 * (size - 1) / 6 + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 151
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side of the square window around each pixel.
+    effect: Larger windows follow slower changes of lighting and ignore small details.
+  - key: offset
+    label: Offset
+    type: number
+    min: -50
+    max: 50
+    step: 0.5
+    default: 5
+    description: The amount C subtracted from the local mean to get the threshold.
+    effect: Higher offsets make fewer pixels white, so flat areas stay black.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  T(x, y) = G_{\sigma} * I,\ \sigma = \frac{s - 1}{6} - C,
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > T \\ 0 & \text{otherwise} \end{cases},
+  \qquad s = {{size}},\ C = {{offset}}
+formulaExplanation: >-
+  The threshold at each pixel is a Gaussian weighted mean with sigma = (s - 1) / 6, cut at 4 sigma, minus the offset C. This follows scikit-image's
+  threshold_local. So a pixel turns white when
+  it is brighter than its surroundings by more than C. Slow changes of lighting move the mean
+  and the pixel together, so they do not change the result. The result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with Invert. OpenCV's adaptiveThreshold
+  is similar, but rounds the mean to whole levels and sizes its Gaussian differently.
+symbols:
+  - {symbol: 'T(x, y)', meaning: 'The local threshold'}
+  - {symbol: 's', meaning: 'The window size'}
+  - {symbol: 'C', meaning: 'The offset'}
+steps:
+  - Blur the window around each pixel with a Gaussian.
+  - Subtract the offset to get the local threshold.
+  - Compare each pixel with its own threshold.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The mean uses running sums or two 1D passes.
+useCases:
+  - Scanned or photographed pages with shadows.
+  - Small details on a background that changes slowly.
+advantages:
+  - Copes with uneven lighting.
+  - Simple and fast.
+limitations:
+  - Flat areas larger than the window turn into noise unless the offset is large enough.
+  - Objects much larger than the window get hollow.
+artifacts:
+  - Speckle in large flat areas.
+  - Thick strokes break into outlines.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.filters.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 10, thresholding.
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: adaptiveGaussianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Compare each pixel with the average of its neighbors, not with one level for the whole image.
+  howItWorks:
+    - Blur the window around each pixel with a Gaussian.
+    - Lower that average by the offset.
+    - Make the pixel white if it is brighter than the result.
+  academic: >-
+    Local adaptive thresholding against a Gaussian weighted local mean with a constant offset.
+  paramNotes:
+    size: How large the neighborhood is.
+    offset: How much brighter than its neighbors a pixel must be.
+    invert: Swap white and black.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Use a photo of a page with a shadow, and compare with Otsu.
+  pitfalls:
+    - An offset of 0 on flat areas. Noise turns into speckle.
+  demos: [line-profile]
+related: [otsu, niblack, sauvola]
+docsPage: filters/segmentation/threshold-adaptive-gaussian.md

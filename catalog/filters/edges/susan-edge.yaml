@@ -1,0 +1,145 @@
+id: susan-edge
+name: SUSAN edge detector
+aliases: [SUSAN edges, USAN edge detector]
+family: edges
+tags: [purpose:edge]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: Our own code, after Smith and Brady. The binary thinning rules of the paper are replaced by a minimum length.
+
+summary: Finds edges with the SUSAN principle of Smith and Brady. It counts how many pixels in a small disk are about as bright as the center pixel. A flat area fills the disk, and an edge about half of it. Where the count falls below three quarters, the pixel is an edge, and the smaller the count, the stronger. It takes no derivatives.
+purpose: An edge detector that needs no derivatives and holds up well to noise, and a companion to the SUSAN corner detector.
+classification: {linearity: nonlinear, domain: spatial, operation: edge detection}
+output: image
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/susan.py, symbol: susan_edge_representation}
+supportRadius: 4 plus the minimum length
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, not rounded. The result is gray, with the
+  alpha of the image.
+boundary: Set by the Border mode parameter. The default is reflect 101. It fills the mask past the image edge.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The USAN sums and moments.'}
+  - {name: scikit-image, optional: false, note: 'skimage.morphology.remove_small_objects for the minimum length.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: edges
+    options:
+      - {value: edges, label: Edges}
+      - {value: response, label: Edge response}
+    description: The thin edges, or the edge response R before suppression, stretched so that R = g is white.
+    effect: The response shows the band the edges are thinned from.
+  - key: brightness
+    label: Brightness threshold
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 25
+    unit: levels
+    description: How close in brightness a pixel must be to count as similar to the center, the t of the formula. Our choice of 25, as for the SUSAN corners.
+    effect: Higher values ignore more noise and weaker edges.
+  - key: geometric
+    label: Geometric threshold
+    type: number
+    min: 0.1
+    max: 1
+    step: 0.05
+    default: 0.75
+    description: The share of the 37 mask pixels below which a USAN area counts as an edge. The paper uses three quarters for edges.
+    effect: Lower values keep only stronger edges.
+  - key: minLength
+    label: Minimum length
+    type: integer
+    min: 1
+    max: 50
+    step: 1
+    default: 5
+    unit: px
+    description: Edge pieces, 8-connected, with fewer pixels than this are removed. 1 keeps all. Our choice of 5, in place of the paper's thinning rules.
+    effect: Higher values remove more noise points and short edges.
+  - ref: border
+formula: |
+  n(r_0) = \sum_{\lvert r - r_0 \rvert \le 3.4} e^{-\left(\frac{I(r) - I(r_0)}{t}\right)^6},
+  \qquad
+  R(r_0) = \begin{cases} g - n(r_0) & n(r_0) < g \\ 0 & \text{otherwise} \end{cases},
+  \qquad
+  t = {{brightness}},\ g = {{geometric}} \cdot 37
+formulaExplanation: >-
+  The mask is a circle of 37 pixels around the nucleus r_0. Each pixel counts as similar by a
+  smooth step of the brightness difference, and n, the USAN area, adds them up. USAN stands for
+  univalue segment assimilating nucleus. In a flat area n is 37. On a straight edge it is about
+  half. The edge response R grows as n falls below the geometric threshold g. The paper sets g
+  to three quarters of 37 to reject noise. The edge direction comes from the USAN: the vector
+  from the nucleus to its center of gravity crosses the edge. Where the USAN is a thin line,
+  its longest axis runs along the edge. Non-maximum suppression across the edge then thins it.
+symbols:
+  - {symbol: 'r_0', meaning: 'The nucleus, the center pixel'}
+  - {symbol: 'n', meaning: 'The USAN area'}
+  - {symbol: 't', meaning: 'The brightness threshold'}
+  - {symbol: 'g', meaning: 'The geometric threshold'}
+  - {symbol: 'R', meaning: 'The edge response'}
+steps:
+  - Take the luma.
+  - Around each pixel, add up how similar the 37 pixels of the circle are to it. This is the USAN area n.
+  - Set the edge response to g - n where n is below g.
+  - Find the edge direction from the center of gravity of the USAN, or from its longest axis where it is thin.
+  - Keep the pixels whose response is the largest across the edge.
+  - Remove edge pieces shorter than the minimum length.
+complexity:
+  time: O(37 N)
+  memory: O(N)
+  notes: N is the number of pixels and 37 the size of the mask.
+useCases:
+  - Edge detection without derivatives.
+  - Comparing the SUSAN principle with gradient detectors such as Canny.
+advantages:
+  - No derivatives, so noise is not amplified.
+  - The edge positions do not move with the mask size, as the paper shows.
+limitations:
+  - The binary thinning rules of the paper are replaced by a simple minimum length.
+  - Noise near the brightness threshold leaves short stray pieces.
+artifacts:
+  - Small gaps where the suppression direction is rounded to the wrong one of four.
+  - Stray short edges in noise when the brightness threshold is low.
+references:
+  - kind: paper
+    text: Smith, S. M., and Brady, J. M. SUSAN. A new approach to low level image processing. International Journal of Computer Vision 23(1), 45 to 78, 1997.
+    doi: 10.1023/A:1007963824710
+  - kind: web
+    text: Smith, S. M. SUSAN low level image processing, the HTML version of the paper on the author's pages at the University of Oxford.
+    url: https://users.fmrib.ox.ac.uk/~steve/susan/susan/susan.html
+implementation: {path: engine/src/pixelnexus_engine/filters/susan.py, symbol: susan_edge}
+tests: [engine/tests/test_susan_edge.py]
+learn:
+  oneSentence: Mark a pixel as an edge when only part of the small disk around it shares its brightness.
+  howItWorks:
+    - Count the pixels in a small disk that are about as bright as the center.
+    - A count well under the full disk means an edge.
+    - Keep the pixel where the count is lowest across the edge.
+  academic: >-
+    The SUSAN edge detector of Smith and Brady, with the USAN area, the geometric threshold of
+    three quarters, edge direction from the USAN moments and non-maximum suppression. A minimum
+    length replaces the paper's binary thinning rules.
+  paramNotes:
+    output: Edges or the response.
+    brightness: How alike a pixel must be.
+    geometric: How small the count must be.
+    minLength: The shortest edge piece kept.
+    border: How the image is extended.
+  tryThis:
+    - Show the edge response and raise the brightness threshold until the noise goes.
+    - Compare with Canny on a noisy image.
+  pitfalls:
+    - A brightness threshold below the noise level. Noise points become edges.
+  demos: [line-profile]
+related: [susan-corner, susan-smoothing, canny]
+docsPage: filters/edges/susan-edge.md

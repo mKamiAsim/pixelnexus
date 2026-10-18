@@ -1,0 +1,220 @@
+id: red
+name: Regularization by Denoising
+aliases: [RED, RED deconvolution]
+family: restoration
+tags: [purpose:sharpening, purpose:denoise]
+tier: advanced
+engine: science
+phase: 6c
+status: implemented-tested
+planNotes: RED.
+
+summary: Undoes a known blur with a penalty built from a denoiser, x^T (x - D(x)), which is small when the denoiser leaves the image unchanged. Solved by fixed-point steps.
+purpose: Deblur noisy images with a denoiser, using an energy that is written down in full.
+classification: {linearity: nonlinear, domain: iterative, operation: regularization by denoising deconvolution}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/plugplay.py, symbol: red_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is restored, and the colors stay, since the denoisers are slow. With the
+  RGB scope, each of the red, green and blue channels is restored on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.fft2 and ifft2).'}
+  - {name: PyWavelets, optional: false, note: The wavelet denoisers.}
+  - {name: scikit-image, optional: false, note: The non-local means denoiser (denoise_nl_means).}
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: denoiser
+    label: Denoiser
+    type: select
+    default: stationary
+    options:
+      - {value: wavelet, label: Wavelet thresholding}
+      - {value: stationary, label: Stationary wavelet}
+      - {value: nlm, label: Non-local means}
+    description: 'The denoiser that takes the place of the prior. Wavelet thresholding and the stationary wavelet use BayesShrink with sym4, 3 levels and soft shrinking. Non-local means is the one of scikit-image, with h = 0.8 sigma, 5 x 5 patches, a search distance of 6 and the fast mode.'
+    effect: Non-local means gives the cleanest edges and is by far the slowest. Wavelet thresholding is the fastest and leaves blocky traces.
+  - key: lambda
+    label: Lambda
+    type: number
+    min: 0
+    max: 1
+    step: 0.001
+    default: 0.02
+    description: The weight of the denoiser penalty.
+    effect: Larger values smooth more and sharpen less.
+  - key: noise
+    label: Noise sigma
+    type: number
+    min: 0.5
+    max: 50
+    step: 0.5
+    default: 5
+    unit: px
+    description: The standard deviation of the noise in the photo, which weighs the data term.
+    effect: Larger values trust the photo less.
+  - key: strength
+    label: Denoiser sigma
+    type: number
+    min: 0.5
+    max: 50
+    step: 0.5
+    default: 5
+    description: The sigma the denoiser is run with, in pixel values.
+    effect: Larger values make each run of the denoiser remove more.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 20
+    description: How many fixed-point steps to run. Each step runs the denoiser once.
+    effect: More iterations take longer. The result usually settles within 20.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  E(x) = \frac{1}{2 \sigma_n^2} \lVert h * x - g \rVert^2 + \frac{\lambda}{2}\, x^T \big(x - D(x)\big),
+  \qquad
+  x_{k+1} = \mathcal{F}^{-1}\!\left(\frac{\overline{H}\, \mathcal{F} g + \lambda \sigma_n^2\, \mathcal{F} D(x_k)}{\lvert H \rvert^2 + \lambda \sigma_n^2}\right),
+  \qquad
+  \lambda = {{lambda}},\ \sigma_n = {{noise}}
+formulaExplanation: >-
+  Romano, Elad and Milanfar built a prior from a denoiser D. The penalty x^T (x - D(x)) is small
+  when the image is close to what the denoiser would make of it. It is also small when the
+  leftover x - D(x) does not line up with the image. Some denoisers change smoothly with the
+  image and have a symmetric Jacobian. For them, the gradient of the penalty is lambda (x - D(x)). Setting the gradient of E to 0
+  gives (H^T H / sigma_n^2 + lambda) x = H^T g / sigma_n^2 + lambda D(x). The fixed-point
+  method holds D(x) at the last estimate and solves this linear system exactly with the FFT. H
+  is the transform of the PSF. Common denoisers only roughly meet the conditions, so the energy
+  is a guide rather than a guarantee. The first estimate is the photo.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'H', meaning: The Fourier transform of the PSF}
+  - {symbol: 'D', meaning: 'The denoiser, run with the denoiser sigma'}
+  - {symbol: '\sigma_n', meaning: The noise sigma of the photo}
+  - {symbol: '\lambda', meaning: The weight of the denoiser penalty}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with x equal to the extended image g.
+  - Run the denoiser on x.
+  - Solve the linear system for the next x with the FFT, with the denoised image held fixed.
+  - Repeat, then crop the last x to the image.
+complexity:
+  time: O(K (N log N + T))
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, K the number of iterations and T the cost of one run of the denoiser.
+useCases:
+  - Learning how a denoiser can define an energy.
+  - Deblurring noisy photos with a good denoiser.
+advantages:
+  - The energy is written down in full, unlike plug-and-play ADMM.
+  - Each step is one run of the denoiser and one exact linear solve.
+limitations:
+  - The gradient formula holds only for denoisers with a symmetric Jacobian, which the denoisers here meet only roughly.
+  - Slow with non-local means on large images.
+  - The PSF must be known.
+artifacts:
+  - The artifacts of the denoiser, such as blocky traces with wavelet thresholding.
+  - Ringing next to strong edges when lambda is small.
+references:
+  - kind: paper
+    text: Romano, Y., Elad, M., and Milanfar, P. The little engine that could. Regularization by denoising (RED). SIAM Journal on Imaging Sciences 10(4), 1804 to 1844, 2017.
+    doi: 10.1137/16M1102884
+  - kind: paper
+    text: Buades, A., Coll, B., and Morel, J.-M. A review of image denoising algorithms, with a new one. Multiscale Modeling and Simulation 4(2), 490 to 530, 2005.
+    doi: 10.1137/040616024
+implementation: {path: engine/src/pixelnexus_engine/filters/plugplay.py, symbol: red_filter}
+tests: [engine/tests/test_plugplay.py]
+learn:
+  oneSentence: Sharpen the photo while pulling the result toward what a denoiser would make of it.
+  howItWorks:
+    - Start from the blurred photo.
+    - Run a denoiser on the current guess.
+    - Find the image that best matches the photo when blurred and also stays close to the denoised guess.
+    - Repeat with the new guess.
+  academic: >-
+    Regularization by denoising with the fixed-point scheme. Each step solves the normal
+    equations of the quadratic data term plus a pull toward the denoised previous estimate. The
+    Fourier domain solves them exactly.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    denoiser: Which denoiser defines the penalty.
+    lambda: How strongly the result is pulled toward the denoised guess.
+    noise: How noisy the photo is.
+    strength: How hard the denoiser works in each step.
+    iterations: How many rounds to run.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Compare this filter with Plug-and-play restoration on the same blurred, noisy image and the same denoiser.
+  pitfalls:
+    - A denoiser sigma far above the noise. The result becomes flat and soft.
+  demos: [iteration-viewer]
+related: [pnp-admm, tv-deblur, sparse-fista, wavelet-threshold, nlm]
+docsPage: filters/restoration/red.md

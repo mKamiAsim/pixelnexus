@@ -1,0 +1,88 @@
+id: gray-world
+name: Gray-world correction
+aliases: [Gray world white balance, Gray world assumption]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Removes a color cast by assuming that the scene averages to gray, so it makes the mean of each channel equal.
+purpose: Automatic white balance with no input, for scenes with many colors.
+classification: {linearity: linear, domain: color, operation: mean-based channel gains}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: grayWorldGains}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each channel is multiplied by its own gain, measured from the whole image. All pixels count, whatever their alpha. Alpha is kept.
+boundary: Not needed for the gains. They come from the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: true
+    description: Scale the linear light values instead of the encoded sRGB values.
+    effect: Linear light matches how a change of light color acts on a scene.
+formula: |
+  g_C = \frac{\bar m}{m_C},
+  \quad
+  \bar m = \frac{m_R + m_G + m_B}{3},
+  \quad
+  C' = \begin{cases} \operatorname{srgb}\left(g_C \operatorname{lin}(C)\right) & \text{linear light} \\ g_C\, C & \text{otherwise} \end{cases}
+formulaExplanation: >-
+  m_C is the mean of channel C over the whole image. Buchsbaum's gray-world assumption says that
+  the average color of a scene is gray. So any difference between the channel means is taken to
+  come from the light, and the gains remove it. After the gains, the three means are equal.
+  With Linear light on, the default, the gains act on linear light values: decoded from sRGB, scaled, and encoded again. A change in the color of the light scales linear values, so this is the physical model. With it off, the gains scale the encoded values. A channel with mean 0 gets gain 1.
+symbols:
+  - {symbol: 'm_C', meaning: 'The mean of channel C over the image'}
+  - {symbol: '\bar m', meaning: 'The mean of the three channel means'}
+  - {symbol: 'g_C', meaning: 'The gain of channel C'}
+steps:
+  - Compute the mean of each channel over the whole image, in linear light if it is on.
+  - Compute the gains from the mean of the three means.
+  - Scale each channel by its gain, in linear light or on the encoded values.
+  - Encode back to sRGB and clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. One pass measures the channels, a second applies the gains.
+useCases:
+  - Automatic white balance for everyday photos with many colors.
+advantages:
+  - Fully automatic and fast.
+  - Uses every pixel, so noise has little effect.
+limitations:
+  - Fails on scenes that are mostly one color, such as a forest or a sunset. It turns them gray.
+artifacts:
+  - A cast in the opposite color on scenes dominated by one color.
+references:
+  - kind: paper
+    text: Buchsbaum, G. A spatial processor model for object colour perception. Journal of the Franklin Institute 310(1), 1 to 26, 1980.
+    doi: 10.1016/0016-0032(80)90058-7
+implementation: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: grayWorldFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/enhancement.test.ts]
+learn:
+  oneSentence: Assume the whole scene averages to gray, and correct the colors until it does.
+  howItWorks:
+    - Average each color channel over the whole image.
+    - Find the gain that brings each average to the common gray.
+    - Multiply every pixel by those gains.
+  academic: >-
+    Diagonal white balance under Buchsbaum's gray-world assumption: the gains equalize the
+    channel means.
+  paramNotes:
+    linearLight: Work on linear light values, as light does.
+  tryThis:
+    - Open a photo of a green forest. Gray world turns it grayish, which shows its assumption.
+  pitfalls:
+    - Using it on scenes that are mostly one color.
+  demos: [line-profile]
+related: [white-patch, white-balance, retinex-ssr]
+docsPage: filters/enhancement/gray-world.md

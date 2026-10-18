@@ -1,0 +1,114 @@
+id: brisk
+name: BRISK
+aliases: [BRISK keypoints]
+family: features
+tags: [purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+planNotes: Extra. OpenCV 5 keeps it in cv2.xfeatures2d.
+
+summary: Finds corner keypoints with their scale and orientation, with BRISK. It finds AGAST corners in a scale space of octaves and intra-octaves, refined in position and scale. Only the detector runs, not the binary descriptor.
+purpose: Find corner keypoints with scale and orientation, fast, as an alternative to SIFT and ORB.
+classification: {linearity: nonlinear, domain: spatial, operation: AGAST corners in scale space}
+output: features
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: keypoint_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the 8-bit luma with the BT.709 weights. Alpha is ignored. The image does
+  not change. The keypoints go to the Features panel and are drawn on the canvas, each as a
+  circle of its radius with a line for its angle.
+boundary: Keypoints whose sampling pattern would leave the image are dropped.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.xfeatures2d.BRISK_create and detect.'}
+
+params:
+  - key: threshold
+    label: Threshold
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 30
+    description: The AGAST corner threshold, in levels. OpenCV uses 30.
+    effect: Higher values keep only strong corners.
+  - key: octaves
+    label: Octaves
+    type: integer
+    min: 0
+    max: 8
+    step: 1
+    default: 3
+    description: The number of octaves. 0 finds corners at one scale only. OpenCV uses 3.
+    effect: More octaves find larger corners.
+formula: |
+  s(p) > t \text{ and } s(p) \text{ is a maximum in position and scale},
+  \qquad
+  \theta = \operatorname{atan2}\Big(\sum g_y, \sum g_x\Big),
+  \qquad
+  t = {{threshold}}
+formulaExplanation: >-
+  BRISK builds a scale space of octaves, each half the size of the one before, with
+  intra-octaves between them. The first intra-octave is the image shrunk by 1.5. In each layer
+  it finds AGAST corners, an adaptive form of FAST, with score s above the threshold. A corner
+  is kept when its score beats its neighbors in its own layer and the layers above and below.
+  Its position and scale are refined by fitting quadratics. The orientation is the direction of
+  the mean gradient over the long-distance pairs of the BRISK sampling pattern.
+symbols:
+  - {symbol: 's', meaning: 'The FAST score of a corner'}
+  - {symbol: 't', meaning: 'The threshold'}
+  - {symbol: 'g_x, g_y', meaning: 'Local gradients over the long-distance pairs of the pattern'}
+  - {symbol: 'x, y', meaning: 'The keypoint position, with the center of the top-left pixel at 0, 0'}
+  - {symbol: '\theta', meaning: 'The orientation, counterclockwise from the x axis'}
+steps:
+  - Build octaves and intra-octaves.
+  - Find AGAST corners in each layer.
+  - Keep corners that beat their neighbors in position and scale, and refine them.
+  - Give each one the direction of the mean gradient of its pattern.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Fast keypoint detection for matching and tracking.
+  - Comparing corner detectors on the same image.
+advantages:
+  - Fast, with scale and orientation.
+limitations:
+  - Finds corners only, not blobs.
+  - Turning the image a quarter in OpenCV's BRISK finds few keypoints again at the turned place with the turned angle. On the Siemens star it is 24 percent, against 67 to 87 percent for SIFT, ORB and AKAZE. The worked example shows it.
+  - Only the detector runs. The binary descriptors are not computed.
+artifacts:
+  - A few keypoints share their place with another of a different size, 22 of the 396 on the Siemens star.
+references:
+  - kind: paper
+    text: Leutenegger, S., Chli, M., and Siegwart, R. Y. BRISK. Binary robust invariant scalable keypoints. IEEE International Conference on Computer Vision, 2548 to 2555, 2011.
+    doi: 10.1109/ICCV.2011.6126542
+  - kind: library
+    text: OpenCV documentation, cv2.xfeatures2d.BRISK_create and detect.
+implementation: {path: engine/src/pixelnexus_engine/filters/keypoints.py, symbol: brisk}
+tests: [engine/tests/test_keypoints.py]
+learn:
+  oneSentence: Find corners at several sizes, keep the ones that stand out, and give each a direction.
+  howItWorks:
+    - Shrink the image in steps, with extra steps between them.
+    - Find corners at each size.
+    - Keep a corner when it is stronger than its neighbors in place and size.
+    - Point it along the mean brightness change of a ring pattern around it.
+  academic: >-
+    AGAST corners with non-maximum suppression in a scale space of octaves and intra-octaves, with subpixel and scale refinement, after Leutenegger et al.
+  paramNotes:
+    threshold: How strong a corner must be.
+    octaves: How many sizes are tried.
+  tryThis:
+    - Set the octaves to 0 to find corners at one size only.
+  pitfalls:
+    - A threshold that is too low on noisy images. Noise gives many corners.
+  demos: [feature-viewer]
+related: [orb, sift, akaze, fast]
+docsPage: filters/features/brisk.md

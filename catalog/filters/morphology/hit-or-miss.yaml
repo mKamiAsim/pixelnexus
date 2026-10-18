@@ -1,0 +1,88 @@
+id: hit-or-miss
+name: Hit-or-miss transform
+aliases: [Hit-and-miss transform]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Marks the pixels where a small pattern of foreground and background pixels matches exactly.
+purpose: Find exact local shapes, such as isolated points, end points or corners, in a binary image.
+classification: {linearity: nonlinear, domain: spatial, operation: pattern match with two elements}
+output: mask
+representation: structuring-element
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: hitOrMissFilter}
+supportRadius: half the pattern size
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by half the pattern size, so strips and whole images agree.
+
+params:
+  - key: pattern
+    label: Pattern
+    type: kernel
+    default: "-1 -1 -1; -1 1 -1; -1 -1 -1"
+    description: Rows of 1 (must be foreground), -1 (must be background) and 0 (either). Odd sides, up to 15.
+    effect: The default finds isolated foreground pixels.
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  A \circledast (B_1, B_2) = (A \ominus B_1) \cap (A^c \ominus B_2)
+formulaExplanation: >-
+  B_1 holds the pattern pixels that must be foreground and B_2 those that must be background. A pixel is marked when B_1 fits inside the foreground and B_2 inside the background, both placed at that pixel. Pixels marked 0 in the pattern may be either. Values other than 1, -1 and 0 make the filter use the default pattern.
+symbols:
+  - {symbol: 'A', meaning: The foreground}
+  - {symbol: 'B_1, B_2', meaning: The pattern pixels that must be foreground and background}
+steps:
+  - Extend the image with the border mode and make it binary.
+  - At each pixel, compare the pattern with the pixels under it.
+  - Mark the pixel where every 1 is foreground and every -1 is background, and cut the extension off.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the size of the pattern.
+useCases:
+  - Find isolated points or end points of lines.
+  - Find corners or junctions of a given shape.
+  - The building block of thinning and pruning.
+advantages:
+  - Exact, since it finds only the given shape.
+limitations:
+  - One pattern finds one orientation. Rotated shapes need rotated patterns.
+artifacts:
+  - Missed matches where noise changes a single pixel.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: hitOrMissFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Mark the pixels where a small pattern of black and white pixels matches exactly.
+  howItWorks:
+    - Write the pattern with 1 for white, -1 for black and 0 for either.
+    - Place it on each pixel.
+    - Mark the pixel if every 1 and -1 matches.
+  academic: >-
+    The intersection of the erosion of A by B_1 and the erosion of the complement of A by B_2, with B_1 and B_2 disjoint.
+  paramNotes:
+    pattern: The shape to find.
+  tryThis:
+    - Use the pattern with rows 0 -1 -1, 1 1 -1 and 0 1 0 to find corners that open to the top right.
+  pitfalls:
+    - Forgetting the 0 cells. Without them the pattern must match every neighbor exactly.
+  demos: [line-profile]
+related: [thinning, pruning, erosion]
+docsPage: filters/morphology/hit-or-miss.md

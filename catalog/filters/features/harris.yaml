@@ -1,0 +1,149 @@
+id: harris
+name: Harris corner detector
+aliases: [Harris-Stephens detector, Plessey corner detector]
+family: features
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+
+summary: Finds corners, where the brightness changes strongly in every direction, from the structure tensor.
+purpose: Find corners, which tracking and matching can find again in another view, or show how corner-like each pixel is.
+classification: {linearity: nonlinear, domain: spatial, operation: structure tensor and Harris measure}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/features/corners.ts, symbol: cornerResponse}
+supportRadius: 1 + floor(4 sigma + 0.5), plus the minimum distance for the corners output
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is
+  processed on its own.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full support, so strips
+  and whole images agree. The library scikit-image applies its border rule at every stage, so
+  the two agree away from the border.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 1
+    unit: px
+    description: The size of the Gaussian window over which the gradients are collected. It ends at 4 sigma.
+    effect: Larger values find larger corners and ignore small detail and noise.
+  - key: k
+    label: k
+    type: number
+    min: 0.01
+    max: 0.25
+    step: 0.005
+    default: 0.05
+    description: The weight of the squared trace in the response, as in scikit-image.
+    effect: Larger values suppress edges more strongly and keep fewer corners.
+  - key: output
+    label: Output
+    type: select
+    default: response
+    options:
+      - {value: response, label: Corner response}
+      - {value: corners, label: Corner points}
+    description: The response at every pixel, or the corner points as white pixels.
+    effect: Corner points keep local maxima of the response above the threshold.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 10
+    step: 0.001
+    default: 0.01
+    description: The smallest response that counts as a corner. The response is computed on a 0 to 1 scale.
+    effect: Higher values keep only the strongest corners.
+  - key: distance
+    label: Minimum distance
+    type: number
+    min: 1
+    max: 20
+    step: 1
+    default: 3
+    unit: px
+    description: A corner must have the largest response within this many pixels in x and in y.
+    effect: Larger values keep fewer corners that lie farther apart.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  A = G_{\sigma} * \begin{pmatrix} I_x^2 & I_x I_y \\ I_x I_y & I_y^2 \end{pmatrix},\qquad R = \det A - k\,(\operatorname{tr} A)^2
+formulaExplanation: >-
+  I_x and I_y are the Sobel derivatives of the image on a 0 to 1 scale. G_sigma * blurs each
+  entry of the matrix with a Gaussian, so A sums the gradients around each pixel. A has two
+  large eigenvalues at a corner, one at an edge and none in a flat area. Harris and Stephens used det A - k (tr A)^2, which is large when both eigenvalues are large and negative along edges. The
+  corners output marks pixels whose response is at least the threshold and at least every
+  response within the minimum distance. Plateaus keep every pixel. This is the rule of the
+  filter, and it differs from skimage.feature.corner_peaks, which also drops corners near the
+  border.
+symbols:
+  - {symbol: 'A', meaning: The structure tensor}
+  - {symbol: 'I_x, I_y', meaning: The Sobel derivatives}
+  - {symbol: 'G_{\sigma}', meaning: The Gaussian window}
+  - {symbol: 'k', meaning: The Harris parameter}
+steps:
+  - Extend the image by the support with the border mode and scale it to 0 to 1.
+  - Compute the Sobel derivatives and the three products.
+  - Blur each product with the Gaussian to get the structure tensor.
+  - Compute R = det A - k (tr A)^2.
+  - For corner points, keep the local maxima above the threshold, and cut the extension off.
+complexity:
+  time: O(N r)
+  memory: O(N)
+  notes: N is the number of pixels per channel and r the radius of the Gaussian, which is separable.
+useCases:
+  - Points for tracking, matching and image alignment.
+  - Teaching how the structure tensor tells corners, edges and flat areas apart.
+advantages:
+  - Rotation invariant, since it uses the eigenvalues of A.
+  - Simple and fast.
+limitations:
+  - Not scale invariant. One sigma fits one corner size.
+  - The value of k changes the balance between corners and edges.
+artifacts:
+  - Clusters of responses along strongly curved edges.
+references:
+  - kind: paper
+    text: Harris, C. and Stephens, M. A combined corner and edge detector. Proceedings of the Alvey Vision Conference, 23.1 to 23.6, 1988.
+    doi: 10.5244/C.2.23
+  - kind: library
+    text: scikit-image documentation, skimage.feature.corner_harris.
+    url: https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.corner_harris
+implementation: {path: web/src/core/filters/features/corners.ts, symbol: harrisFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Find the pixels where the image changes strongly in every direction, which are corners.
+  howItWorks:
+    - Measure how the brightness changes in x and in y around each pixel.
+    - Sum these changes over a small window.
+    - Score each pixel by det A - k (tr A)^2, which is high only where both directions change.
+  academic: >-
+    The Harris measure approximates the smaller eigenvalue of the structure tensor without a square root. It is positive at corners, negative along edges and near 0 in flat areas.
+  paramNotes:
+    sigma: The size of the corners it looks for.
+    k: Edge suppression.
+    output: Response map or points.
+    threshold: How strong a corner must be.
+    distance: How close two corners may be.
+  tryThis:
+    - Open the Checkerboard and show the corner points.
+  pitfalls:
+    - A threshold for 0 to 255 values. The response is computed on a 0 to 1 scale.
+  demos: [line-profile]
+related: [shi-tomasi, moravec, fast, sobel]
+docsPage: filters/features/harris.md

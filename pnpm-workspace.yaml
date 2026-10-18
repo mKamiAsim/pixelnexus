@@ -1,0 +1,10 @@
+packages:
+  - web
+
+# Dependency age rule: ignore releases younger than 14 days.
+minimumReleaseAge: 20160
+
+# Build scripts that pnpm may run. protobufjs (from onnxruntime-web) only has a version check
+# script that the studio does not need, so it is denied. A fresh install stops while it is unset.
+allowBuilds:
+  protobufjs: false

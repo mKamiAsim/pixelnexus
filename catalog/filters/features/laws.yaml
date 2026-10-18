@@ -1,0 +1,131 @@
+id: laws
+name: Laws' texture energy filters
+aliases: [Laws masks, Texture energy]
+family: features
+tags: [purpose:analysis]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+planNotes: Fixed 5-tap vectors.
+
+summary: Measures texture energy with 5x5 masks built from Laws' level, edge, spot, wave and ripple vectors.
+purpose: Describe local texture for segmentation and classification.
+classification: {linearity: nonlinear, domain: spatial, operation: filter bank energy}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/laws.ts, symbol: LAWS_VECTORS}
+supportRadius: window + 1
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: vertical
+    label: Vertical vector
+    type: select
+    default: E5
+    options:
+      - {value: L5, label: L5 level}
+      - {value: E5, label: E5 edge}
+      - {value: S5, label: S5 spot}
+      - {value: W5, label: W5 wave}
+      - {value: R5, label: R5 ripple}
+    description: The vector down the columns of the mask.
+    effect: It sets what the mask looks for from top to bottom.
+  - key: horizontal
+    label: Horizontal vector
+    type: select
+    default: L5
+    options:
+      - {value: L5, label: L5 level}
+      - {value: E5, label: E5 edge}
+      - {value: S5, label: S5 spot}
+      - {value: W5, label: W5 wave}
+      - {value: R5, label: R5 ripple}
+    description: The vector along the rows of the mask.
+    effect: It sets what the mask looks for from left to right.
+  - key: window
+    label: Energy window
+    type: integer
+    min: 3
+    max: 31
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The window for the energy average and for the mean removal. Laws used 15.
+    effect: Larger windows give smoother texture maps.
+  - key: removeMean
+    label: Remove local mean
+    type: boolean
+    default: true
+    description: Subtract the local mean before the mask, so the brightness does not count.
+    effect: Turn it off to let the L5L5 mask measure brightness.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  E = \operatorname{mean}_{W}\,\bigl| (v\, h^{\mathsf T}) \star (I - \bar{I}) \bigr|,
+  \qquad
+  L5 = (1, 4, 6, 4, 1),\; E5 = (-1, -2, 0, 2, 1),\; S5 = (-1, 0, 2, 0, -1)
+formulaExplanation: >-
+  v and h are two of the five Laws vectors: level, edge, spot, wave (-1, 2, 0, -2, 1) and ripple (1, -4, 6, -4, 1). Their outer product is a 5x5 mask. I bar is the local mean over the energy window W, removed first. The texture energy E is the mean absolute response over W. Each mask picks out a different kind of texture, such as horizontal edges or spots.
+symbols:
+  - {symbol: 'v, h', meaning: The vertical and horizontal vectors}
+  - {symbol: 'W', meaning: The energy window}
+  - {symbol: '\bar{I}', meaning: The local mean}
+steps:
+  - Extend the image by the full support with the border mode.
+  - Subtract the local mean over the energy window, if chosen.
+  - Correlate with the vector along the rows, then the vector down the columns.
+  - Average the absolute response over the energy window, and cut the extension off.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The mask is separable and the means use running sums.
+useCases:
+  - Segment images by texture, such as fields, forest and water in aerial images.
+  - Build texture features for classification.
+advantages:
+  - Simple, fast and separable.
+  - 25 masks give a rich set of texture features.
+limitations:
+  - The energy window blurs texture boundaries.
+  - Masks are not rotation invariant. Laws combined pairs such as E5L5 and L5E5 for that.
+artifacts:
+  - Soft, wide transitions between textured regions.
+references:
+  - kind: paper
+    text: Laws, K. I. Rapid texture identification. Image Processing for Missile Guidance, Proceedings of SPIE 0238, 376 to 381, 1980.
+    doi: 10.1117/12.959169
+implementation: {path: web/src/core/filters/edges/laws.ts, symbol: lawsFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Small masks that respond to edges, spots, waves or ripples, averaged into a texture map.
+  howItWorks:
+    - Remove the local brightness.
+    - Correlate with a 5x5 mask made from two Laws vectors.
+    - Average the size of the response over a window. That is the texture energy.
+  academic: >-
+    A filter bank of separable 5x5 masks followed by a local energy measure. The vectors approximate local averaging, first and second derivatives and higher-order patterns.
+  paramNotes:
+    vertical: The vector down the columns.
+    horizontal: The vector along the rows.
+    window: The window for the mean removal and the energy.
+    removeMean: Leave it on to ignore the brightness.
+  tryThis:
+    - Compare E5L5 and L5E5 on the Checkerboard. One finds horizontal borders, the other vertical ones.
+  pitfalls:
+    - Comparing energies with the stretch mapping across images. The stretch differs per image.
+  demos: [impulse-response, line-profile]
+related: [gabor-bank, local-variance, local-entropy]
+docsPage: filters/features/laws.md

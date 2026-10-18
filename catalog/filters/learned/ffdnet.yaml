@@ -1,0 +1,92 @@
+id: ffdnet
+name: FFDNet
+aliases: [Fast and flexible denoising network]
+family: learned
+tags: [purpose:denoise]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: ffdnet-color
+planNotes: Noise level as an input. KAIR weights, exported to ONNX once with tools/export_models.py.
+
+summary: Removes noise with FFDNet, a network that takes the noise level as an input. You set how strong the noise is, so one model covers weak and strong noise, and you can trade detail against smoothness. It works on four half-size copies of the image, which makes it fast. It needs a downloaded model.
+purpose: Denoise with a known or guessed noise level, and see how that level steers a learned model.
+classification: {linearity: nonlinear, domain: learned, operation: CNN denoising with a noise map}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: ffdnet_representation}
+supportRadius: '32'
+supportsMask: true
+preview: on-demand
+colorHandling: The color model runs on RGB. Alpha stays.
+boundary: Odd sides are padded by repeating the edge, as FFDNet itself does, and cropped back. Large images run in tiles of 512 pixels with 32 pixels of margin.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: sigma
+    label: Noise level
+    type: number
+    min: 0
+    max: 75
+    step: 1
+    default: 25
+    unit: levels
+    description: The standard deviation of the noise, on the 0 to 255 scale. The paper trains for 0 to 75. 25 is our choice.
+    effect: Higher values remove more noise and more fine detail.
+formula: |
+  \hat{x} = \text{up}\big(f_\theta(\text{down}(y),\ M_\sigma)\big)
+formulaExplanation: >-
+  down splits the image into four subimages of half the width and height, and up joins them
+  again. M is a map filled with the noise level, given to the network as an extra channel. 12
+  convolutions with ReLU map the subimages and the noise map to the clean subimages.
+symbols:
+  - {symbol: 'y', meaning: 'The noisy image'}
+  - {symbol: 'M_\sigma', meaning: 'The noise level map'}
+  - {symbol: 'f_\theta', meaning: 'The network'}
+steps:
+  - Split the image into four half-size subimages.
+  - Add a channel filled with the noise level.
+  - Run 12 convolutions, and join the four outputs.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The work runs at half resolution.
+useCases:
+  - Noise of a known level, as from a camera at a known ISO.
+  - Choosing how much to smooth with one setting.
+advantages:
+  - One model for all noise levels.
+  - Faster than DnCNN, since it runs at half resolution.
+limitations:
+  - A wrong noise level leaves noise or removes detail.
+artifacts:
+  - Blotchy areas when the level is set far too low.
+references:
+  - kind: paper
+    text: Zhang, K., Zuo, W., and Zhang, L. FFDNet. Toward a fast and flexible solution for CNN-based image denoising. IEEE Transactions on Image Processing 27(9), 4608 to 4622, 2018.
+    doi: 10.1109/TIP.2018.2839891
+  - kind: library
+    text: KAIR, the image restoration toolbox of Kai Zhang, which holds the trained weights and the network code that tools/export_models.py imports.
+    url: https://github.com/cszn/KAIR
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: ffdnet}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A denoising network that you tell how noisy the image is.
+  howItWorks:
+    - The image is split into four smaller copies.
+    - The network gets them together with the noise level you set.
+    - It returns clean copies, which are joined again.
+  academic: >-
+    FFDNet of Zhang et al., a CNN on downsampled subimages with a tunable noise level map.
+  paramNotes:
+    sigma: How strong the noise is.
+  tryThis:
+    - Add noise of sigma 25 in the Noise lab, then try noise levels of 10, 25 and 50.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile, noise-lab]
+related: [dncnn, nlm, bm3d-lite]
+docsPage: filters/learned/ffdnet.md

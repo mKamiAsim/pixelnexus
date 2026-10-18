@@ -1,0 +1,62 @@
+# AI provider kinds and their consent rules.
+providers:
+  - id: engine-model
+    name: Local engine model
+    location: this-computer
+    consent: never
+    platforms: [desktop]
+    description: A model run by the PixelNexus engine on this computer. Images do not leave the computer.
+  - id: on-device
+    name: On-device model
+    location: this-device
+    consent: never
+    platforms: [desktop, pages, phone]
+    description: A small model run inside the browser or the phone app. Images do not leave the device.
+  - id: remote-engine
+    name: Remote PixelNexus engine
+    location: other-machine
+    consent: once-per-session-per-host
+    platforms: [desktop, pages, phone]
+    description: A PixelNexus engine that you run on another machine. Images are sent to that machine.
+  - id: external-api
+    name: External AI service
+    location: external-service
+    consent: every-time
+    platforms: [desktop, pages, phone]
+    description: A service that you configure with a base URL and an API key. Images are sent to that service, and its own privacy terms apply.
+
+# Presets for the generic HTTP adapter of the external-api kind. Each one says how to call one
+# service. The generic preset is PixelNexus's own simple contract, for a service you build or wrap.
+presets:
+  - id: generic-http
+    name: Generic HTTP
+    description: >-
+      PixelNexus's own simple contract. Each task is a POST to the base URL plus the task id. It
+      sends a multipart form with the image, the selection, and the clicks and box. The answer is
+      an image.
+    keyHeader: Authorization
+    keyPrefix: "Bearer "
+    imageField: image
+    maskField: mask
+    promptsField: prompts
+    modelField: model
+    tasks:
+      - { task: subject-select, path: subject-select }
+      - { task: click-select, path: click-select }
+      - { task: object-select, path: object-select }
+      - { task: denoise, path: denoise }
+      - { task: jpeg-cleanup, path: jpeg-cleanup }
+      - { task: super-resolution, path: super-resolution }
+  - id: remove-bg
+    name: remove.bg
+    description: >-
+      The remove.bg background removal service, for Select subject. It returns the cutout as a
+      PNG, and its transparency becomes the selection. You need your own API key from remove.bg.
+    baseUrl: https://api.remove.bg/v1.0
+    docsUrl: https://www.remove.bg/api
+    keyHeader: X-Api-Key
+    imageField: image_file
+    tasks:
+      - task: subject-select
+        path: removebg
+        fields: { size: auto, format: png }

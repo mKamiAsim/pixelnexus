@@ -1,0 +1,115 @@
+id: binomial
+name: Binomial filter
+family: linear
+tags: [purpose:smoothing, purpose:denoise, noise:gaussian]
+tier: core
+engine: browser
+phase: 5a
+status: implemented-tested
+planNotes: Rows of Pascal's triangle.
+
+summary: Blurs with weights from Pascal's triangle, a whole-number stand-in for a Gaussian.
+purpose: Smooth an image with a small kernel of whole-number weights, for example in image pyramids.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/binomial.ts, symbol: pascalRow}
+supportRadius: (size - 1) / 2
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are filtered with the same kernel. Alpha is kept. Values are sRGB
+  encoded unless Linear light is on.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Size
+    type: integer
+    min: 3
+    max: 15
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width of the square window. It is n, so the weights come from row n - 1 of Pascal's triangle.
+    effect: Larger sizes blur more. Size 3 has the weights 1, 2, 1.
+  - ref: border
+  - ref: channelScope
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: false
+    description: Blur linear light values instead of sRGB encoded values.
+    effect: Bright details spread more like real optical blur.
+    advanced: true
+
+formula: |
+  I_{\text{out}}(x,y) = \sum_{j=0}^{n-1} \sum_{i=0}^{n-1} b_i \, b_j \, I(x+i-r,\, y+j-r),
+  \qquad
+  b_k = \frac{1}{2^{\,n-1}} \binom{n-1}{k},
+  \qquad
+  r = \frac{n-1}{2},
+  \quad
+  n = {{size}}
+formulaExplanation: >-
+  The weights are a row of Pascal's triangle divided by its sum, 2 to the power n - 1. The 2D
+  weight is the product of two 1D weights, so the filter runs as two 1D passes. The 1D
+  weights are the probabilities of a fair coin giving k heads in n - 1 tosses, so they approach
+  a Gaussian with variance (n - 1) / 4 as n grows.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'n', meaning: 'Window size in pixels, odd'}
+  - {symbol: 'r', meaning: 'Window radius in pixels'}
+  - {symbol: 'b_k', meaning: 'Normalized binomial weight at position k'}
+  - {symbol: '\binom{n-1}{k}', meaning: 'Binomial coefficient, entry k of row n - 1 of Pascal''s triangle'}
+steps:
+  - Take row n - 1 of Pascal's triangle and divide it by 2 to the power n - 1.
+  - Pad each row with the border mode and filter it with these weights.
+  - Pad each column of that result and filter it with the same weights.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,n)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The kernel is separable, so the cost grows with n, not with n squared.
+useCases:
+  - A quick blur with small whole-number weights.
+  - The smoothing step of image pyramids.
+  - Teaching how a Gaussian arises from repeated averaging.
+advantages:
+  - All weights are positive whole numbers over a power of 2, so they are exact in binary arithmetic.
+  - It equals n - 1 passes of averaging two neighboring pixels, in each direction.
+limitations:
+  - The blur width is tied to the size. For a finer choice, use the Gaussian filter.
+  - Large sizes give a large window for a modest blur, because the standard deviation is sqrt(n - 1) / 2.
+artifacts:
+  - Soft edges, as with every blur.
+references:
+  - kind: book
+    text: Jähne, B. Digital Image Processing, 6th edition. Springer, 2005.
+  - kind: library
+    text: SciPy documentation, scipy.special.comb and scipy.ndimage.correlate1d.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.correlate1d.html
+implementation: {path: web/src/core/filters/linear/binomial.ts, symbol: binomialFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes a weighted average of its neighbors, with weights from Pascal's triangle.
+  howItWorks:
+    - Take a row of Pascal's triangle, such as 1, 4, 6, 4, 1.
+    - Divide it by its sum, so the weights add up to 1.
+    - Average along each row with these weights, then along each column.
+  academic: >-
+    The 1D weights form the binomial distribution with p = 1/2. By the central limit theorem
+    they approach a Gaussian with variance (n - 1) / 4. The 2D kernel is separable.
+  paramNotes:
+    size: The width of the window. It also sets how strong the blur is.
+  tryThis:
+    - Compare size 5 with the Gaussian filter at sigma 1. The results are very close.
+    - Open the Impulse response demo. The bright dot spreads into a small soft spot.
+  pitfalls:
+    - Expecting a large size to blur a lot. The blur grows only with the square root of the size.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [gaussian, box, triangular]
+docsPage: filters/linear/binomial.md

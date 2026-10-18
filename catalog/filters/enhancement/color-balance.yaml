@@ -1,0 +1,189 @@
+id: color-balance
+name: Color balance
+aliases: [Color balance by tones]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Shadows, midtones and highlights.
+
+summary: Shifts the colors of the shadows, the midtones and the highlights on their own, toward red or cyan, green or magenta, and blue or yellow.
+purpose: Warm the highlights and cool the shadows, or remove a color cast from one tonal range.
+classification: {linearity: nonlinear, domain: color, operation: tone-masked channel shifts}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: toneMasks}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each channel gets its own shifts. Masks from the HSL lightness of the pixel decide how much of the shadow, midtone and highlight shifts it gets. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: shadowsCyanRed
+    label: Shadows, cyan to red
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the red channel in the shadows.
+    effect: Positive values add red, negative values add cyan.
+  - key: shadowsMagentaGreen
+    label: Shadows, magenta to green
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the green channel in the shadows.
+    effect: Positive values add green, negative values add magenta.
+  - key: shadowsYellowBlue
+    label: Shadows, yellow to blue
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the blue channel in the shadows.
+    effect: Positive values add blue, negative values add yellow.
+  - key: midtonesCyanRed
+    label: Midtones, cyan to red
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 20
+    description: The shift of the red channel in the midtones.
+    effect: Positive values add red, negative values add cyan.
+  - key: midtonesMagentaGreen
+    label: Midtones, magenta to green
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the green channel in the midtones.
+    effect: Positive values add green, negative values add magenta.
+  - key: midtonesYellowBlue
+    label: Midtones, yellow to blue
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: -20
+    description: The shift of the blue channel in the midtones.
+    effect: Positive values add blue, negative values add yellow.
+  - key: highlightsCyanRed
+    label: Highlights, cyan to red
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the red channel in the highlights.
+    effect: Positive values add red, negative values add cyan.
+  - key: highlightsMagentaGreen
+    label: Highlights, magenta to green
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the green channel in the highlights.
+    effect: Positive values add green, negative values add magenta.
+  - key: highlightsYellowBlue
+    label: Highlights, yellow to blue
+    type: number
+    min: -100
+    max: 100
+    step: 1
+    default: 0
+    description: The shift of the blue channel in the highlights.
+    effect: Positive values add blue, negative values add yellow.
+  - key: preserveLuminosity
+    label: Preserve luminosity
+    type: boolean
+    default: true
+    description: Put the HSL lightness of each pixel back after the shifts.
+    effect: Colors change while brightness stays.
+formula: |
+  C' = \operatorname{clip}\left(C + \sum_{t} m_t(L)\, \frac{d_{t,C}}{100}\right),
+  \quad
+  m_s(L) = 0.7\, \operatorname{clip}\!\left(\frac{0.333 - L}{0.25} + 0.5\right),
+  \quad
+  m_h(L) = 0.7\, \operatorname{clip}\!\left(\frac{L - 0.667}{0.25} + 0.5\right),
+  \quad
+  m_m(L) = 0.7\, \operatorname{clip}\!\left(\frac{L - 0.333}{0.25} + 0.5\right) \operatorname{clip}\!\left(\frac{0.667 - L}{0.25} + 0.5\right)
+formulaExplanation: >-
+  C is a channel scaled to 0 to 1 and L the HSL lightness (max + min) / 2 of the pixel. The masks
+  m_s, m_m and m_h are ramps of width 0.25 centered at L = 0.333 and L = 0.667, scaled by 0.7.
+  The function clip keeps values between 0 and 1. These masks and constants are those of GIMP's Color
+  Balance. Each channel is shifted by the slider values d of the three tonal ranges, weighted by
+  the masks, then clipped. With Preserve luminosity, the result goes to HSL, gets the lightness of
+  the input back, and returns to RGB. GIMP works the same way. The shifts act on the encoded
+  sRGB values.
+symbols:
+  - {symbol: 'C', meaning: 'A channel value from 0 to 1'}
+  - {symbol: 'L', meaning: 'The HSL lightness of the input pixel'}
+  - {symbol: 'm_s, m_m, m_h', meaning: 'The masks of the shadows, midtones and highlights'}
+  - {symbol: 'd_{t,C}', meaning: 'The slider value for range t and channel C, from -100 to 100'}
+steps:
+  - Compute the HSL lightness of the pixel and the three masks.
+  - Shift each channel by the mask-weighted slider values and clip it to 0 to 1.
+  - With Preserve luminosity, give the result the lightness of the input.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Warm highlights and cool shadows for a cinematic look.
+  - Removing a color cast that lives only in the shadows or the highlights.
+advantages:
+  - Separate control for each tonal range.
+  - Preserve luminosity changes the colors without changing brightness.
+limitations:
+  - The masks are fixed. Their ranges cannot be moved.
+  - Strong shifts clip channels before the lightness is put back.
+artifacts:
+  - Color bands where a strong shift clips a channel.
+references:
+  - kind: web
+    text: GIMP documentation, the Color Balance tool.
+    url: https://docs.gimp.org/2.10/en/gimp-tool-color-balance.html
+  - kind: web
+    text: GIMP source code, app/operations/gimpoperationcolorbalance.c, the tone masks.
+    url: https://gitlab.gnome.org/GNOME/gimp/-/blob/master/app/operations/gimpoperationcolorbalance.c
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: colorBalanceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Push the colors of the dark, middle and bright parts of the image in different directions.
+  howItWorks:
+    - Decide how much each pixel belongs to the shadows, the midtones and the highlights.
+    - Add or remove red, green and blue by the amounts set for those ranges.
+    - Optionally put the original brightness back.
+  academic: >-
+    Additive channel offsets weighted by piecewise-linear masks of HSL lightness, after GIMP's
+    Color Balance, with optional restoration of the lightness.
+  paramNotes:
+    shadowsCyanRed: Red or cyan in the dark parts.
+    shadowsMagentaGreen: Green or magenta in the dark parts.
+    shadowsYellowBlue: Blue or yellow in the dark parts.
+    midtonesCyanRed: Red or cyan in the middle tones.
+    midtonesMagentaGreen: Green or magenta in the middle tones.
+    midtonesYellowBlue: Blue or yellow in the middle tones.
+    highlightsCyanRed: Red or cyan in the bright parts.
+    highlightsMagentaGreen: Green or magenta in the bright parts.
+    highlightsYellowBlue: Blue or yellow in the bright parts.
+    preserveLuminosity: Keep the brightness of each pixel.
+  tryThis:
+    - Add blue to the shadows and yellow to the highlights for a teal and orange look.
+  pitfalls:
+    - Expecting the masks to follow your image. They depend only on lightness.
+  demos: [line-profile]
+related: [temperature-tint, channel-mixer, white-balance]
+docsPage: filters/enhancement/color-balance.md

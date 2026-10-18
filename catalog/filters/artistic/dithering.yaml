@@ -1,0 +1,121 @@
+id: dithering
+name: Dithering
+aliases: [Floyd-Steinberg dithering, Atkinson dithering, Ordered dithering, Bayer dithering, Error diffusion]
+family: artistic
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Floyd-Steinberg, Atkinson and Bayer ordered.
+
+summary: Reduces each channel to a few levels, and hides the rounding error in a fine pattern of dots, so the tones still look right from a distance.
+purpose: Print or show images with very few levels, such as black and white, and keep the impression of gray tones.
+classification: {linearity: nonlinear, domain: spatial, operation: quantization with error diffusion or an ordered threshold}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/dither.ts, symbol: ditherPlane}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is dithered on its own, so 2 levels give 8 colors. With the
+  brightness scope, only luma is dithered and the colors stay. Alpha is kept.
+boundary: Not needed. Error diffusion follows a scan through the whole image, so the filter always runs on the whole image. Error that would go past the edge is dropped.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: floyd-steinberg
+    options:
+      - {value: floyd-steinberg, label: Floyd-Steinberg}
+      - {value: atkinson, label: Atkinson}
+      - {value: bayer4, label: Bayer 4 x 4}
+      - {value: bayer8, label: Bayer 8 x 8}
+    description: How the rounding error is hidden.
+    effect: Error diffusion gives grainy patterns that follow the image. Bayer gives a regular cross-hatch.
+  - key: levels
+    label: Levels
+    type: integer
+    min: 2
+    max: 16
+    default: 2
+    description: The number of evenly spaced levels per channel, from 0 to 255.
+    effect: More levels make the pattern finer and less visible.
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  q(v) = s \operatorname{round}(v / s),
+  \quad
+  s = \frac{255}{L - 1},
+  \qquad L = {{levels}}
+formulaExplanation: >-
+  q rounds a value to the nearest of L levels. Error diffusion visits the pixels row by row from the
+  top left, rounds each one, and adds its error e = v - q(v) to neighbors not yet visited.
+  Floyd-Steinberg gives 7/16 of e to the right, 3/16 below left, 5/16 below and 1/16 below right,
+  so all of e is passed on. Atkinson gives 1/8 of e to six neighbors, so only 3/4 of it is passed
+  on. That keeps more contrast and loses detail near black and white. The Bayer method adds
+  s ((M + 0.5) / n^2 - 0.5) before rounding, where M is the Bayer matrix entry at (x mod n, y mod
+  n). Adding 0.5 to M centers the shifts, so their mean is 0.
+symbols:
+  - {symbol: 'q(v)', meaning: 'The nearest level to v'}
+  - {symbol: 's', meaning: 'The step between levels'}
+  - {symbol: 'L', meaning: 'The number of levels'}
+  - {symbol: 'M', meaning: 'The Bayer matrix, 0 to n^2 - 1'}
+steps:
+  - For error diffusion, visit the pixels row by row from the top left.
+  - Round each value, with the error it received, to the nearest level.
+  - Pass the rounding error on to the neighbors not yet visited.
+  - For Bayer, shift each value by the threshold of its place in the matrix, then round.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each pixel passes its error to at most six neighbors.
+useCases:
+  - Black and white printing and displays, such as e-paper and receipt printers.
+  - Retro computer and newspaper looks.
+advantages:
+  - Few levels still look like many tones from a distance.
+  - Bayer patterns stay put from frame to frame, which suits animation.
+limitations:
+  - Error diffusion depends on the scan order, so a small change can move dots far away.
+  - Atkinson loses detail in the darkest and brightest areas.
+artifacts:
+  - Worm-like patterns in flat areas with error diffusion.
+  - A visible cross-hatch with Bayer.
+references:
+  - kind: paper
+    text: Floyd, R. W. and Steinberg, L. An adaptive algorithm for spatial grey scale. Proceedings of the Society of Information Display 17, 75 to 77, 1976.
+  - kind: paper
+    text: Bayer, B. E. An optimum method for two-level rendition of continuous-tone pictures. IEEE International Conference on Communications, volume 1, 11 to 15, 1973.
+  - kind: web
+    text: Wikipedia, Atkinson dithering.
+    url: https://en.wikipedia.org/wiki/Atkinson_dithering
+implementation: {path: web/src/core/filters/artistic/dither.ts, symbol: ditheringFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Use only a few levels, and scatter the rounding error as dots so the tones still look right.
+  howItWorks:
+    - Round each pixel to the nearest allowed level.
+    - Pass the rounding error on to the next pixels, or shift each pixel by a fixed pattern first.
+    - From a distance, the eye averages the dots back into gray tones.
+  academic: >-
+    Halftoning by error diffusion with the Floyd-Steinberg or Atkinson weights, or by ordered
+    dithering with a Bayer threshold matrix.
+  paramNotes:
+    method: How the rounding error is hidden.
+    levels: How many levels each channel may use.
+    outputMapping: How values outside 0 to 255 are shown.
+    channelScope: Dither each color or only the brightness.
+  tryThis:
+    - Dither a photo to 2 levels with each method, then zoom out until the dots blend.
+  pitfalls:
+    - Resizing a dithered image. The dots blend into gray or make moire. Dither as the last step.
+  demos: [line-profile]
+related: [posterize, halftone, kmeans-color]
+docsPage: filters/artistic/dithering.md

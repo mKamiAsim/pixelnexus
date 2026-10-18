@@ -1,0 +1,105 @@
+id: high-pass
+name: High-pass filter
+family: linear
+tags: [purpose:edge, purpose:sharpening]
+tier: core
+engine: browser
+phase: 5a
+status: implemented-tested
+planNotes: Image minus a low-pass result, with a display offset.
+
+summary: Keeps only the fine detail, by subtracting a Gaussian blur from the image.
+purpose: Show or extract the detail that a blur removes, for inspection or for layer-style sharpening.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/high-pass.ts, symbol: boostKernel}
+supportRadius: floor(3 * sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own high-pass. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 50
+    step: 0.1
+    default: 2
+    unit: px
+    description: Standard deviation of the Gaussian low-pass that is subtracted.
+    effect: Larger values keep wider detail. Small values keep only the finest edges.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  H(x,y) = I(x,y) - (G_{\sigma} \star I)(x,y),
+  \qquad
+  \sigma = {{sigma}}
+formulaExplanation: >-
+  The Gaussian blur keeps the coarse picture. What is left after subtracting it from the image
+  is the fine detail H, a signed value that is 0 in flat areas. The output mapping turns it
+  into a visible image. The default adds 128, so flat areas are middle gray.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'H', meaning: 'High-pass result, signed'}
+  - {symbol: 'G_{\sigma}', meaning: 'Normalized Gaussian kernel with radius floor(3 sigma + 0.5)'}
+  - {symbol: '\star', meaning: 'Correlation'}
+  - {symbol: '\sigma', meaning: 'Standard deviation of the Gaussian in pixels'}
+steps:
+  - Blur the image with a Gaussian of the given sigma.
+  - Subtract the blur from the image.
+  - Map the signed result to 8 bits with the output mapping. Keep alpha unchanged.
+complexity:
+  time: O(N\,(2r+1))
+  memory: O(N)
+  notes: N is the number of pixels per channel and r the Gaussian radius. The blur is separable.
+useCases:
+  - Inspect the fine detail and noise of an image.
+  - Build a detail layer to blend back for sharpening.
+  - Prepare an image for texture analysis.
+advantages:
+  - The detail size is set by one parameter, the Gaussian sigma.
+  - The output mapping shows positive and negative detail.
+limitations:
+  - The result is not a photo. It is the detail around middle gray.
+  - Noise is detail too, and it stays.
+artifacts:
+  - Halos around large edges, with the width of the blur.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.gaussian_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
+implementation: {path: web/src/core/filters/linear/high-pass.ts, symbol: highPassFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It removes the coarse picture and keeps only the fine detail.
+  howItWorks:
+    - Make a blurred copy of the image.
+    - Subtract the copy from the image. Flat areas become 0, edges stay.
+    - Add 128 so the result can be seen as gray, with lighter and darker detail.
+  academic: >-
+    The kernel is a unit impulse minus a normalized Gaussian, so its weights add up to 0. Its
+    frequency response is close to 1 - exp(-2 pi^2 sigma^2 f^2). That is 0 at f = 0 and near 1
+    at high f.
+  paramNotes:
+    sigma: The blur that is removed. It sets the largest detail that stays.
+    outputMapping: How the signed detail becomes a visible image.
+  tryThis:
+    - Run it on the Noise patches test image with sigma 1, then with sigma 5.
+  pitfalls:
+    - Using Clip as the output mapping. Half of the detail is negative and turns black.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [high-boost, unsharp-mask, gaussian, laplacian]
+docsPage: filters/linear/high-pass.md

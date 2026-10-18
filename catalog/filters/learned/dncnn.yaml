@@ -1,0 +1,101 @@
+id: dncnn
+name: DnCNN
+aliases:
+- CNN denoiser
+- DnCNN-based deblocking
+- DnCNN-3
+family: learned
+tags: [purpose:denoise]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: dncnn-color-blind
+modelChoices:
+  param: task
+  models: {denoise: dncnn-color-blind, jpeg: dncnn3}
+planNotes: CNN denoiser. DnCNN-based deblocking is a model variant. KAIR weights, exported to ONNX once with tools/export_models.py.
+
+summary: Removes noise with DnCNN, a network of 20 convolutions that predicts the noise and subtracts it. The color model is blind, so it needs no noise level. DnCNN-3, a gray model trained for noise, blur and JPEG blocking together, cleans JPEG artifacts on the brightness. Both need a downloaded model.
+purpose: Compare a learned denoiser with classical ones such as nonlocal means and BM3D-lite.
+classification: {linearity: nonlinear, domain: learned, operation: residual CNN denoising}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: dncnn_representation}
+supportRadius: '20'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  Denoising runs on RGB. JPEG cleanup runs DnCNN-3 on the brightness Y of full-range Y'CbCr with
+  the BT.709 weights and keeps Cb and Cr, our choice for color images. Alpha stays.
+boundary: The network pads with zeros. Large images run in tiles of 512 pixels with 24 pixels of margin, so the result equals a run on the whole image.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: task
+    label: Task
+    type: select
+    default: denoise
+    options:
+      - {value: denoise, label: 'Remove noise (color, blind)'}
+      - {value: jpeg, label: Clean JPEG artifacts (DnCNN-3)}
+    description: Which model runs. Each downloads on its own.
+    effect: DnCNN-3 also sharpens slightly, since it was trained on blur too.
+formula: |
+  \hat{x} = y - f_\theta(y)
+formulaExplanation: >-
+  y is the noisy image and f is the network. Instead of the clean image, DnCNN learns the noise,
+  the residual, and subtracts it. Batch normalization made training stable, and in the released
+  weights it is merged into the convolutions.
+symbols:
+  - {symbol: 'y', meaning: 'The noisy image'}
+  - {symbol: 'f_\theta', meaning: 'The network with its trained weights'}
+  - {symbol: '\hat{x}', meaning: 'The restored image'}
+steps:
+  - Scale the pixels to 0 to 1.
+  - Run 20 convolutions with ReLU, which estimate the noise.
+  - Subtract the estimate from the input.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. About 0.7 million weights.
+useCases:
+  - Removing Gaussian noise of unknown strength.
+  - Reducing JPEG blocking on the brightness.
+advantages:
+  - No noise level to set.
+  - Fast on a GPU.
+limitations:
+  - Trained on Gaussian noise, so real camera noise may be left.
+  - DnCNN-3 works on one channel, so color blocking stays.
+artifacts:
+  - Smooth, waxy areas at strong noise.
+references:
+  - kind: paper
+    text: Zhang, K., Zuo, W., Chen, Y., Meng, D., and Zhang, L. Beyond a Gaussian denoiser. Residual learning of deep CNN for image denoising. IEEE Transactions on Image Processing 26(7), 3142 to 3155, 2017.
+    doi: 10.1109/TIP.2017.2662206
+  - kind: library
+    text: KAIR, the image restoration toolbox of Kai Zhang, which holds the trained weights and the network code that tools/export_models.py imports.
+    url: https://github.com/cszn/KAIR
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: dncnn}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A network looks at the noisy image, guesses the noise, and subtracts it.
+  howItWorks:
+    - The network was trained on many pairs of clean and noisy images.
+    - It learned to predict only the noise, which is easier than the whole image.
+    - Subtracting its guess leaves the cleaned image.
+  academic: >-
+    Residual learning with a 20-layer CNN, after Zhang et al., with batch normalization merged
+    into the convolutions.
+  paramNotes:
+    task: Noise or JPEG artifacts.
+  tryThis:
+    - Add Gaussian noise in the Noise lab, then compare with nonlocal means.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile, noise-lab]
+related: [ffdnet, nlm, bm3d-lite, jpeg-cleanup]
+docsPage: filters/learned/dncnn.md

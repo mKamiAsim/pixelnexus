@@ -1,0 +1,106 @@
+id: morph-gradient
+name: Morphological gradient
+aliases: [Beucher gradient]
+family: morphology
+tags: [purpose:morphology, purpose:edge]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Dilation minus erosion. It is bright on edges, with a width set by the element.
+purpose: Find edges without derivatives, with a thickness you control.
+classification: {linearity: nonlinear, domain: spatial, operation: dilation minus erosion}
+output: image
+representation: structuring-element
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/gray.ts, symbol: morphology}
+supportRadius: iterations x the reach of the element
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own, which can create colors that were not
+  in the image. Brightness only keeps the colors and works on luma.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full reach, so strips and
+  whole images agree.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: disk 1
+    description: The shape and size of the neighborhood. Disk 1 is the 3 x 3 cross.
+    effect: Larger elements change larger structures. The shape decides which structures fit.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 1
+    description: How many times each erosion or dilation runs.
+    effect: More iterations act like a larger element of the same shape.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  (f \oplus B) - (f \ominus B)
+formulaExplanation: >-
+  The difference between the largest and the smallest value under the element. It is 0 in flat areas and large across edges. Erosion takes the smallest value of f(p + z) for z in B. Dilation takes the
+  largest value of f(p - z), which uses the element turned by 180 degrees. Both match the
+  grayscale erosion and dilation of SciPy. On an image of 0 and 255 they are binary erosion and
+  dilation.
+symbols:
+  - {symbol: 'f', meaning: The image}
+  - {symbol: 'B', meaning: The structuring element}
+steps:
+  - Extend the image by the reach of the steps with the border mode.
+  - Dilate and erode with the element.
+  - Subtract the erosion from the dilation, and cut the extension off.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the number of pixels in the element, times the number of steps.
+useCases:
+  - Edge maps for segmentation, such as before watershed.
+  - Outlines of objects in binary images.
+advantages:
+  - Never negative, and no direction to choose.
+  - Edges have a known thickness.
+limitations:
+  - Thick edges for large elements.
+  - Noise gives edges too.
+artifacts:
+  - Double edges around thin lines.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.grey_erosion and grey_dilation.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.grey_erosion.html
+implementation: {path: web/src/core/filters/morphology/gray.ts, symbol: morphGradientFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: The brightest minus the darkest value around each pixel, which is large on edges.
+  howItWorks:
+    - Dilate the image.
+    - Erode the image.
+    - Subtract the two.
+  academic: >-
+    Beucher's gradient, the sum of the internal and the external gradient. For a flat element it is the range of values under the element.
+  paramNotes:
+    element: The neighborhood shape and size.
+    iterations: How many times each step runs.
+  tryThis:
+    - Compare the morphological gradient with Sobel on the Disks image.
+  pitfalls:
+    - Using a large element and expecting thin edges.
+  demos: [line-profile]
+related: [internal-gradient, external-gradient, sobel, erosion, dilation]
+docsPage: filters/morphology/morph-gradient.md

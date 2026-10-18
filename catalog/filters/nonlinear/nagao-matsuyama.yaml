@@ -1,0 +1,86 @@
+id: nagao-matsuyama
+name: Nagao-Matsuyama filter
+family: nonlinear
+tags: [purpose:smoothing, purpose:denoise]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+
+summary: Writes the mean of the calmest of nine subregions of a 5x5 window, with shapes that follow edges in eight directions.
+purpose: Smooth noise and keep edges and corners, with less blockiness than the Kuwahara filter.
+classification: {linearity: nonlinear, domain: spatial, operation: adaptive local mean}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/subregions.ts, symbol: nagaoRegions}
+supportRadius: '2'
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  The variance is measured on luma, 0.2126 R + 0.7152 G + 0.0722 B. All three channels take
+  their means from the same subregion. For a gray image this is the classic filter. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - ref: border
+
+formula: |
+  I_{\text{out}}(x,y) = \mu_{k^*},
+  \qquad
+  k^* = \operatorname*{arg\,min}_{k \in \{1,\dots,9\}} \sigma_k^2
+formulaExplanation: >-
+  The 5x5 window around the pixel holds nine subregions: the center 3x3 square, four pentagons
+  that point north, east, south and west, and four hexagons that point to the corners. Each
+  pentagon and hexagon has 7 pixels, including the center. mu_k and sigma_k squared are the
+  mean and variance of subregion k. The output is the mean of the subregion with the smallest
+  variance.
+symbols:
+  - {symbol: '\mu_k', meaning: The mean of subregion k}
+  - {symbol: '\sigma_k^2', meaning: The variance of the luma in subregion k}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel, compute the mean and variance of the luma in the nine subregions.
+  - Pick the subregion with the smallest variance. On a tie, the first in the list wins.
+  - Write the mean of each color channel over that subregion.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each pixel reads nine subregions of 7 or 9 pixels.
+useCases:
+  - Smooth noise while keeping edges and corners in many directions.
+  - Smooth before segmentation into flat regions.
+advantages:
+  - Subregions in eight directions fit diagonal edges better than the four Kuwahara quadrants.
+  - Keeps corners better than the Kuwahara filter.
+limitations:
+  - The window is fixed at 5x5, so it smooths only a little in one pass. Repeat it for more.
+  - Fine texture becomes flat.
+artifacts:
+  - Small flat patches in textured areas.
+references:
+  - kind: paper
+    text: Nagao, M. and Matsuyama, T. Edge preserving smoothing. Computer Graphics and Image Processing 9(4), 394 to 407, 1979.
+    doi: 10.1016/0146-664X(79)90102-3
+implementation: {path: web/src/core/filters/nonlinear/subregions.ts, symbol: nagaoMatsuyamaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel takes the mean of the calmest of nine shapes around it.
+  howItWorks:
+    - Look at nine shapes in the 5x5 window. One is the center square, eight point outward.
+    - Measure how much the values in each shape vary.
+    - Use the mean of the shape that varies the least.
+  academic: >-
+    Like the Kuwahara filter, it selects the averaging region with the smallest variance. The
+    pentagons and hexagons follow edges in eight directions, so fewer edge pixels fall into the
+    winning region.
+  paramNotes:
+    border: How pixels outside the image are filled for the 5x5 window.
+  tryThis:
+    - Apply it three times in a row to a noisy image and compare with one Kuwahara pass of size 7.
+  pitfalls:
+    - Expecting strong smoothing from one pass. The window is small.
+  demos: [line-profile]
+related: [kuwahara, bilateral, median]
+docsPage: filters/nonlinear/nagao-matsuyama.md

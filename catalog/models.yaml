@@ -1,0 +1,441 @@
+# Optional models. Each entry was checked for its license before it was added.
+# Nothing in this file is downloaded automatically. A model downloads only when you click
+# Download model in the studio, into the engine's models folder on your own machine, which git
+# ignores. The engine checks the SHA-256 of the file before it uses it.
+models:
+  - id: structured-edge-bsds500
+    name: Structured edge forest (BSDS500)
+    task: edges
+    license: >-
+      Microsoft Research License Agreement (MSR-LA), non-commercial use only, such as teaching,
+      research and personal experiments. The model comes from Piotr Dollar's Structured Edge
+      Detection Toolbox, converted for OpenCV.
+    licenseUrl: https://github.com/pdollar/edges/blob/master/license.txt
+    sourceUrl: https://raw.githubusercontent.com/opencv/opencv_extra/5e3a56880fb115e757855f8e01e744c154791144/testdata/cv/ximgproc/model.yml.gz
+    sha256: fe3586bca5ec124b73fa769c2b54e195e4526d6ceeddf161fad96bf68a65bf17
+    sizeMB: 6.39
+    format: opencv-yml
+    runtimes: [engine]
+    phoneSuitable: false
+    nonCommercial: true
+    inputs: An RGB image from 0 to 1.
+    outputs: An edge probability from 0 to 1 at every pixel.
+    reference:
+      kind: paper
+      text: Dollar, P., and Zitnick, C. L. Fast edge detection using structured forests. IEEE Transactions on Pattern Analysis and Machine Intelligence 37(8), 1558 to 1570, 2015.
+      doi: 10.1109/TPAMI.2014.2377715
+
+  # Approved by the owner on 2026-10-16, after a license review.
+  - id: u2netp
+    name: U2-Net small (u2netp)
+    task: subject-select
+    license: Apache License 2.0, from the U-2-Net project. The file is the copy in the rembg project's model release.
+    licenseUrl: https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE
+    sourceUrl: https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx
+    browserUrl: https://huggingface.co/BritishWerewolf/U-2-Netp/resolve/7112208dbac3a3642496c8d54e2f0f9bb3dc1dc8/onnx/model.onnx
+    sha256: 309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
+    sizeMB: 4.57
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image resized to 320 x 320, normalized with the ImageNet mean and deviation.
+    outputs: A saliency map from 0 to 1, the subject's probability at each pixel.
+    reference:
+      kind: paper
+      text: Qin, X., Zhang, Z., Huang, C., Dehghan, M., Zaiane, O. R., and Jagersand, M. U2-Net. Going deeper with nested U-structure for salient object detection. Pattern Recognition 106, 107404, 2020.
+      doi: 10.1016/j.patcog.2020.107404
+  - id: birefnet-lite
+    name: BiRefNet lite
+    task: subject-select
+    license: MIT License, from the BiRefNet project. The ONNX file is the onnx-community export.
+    licenseUrl: https://github.com/ZhengPeng7/BiRefNet/blob/main/LICENSE
+    sourceUrl: https://huggingface.co/onnx-community/BiRefNet_lite-ONNX/resolve/de15b22ba131738a16dff04aab8bdf8dc32e3ac1/onnx/model.onnx
+    sha256: 5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333
+    sizeMB: 224.01
+    format: onnx
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image resized to 1024 x 1024, normalized with the ImageNet mean and deviation.
+    outputs: A mask logit at each pixel, turned into a probability with a sigmoid.
+    reference:
+      kind: paper
+      text: Zheng, P., Gao, D., Fan, D.-P., Liu, L., Laaksonen, J., Ouyang, W., and Sebe, N. Bilateral reference for high-resolution dichotomous image segmentation. CAAI Artificial Intelligence Research, 9150038, 2024.
+      doi: 10.26599/AIR.2024.9150038
+  - id: modnet
+    name: MODNet portrait matting
+    task: matting
+    license: Apache License 2.0, which the MODNet project states covers its code and models. The ONNX file is the Xenova export.
+    licenseUrl: https://github.com/ZHKKKe/MODNet/blob/master/LICENSE
+    sourceUrl: https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model.onnx
+    sha256: 07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9
+    sizeMB: 25.89
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB portrait, scaled from -1 to 1, with sides that are multiples of 32.
+    outputs: An alpha matte from 0 to 1.
+    reference:
+      kind: paper
+      text: Ke, Z., Sun, J., Li, K., Yan, Q., and Lau, R. W. H. MODNet. Real-time trimap-free portrait matting via objective decomposition. Proceedings of the AAAI Conference on Artificial Intelligence 36(1), 1140 to 1147, 2022.
+      doi: 10.1609/aaai.v36i1.19999
+  - id: efficientsam-ti
+    name: EfficientSAM tiny
+    task: click-select
+    license: Apache License 2.0, from the EfficientSAM project, which publishes these ONNX files itself.
+    licenseUrl: https://github.com/yformer/EfficientSAM/blob/main/LICENSE
+    sourceUrl: https://raw.githubusercontent.com/yformer/EfficientSAM/d525f622e6f640acf5a0fc37c7ca1f243da5bde0/weights/efficient_sam_vitt_encoder.onnx
+    sha256: 84ed466ffcc5c1f8d08409bc34a23bb364ab2c15e402cb12d4335a42be0e0951
+    sizeMB: 24.80
+    extraFiles:
+      - sourceUrl: https://raw.githubusercontent.com/yformer/EfficientSAM/d525f622e6f640acf5a0fc37c7ca1f243da5bde0/weights/efficient_sam_vitt_decoder.onnx
+        sha256: a62f8fa5ea080447c0689418d69e58f1e83e0b7adf9c142e2bd9bcc8045c0b11
+        sizeMB: 16.57
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image for the encoder, then click points or a box for the decoder.
+    outputs: Mask logits for the prompted object.
+    reference:
+      kind: paper
+      text: Xiong, Y., Varadarajan, B., Wu, L., Xiang, X., Xiao, F., Zhu, C., Dai, X., Wang, D., Sun, F., Iandola, F., Krishnamoorthi, R., and Chandra, V. EfficientSAM. Leveraged masked image pretraining for efficient segment anything. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 16111 to 16121, 2024.
+      doi: 10.1109/CVPR52733.2024.01525
+  - id: sam2-1-tiny
+    name: SAM 2.1 tiny
+    task: click-select
+    license: Apache License 2.0, which the SAM 2 project states covers its model checkpoints. The ONNX files are the onnx-community export.
+    licenseUrl: https://github.com/facebookresearch/sam2/blob/main/LICENSE
+    sourceUrl: https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/vision_encoder.onnx
+    sha256: 4f30aacd3aaefbca81a0b7fe4c1fc96345570ea0a6f80ced599493d1b3be2e8c
+    sizeMB: 0.35
+    extraFiles:
+      - sourceUrl: https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/vision_encoder.onnx_data
+        sha256: e83df9866a5afe68ea7f0f721f18f65137fc3acbf0da1c74e946d363e09c69cc
+        sizeMB: 134.08
+      - sourceUrl: https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/prompt_encoder_mask_decoder.onnx
+        sha256: 874414704c5d686db7d206a35f6e15d26563d50c8c4468fccc6739bd7e491dcf
+        sizeMB: 0.21
+      - sourceUrl: https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX/resolve/814a066640debee5a91e70aa401fb8e17e030503/onnx/prompt_encoder_mask_decoder.onnx_data
+        sha256: e9874d900dd4134ed60eab1e97910327c2419e0b2954485d8fd6e7f1a1470f47
+        sizeMB: 20.96
+    format: onnx
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image for the vision encoder, then click points or a box for the decoder.
+    outputs: Mask logits and a quality score for each mask.
+    reference:
+      kind: web
+      text: Ravi, N., Gabeur, V., Hu, Y.-T., and others. SAM 2. Segment anything in images and videos. arXiv 2408.00714, 2024.
+      url: https://arxiv.org/abs/2408.00714
+  - id: dncnn-color-blind
+    name: DnCNN color, blind
+    task: denoise
+    license: MIT License, from the KAIR project by the DnCNN author, whose model release holds this file.
+    licenseUrl: https://github.com/cszn/KAIR/blob/master/LICENSE
+    sourceUrl: https://github.com/cszn/KAIR/releases/download/v1.0/dncnn_color_blind.pth
+    sha256: dfe11a6b703304df82cdf236f431fc6492766c7b9119d97e943edeb392c710a3
+    sizeMB: 2.68
+    format: pytorch
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 1, with noise of any level.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Zhang, K., Zuo, W., Chen, Y., Meng, D., and Zhang, L. Beyond a Gaussian denoiser. Residual learning of deep CNN for image denoising. IEEE Transactions on Image Processing 26(7), 3142 to 3155, 2017.
+      doi: 10.1109/TIP.2017.2662206
+  - id: dncnn3
+    name: DnCNN-3, gray
+    task: jpeg-cleanup
+    license: MIT License, from the KAIR project by the DnCNN author, whose model release holds this file.
+    licenseUrl: https://github.com/cszn/KAIR/blob/master/LICENSE
+    sourceUrl: https://github.com/cszn/KAIR/releases/download/v1.0/dncnn3.pth
+    sha256: cef4b4672a121b196a0525453b7091dc457a24b673105b38d623299f06fcc728
+    sizeMB: 2.67
+    format: pytorch
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: A gray image from 0 to 1. Color images are processed on their luminance.
+    outputs: The image with noise, blur or JPEG blocking reduced.
+    reference:
+      kind: paper
+      text: Zhang, K., Zuo, W., Chen, Y., Meng, D., and Zhang, L. Beyond a Gaussian denoiser. Residual learning of deep CNN for image denoising. IEEE Transactions on Image Processing 26(7), 3142 to 3155, 2017.
+      doi: 10.1109/TIP.2017.2662206
+  - id: ffdnet-color
+    name: FFDNet color
+    task: denoise
+    license: MIT License, from the KAIR project by the FFDNet author, whose model release holds this file.
+    licenseUrl: https://github.com/cszn/KAIR/blob/master/LICENSE
+    sourceUrl: https://github.com/cszn/KAIR/releases/download/v1.0/ffdnet_color.pth
+    sha256: 286f04f7e3a20254c067ba95efb5d3339f4fc8a09a365a93cd469184d4cdb279
+    sizeMB: 3.41
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1 and the noise level.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Zhang, K., Zuo, W., and Zhang, L. FFDNet. Toward a fast and flexible solution for CNN-based image denoising. IEEE Transactions on Image Processing 27(9), 4608 to 4622, 2018.
+      doi: 10.1109/TIP.2018.2839891
+  - id: swin2sr-lightweight-x2
+    name: Swin2SR lightweight, 2x
+    task: super-resolution
+    license: Apache License 2.0, from the Swin2SR project. The ONNX file is the Xenova export.
+    licenseUrl: https://github.com/mv-lab/swin2sr/blob/main/LICENSE
+    sourceUrl: https://huggingface.co/Xenova/swin2SR-lightweight-x2-64/resolve/92a21aca5713f20faf9a87590cdfbdce2e34112c/onnx/model.onnx
+    sha256: c2abbfe0cc8e685b5e11964970f8ebe3d24072e904fd5545a30ac31ec1e110db
+    sizeMB: 8.08
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 1, padded to a multiple of 8.
+    outputs: The image at twice the width and height.
+    reference:
+      kind: paper
+      text: Conde, M. V., Choi, U.-J., Burchi, M., and Timofte, R. Swin2SR. SwinV2 transformer for compressed image super-resolution and restoration. Computer Vision, ECCV 2022 Workshops, Lecture Notes in Computer Science, 669 to 687, 2023.
+      doi: 10.1007/978-3-031-25063-7_42
+  - id: swinir-lightweight-x2
+    name: SwinIR lightweight, 2x
+    task: super-resolution
+    license: Apache License 2.0, from the SwinIR project, whose release holds this file.
+    licenseUrl: https://github.com/JingyunLiang/SwinIR/blob/main/LICENSE
+    sourceUrl: https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.pth
+    sha256: 193b229909ca89cd8b55de9c9e7fce146ae759d59dfcd78d8feb9dd1d6fa0fd7
+    sizeMB: 17.15
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, in tiles of 128 x 128 pixels.
+    outputs: The image at twice the width and height.
+    reference:
+      kind: paper
+      text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+      doi: 10.1109/ICCVW54120.2021.00210
+  - id: swinir-color-dn25
+    name: SwinIR color denoising, noise 25
+    task: denoise
+    license: Apache License 2.0, from the SwinIR project, whose release holds this file.
+    licenseUrl: https://github.com/JingyunLiang/SwinIR/blob/main/LICENSE
+    sourceUrl: https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/005_colorDN_DFWB_s128w8_SwinIR-M_noise25.pth
+    sha256: 39e264322ba762682de5acee4705aaeda7077b947204b9ce1899519ebd540724
+    sizeMB: 122.91
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, in tiles of 256 x 256 pixels, with Gaussian noise near 25 of 255.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+      doi: 10.1109/ICCVW54120.2021.00210
+  - id: restormer-real-denoising
+    name: Restormer, real noise
+    task: denoise
+    license: MIT License, from the Restormer project, whose release holds this file.
+    licenseUrl: https://github.com/swz30/Restormer/blob/main/LICENSE.md
+    sourceUrl: https://github.com/swz30/Restormer/releases/download/v1.0/real_denoising.pth
+    sha256: 4cae18bed8a291b9a5deeeab48756bbe6f61fcf7f31a4cca0969b24608601387
+    sizeMB: 104.61
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, with sides that are multiples of 8, with the noise of a real camera.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Zamir, S. W., Arora, A., Khan, S., Hayat, M., Khan, F. S., and Yang, M.-H. Restormer. Efficient transformer for high-resolution image restoration. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 5718 to 5729, 2022.
+      doi: 10.1109/CVPR52688.2022.00564
+  - id: restormer-motion-deblurring
+    name: Restormer, motion blur
+    task: deblur
+    license: MIT License, from the Restormer project, whose release holds this file.
+    licenseUrl: https://github.com/swz30/Restormer/blob/main/LICENSE.md
+    sourceUrl: https://github.com/swz30/Restormer/releases/download/v1.0/motion_deblurring.pth
+    sha256: 194e38fb5b607c9dc5a5b3e08e65b2e79ee2bf0ef5048e0612f6b2ff2f79da31
+    sizeMB: 104.70
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, with sides that are multiples of 8, blurred by camera or object motion.
+    outputs: The sharpened image.
+    reference:
+      kind: paper
+      text: Zamir, S. W., Arora, A., Khan, S., Hayat, M., Khan, F. S., and Yang, M.-H. Restormer. Efficient transformer for high-resolution image restoration. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 5718 to 5729, 2022.
+      doi: 10.1109/CVPR52688.2022.00564
+  - id: realesr-general-x4v3
+    name: Real-ESRGAN general, 4x
+    task: super-resolution
+    license: BSD 3-Clause License, from the Real-ESRGAN project, whose release holds this file.
+    licenseUrl: https://github.com/xinntao/Real-ESRGAN/blob/master/LICENSE
+    sourceUrl: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+    sha256: 8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292
+    sizeMB: 4.89
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, of real photos with unknown blur and noise.
+    outputs: The image at four times the width and height.
+    reference:
+      kind: paper
+      text: Wang, X., Xie, L., Dong, C., and Shan, Y. Real-ESRGAN. Training real-world blind super-resolution with pure synthetic data. IEEE/CVF International Conference on Computer Vision Workshops, 1905 to 1914, 2021.
+      doi: 10.1109/ICCVW54120.2021.00217
+  - id: fsrcnn-x2
+    name: FSRCNN, 2x
+    task: super-resolution
+    license: Apache License 2.0, from the FSRCNN_Tensorflow project, whose files OpenCV's dnn_superres module reads.
+    licenseUrl: https://github.com/Saafke/FSRCNN_Tensorflow/blob/master/LICENSE
+    sourceUrl: https://raw.githubusercontent.com/Saafke/FSRCNN_Tensorflow/6a4812c4ef1c4f5947d79beafa32a05a6eb4a94d/models/FSRCNN_x2.pb
+    sha256: 366b33f0084c7b3f2bf6724f0a2c77bca94fcec9d7b6d72389d330073b380d5c
+    sizeMB: 0.04
+    format: tensorflow-pb
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: The luminance of an image.
+    outputs: The image at twice the width and height.
+    reference:
+      kind: paper
+      text: Dong, C., Loy, C. C., and Tang, X. Accelerating the super-resolution convolutional neural network. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 391 to 407, 2016.
+      doi: 10.1007/978-3-319-46475-6_25
+  - id: edsr-x4
+    name: EDSR, 4x
+    task: super-resolution
+    license: Apache License 2.0, from the EDSR_Tensorflow project, whose files OpenCV's dnn_superres module reads.
+    licenseUrl: https://github.com/Saafke/EDSR_Tensorflow/blob/master/LICENSE
+    sourceUrl: https://raw.githubusercontent.com/Saafke/EDSR_Tensorflow/06c7bd65b0305c2955328f8f2721ea86c341f660/models/EDSR_x4.pb
+    sha256: dd35ce3cae53ecee2d16045e08a932c3e7242d641bb65cb971d123e06904347f
+    sizeMB: 38.57
+    format: tensorflow-pb
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image.
+    outputs: The image at four times the width and height.
+    reference:
+      kind: paper
+      text: Lim, B., Son, S., Kim, H., Nah, S., and Lee, K. M. Enhanced deep residual networks for single image super-resolution. IEEE Conference on Computer Vision and Pattern Recognition Workshops, 1132 to 1140, 2017.
+      doi: 10.1109/CVPRW.2017.151
+  - id: hed-bsds
+    name: HED (BSDS500)
+    task: edges
+    license: BSD 2-Clause License, from the HED project, which is built on Caffe.
+    licenseUrl: https://github.com/s9xie/hed/blob/master/LICENSE
+    sourceUrl: https://vcl.ucsd.edu/hed/hed_pretrained_bsds.caffemodel
+    sha256: 4b6937684bce9be1ef5163c78ec812dff9a23653bfbb451925210a64ecfaaac7
+    sizeMB: 58.88
+    extraFiles:
+      - sourceUrl: https://raw.githubusercontent.com/s9xie/hed/912632b986acc6dd6cc33b95603b2f279d7bd9f2/examples/hed/deploy.prototxt
+        sha256: 378a9246383da889cf8e0290c47554d75dcf9c5b6bbabd8ab6c481c34aa12b8a
+        sizeMB: 0.01
+    format: caffe
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: A BGR image with the mean of the training data subtracted.
+    outputs: An edge probability from 0 to 1 at every pixel.
+    reference:
+      kind: paper
+      text: Xie, S., and Tu, Z. Holistically-nested edge detection. IEEE International Conference on Computer Vision, 1395 to 1403, 2015.
+      doi: 10.1109/ICCV.2015.164
+  - id: pidinet
+    name: PiDiNet
+    task: edges
+    license: >-
+      MIT License text, with the note that it is for research purposes only and that commercial
+      use needs the authors' consent. PixelNexus offers it for study and other non-commercial use.
+    licenseUrl: https://github.com/hellozhuo/pidinet/blob/master/LICENSE
+    sourceUrl: https://raw.githubusercontent.com/hellozhuo/pidinet/d21aa881ed9c628571636fad39acfe1fad517ebd/trained_models/table5_pidinet.pth
+    sha256: 80860ac267258b5f27486e0ef152a211d0b08120f62aeb185a050acc30da486c
+    sizeMB: 2.87
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    nonCommercial: true
+    inputs: An RGB image normalized with the ImageNet mean and deviation.
+    outputs: An edge probability from 0 to 1 at every pixel.
+    reference:
+      kind: paper
+      text: Su, Z., Liu, W., Yu, Z., Hu, D., Liao, Q., Tian, Q., Pietikainen, M., and Liu, L. Pixel difference networks for efficient edge detection. IEEE/CVF International Conference on Computer Vision, 5097 to 5107, 2021.
+      doi: 10.1109/ICCV48922.2021.00507
+  - id: style-mosaic
+    name: Fast neural style, mosaic
+    task: style
+    license: Apache License 2.0, from the ONNX model zoo. The model was trained with the PyTorch fast neural style example, under the BSD 3-Clause License.
+    licenseUrl: https://github.com/onnx/models/blob/main/LICENSE
+    sourceUrl: https://media.githubusercontent.com/media/onnx/models/c5cae0f1942c8d7727372c7b1f6b485aa39e4421/validated/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx
+    sha256: fa646dedade881243f8d5a2ceb7de2b93675b21fc24f7482894ac4851a9a0a47
+    sizeMB: 6.73
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 255, 224 x 224 or larger.
+    outputs: The image painted in the mosaic style.
+    reference:
+      kind: paper
+      text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+      doi: 10.1007/978-3-319-46475-6_43
+  - id: style-candy
+    name: Fast neural style, candy
+    task: style
+    license: Apache License 2.0, from the ONNX model zoo. The model was trained with the PyTorch fast neural style example, under the BSD 3-Clause License.
+    licenseUrl: https://github.com/onnx/models/blob/main/LICENSE
+    sourceUrl: https://media.githubusercontent.com/media/onnx/models/c5cae0f1942c8d7727372c7b1f6b485aa39e4421/validated/vision/style_transfer/fast_neural_style/model/candy-9.onnx
+    sha256: 9d11a3529d1e547da6ae07201d93484dbab2ec0a3614535752c8f40f0fe2968a
+    sizeMB: 6.73
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 255, 224 x 224 or larger.
+    outputs: The image painted in the candy style.
+    reference:
+      kind: paper
+      text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+      doi: 10.1007/978-3-319-46475-6_43
+  - id: style-udnie
+    name: Fast neural style, udnie
+    task: style
+    license: Apache License 2.0, from the ONNX model zoo. The model was trained with the PyTorch fast neural style example, under the BSD 3-Clause License.
+    licenseUrl: https://github.com/onnx/models/blob/main/LICENSE
+    sourceUrl: https://media.githubusercontent.com/media/onnx/models/c5cae0f1942c8d7727372c7b1f6b485aa39e4421/validated/vision/style_transfer/fast_neural_style/model/udnie-9.onnx
+    sha256: 8656b6ce7dec8f22ee13c2d557d6b67bd6f550dde88d0f2e7c9972aeb765cc0d
+    sizeMB: 6.73
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 255, 224 x 224 or larger.
+    outputs: The image painted in the udnie style.
+    reference:
+      kind: paper
+      text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+      doi: 10.1007/978-3-319-46475-6_43
+  - id: style-rain-princess
+    name: Fast neural style, rain princess
+    task: style
+    license: Apache License 2.0, from the ONNX model zoo. The model was trained with the PyTorch fast neural style example, under the BSD 3-Clause License.
+    licenseUrl: https://github.com/onnx/models/blob/main/LICENSE
+    sourceUrl: https://media.githubusercontent.com/media/onnx/models/c5cae0f1942c8d7727372c7b1f6b485aa39e4421/validated/vision/style_transfer/fast_neural_style/model/rain-princess-9.onnx
+    sha256: 4162912e6f75fedef6f810ae989b9e10d3d5d43308dab34b027c850cf255e152
+    sizeMB: 6.73
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 255, 224 x 224 or larger.
+    outputs: The image painted in the rain princess style.
+    reference:
+      kind: paper
+      text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+      doi: 10.1007/978-3-319-46475-6_43
+  - id: style-pointilism
+    name: Fast neural style, pointilism
+    task: style
+    license: Apache License 2.0, from the ONNX model zoo. The model was trained with the PyTorch fast neural style example, under the BSD 3-Clause License.
+    licenseUrl: https://github.com/onnx/models/blob/main/LICENSE
+    sourceUrl: https://media.githubusercontent.com/media/onnx/models/c5cae0f1942c8d7727372c7b1f6b485aa39e4421/validated/vision/style_transfer/fast_neural_style/model/pointilism-9.onnx
+    sha256: 5ee2b8d4d6bc60a777f54e0fe96a1b717360a004b79d56c67390d4a975b14d98
+    sizeMB: 6.73
+    format: onnx
+    runtimes: [engine, on-device]
+    phoneSuitable: true
+    inputs: An RGB image from 0 to 255, 224 x 224 or larger.
+    outputs: The image painted in the pointilism style.
+    reference:
+      kind: paper
+      text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+      doi: 10.1007/978-3-319-46475-6_43

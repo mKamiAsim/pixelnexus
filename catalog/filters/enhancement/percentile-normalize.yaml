@@ -1,0 +1,117 @@
+id: percentile-normalize
+name: Percentile normalization
+aliases: [Auto contrast, Percentile stretch, Min-max normalization]
+family: enhancement
+tags: [purpose:contrast]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Point operation.
+
+summary: Stretches the image so its darkest and brightest few percent reach black and white.
+purpose: Fix low-contrast images automatically, while a few extreme pixels cannot spoil the stretch.
+classification: {linearity: nonlinear, domain: point, operation: percentile linear stretch}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/histogram.ts, symbol: percentileTable}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  With the brightness scope, the default, the curve is built from the histogram of luma and
+  only luma goes through it, so colors stay. With RGB scope, each channel gets its own curve
+  from its own histogram, which can shift colors. Alpha is kept.
+boundary: >-
+  Not needed for the curve itself. The curve depends on the histogram of the whole image, so
+  the filter always runs on the whole image.
+
+params:
+  - key: low
+    label: Low percentile
+    type: number
+    min: 0
+    max: 50
+    step: 0.5
+    default: 1
+    unit: "%"
+    description: The percentile that becomes black.
+    effect: Higher values clip more of the shadows to black.
+  - key: high
+    label: High percentile
+    type: number
+    min: 50
+    max: 100
+    step: 0.5
+    default: 99
+    unit: "%"
+    description: The percentile that becomes white.
+    effect: Lower values clip more of the highlights to white.
+  - ref: channelScope
+    default: luminance
+formula: |
+  I_{\text{out}} = \min\!\left(255,\ \max\!\left(0,\ 255\,\frac{I - p_{\text{lo}}}{p_{\text{hi}} - p_{\text{lo}}}\right)\right),
+  \qquad
+  p_{\text{lo}} = P_{ {{low}} }(I),\ p_{\text{hi}} = P_{ {{high}} }(I)
+formulaExplanation: >-
+  P_q is the q-th percentile of the image values, rounded to the levels 0 to 255. It uses the
+  linear rule of numpy.percentile: the sorted values are indexed from 0 to N - 1, and position
+  (N - 1) q / 100 is interpolated between its two neighbors. The low percentile maps to 0, the
+  high one to 255, and the line between them is clipped at both ends. Percentiles 0 and 100
+  give min-max normalization. When p_hi is not above p_lo, as in a flat image, the image stays
+  as it is. Values between two levels take the output interpolated between them.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: 'P_q', meaning: 'The q-th percentile of the image values'}
+  - {symbol: 'p_{\text{lo}}, p_{\text{hi}}', meaning: 'The values that map to 0 and 255'}
+steps:
+  - Count the histogram of the levels of the whole image.
+  - Find the low and high percentiles from the cumulative counts.
+  - Build the 256-entry clipped line and apply it to every pixel.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. One pass counts the histogram, a second applies the 256-entry curve.
+useCases:
+  - Automatic contrast for dull or foggy photos.
+  - Normalizing scientific images before display.
+advantages:
+  - Adapts to the image, with no curve to draw.
+  - A few hot or dead pixels do not limit the stretch, as they would for min-max.
+limitations:
+  - Clips the chosen fraction of pixels at each end.
+  - One curve for the whole image. Local methods such as CLAHE adapt per region.
+artifacts:
+  - Clipped highlights or shadows when the percentiles are far from 0 and 100.
+  - Color shifts with RGB scope, since each channel stretches on its own.
+references:
+  - kind: library
+    text: NumPy documentation, numpy.percentile.
+    url: https://numpy.org/doc/stable/reference/generated/numpy.percentile.html
+  - kind: library
+    text: scikit-image documentation, skimage.exposure.rescale_intensity.
+    url: https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.rescale_intensity
+implementation: {path: web/src/core/filters/enhancement/histogram.ts, symbol: percentileNormalizeFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Find the darkest and brightest few percent of the image, and stretch the rest to fill black to white.
+  howItWorks:
+    - Count how many pixels have each brightness.
+    - Find the brightness below which the low percent of pixels lie, and the one above which the high percent lie.
+    - Map the first to black and the second to white, in a straight line.
+  academic: >-
+    A linear contrast stretch between two percentiles of the intensity distribution. Unlike
+    min-max normalization, it ignores a chosen share of extreme values.
+  paramNotes:
+    low: The share of pixels clipped to black.
+    high: The share of pixels kept below white.
+    channelScope: Stretch brightness only, or each color channel.
+  tryThis:
+    - Set the percentiles to 0 and 100, then to 2 and 98, on a hazy photo.
+  pitfalls:
+    - RGB scope on a photo with a color cast. Each channel stretches differently and the colors change.
+  demos: [point-op-curve]
+related: [contrast-stretch, histogram-eq, clahe]
+docsPage: filters/enhancement/percentile-normalize.md

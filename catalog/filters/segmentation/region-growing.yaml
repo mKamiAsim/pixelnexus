@@ -1,0 +1,138 @@
+id: region-growing
+name: Region growing
+aliases: [Seeded region growing, Flood fill segmentation]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Starts at a seed pixel and grows a region over the connected pixels whose value is within a tolerance of the seed's.
+purpose: Segment one object or area that is roughly uniform, starting from a point inside it.
+classification: {linearity: nonlinear, domain: spatial, operation: connected flood from a seed}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/regions.ts, symbol: growRegion}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  With the brightness measure, pixels are compared by 0.2126 R + 0.7152 G + 0.0722 B. With the
+  color measure, by the largest difference of their red, green and blue values. The result is a
+  gray mask. Alpha is kept.
+boundary: Not needed. The region stops at the image edge, so the filter always runs on the whole image.
+
+params:
+  - key: seedX
+    label: Seed x
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 50
+    unit: "%"
+    description: The seed's position across the image, in percent of the width.
+    effect: Moves the seed. Put it inside the area you want.
+  - key: seedY
+    label: Seed y
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 50
+    unit: "%"
+    description: The seed's position down the image, in percent of the height.
+    effect: Moves the seed. Put it inside the area you want.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    min: 0
+    max: 255
+    step: 0.5
+    default: 20
+    description: How far a pixel's value may be from the seed's and still join the region.
+    effect: Higher values grow larger regions. Too high, and the region leaks into the neighboring areas.
+  - key: measure
+    label: Compare by
+    type: select
+    default: brightness
+    options:
+      - {value: brightness, label: Brightness}
+      - {value: color, label: Color}
+    description: Compare the brightness of the pixels, or their red, green and blue values.
+    effect: Color keeps areas of the same brightness but a different hue apart.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: "8 (sides and corners)"}
+      - {value: "4", label: "4 (sides only)"}
+    description: Which neighbors the region grows into.
+    effect: With 4 neighbors, the region cannot pass through a gap only one corner wide.
+formula: |
+  R = \text{the pixels } p \text{ connected to } s \text{ through pixels with } |Y(p) - Y(s)| \le T,
+  \qquad T = {{tolerance}}
+formulaExplanation: >-
+  s is the seed pixel and Y the brightness. A pixel joins the region when it matches the seed and a
+  path of matching pixels joins it to the seed. Each step of the path goes to one of the 4 or 8
+  neighbors. This is how skimage.segmentation.flood grows a region. It is also the region growing
+  with a fixed seed value that Gonzalez and Woods describe. With the color measure, the test is the largest of the three
+  channel differences. The seed is at a percent of the width and height, rounded down to a pixel,
+  so it stays on the same spot when the image is resized.
+symbols:
+  - {symbol: 's', meaning: 'The seed pixel'}
+  - {symbol: 'Y', meaning: 'The brightness'}
+  - {symbol: 'T', meaning: 'The tolerance'}
+steps:
+  - Find the seed pixel from its position in percent.
+  - Mark every pixel that matches the seed within the tolerance.
+  - Keep only the marked pixels connected to the seed, and make them white.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Selecting a lake, the sky or an organ in a scan from one point inside it.
+  - A first segmentation that a person guides.
+advantages:
+  - Simple and predictable.
+  - Keeps to one connected area, unlike a global threshold.
+limitations:
+  - Compares with the seed only, so slow changes of brightness across an area can stop it early.
+  - A single noisy seed pixel can give a poor region. Smooth the image first.
+artifacts:
+  - Holes where noise pushes pixels past the tolerance.
+  - Leaks through thin gaps in a boundary.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 10, region growing.
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.flood.
+    url: https://scikit-image.org/docs/stable/api/skimage.segmentation.html
+implementation: {path: web/src/core/filters/segmentation/regions.ts, symbol: regionGrowingFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Start at one pixel and spread to neighbors that look like it.
+  howItWorks:
+    - Pick a seed pixel inside the area you want.
+    - Find the pixels whose value is close to the seed's.
+    - Keep the ones you can reach from the seed without crossing a pixel that is too different.
+  academic: >-
+    Seeded region growing with a fixed seed value and a tolerance predicate, a flood fill on the
+    pixel graph with 4- or 8-connectivity.
+  paramNotes:
+    seedX: Where the seed is across the image.
+    seedY: Where the seed is down the image.
+    tolerance: How different a pixel may be.
+    measure: Compare brightness or color.
+    connectivity: Whether the region may pass through corners.
+  tryThis:
+    - Open the disks test image, add Gaussian noise, and raise the tolerance step by step. Watch the holes close, then the region leak.
+  pitfalls:
+    - A seed on an edge. Its value is between the two areas, so little matches it.
+  demos: [line-profile]
+related: [ccl, kmeans-color, threshold-global]
+docsPage: filters/segmentation/region-growing.md

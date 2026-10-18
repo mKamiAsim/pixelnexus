@@ -1,0 +1,168 @@
+id: landweber
+name: Landweber iteration
+aliases: [Landweber deconvolution, Van Cittert-Landweber iteration]
+family: restoration
+tags: [purpose:sharpening]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Undoes a known blur step by step, by moving the estimate against the gradient of the squared error.
+purpose: Show the simplest iterative deconvolution, where the number of iterations controls how much is restored.
+classification: {linearity: linear, domain: iterative, operation: gradient descent on the least squares error}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/iterative.ts, symbol: iterate}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 30
+    description: How many update steps to run.
+    effect: More iterations restore more detail, and after a point also raise the noise.
+  - key: tau
+    label: Step size
+    type: number
+    min: 0.05
+    max: 1.95
+    step: 0.05
+    default: 1.5
+    description: The step size tau of each update. The PSF adds up to 1, so steps below 2 converge.
+    effect: Larger steps converge in fewer iterations.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  f_{k+1} = f_k + \tau\, h' \circledast (g - h \circledast f_k),\quad \tau = {{tau}},\ k = 0, \ldots, K - 1,\ K = {{iterations}}
+formulaExplanation: >-
+  Each step blurs the estimate and takes the residual g - h * f_k. It blurs the residual with h',
+  the PSF turned by a half turn, and adds tau times the result. This is gradient descent on |h * f - g|^2, from
+  Landweber's iteration for integral equations. A normalized PSF has |H| at most 1, so steps
+  tau below 2 converge. After K steps, each frequency has covered 1 - (1 - tau |H|^2)^K of the
+  way from g to the inverse filter result. So the iteration count acts as a smooth cutoff. The first estimate is the image itself. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: 'K', meaning: The number of steps}
+  - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
+  - {symbol: '\tau', meaning: The step size}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with the estimate f equal to the extended image g.
+  - Blur f with h through the FFT and subtract it from g.
+  - Blur the residual with h' and add tau times it to f.
+  - Repeat for the chosen number of iterations.
+  - Crop the last estimate to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations. Each iteration takes four FFTs.
+useCases:
+  - Teaching iterative deconvolution and semi-convergence.
+  - Deblurring where the iteration count is the only setting to tune.
+advantages:
+  - Simple and linear, so its effect on each frequency is known exactly.
+  - Stopping early keeps noise down.
+limitations:
+  - Slow to restore frequencies where |H| is small.
+  - Values can go below 0 or above 255. Projected Landweber keeps them at 0 or above.
+artifacts:
+  - Ringing near strong edges after many iterations.
+references:
+  - kind: paper
+    text: Landweber, L. An iteration formula for Fredholm integral equations of the first kind. American Journal of Mathematics 73(3), 615 to 624, 1951.
+    doi: 10.2307/2372313
+implementation: {path: web/src/core/filters/restoration/iterative.ts, symbol: landweberFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/restoration/restoration.test.ts]
+learn:
+  oneSentence: Guess the sharp image and nudge the guess, step by step, toward one that blurs into the photo.
+  howItWorks:
+    - Blur the current guess and compare it with the photo.
+    - Spread the difference back with the blur.
+    - Add a part of it to the guess, and repeat.
+  academic: >-
+    Landweber iteration, steepest descent on the least squares functional, a spectral filter
+    whose regularization parameter is the iteration count.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    iterations: How long to refine the guess.
+    tau: How big each step is.
+  tryThis:
+    - Compare 10 and 100 iterations in the Iteration viewer.
+  pitfalls:
+    - A step size of 2 or more. The iteration then diverges.
+  demos: [iteration-viewer, noise-lab]
+related: [nnls-deconv, richardson-lucy, tikhonov]
+docsPage: filters/restoration/landweber.md

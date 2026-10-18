@@ -1,0 +1,91 @@
+id: phase-only
+name: Phase-only filter
+aliases: [Phase-only reconstruction, Phase only image]
+family: frequency
+tags: [purpose:edge, purpose:analysis]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Keeps the phase of every frequency and gives them all the same magnitude, which leaves the edges and lines of the image.
+purpose: Show how much of an image lives in the phase of its spectrum, and find edges without choosing a scale.
+classification: {linearity: nonlinear, domain: frequency, operation: phase normalization}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/shaping.ts, symbol: phaseOnlyValues}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  P(f) = M \frac{F(f)}{|F(f)|},\quad g = \operatorname{Re} \mathcal{F}^{-1}\{P\}
+formulaExplanation: >-
+  F is the spectrum of the image extended with the border mode, and M its mean magnitude. Every
+  frequency keeps its phase and gets the magnitude M. Oppenheim and Lim showed that the phase
+  holds most of what makes an image recognizable, so the result still shows the edges and lines.
+  Using M keeps the scale of the image. Magnitudes below 1e-9 times the largest count as 0, so
+  frequencies that a mirror extension makes 0 stay 0 instead of turning rounding noise into
+  content.
+symbols:
+  - {symbol: 'F', meaning: The spectrum of the extended image}
+  - {symbol: 'M', meaning: The mean magnitude of F}
+  - {symbol: 'P', meaning: The spectrum with every magnitude set to M}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT.
+  - Divide each frequency by its magnitude and multiply it by the mean magnitude.
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Teaching the role of phase and magnitude in images.
+  - Edge and line maps that do not depend on a kernel size.
+advantages:
+  - No parameters to tune.
+limitations:
+  - Noise gets the same magnitude as image detail, so noisy images give noisy results.
+  - The result has a new range of values, so it needs the output mapping.
+artifacts:
+  - A fine, grainy texture from the raised high frequencies.
+references:
+  - kind: paper
+    text: Oppenheim, A. V. and Lim, J. S. The importance of phase in signals. Proceedings of the IEEE 69(5), 529 to 541, 1981.
+    doi: 10.1109/PROC.1981.12022
+implementation: {path: web/src/core/filters/frequency/shaping.ts, symbol: phaseOnlyFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Keep only where each wave of the image sits, not how strong it is, and the edges are what remains.
+  howItWorks:
+    - Split the image into waves with the FFT.
+    - Make every wave equally strong, but keep where it sits.
+    - Add the waves back together. Edges and lines remain.
+  academic: >-
+    Phase-only reconstruction. The Fourier phase carries the positions of edges and lines, as
+    shown by Oppenheim and Lim.
+  paramNotes: {}
+  tryThis:
+    - Run it on a photo of a face. The outlines remain even though every magnitude is the same.
+  pitfalls:
+    - Expecting a smooth result. Noise is raised as much as detail.
+  demos: [frequency-explorer]
+related: [spectral-whitening, gaussian-highpass]
+docsPage: filters/frequency/phase-only.md

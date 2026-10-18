@@ -1,0 +1,117 @@
+id: susan-corner
+name: SUSAN corner detector
+aliases: [SUSAN, Smallest univalue segment assimilating nucleus]
+family: features
+tags: [purpose:analysis]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+
+summary: Finds corners with the SUSAN principle of Smith and Brady. It counts how many pixels in a small disk are about as bright as the center pixel. Flat areas are full, edges half full, and corners less, so a small count marks a corner. It uses no derivatives at all.
+purpose: Find corners without derivatives, and see a corner detector that works by counting similar pixels.
+classification: {linearity: nonlinear, domain: spatial, operation: USAN area minima}
+output: features
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/susan.py, symbol: susan_representation}
+supportRadius: '5'
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The detector works on the luma with the BT.709 weights, in pixel levels. Alpha is ignored. The
+  image does not change. The corners go to the Features panel and are drawn on the canvas as
+  small crosses.
+boundary: Set by the Border mode parameter. The default is reflect 101. It fills the mask past the image edge.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The USAN sums.'}
+  - {name: SciPy, optional: false, note: 'The non-maximum suppression (scipy.ndimage).'}
+
+params:
+  - key: brightness
+    label: Brightness threshold
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 25
+    unit: levels
+    description: How close in brightness a pixel must be to count as similar to the center, the t of the formula.
+    effect: Lower values count fewer pixels as similar, so weak edges also make corners.
+  - key: geometric
+    label: Geometric threshold
+    type: number
+    min: 0.1
+    max: 0.75
+    step: 0.05
+    default: 0.5
+    description: The share of the 37 mask pixels below which a USAN area counts as a corner. The paper uses half for corners.
+    effect: Lower values keep only sharper corners.
+  - ref: border
+formula: |
+  n(r_0) = \sum_{\lvert r - r_0 \rvert \le 3.4} e^{-\left(\frac{I(r) - I(r_0)}{t}\right)^6},
+  \qquad
+  R(r_0) = \begin{cases} g - n(r_0) & n(r_0) < g \\ 0 & \text{otherwise} \end{cases},
+  \qquad
+  t = {{brightness}},\ g = {{geometric}} \cdot 37
+formulaExplanation: >-
+  Around each pixel, the nucleus r_0, a disk of 37 pixels is placed. Each pixel in it counts as
+  similar to the nucleus by a smooth step. It is about 1 when their brightness differs by much
+  less than t, and about 0 when it differs by much more. The sum n is the USAN area, the univalue
+  segment assimilating nucleus. In a flat area all 37 pixels are similar. On a straight edge
+  about half are. At a corner, fewer are, the fewer the sharper the corner. So the response R
+  grows as n falls below the geometric threshold g. Corners are the pixels where R is above 0
+  and the largest in its 5 x 5 neighborhood.
+symbols:
+  - {symbol: 'r_0', meaning: 'The nucleus, the center pixel'}
+  - {symbol: 'n', meaning: 'The USAN area, from 0 to 37'}
+  - {symbol: 't', meaning: 'The brightness threshold'}
+  - {symbol: 'g', meaning: 'The geometric threshold'}
+steps:
+  - Take the luma in pixel levels.
+  - For each pixel, sum the similarity of the 37 pixels of the disk around it.
+  - Turn small sums into a corner response.
+  - Keep the pixels whose response is the largest in their 5 x 5 neighborhood.
+complexity:
+  time: O(37 N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Corners in drawings, documents and man-made scenes.
+  - Teaching a corner detector without derivatives.
+advantages:
+  - No derivatives, so no blur and little sensitivity to noise.
+  - Simple to follow by hand on a small patch.
+limitations:
+  - The paper adds tests on the shape of the USAN to remove false corners. PixelNexus leaves them out.
+  - Curved edges look like weak corners. On the Disks image it finds 160 corners, almost all along the round edges.
+  - The 5 x 5 window of the suppression is PixelNexus's choice.
+artifacts:
+  - Rows of corners along tight curves and at the ends of thin lines.
+references:
+  - kind: paper
+    text: Smith, S. M., and Brady, J. M. SUSAN. A new approach to low level image processing. International Journal of Computer Vision 23(1), 45 to 78, 1997.
+    doi: 10.1023/A:1007963824710
+implementation: {path: engine/src/pixelnexus_engine/filters/susan.py, symbol: susan_corner}
+tests: [engine/tests/test_susan.py]
+learn:
+  oneSentence: Count how many nearby pixels look like the center pixel. Few means a corner.
+  howItWorks:
+    - Place a small disk around each pixel.
+    - Count the pixels in the disk that are about as bright as the center.
+    - In a flat area all of them are, on an edge half, at a corner fewer.
+    - Mark the pixels with the smallest counts as corners.
+  academic: >-
+    Corner detection by minima of the USAN area with a smooth brightness similarity and a
+    geometric threshold, after Smith and Brady, without their false-corner tests.
+  paramNotes:
+    brightness: How similar a pixel must be to count.
+    geometric: How small the count must be for a corner.
+    border: How the image is filled past its edges.
+  tryThis:
+    - Apply it to the Siemens star and compare the corners with the Harris corner detector.
+  pitfalls:
+    - Expecting no corners on curves. Curved edges also make the count small.
+  demos: [feature-viewer]
+related: [harris, shi-tomasi, fast, moravec]
+docsPage: filters/features/susan-corner.md

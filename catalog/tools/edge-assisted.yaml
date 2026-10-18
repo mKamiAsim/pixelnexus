@@ -1,0 +1,72 @@
+id: edge-assisted
+name: Edge-assisted selection
+aliases: [Snap to edges]
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+planNotes: Snaps to nearby edges.
+params:
+  - key: radius
+    label: Reach
+    type: number
+    default: 8
+    min: 1
+    max: 64
+    step: 1
+    unit: px
+    description: How far the selection edge may move to meet an image edge.
+    effect: Larger values find edges farther away, but may jump to the wrong one.
+  - key: contrast
+    label: Contrast
+    type: number
+    default: 10
+    min: 1
+    max: 100
+    step: 1
+    unit: '%'
+    description: The weakest edge that counts, in percent of the strongest edge in the image.
+    effect: Higher values snap only to clear edges. Where no edge counts, the selection stays where it was.
+  - key: smoothing
+    label: Smoothing
+    type: number
+    default: 1
+    min: 0
+    max: 20
+    step: 1
+    unit: px
+    description: Radius of the majority smoothing after snapping.
+    effect: Higher values remove small bumps along the new edge.
+summary: "Moves the edge of the selection onto nearby edges in the image."
+steps:
+  - "Find the band of pixels within the reach of the selection edge, with the exact distance transform."
+  - "Rank each band pixel: edges at least as strong as the contrast setting rank by strength, above all others."
+  - "Rank weaker pixels higher the nearer they are to the old edge."
+  - "Flood the band from both sides in rank order. The floods meet on the strongest edge."
+  - "Smooth the result by majority, then soften the edge by one pixel."
+implementation:
+  path: "web/src/core/selection/snap.ts"
+  symbol: "snapToEdges"
+tests:
+  - "web/src/core/selection/snap.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+references:
+  - kind: "paper"
+    text: "Felzenszwalb, P. F. and Huttenlocher, D. P. Distance Transforms of Sampled Functions. Theory of Computing 8(19), 415 to 428, 2012."
+    doi: "10.4086/toc.2012.v008a019"
+learn:
+  oneSentence: "Snap to edges pulls a rough selection onto the real outline of an object."
+  howItWorks:
+    - "Only pixels near the selection edge may change, within the reach."
+    - "Both sides of the edge spread into that band until they meet."
+    - "They meet on the strongest image edge there, so the selection edge moves onto it."
+  paramNotes:
+    radius: "How far the selection edge may move."
+    contrast: "Weaker edges are ignored. Where no edge counts, the selection stays where it was."
+  tryThis:
+    - "Draw a circle a little larger than a disk, then use Select > Modify > Snap to edges."
+  pitfalls:
+    - "A large reach can jump to a different object's edge."
+  demos: []
+docsPage: "selection/snap-to-edges.md"

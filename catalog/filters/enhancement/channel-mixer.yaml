@@ -1,0 +1,180 @@
+id: channel-mixer
+name: Channel mixer
+aliases: [RGB mixer, Color matrix]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Builds each output channel as a weighted sum of the input red, green and blue.
+purpose: Swap or blend channels, correct color casts, or create false-color effects.
+classification: {linearity: linear, domain: color, operation: color matrix}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: channelMixerFilter}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix of weights in percent. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: redFromRed
+    label: Red from red
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 100
+    unit: "%"
+    description: How much of the input red goes into the output red, in percent.
+    effect: Raises or lowers the output red where the input red is strong.
+  - key: redFromGreen
+    label: Red from green
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input green goes into the output red, in percent.
+    effect: Raises or lowers the output red where the input green is strong.
+  - key: redFromBlue
+    label: Red from blue
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input blue goes into the output red, in percent.
+    effect: Raises or lowers the output red where the input blue is strong.
+  - key: greenFromRed
+    label: Green from red
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input red goes into the output green, in percent.
+    effect: Raises or lowers the output green where the input red is strong.
+  - key: greenFromGreen
+    label: Green from green
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 100
+    unit: "%"
+    description: How much of the input green goes into the output green, in percent.
+    effect: Raises or lowers the output green where the input green is strong.
+  - key: greenFromBlue
+    label: Green from blue
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input blue goes into the output green, in percent.
+    effect: Raises or lowers the output green where the input blue is strong.
+  - key: blueFromRed
+    label: Blue from red
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input red goes into the output blue, in percent.
+    effect: Raises or lowers the output blue where the input red is strong.
+  - key: blueFromGreen
+    label: Blue from green
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 0
+    unit: "%"
+    description: How much of the input green goes into the output blue, in percent.
+    effect: Raises or lowers the output blue where the input green is strong.
+  - key: blueFromBlue
+    label: Blue from blue
+    type: number
+    min: -200
+    max: 200
+    step: 1
+    default: 100
+    unit: "%"
+    description: How much of the input blue goes into the output blue, in percent.
+    effect: Raises or lowers the output blue where the input blue is strong.
+formula: |
+  \begin{bmatrix} R' \\ G' \\ B' \end{bmatrix} = \frac{1}{100}
+  \begin{bmatrix}
+  {{redFromRed}} & {{redFromGreen}} & {{redFromBlue}} \\
+  {{greenFromRed}} & {{greenFromGreen}} & {{greenFromBlue}} \\
+  {{blueFromRed}} & {{blueFromGreen}} & {{blueFromBlue}}
+  \end{bmatrix}
+  \begin{bmatrix} R \\ G \\ B \end{bmatrix}
+formulaExplanation: >-
+  Each output channel is a weighted sum of the three input channels, with weights in percent.
+  The default is the identity, 100 on the diagonal and 0 elsewhere, which changes nothing. A row
+  that adds up to 100 keeps that channel's level for grays. The matrix acts on the encoded sRGB values from 0 to 255, and the results are clipped to 0 to 255.
+symbols:
+  - {symbol: "R, G, B", meaning: 'The input channel values from 0 to 255'}
+  - {symbol: "R', G', B'", meaning: 'The output channel values'}
+steps:
+  - Build the 3 by 3 matrix from the nine weights.
+  - Multiply each pixel's color by it.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Swapping channels, for example red and blue.
+  - Correcting a color cast by mixing some of one channel into another.
+  - False-color views of single channels.
+advantages:
+  - The most general linear color change, with full control.
+limitations:
+  - Nine numbers are hard to tune by hand.
+  - Rows far from a sum of 100 change the brightness of grays.
+artifacts:
+  - Clipping when weights add up to much more than 100.
+  - Noise from a weak channel shows when it gets a large weight.
+references:
+  - kind: web
+    text: GIMP documentation, the Channel Mixer filter.
+    url: https://docs.gimp.org/2.10/en/gimp-filter-channel-mixer.html
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: channelMixerFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Make each new color channel from a recipe of the old red, green and blue.
+  howItWorks:
+    - For the new red, take a share of the old red, green and blue and add them.
+    - Do the same for the new green and the new blue.
+    - The shares are the nine weights.
+  academic: >-
+    A general linear transformation of RGB by a 3 by 3 matrix, given in percent.
+  paramNotes:
+    redFromRed: Old red into new red.
+    redFromGreen: Old green into new red.
+    redFromBlue: Old blue into new red.
+    greenFromRed: Old red into new green.
+    greenFromGreen: Old green into new green.
+    greenFromBlue: Old blue into new green.
+    blueFromRed: Old red into new blue.
+    blueFromGreen: Old green into new blue.
+    blueFromBlue: Old blue into new blue.
+  tryThis:
+    - Swap red and blue. Set red from red and blue from blue to 0, and red from blue and blue from red to 100.
+  pitfalls:
+    - Rows that add up to far more than 100. The image brightens and clips.
+  demos: [line-profile]
+related: [bw-mix, sepia, hue-rotate]
+docsPage: filters/enhancement/channel-mixer.md

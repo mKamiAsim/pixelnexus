@@ -1,0 +1,141 @@
+id: shen-castan
+name: Shen-Castan
+aliases: [ISEF edge detector, Infinite symmetric exponential filter, Shen-Castan edge detector]
+family: edges
+tags: [purpose:edge]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: ISEF filter.
+
+summary: Smooths with the infinite symmetric exponential filter (ISEF), which Shen and Castan showed is optimal for step edges, and finds edges where a band-limited Laplacian changes sign. The ISEF runs as a recursion, so its cost does not depend on the amount of smoothing. The last steps, a gradient at the zero crossings and hysteresis, are our simplified version.
+purpose: An edge detector with a sharp, cheap smoothing filter, and a way to see a binary Laplacian at work.
+classification: {linearity: nonlinear, domain: spatial, operation: edge detection}
+output: image
+representation: algorithm
+representationLabel: simplified
+representationSource: {path: engine/src/pixelnexus_engine/filters/shen_castan.py, symbol: shen_castan_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, not rounded. The result is gray, with the
+  alpha of the image.
+boundary: The recursions start in the steady state of the edge pixel, so the image is extended by its edge pixels without end.
+dependencies:
+  - {name: SciPy, optional: false, note: 'scipy.signal.lfilter runs the recursions.'}
+  - {name: scikit-image, optional: false, note: 'skimage.filters.apply_hysteresis_threshold.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: edges
+    options:
+      - {value: edges, label: Edges}
+      - {value: smoothed, label: Smoothed}
+      - {value: laplacian, label: Band-limited Laplacian}
+      - {value: binary, label: Binary Laplacian}
+    description: The edge map, or one of the stages. The Laplacian is shown as 128 plus 4 times its value, our choice.
+    effect: The stages show how the edges come about.
+  - key: b
+    label: Smoothing factor b
+    type: number
+    min: 0.1
+    max: 0.98
+    step: 0.01
+    default: 0.8
+    description: The factor b of the ISEF, from 0 to 1. Our choice of 0.8.
+    effect: Larger values smooth more, so noise drops and fine detail goes.
+  - key: low
+    label: Low threshold
+    type: number
+    min: 0
+    max: 50
+    step: 0.5
+    default: 2
+    description: The low hysteresis threshold on the gradient of the smoothed image, in levels per pixel. Our choice of 2.
+    effect: Lower values let edges run further from strong pixels.
+  - key: high
+    label: High threshold
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 5
+    description: The high hysteresis threshold, in levels per pixel. An edge must reach it somewhere. Our choice of 5.
+    effect: Higher values keep fewer edges.
+formula: |
+  f(x, y) = \frac{1 - b}{1 + b}\, b^{\lvert x \rvert + \lvert y \rvert},
+  \qquad
+  B = [\, f * Y - Y > 0 \,]
+formulaExplanation: >-
+  f is the discrete ISEF. It sums to 1 and is separable, so it is applied along the rows and
+  then the columns. Along each line, a forward recursion and a backward recursion, each with
+  the factor b, add up to the kernel. The smoothed image minus the original approximates a
+  Laplacian, limited to a band of frequencies. B is 1 where it is positive. Edges lie on the
+  border of the regions where B is 1. We keep the border pixels where the gradient of the
+  smoothed image passes the hysteresis thresholds.
+symbols:
+  - {symbol: 'f', meaning: 'The ISEF kernel'}
+  - {symbol: 'b', meaning: 'The smoothing factor, from 0 to 1'}
+  - {symbol: 'Y', meaning: 'The luma of the image'}
+  - {symbol: 'B', meaning: 'The binary Laplacian'}
+steps:
+  - Take the luma.
+  - Smooth it with the ISEF, a forward and a backward recursion along each row and each column.
+  - Subtract the luma from the smoothed image, and mark the positive pixels.
+  - Take the marked pixels that have an unmarked 4-neighbor as zero crossings.
+  - Measure the gradient of the smoothed image at the zero crossings.
+  - Keep the edges with hysteresis between the low and the high threshold.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels, at any b.
+useCases:
+  - Edge detection on noisy images with a cheap filter.
+  - Showing how a binary Laplacian marks edges.
+advantages:
+  - The ISEF costs the same at any amount of smoothing.
+  - Thin, well placed edges from the zero crossings.
+limitations:
+  - The gradient and hysteresis steps are our simplified version, not the adaptive gradient of the paper.
+  - The ISEF has a sharp peak, so it keeps more noise than a Gaussian of the same width.
+artifacts:
+  - Gaps at the corners of shapes with high thresholds.
+  - Short spurs from noise with low thresholds.
+references:
+  - kind: paper
+    text: Shen, J., and Castan, S. An optimal linear operator for step edge detection. CVGIP Graphical Models and Image Processing 54(2), 112 to 133, 1992.
+    doi: 10.1016/1049-9652(92)90060-B
+  - kind: paper
+    text: Castan, S., Zhao, J., and Shen, J. Optimal filter for edge detection methods and results. Computer Vision, ECCV 90, Lecture Notes in Computer Science 427, 13 to 17, 1990.
+    doi: 10.1007/BFb0014845
+  - kind: paper
+    text: Orhei, C., Bogdan, V., Bonchis, C., and Vasiu, R. Dilated filters for edge-detection algorithms. Applied Sciences 11(22), 10716, 2021. The discrete kernel and the steps used here. Preprint at arXiv 2106.07395.
+    doi: 10.3390/app112210716
+implementation: {path: engine/src/pixelnexus_engine/filters/shen_castan.py, symbol: shen_castan}
+tests: [engine/tests/test_shen_castan.py]
+learn:
+  oneSentence: Smooth with a sharp exponential filter and find edges where the smoothed image crosses the original.
+  howItWorks:
+    - Smooth the image with a filter that runs forward and backward once along each line.
+    - Subtract the original. The sign of the result changes at each edge.
+    - Keep the places where it changes and the gradient is strong.
+  academic: >-
+    The ISEF of Shen and Castan, computed recursively, with a binary band-limited Laplacian, zero
+    crossings, and a simplified gradient and hysteresis stage.
+  paramNotes:
+    output: Edges or a stage.
+    b: How much to smooth.
+    low: Where weak edges stop.
+    high: Where an edge must start.
+  tryThis:
+    - Show the binary Laplacian, then the edges, and see that the edges lie on its borders.
+    - Raise b on a noisy image and watch the stray edges go.
+  pitfalls:
+    - A b near 1 on a small image. Nearby edges merge.
+  demos: [line-profile]
+related: [deriche, canny, marr-hildreth]
+docsPage: filters/edges/shen-castan.md

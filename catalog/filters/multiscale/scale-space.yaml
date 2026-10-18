@@ -1,0 +1,182 @@
+id: scale-space
+name: Scale-space filtering
+aliases: [Gaussian scale space, Normalized derivatives, Automatic scale selection]
+family: multiscale
+tags: [purpose:analysis, purpose:edge]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+planNotes: Gaussian scale-space stack and normalized derivatives.
+
+summary: Blurs the image at a series of Gaussian scales, measures gradient, Laplacian or Hessian at each, and keeps at every pixel the scale with the strongest normalized response.
+purpose: Find the size of blobs and edges, and compare filter responses at different scales on a fair footing.
+classification: {linearity: nonlinear, domain: transform, operation: normalized derivatives and scale selection}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/multiscale/scale-space.ts, symbol: normalizedMeasure}
+supportRadius: floor(4 * max(sigma, sigmaMax) + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is filtered, and the result is gray. With the RGB scope, each of the
+  red, green and blue channels is filtered on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: measure
+    label: Measure
+    type: select
+    default: laplacian
+    options:
+      - {value: gradient, label: Gradient magnitude}
+      - {value: laplacian, label: Laplacian}
+      - {value: hessian, label: Determinant of the Hessian}
+    description: The derivative measure taken at each scale.
+    effect: The gradient responds to edges. The Laplacian and the Hessian respond to blobs.
+  - key: sigma
+    label: Smallest sigma
+    type: number
+    min: 0.5
+    max: 16
+    step: 0.1
+    default: 1
+    unit: px
+    description: The sigma of the finest scale in the stack. The scale t is sigma squared.
+    effect: Larger values ignore smaller structures.
+  - key: sigmaMax
+    label: Largest sigma
+    type: number
+    min: 0.5
+    max: 32
+    step: 0.1
+    default: 4
+    unit: px
+    description: The sigma of the coarsest scale in the stack. Values below the smallest sigma count as the smallest sigma.
+    effect: Larger values let larger structures find their scale, and make the filter slower.
+  - key: scales
+    label: Scales
+    type: integer
+    min: 1
+    max: 16
+    step: 1
+    default: 5
+    description: How many scales the stack holds, spaced evenly in log sigma. 1 uses the smallest sigma only.
+    effect: More scales give a finer choice of scale, and make the filter slower.
+  - key: gamma
+    label: Gamma
+    type: number
+    min: 0
+    max: 2
+    step: 0.05
+    default: 1
+    description: The normalization power gamma. A derivative of order m is multiplied by t to the power m gamma / 2.
+    effect: Higher values favor coarser scales. 0 gives the plain derivatives, which usually favor the finest scale.
+  - key: output
+    label: Output
+    type: select
+    default: response
+    options:
+      - {value: response, label: Strongest response}
+      - {value: scale, label: Selected scale}
+    description: Whether to show the strongest normalized response, or the sigma where it is reached.
+    effect: The selected scale shows the size of the structure at each pixel.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+formula: |
+  L(\cdot;\, t) = g(\cdot;\, t) * I,
+  \quad
+  N(\cdot;\, t) = \begin{cases}
+    t^{\gamma/2}\, |\nabla L| & \text{gradient} \\
+    t^{\gamma}\, (L_{xx} + L_{yy}) & \text{Laplacian} \\
+    t^{2\gamma}\, (L_{xx} L_{yy} - L_{xy}^2) & \text{Hessian}
+  \end{cases}
+  \qquad
+  t_i = \sigma_i^2,
+  \quad
+  \sigma_i = \sigma_0 \left(\frac{\sigma_{\max}}{\sigma_0}\right)^{i/(n-1)},
+  \quad
+  I_{\text{out}} = N(\cdot;\, t_{i^*}),
+  \quad
+  i^* = \arg\max_i |N(\cdot;\, t_i)|,
+  \qquad
+  \sigma_0 = {{sigma}},\ \sigma_{\max} = {{sigmaMax}},\ n = {{scales}},\ \gamma = {{gamma}}
+formulaExplanation: >-
+  L is the image blurred by a Gaussian g of variance t, the scale space of the image. Its
+  derivatives come from derivative-of-Gaussian kernels cut at 4 sigma, as in
+  scipy.ndimage.gaussian_filter. Derivatives get weaker as t grows, so plain responses at
+  different scales cannot be compared. Lindeberg multiplies a derivative of order m by
+  t^(m gamma / 2). With gamma 1, a structure made s times larger gives the same normalized
+  responses at scale s^2 t as the original gives at t. So the scale where the normalized
+  response is strongest grows with the size of the structure. Lindeberg detects features as local maxima
+  over space and scale. This filter takes, at each pixel, the largest absolute value over the
+  stack, so it gives a value at every pixel. Ties go to the smaller sigma. The scale output is
+  the sigma of that scale.
+symbols:
+  - {symbol: 'I', meaning: The input channel}
+  - {symbol: 'L', meaning: 'The scale space, the image blurred by a Gaussian of variance t'}
+  - {symbol: 't, \sigma', meaning: 'The scale t = sigma^2, in pixels squared'}
+  - {symbol: 'L_x, L_{xx}, L_{xy}', meaning: Derivatives of L along x and y. y points down.}
+  - {symbol: 'N', meaning: The normalized measure}
+  - {symbol: '\gamma', meaning: The normalization power}
+  - {symbol: 'n', meaning: The number of scales in the stack}
+steps:
+  - Build the list of sigmas from the smallest to the largest, spaced evenly in log sigma.
+  - For each sigma, correlate the image with the derivative-of-Gaussian kernels the measure needs.
+  - Combine the derivatives into the measure and multiply it by its normalization factor.
+  - At each pixel, keep the value of largest absolute value and the sigma where it was found.
+  - Output the kept value, or the kept sigma.
+complexity:
+  time: O(N n r)
+  memory: O(N)
+  notes: N is the number of pixels, n the number of scales and r the radius of the largest kernel, 4 times the largest sigma. Each kernel is separable.
+useCases:
+  - Measuring the size of blobs, such as cells, stars or spots, from the selected scale.
+  - Comparing edge and blob strength across scales on a fair footing.
+  - Learning how scale selection works before SIFT and other scale-invariant detectors.
+advantages:
+  - The selected scale follows the size of the structure, so the response does not depend on how large the structure is.
+  - Built from linear Gaussian derivatives, with a clear theory behind it.
+limitations:
+  - The stack covers only the range from the smallest to the largest sigma. Structures outside it pick an end of the range.
+  - The selected scale is one of the stack values, so it is only as fine as the stack.
+  - Slower than one Gaussian derivative, since each scale needs its own filtering.
+artifacts:
+  - Bands of constant value in the selected scale map, since it holds only the stack values.
+  - Near the image border, large kernels see mostly the border extension, so the selected scale there can differ.
+references:
+  - kind: paper
+    text: Lindeberg, T. Feature detection with automatic scale selection. International Journal of Computer Vision 30(2), 79 to 116, 1998.
+    doi: 10.1023/A:1008045108935
+implementation: {path: web/src/core/filters/multiscale/scale-space.ts, symbol: scaleSpaceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/multiscale/multiscale.test.ts]
+learn:
+  oneSentence: Look at the image through Gaussian blurs of many sizes, and at each pixel keep the size where a feature stands out most.
+  howItWorks:
+    - Blur the image with Gaussians from small to large.
+    - At each blur, measure edges or blobs with derivatives.
+    - Scale each measure so that small and large blurs are judged fairly.
+    - At each pixel, keep the strongest measure and the blur size it came from.
+  academic: >-
+    Gaussian scale space with gamma-normalized derivatives and scale selection by the maximum
+    of the normalized response over scale, after Lindeberg.
+  paramNotes:
+    measure: What kind of feature to look for.
+    sigma: The smallest blur in the stack.
+    sigmaMax: The largest blur in the stack.
+    scales: How many blur sizes to try.
+    gamma: How strongly larger blurs are boosted.
+    output: The strongest response, or the blur size it came from.
+  tryThis:
+    - Open an image with round spots and choose the selected scale output. Larger spots turn brighter.
+    - Set gamma to 0 and see the finest scale win almost everywhere.
+  pitfalls:
+    - A stack that ends below the size of the structures. They all pick the largest sigma.
+  demos: [stage-viewer, line-profile]
+related: [log, dog, gaussian, steerable, gaussian-pyramid, sift]
+docsPage: filters/multiscale/scale-space.md

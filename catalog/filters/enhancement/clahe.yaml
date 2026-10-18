@@ -1,0 +1,149 @@
+id: clahe
+name: CLAHE
+aliases: [Contrast limited adaptive histogram equalization, Local histogram equalization]
+family: enhancement
+tags: [purpose:contrast]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Tile grid, clip limit, bilinear blending. Checked against OpenCV.
+
+summary: Equalizes the histogram of each tile of a grid, with a clip limit that caps the contrast gain, and blends the tile curves smoothly.
+purpose: Bring out local detail in images with both dark and bright regions, without blowing up the noise in flat areas.
+classification: {linearity: nonlinear, domain: point, operation: tiled histogram equalization with clipping}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/clahe.ts, symbol: tileCurves}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  With the brightness scope, the default, only luma is equalized and the colors stay. With RGB
+  scope, each channel is equalized on its own, which can shift colors. Alpha is kept.
+boundary: >-
+  When the image size is not a multiple of the grid, the image is extended at the right and
+  bottom with the reflect 101 rule, as OpenCV does. Pixels outside the outermost tile centers
+  use the curves of the nearest tiles. The tile grid covers the whole image, so the filter
+  always runs on the whole image.
+
+params:
+  - key: tilesX
+    label: Tiles across
+    type: integer
+    min: 1
+    max: 64
+    step: 1
+    default: 8
+    description: How many tiles the grid has from left to right. Never more than the image width.
+    effect: More tiles adapt to smaller regions and raise local contrast more.
+  - key: tilesY
+    label: Tiles down
+    type: integer
+    min: 1
+    max: 64
+    step: 1
+    default: 8
+    description: How many tiles the grid has from top to bottom. Never more than the image height.
+    effect: More tiles adapt to smaller regions and raise local contrast more.
+  - key: clipLimit
+    label: Clip limit
+    type: number
+    min: 0.1
+    max: 40
+    step: 0.1
+    default: 2
+    description: The clip limit c of OpenCV. No histogram bin of a tile may hold more than c times the average bin count.
+    effect: Lower values give gentler contrast and less noise. High values come close to AHE.
+  - ref: channelScope
+    default: luminance
+formula: |
+  \beta = \max\!\left(1, \left\lfloor c \, \frac{M}{256} \right\rfloor\right),
+  \quad
+  \tilde{h}^{(t)}_k = \min\!\left(h^{(t)}_k, \beta\right) + \left\lfloor \frac{E^{(t)}}{256} \right\rfloor + r^{(t)}_k,
+  \quad
+  T^{(t)}(k) = \operatorname{round}\!\left(\frac{255}{M} \sum_{j=0}^{k} \tilde{h}^{(t)}_j\right),
+  \quad
+  I_{\text{out}} = \sum_{t} w_t(x, y)\, T^{(t)}(I),
+  \qquad
+  c = {{clipLimit}},\ {{tilesX}} \times {{tilesY}}\ \text{tiles}
+formulaExplanation: >-
+  h^(t) is the histogram of tile t and M the number of pixels in a tile. No bin may hold more
+  than beta pixels. The E^(t) pixels above the limit are spread over all 256 bins, the same
+  share to each. The remainder r goes out one pixel at a time from bin 0, with a step of
+  max(1, floor(256 / remainder)). The tile curve T^(t) is the scaled running total, rounded to
+  whole levels. The slope of a tile curve at level k is 255 / M times the count of that bin, so
+  the limit caps the contrast gain at about c. Each pixel blends the curves of the four nearest
+  tile centers with bilinear weights w_t. Tile centers sit at the middle of each tile. Outside
+  the outermost centers, the nearest curves are used. These are the steps of cv::CLAHE in
+  OpenCV, which follow Zuiderveld. Values between two levels take each curve interpolated
+  between them.
+symbols:
+  - {symbol: 'h^{(t)}_k', meaning: 'The number of pixels of tile t at level k'}
+  - {symbol: 'M', meaning: 'The number of pixels in one tile'}
+  - {symbol: 'c, \beta', meaning: 'The clip limit and the largest count a bin may keep'}
+  - {symbol: 'E^{(t)}', meaning: 'The number of clipped pixels of tile t'}
+  - {symbol: 'T^{(t)}', meaning: 'The curve of tile t'}
+  - {symbol: 'w_t(x, y)', meaning: 'The bilinear weight of tile t at the pixel'}
+steps:
+  - Extend the image at the right and bottom so that its size is a multiple of the grid.
+  - Count the histogram of the levels in each tile.
+  - Clip each histogram at beta and spread the clipped pixels over all bins.
+  - Turn each tile histogram into a curve, 255 / M times its running total, rounded.
+  - For each pixel, blend the curves of the four nearest tile centers bilinearly and apply the blend to the pixel's value.
+complexity:
+  time: O(N + 256 T)
+  memory: O(256 T)
+  notes: N is the number of pixels and T the number of tiles. Each pixel blends four table lookups.
+useCases:
+  - Medical images such as X-rays and CT, where the clip limit keeps noise in check.
+  - Photos with deep shadows and bright skies.
+  - Underwater and foggy images.
+advantages:
+  - Adapts the contrast to each region of the image.
+  - The clip limit keeps flat areas and noise from being stretched too far.
+  - Smooth blending, with no tile edges.
+limitations:
+  - Can look unnatural on photos, with halos at the borders of large bright or dark regions.
+  - The tile size must suit the size of the detail.
+artifacts:
+  - Halos and dark rims near large bright objects.
+  - Some noise is still raised in flat areas at high clip limits.
+references:
+  - kind: book
+    text: Zuiderveld, K. Contrast Limited Adaptive Histogram Equalization. In Heckbert, P. S. (editor), Graphics Gems IV, 474 to 485. Academic Press, 1994.
+    doi: 10.1016/B978-0-12-336156-1.50061-6
+  - kind: paper
+    text: Pizer, S. M., Amburn, E. P., Austin, J. D., Cromartie, R., Geselowitz, A., Greer, T., ter Haar Romeny, B., Zimmerman, J. B. and Zuiderveld, K. Adaptive histogram equalization and its variations. Computer Vision, Graphics, and Image Processing 39(3), 355 to 368, 1987.
+    doi: 10.1016/S0734-189X(87)80186-X
+  - kind: library
+    text: OpenCV documentation, cv::CLAHE and cv::createCLAHE.
+    url: https://docs.opencv.org/4.x/d6/db6/classcv_1_1CLAHE.html
+implementation: {path: web/src/core/filters/enhancement/clahe.ts, symbol: claheFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/enhancement.test.ts]
+learn:
+  oneSentence: Equalize the brightness in each part of the image on its own, but cap how far the contrast may be raised.
+  howItWorks:
+    - Cut the image into a grid of tiles.
+    - Count the brightness histogram of each tile.
+    - Cut off the tallest bars at the clip limit and share the extra pixels out over all bars.
+    - Build an equalization curve for each tile.
+    - Blend the curves of the nearest tiles smoothly for every pixel.
+  academic: >-
+    Contrast limited adaptive histogram equalization after Zuiderveld: per-tile equalization
+    whose histograms are clipped and redistributed, which bounds the slope of each mapping,
+    with bilinear interpolation of the tile mappings.
+  paramNotes:
+    tilesX: How many tiles across.
+    tilesY: How many tiles down.
+    clipLimit: How much the contrast may be raised. Lower is gentler.
+  tryThis:
+    - Compare histogram equalization with CLAHE on a photo with a bright sky.
+    - Raise the clip limit from 1 to 40 and watch the noise in flat areas grow.
+  pitfalls:
+    - RGB scope on a color photo. Each channel gets different curves and the colors shift.
+  demos: [point-op-curve]
+related: [ahe, histogram-eq, percentile-normalize]
+docsPage: filters/enhancement/clahe.md

@@ -1,0 +1,50 @@
+id: lasso-polygon
+name: Polygonal lasso
+group: lasso
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Gives edge pixels a value for the part of them that the shape covers.
+    effect: Curved and slanted edges look smooth instead of stepped.
+summary: "Selects a polygon whose corners you click."
+steps:
+  - "Add a corner at each click. A line follows the pointer to show the next side."
+  - "Close the polygon on the first corner, with a double-click or with Enter."
+  - "Fill the polygon with the nonzero winding rule, with anti-aliasing."
+  - "Feather the shape when the feather setting is above 0."
+  - "Combine it with the current selection by the mode."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "polygonMask"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The polygonal lasso selects a shape with straight sides, one click per corner."
+  howItWorks:
+    - "Click to place each corner."
+    - "Backspace removes the last corner, Escape cancels."
+    - "Click the first corner, double-click or press Enter to close the shape."
+  tryThis:
+    - "Select a building or a window frame, where the edges are straight."
+  pitfalls:
+    - "Clicks closer than 6 screen pixels to the first corner close the shape."
+  demos: []
+docsPage: "selection/lasso.md"

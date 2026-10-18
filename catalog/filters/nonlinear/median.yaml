@@ -1,0 +1,116 @@
+id: median
+name: Median filter
+aliases: [Per-channel median filter]
+family: nonlinear
+tags: [purpose:denoise, noise:impulse]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+
+summary: Replaces each pixel with the middle value of its window.
+purpose: Remove salt-and-pepper noise while keeping edges sharp.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/median.ts, symbol: medianWindow}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each of red, green and blue gets its own median. The three medians can come from different
+  pixels, so new colors can appear at color edges. With the brightness scope, luma is rounded to
+  whole values first, then its median replaces it. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows remove bigger specks but also remove thin lines and small details.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \operatorname{median}\,\{\, I(x+i,\, y+j) \;:\; -r \le i \le r,\; -r \le j \le r \,\},
+  \qquad
+  r = ({{size}} - 1) / 2
+formulaExplanation: >-
+  The filter collects the window values, sorts them and takes the middle one. The window size
+  is odd, so there is always exactly one middle value and it is one of the input values.
+symbols:
+  - {symbol: 'I', meaning: Input channel value}
+  - {symbol: 'I_{\text{out}}', meaning: Output channel value}
+  - {symbol: '(x, y)', meaning: Pixel position}
+  - {symbol: 'r', meaning: Window radius in pixels}
+steps:
+  - Pad the image with the border mode.
+  - For each pixel and channel, collect the values in the size by size window.
+  - Find the middle value with a sliding 256-bin histogram.
+  - Write it to the output pixel.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: >-
+    N is the number of pixels per channel and k is the window width. The sliding histogram
+    method of Huang, Yang and Tang updates one column of k values per step. Sorting every
+    window would cost O(N\,k^2 \log k).
+useCases:
+  - Remove salt-and-pepper noise.
+  - Clean scanned documents.
+  - Remove small specks from masks.
+advantages:
+  - Keeps sharp edges.
+  - A single extreme pixel cannot change the result.
+limitations:
+  - Rounds off corners. Removes lines thinner than half the window.
+  - Weaker than linear smoothing on Gaussian noise.
+  - Large windows turn texture into flat patches.
+artifacts:
+  - Blotches and streaks with large windows.
+  - Color fringes at color edges, because channels are filtered separately.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapters 3 and 5.
+  - kind: book
+    text: Tukey, J. W. Exploratory Data Analysis. Addison-Wesley, 1977.
+  - kind: paper
+    text: >-
+      Huang, T. S., Yang, G. J. and Tang, G. Y. A fast two-dimensional median filtering
+      algorithm. IEEE Transactions on Acoustics, Speech, and Signal Processing, 27(1), 1979.
+    doi: 10.1109/TASSP.1979.1163188
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.median_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.median_filter.html
+implementation: {path: web/src/core/filters/nonlinear/median.ts, symbol: medianFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes the middle value of its neighbors after they are sorted.
+  howItWorks:
+    - Take the window around the pixel.
+    - Sort the values from dark to bright.
+    - Pick the value in the middle.
+    - Use it as the new pixel.
+  academic: >-
+    The median is an order statistic, not a weighted sum. The filter is nonlinear and has no
+    kernel. An extreme value moves to the end of the sorted list. It can only be chosen when
+    more than half of the window is extreme.
+  paramNotes:
+    size: Width of the square window. It must be odd so that there is one middle value.
+  tryThis:
+    - Add salt-and-pepper noise. Compare the median filter with a Gaussian blur of similar size.
+    - Put the Rank stepper on a white noise dot. Watch where the dot lands in the sorted list.
+  pitfalls:
+    - Using a very large window. Thin lines and small details disappear.
+  demos: [rank-stepper, line-profile, noise-lab]
+related: [weighted-median, adaptive-median, switching-median, rank-order, gaussian, box]
+docsPage: filters/nonlinear/median.md

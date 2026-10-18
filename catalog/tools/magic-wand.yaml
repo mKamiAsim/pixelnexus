@@ -1,0 +1,90 @@
+id: magic-wand
+name: Magic Wand
+group: color
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: tolerance
+    label: Tolerance
+    type: number
+    default: 32
+    min: 0
+    max: 255
+    step: 1
+    description: Largest color distance from the sampled color that is still selected.
+    effect: Higher values select a wider range of colors.
+  - key: contiguous
+    label: Contiguous
+    type: boolean
+    default: true
+    description: Select only matching pixels connected to the clicked pixel.
+    effect: When off, every matching pixel in the image is selected.
+  - key: sampleSize
+    label: Sample size
+    type: select
+    default: '3'
+    options:
+      - {value: '1', label: Point sample}
+      - {value: '3', label: 3 by 3 average}
+      - {value: '5', label: 5 by 5 average}
+    description: How many pixels around the click make the sampled color.
+    effect: A larger sample ignores single noisy pixels.
+  - key: colorSpace
+    label: Color space
+    type: select
+    default: rgb
+    options:
+      - {value: rgb, label: RGB}
+      - {value: hsv, label: HSV}
+      - {value: lab, label: Lab}
+    description: Where the color distance is measured.
+    effect: Lab follows how people see differences. HSV puts more weight on hue in bright, colorful areas.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Softens the edge by averaging each pixel with its 3 by 3 neighbors.
+    effect: The selection edge looks smooth instead of stepped.
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+summary: "Selects pixels close in color to the pixel you click."
+steps:
+  - "Average the color in a 1x1, 3x3 or 5x5 square around the click."
+  - "Measure the color distance of each pixel to it, in RGB, HSV or Lab on a 0 to 255 scale."
+  - "Select pixels whose distance is at most the tolerance: only connected ones, or all of them."
+  - "With anti-alias on, give each pixel the mean of its 3x3 neighborhood."
+  - "Feather, then combine with the current selection by the mode."
+implementation:
+  path: "web/src/core/selection/wand.ts"
+  symbol: "magicWand"
+tests:
+  - "web/src/core/selection/selection.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The Magic Wand selects the area of similar color around the pixel you click."
+  howItWorks:
+    - "It reads the color under the pointer."
+    - "Neighbors join while their color differs by no more than the tolerance."
+    - "With Contiguous off, every similar pixel in the image joins, even far away."
+  paramNotes:
+    tolerance: "The largest color distance that still joins. 0 selects only the exact color."
+    colorSpace: "Lab follows how people see color differences. RGB is the plain distance of the stored values."
+    sampleSize: "A larger sample averages away single noisy pixels under the pointer."
+  tryThis:
+    - "Click the sky in a photo, then raise the tolerance and click again with Shift."
+    - "Compare RGB and Lab on the Hue sweep test image."
+  pitfalls:
+    - "Noisy images give ragged selections. Use a larger sample size or Quick Selection."
+  demos: []
+docsPage: "selection/magic-wand.md"

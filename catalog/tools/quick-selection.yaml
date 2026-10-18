@@ -1,0 +1,93 @@
+id: quick-selection
+name: Quick Selection
+group: auto
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+planNotes: SLIC superpixels and similarity growth.
+params:
+  - key: size
+    label: Size
+    type: number
+    default: 30
+    min: 1
+    max: 1000
+    step: 1
+    unit: px
+    description: Diameter of the brush.
+    effect: A bigger brush touches more superpixels at once.
+  - key: hardness
+    label: Hardness
+    type: number
+    default: 100
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: How sharp the edge of the brush is. Superpixels count as touched where the brush is at least half strength.
+    effect: Lower values make the brush touch a smaller area than its size.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    default: 32
+    min: 0
+    max: 255
+    step: 1
+    description: How different in color, texture and edges a neighboring superpixel may be and still join.
+    effect: Higher values grow the selection further. 0 selects only the superpixels you paint over.
+  - key: edgeSensitivity
+    label: Edge sensitivity
+    type: number
+    default: 50
+    min: 0
+    max: 100
+    step: 1
+    unit: '%'
+    description: How strongly edges between superpixels stop the growth.
+    effect: Higher values keep the selection inside clear outlines.
+  - key: smoothness
+    label: Smoothness
+    type: number
+    default: 2
+    min: 0
+    max: 50
+    step: 1
+    unit: px
+    description: Radius of the majority smoothing of the selection edge.
+    effect: Higher values remove small bumps and round corners.
+summary: "Paints a selection that grows to similar areas and stops at edges."
+steps:
+  - "Split a copy of at most 2 megapixels into SLIC superpixels, in a worker."
+  - "Record each superpixel's mean CIELAB color, its L* spread and the edge to each neighbor."
+  - "Mark the superpixels under the brush as seeds."
+  - "Grow to neighbors while color and texture differences plus the weighted edge stay within the tolerance."
+  - "Smooth the result, scale it to the image size and add it to the selection, or remove it with Alt."
+implementation:
+  path: "web/src/core/selection/quick.ts"
+  symbol: "growSuperpixels"
+tests:
+  - "web/src/core/selection/quick.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+references:
+  - kind: "paper"
+    text: "Achanta, R., Shaji, A., Smith, K., Lucchi, A., Fua, P. and Süsstrunk, S. SLIC Superpixels Compared to State-of-the-Art Superpixel Methods. IEEE Transactions on Pattern Analysis and Machine Intelligence 34(11), 2274 to 2282, 2012."
+    doi: "10.1109/TPAMI.2012.120"
+learn:
+  oneSentence: "Quick Selection selects a whole object from a few brush strokes inside it."
+  howItWorks:
+    - "The image is first split into superpixels: small patches of similar color."
+    - "The patches under your brush are selected."
+    - "Their neighbors join while they look similar and no strong edge lies between them."
+  academic: "Superpixels come from SLIC (Achanta et al., 2012): k-means on CIELAB color and position, limited to a window around each center. The growth rule compares each candidate with the nearest seed, not with its neighbor, so a slow change of color does not lead it away."
+  paramNotes:
+    tolerance: "How different a neighboring patch may be and still join."
+    edgeSensitivity: "How strongly an edge between two patches stops the growth."
+    smoothness: "Rounds the edge and removes small bumps."
+  tryThis:
+    - "Paint once inside a disk in the Disks and dots test image."
+    - "Hold Alt and paint to remove a part that leaked out."
+  pitfalls:
+    - "On a very large image the copy is smaller, so the edge is less exact. Use Snap to edges afterward."
+  demos: []
+docsPage: "selection/quick-selection.md"

@@ -1,0 +1,116 @@
+id: laplacian-sharpen
+name: Laplacian sharpening
+aliases:
+- Laplacian sharpen
+family: linear
+alsoIn: [enhancement]
+tags: [purpose:sharpening]
+tier: core
+engine: browser
+phase: 5a
+status: implemented-tested
+planNotes: I minus c times the Laplacian.
+
+summary: Sharpens by subtracting a multiple of the Laplacian, which steepens every edge.
+purpose: Make edges and fine detail crisper with a single small kernel.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/laplacian-sharpen.ts, symbol: laplacianSharpenKernel}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is sharpened. With the brightness scope only luma is sharpened,
+  which avoids color fringes. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: amount
+    label: Amount
+    type: number
+    min: 0.1
+    max: 5
+    step: 0.1
+    default: 1
+    description: The factor c that multiplies the Laplacian before it is subtracted.
+    effect: Higher values sharpen more and make halos and noise stronger.
+  - key: neighbors
+    label: Neighbors
+    type: select
+    default: "4"
+    options:
+      - {value: "4", label: 4 neighbors}
+      - {value: "8", label: 8 neighbors}
+    description: Which Laplacian kernel is used.
+    effect: 8 neighbors also sharpen along the diagonals, and more strongly.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = I(x,y) - c\, \big(L \star I\big)(x,y)
+  = \sum_{j=-1}^{1} \sum_{i=-1}^{1} \big(\delta(i,j) - c\, L(i,j)\big)\, I(x+i,\, y+j),
+  \\[4pt]
+  c = {{amount}}, \quad \text{neighbors} = {{neighbors}}
+formulaExplanation: >-
+  L is the discrete Laplacian with a negative center. It is positive where a pixel is darker
+  than its neighbors and negative where it is brighter. Subtracting c times L makes bright
+  pixels brighter and dark pixels darker next to an edge, so the edge gets steeper. The whole
+  filter is one kernel whose weights add up to 1.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'L', meaning: 'The 3x3 Laplacian kernel with a negative center, 4 or 8 neighbors'}
+  - {symbol: '\delta', meaning: 'Unit impulse, 1 at the center and 0 elsewhere'}
+  - {symbol: 'c', meaning: 'Amount'}
+  - {symbol: '\star', meaning: 'Correlation'}
+steps:
+  - Build the kernel, 1 at the center minus c times the Laplacian kernel.
+  - Pad the image with the border mode and correlate it with the kernel.
+  - Clip to 0 to 255 and round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. The kernel is always 3x3.
+useCases:
+  - Quick sharpening of slightly soft images.
+  - Teaching how the second derivative relates to sharpening.
+advantages:
+  - One 3x3 kernel, very fast.
+  - Flat areas keep their exact value, because the weights add up to 1.
+limitations:
+  - It works on the finest scale only. For wider detail, use the unsharp mask.
+  - It sharpens noise as strongly as edges.
+artifacts:
+  - Thin halos along edges.
+  - Amplified noise and grain.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.laplace.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.laplace.html
+implementation: {path: web/src/core/filters/linear/laplacian-sharpen.ts, symbol: laplacianSharpenFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/linear/linear5a.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It finds where each pixel differs from its neighbors and makes that difference bigger.
+  howItWorks:
+    - The Laplacian compares each pixel with the average of its neighbors.
+    - At an edge, the bright side and the dark side get opposite signs.
+    - Subtracting the Laplacian pushes the bright side up and the dark side down.
+  academic: >-
+    The filter is I - c * laplace(I), one kernel delta - c L. For the 4-neighbor Laplacian and
+    c = 1 the kernel is the classic 0, -1, 0 / -1, 5, -1 / 0, -1, 0.
+  paramNotes:
+    amount: How strongly the Laplacian is subtracted.
+    neighbors: Whether the diagonals take part.
+  tryThis:
+    - Blur the Siemens star a little with the Gaussian filter, then sharpen it with amount 1.
+    - Compare 4 and 8 neighbors on diagonal lines.
+  pitfalls:
+    - Sharpening a noisy image. The noise gets much stronger. Blur a little first, or use the unsharp mask with a threshold.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [laplacian, unsharp-mask, high-boost]
+docsPage: filters/linear/laplacian-sharpen.md

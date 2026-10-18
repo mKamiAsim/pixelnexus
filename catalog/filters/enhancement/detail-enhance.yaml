@@ -1,0 +1,174 @@
+id: detail-enhance
+name: Detail enhancement
+aliases: [Bilateral detail enhancement, Guided detail enhancement, Base and detail boost]
+family: enhancement
+tags: [purpose:sharpening, purpose:enhancement]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Bilateral or guided detail enhancement. Splits base and detail layers, then boosts detail.
+
+summary: Splits the image into an edge-preserving smooth base and the detail on top of it, then adds the detail back several times stronger.
+purpose: Bring out texture and fine detail without a global sharpening halo on every edge.
+classification: {linearity: nonlinear, domain: spatial, operation: base and detail decomposition with detail boost}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/detail.ts, symbol: detailEnhanceFilter}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each channel is enhanced on its own, as He, Sun and Tang describe for color images.
+  With the brightness scope, only luma is enhanced and the colors stay. Alpha is kept.
+boundary: >-
+  The guided base uses the Border mode parameter, with the image extended once by twice the
+  radius. The bilateral base mirrors the image at its edges, since its Gaussian runs through the
+  FFT of whole rows and columns, so the filter always runs on the whole image.
+
+params:
+  - key: base
+    label: Base filter
+    type: select
+    default: guided
+    options:
+      - {value: guided, label: Guided filter}
+      - {value: bilateral, label: Bilateral filter}
+    description: The edge-preserving filter that makes the base layer.
+    effect: The guided filter has no gradient reversal. The bilateral filter keeps strong steps out of the detail layer.
+  - key: boost
+    label: Boost
+    type: number
+    min: 0
+    max: 20
+    step: 0.5
+    default: 5
+    description: The factor k on the detail layer. 1 gives the input back, 0 gives the base.
+    effect: Higher values make texture and fine detail stronger.
+  - key: radius
+    label: Guided radius
+    type: integer
+    min: 1
+    max: 64
+    default: 16
+    unit: px
+    description: The radius r of the guided filter's windows, for the guided base.
+    effect: Larger values put larger structures into the detail layer.
+  - key: eps
+    label: Guided regularization
+    type: number
+    min: 0.0001
+    max: 1
+    step: 0.0001
+    default: 0.01
+    description: The guided filter's penalty eps, for values from 0 to 1. 0.01 is 0.1 squared.
+    effect: Higher values smooth more edges into the base, so more of each edge is boosted.
+  - key: sigmaSpace
+    label: Bilateral spatial sigma
+    type: number
+    min: 1
+    max: 100
+    step: 0.5
+    default: 16
+    unit: px
+    description: The spatial scale sigma_s of the bilateral filter, for the bilateral base.
+    effect: Larger values put larger structures into the detail layer.
+  - key: sigmaRange
+    label: Bilateral range sigma
+    type: number
+    min: 1
+    max: 255
+    step: 0.5
+    default: 25.5
+    description: The range scale sigma_r of the bilateral filter, in levels from 0 to 255. 25.5 is 0.1 of the range.
+    effect: Smaller values keep weaker edges in the base, so they are not boosted.
+  - key: downsample
+    label: Bilateral downsampling
+    type: integer
+    min: 1
+    max: 16
+    default: 1
+    description: The bilateral base is filtered on every z-th pixel, as Durand and Dorsey do for speed.
+    effect: Higher values are much faster on large images.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: rgb
+formula: |
+  q = \operatorname{smooth}(p),
+  \quad
+  d = p - q,
+  \quad
+  p' = q + k\, d,
+  \qquad k = {{boost}}
+formulaExplanation: >-
+  q is an edge-preserving smoothing of the input p, the base layer. The difference d is the detail
+  layer, and p' adds it back k times. He, Sun and Tang show this with a detail layer boosted 5
+  times. Their guided filter uses r = 16 and eps = 0.1^2. Their bilateral filter uses
+  sigma_s = 16 and sigma_r = 0.1, on values from 0 to 1. They note that the bilateral filter can reverse
+  gradients near edges, while the guided filter does not. The bilateral base here is the
+  piecewise-linear bilateral filter of Durand and Dorsey, also used for tone mapping, so its cost
+  does not grow with sigma_s.
+symbols:
+  - {symbol: 'p', meaning: 'The input'}
+  - {symbol: 'q', meaning: 'The base layer, an edge-preserving smoothing of p'}
+  - {symbol: 'd', meaning: 'The detail layer'}
+  - {symbol: 'k', meaning: 'The boost'}
+steps:
+  - Smooth the input with the guided or the bilateral filter to get the base layer.
+  - Subtract the base from the input to get the detail layer.
+  - Add the detail, multiplied by the boost, to the base.
+  - Clip to 0 to 255.
+complexity:
+  time: O(N) or O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. The guided base costs O(N) for any radius. The bilateral base filters about 10 levels through the FFT.
+useCases:
+  - Bringing out texture in landscapes, fabric and stone.
+  - Making fine detail visible before analysis.
+advantages:
+  - Edges that the base filter keeps are not boosted, unlike unsharp masking, which boosts every edge.
+  - Both base filters cost the same for any size.
+limitations:
+  - Noise is detail too, so it is boosted as well.
+  - With the guided base, part of a strong step goes into the detail layer and is boosted into dark and bright bands.
+artifacts:
+  - Bands along strong edges with the guided base.
+  - Gradient reversal near soft edges with the bilateral base, as He, Sun and Tang show.
+references:
+  - kind: paper
+    text: He, K., Sun, J. and Tang, X. Guided Image Filtering. IEEE Transactions on Pattern Analysis and Machine Intelligence 35(6), 1397 to 1409, 2013.
+    doi: 10.1109/TPAMI.2012.213
+  - kind: paper
+    text: Durand, F. and Dorsey, J. Fast bilateral filtering for the display of high-dynamic-range images. ACM Transactions on Graphics 21(3), 257 to 266, 2002.
+    doi: 10.1145/566654.566574
+implementation: {path: web/src/core/filters/enhancement/detail.ts, symbol: detailEnhanceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/detail.test.ts]
+learn:
+  oneSentence: Split the image into a smooth base and the detail on top, then add the detail back stronger.
+  howItWorks:
+    - Smooth the image with a filter that keeps edges. This is the base.
+    - Subtract the base from the image. What is left is the detail.
+    - Multiply the detail and add it back to the base.
+  academic: >-
+    Base and detail decomposition with an edge-preserving filter, p' = q + k (p - q), as in He,
+    Sun and Tang's detail enhancement with the guided filter.
+  paramNotes:
+    base: Which edge-preserving filter makes the base.
+    boost: How many times the detail is added back.
+    radius: How large the guided filter's windows are.
+    eps: How strong an edge must be for the guided filter to keep it.
+    sigmaSpace: How far the bilateral filter looks.
+    sigmaRange: How strong an edge must be for the bilateral filter to keep it.
+    downsample: How coarse a grid the bilateral base uses, for speed.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Compare the guided and the bilateral base on a photo with a sharp horizon. Look at the band along the horizon.
+  pitfalls:
+    - Boosting a noisy image. Denoise first.
+  demos: [line-profile]
+related: [guided, bilateral, unsharp-mask, bilateral-tonemap]
+docsPage: filters/enhancement/detail-enhance.md

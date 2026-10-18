@@ -1,0 +1,132 @@
+id: degrade-blur
+name: Apply a known blur
+aliases: [Known blur, Blur with a PSF, Point spread function]
+family: utility
+tags: [purpose:simulation, purpose:blur]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+planNotes: Motion, defocus or Gaussian PSF, kept for restoration demos.
+
+summary: Blurs the image with a Gaussian, motion or defocus point spread function, the known blur that the deconvolution filters undo.
+purpose: Make blurred test images whose blur is known exactly, for inverse filtering, Wiener deconvolution and the other restoration filters.
+classification: {linearity: linear, domain: spatial, operation: convolution with a PSF}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: psfKernel}
+supportRadius: half the PSF size
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+formula: |
+  g = h * f
+formulaExplanation: >-
+  The image f is convolved with the PSF h. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter. All three are symmetric under a half
+  turn, so convolution and correlation give the same result. Use the same blur settings in a
+  deconvolution filter to undo it.
+symbols:
+  - {symbol: 'f, g', meaning: The image and the blurred image}
+  - {symbol: 'h', meaning: The point spread function}
+steps:
+  - Build the PSF kernel for the chosen blur.
+  - Correlate the image with it, with the border mode at the edges.
+complexity:
+  time: O(N k^2)
+  memory: O(N)
+  notes: N is the number of pixels and k the side of the PSF kernel.
+useCases:
+  - Test images for deconvolution with a known blur.
+  - Showing what motion and defocus do to an image.
+advantages:
+  - The blur is known exactly, so a restoration can be measured.
+limitations:
+  - Real blur often changes across the image. This blur is the same everywhere.
+artifacts:
+  - None beyond the blur itself.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, image restoration and reconstruction.
+implementation: {path: web/src/core/filters/restoration/deconvolve.ts, symbol: degradeBlurFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Blur the image in a known way, so you can test how well a restoration undoes it.
+  howItWorks:
+    - Choose the blur, Gaussian, motion or defocus.
+    - Every pixel becomes a weighted average of its neighbors under the blur shape.
+  academic: >-
+    Linear, shift-invariant degradation g = h * f with a Gaussian, linear motion or uniform disk
+    point spread function.
+  paramNotes:
+    psf: The shape of the blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+  tryThis:
+    - Blur with motion of length 15, then undo it with Wiener deconvolution and the same settings.
+  pitfalls:
+    - Using different blur settings in the deconvolution. The restoration then fails.
+  demos: [line-profile]
+related: [inverse-filter, wiener-deconv, motion-blur, gaussian, disk-average]
+docsPage: filters/utility/degrade-blur.md

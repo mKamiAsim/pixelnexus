@@ -1,0 +1,779 @@
+import { readFile } from "node:fs/promises";
+
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test, type Page } from "@playwright/test";
+
+import { readPng } from "./helpers";
+
+/** Bring a panel to the front: click its tab when it shows, otherwise use the Window menu. */
+async function front(page: Page, name: string) {
+  const tab = page.locator(".dv-tab:visible", { hasText: name });
+  if ((await tab.count()) > 0) {
+    await tab.first().click();
+    return;
+  }
+  await page.getByRole("menuitem", { name: "Window" }).click();
+  await page.getByRole("menuitemcheckbox", { name, exact: true }).click();
+}
+
+async function openTestImage(page: Page, name: string) {
+  await page
+    .getByRole("button", { name: new RegExp(name) })
+    .first()
+    .click();
+  await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
+}
+
+async function chooseFilter(page: Page, query: string, name: string) {
+  const search = page.getByRole("searchbox", { name: "Search filters" });
+  await search.fill(query);
+  await page
+    .getByRole("region", { name: "Filters" })
+    .getByRole("button", { name: new RegExp(`^${name}`) })
+    .first()
+    .click();
+}
+
+const announcer = (page: Page) => page.getByTestId("announcer");
+
+/** Wait for an Apply to finish. Allow extra time, because a busy test machine runs it slower. */
+const applied = (page: Page, text: string) =>
+  expect(announcer(page)).toContainText(`Applied ${text}`, { timeout: 15_000 });
+
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+});
+
+test("previews and applies a filter from the Library, and undo restores the image", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "median", "Median filter");
+  await front(page, "Properties");
+  await expect(page.getByText("Exact preview at full resolution.")).toBeVisible();
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Median filter (window size 3 px)");
+  const history = page.getByRole("list", { name: "History steps" });
+  await expect(history).toContainText("Median filter (window size 3 px)");
+  await expect(page.getByText("Step 1 of 1")).toBeVisible();
+  await page.keyboard.press("Control+z");
+  await expect(page.getByText("Step 0 of 1")).toBeVisible();
+  await expect(announcer(page)).toContainText("Undid Median filter");
+  expect(errors).toEqual([]);
+});
+
+test("the Inspector shows the kernel that runs, and follows the parameters", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "laplacian", "Laplacian");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  const kernel = page.getByRole("table", { name: "L" });
+  await expect(kernel).toContainText("-4");
+  await front(page, "Properties");
+  await page.getByRole("combobox", { name: "Neighbors" }).click();
+  await page.getByRole("option", { name: "8 neighbors" }).click();
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByRole("table", { name: "L" })).toContainText("-8");
+  await page.getByRole("tab", { name: "Formula" }).click();
+  await expect(page.getByText("The formula shows the current parameter values.")).toBeVisible();
+});
+
+test("the Stage viewer shows every stage of Canny", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "canny", "Canny");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Stage viewer" })).toBeVisible();
+  for (const stage of [
+    "1. Smoothed image",
+    "3. After non-maximum suppression",
+    "5. Edges after hysteresis",
+  ]) {
+    await expect(page.getByRole("img", { name: `${stage}, patch around the probe` })).toBeVisible();
+  }
+});
+
+test("the Point-op curve shows the equalization curve and both histograms", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "equaliz", "Histogram equalization");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Point-op curve" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Transfer curve/ })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma before the filter" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma after the filter" }),
+  ).toBeVisible();
+});
+
+test("the Point-op curve shows the local curve of CLAHE at the probe", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "clahe", "CLAHE");
+  await front(page, "Learn");
+  await expect(page.getByRole("img", { name: /^Transfer curve/ })).toBeVisible();
+  await expect(page.getByText(/The one shown applies at the probe pixel/)).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Histogram of the luma after the filter" }),
+  ).toBeVisible();
+});
+
+test("the color control takes the neutral color from the probe pixel", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "white bal", "White balance");
+  await front(page, "Properties");
+  const field = page.getByRole("textbox", { name: "Neutral color", exact: true });
+  await expect(field).toHaveValue("#d2c8b4");
+  await page.getByRole("button", { name: "Use probe pixel" }).click();
+  // Without a probe, the center pixel is used: the gray background of the test image.
+  await expect(field).toHaveValue("#1e1e1e");
+});
+
+const ENGINE = "http://127.0.0.1:8765/api/v1";
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Expose-Headers": "X-Width, X-Height",
+};
+
+interface FakeJob {
+  readonly filter: string;
+  readonly image: string;
+  readonly mask?: string;
+  readonly params: Record<string, unknown>;
+}
+
+/** The table the stand-in engine returns for blob detectors: two disks of the Disks image. */
+const FAKE_BLOBS = {
+  kind: "features",
+  columns: [
+    { key: "x", label: "x", unit: "px" },
+    { key: "y", label: "y", unit: "px" },
+    { key: "radius", label: "Radius", unit: "px" },
+    { key: "score", label: "Score", unit: "" },
+  ],
+  rows: [
+    [96, 96, 47.6, 0.55],
+    [256, 96, 24.5, 0.54],
+  ],
+  summary: "2 blobs",
+};
+
+/** A label map of the given size: label 1 on the left half, label 2 on the right half. */
+function fakeRegions(width: number, height: number) {
+  const labels = Buffer.alloc(width * height);
+  for (let i = 0; i < labels.length; i++) labels[i] = i % width < width / 2 ? 1 : 2;
+  return {
+    kind: "labels",
+    width,
+    height,
+    bits: 8,
+    data: labels.toString("base64"),
+    table: {
+      kind: "features",
+      columns: [
+        { key: "label", label: "Label", unit: "" },
+        { key: "area", label: "Area", unit: "px" },
+        { key: "x", label: "x", unit: "px" },
+        { key: "y", label: "y", unit: "px" },
+        { key: "mean", label: "Mean", unit: "levels" },
+      ],
+      rows: [
+        [1, (width * height) / 2, width / 4 - 0.5, height / 2 - 0.5, 60],
+        [2, (width * height) / 2, (3 * width) / 4 - 0.5, height / 2 - 0.5, 80],
+      ],
+      summary: "2 superpixels",
+    },
+  };
+}
+
+/** The optional model the stand-in engine knows, as the engine reports it. */
+const FAKE_MODEL = {
+  id: "structured-edge-bsds500",
+  name: "Structured edge forest (BSDS500)",
+  sizeMB: 6.39,
+  license: "Non-commercial use only.",
+};
+
+/** Raw RGBA with the color channels inverted and alpha kept. */
+function inverted(body: Buffer): Buffer {
+  const out = Buffer.from(body);
+  for (let i = 0; i < out.length; i++) if (i % 4 !== 3) out[i] = 255 - (out[i] ?? 0);
+  return out;
+}
+
+/** Enlarge raw RGBA by a whole factor, copying each pixel. */
+function enlarge(body: Buffer, width: number, height: number, scale: number): Buffer {
+  const out = Buffer.alloc(width * height * scale * scale * 4);
+  for (let y = 0; y < height * scale; y++) {
+    for (let x = 0; x < width * scale; x++) {
+      const from = (Math.floor(y / scale) * width + Math.floor(x / scale)) * 4;
+      body.copy(out, (y * width * scale + x) * 4, from, from + 4);
+    }
+  }
+  return out;
+}
+
+/**
+ * A stand-in for the local engine on its usual address. It keeps each upload and each job, runs
+ * every job at once, and returns the job's image unchanged as the result, or enlarged by the
+ * scale parameter when there is one. The representation is a fixed answer in the engine's
+ * format. Then the studio reloads, so it finds the engine.
+ */
+async function fakeEngine(page: Page) {
+  const images = new Map<string, { body: Buffer; width: string; height: string }>();
+  const jobs: FakeJob[] = [];
+  let last = "";
+  let modelDownloaded = false;
+  await page.route(`${ENGINE}/**`, async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    const json = (body: unknown, status = 200) =>
+      route.fulfill({ status, headers: CORS, json: body });
+    if (path === "/info") return json({ version: "0.1.0" });
+    if (path === "/models") return json([{ ...FAKE_MODEL, downloaded: modelDownloaded }]);
+    if (path.startsWith("/models/") && request.method() === "POST") {
+      modelDownloaded = true;
+      return json({ ...FAKE_MODEL, downloaded: true });
+    }
+    if (path === "/images") {
+      last = `image-${images.size}`;
+      const width = url.searchParams.get("width") ?? "0";
+      const height = url.searchParams.get("height") ?? "0";
+      images.set(last, { body: request.postDataBuffer() ?? Buffer.alloc(0), width, height });
+      return json({ id: last, width: Number(width), height: Number(height) });
+    }
+    if (path === "/jobs") {
+      const job = request.postDataJSON() as FakeJob;
+      jobs.push(job);
+      last = `job-${jobs.length - 1}`;
+      return json({ id: last, state: "queued", progress: 0 }, 202);
+    }
+    if (path.endsWith("/events")) {
+      const done = { id: last, state: "done", progress: 1, error: null };
+      return route.fulfill({
+        headers: { ...CORS, "Content-Type": "text/event-stream" },
+        body: `event: status\ndata: ${JSON.stringify(done)}\n\n`,
+      });
+    }
+    if (path.endsWith("/result")) {
+      const job = jobs[Number((path.split("/")[2] ?? "").replace("job-", ""))];
+      if (job?.filter.startsWith("blob-")) return json(FAKE_BLOBS);
+      const image = images.get(job?.image ?? "");
+      if (!image) return json({ detail: "There is no job with this id." }, 404);
+      if (["slic", "level-set", "grabcut", "random-walker"].includes(job?.filter ?? "")) {
+        return json(fakeRegions(Number(image.width), Number(image.height)));
+      }
+      if (job?.filter === "matched-filter") {
+        return route.fulfill({
+          headers: { ...CORS, "X-Width": image.width, "X-Height": image.height },
+          contentType: "application/octet-stream",
+          body: inverted(image.body),
+        });
+      }
+      const scale = Number(job?.params.scale ?? 1);
+      const [width, height] = [Number(image.width), Number(image.height)];
+      return route.fulfill({
+        headers: { ...CORS, "X-Width": String(width * scale), "X-Height": String(height * scale) },
+        contentType: "application/octet-stream",
+        body: scale === 1 ? image.body : enlarge(image.body, width, height, scale),
+      });
+    }
+    if (path.endsWith("/representation")) {
+      return json({
+        kind: "stages",
+        stages: [
+          { name: "Analysis", formula: "J = 3", note: "PyWavelets wavedec2 with sym4." },
+          { name: "Filter taps", formula: "f = (0.7071,\\ 0.7071)" },
+        ],
+      });
+    }
+    return json({ detail: "Not in the stand-in engine." }, 404);
+  });
+  await page.reload();
+  return { images, jobs, modelDownloaded: () => modelDownloaded };
+}
+
+const canvas = (page: Page) => page.locator('canvas[tabindex="0"]');
+
+/** Drag a rectangle with the Rectangular marquee, from and to points relative to the canvas center. */
+async function marquee(page: Page, from: [number, number], to: [number, number]) {
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await canvas(page).focus();
+  await page.keyboard.press("m");
+  await page.mouse.move(cx + from[0], cy + from[1]);
+  await page.mouse.down();
+  await page.mouse.move(cx + to[0], cy + to[1], { steps: 5 });
+  await page.mouse.up();
+}
+
+test("an engine filter runs in the local engine, with its operator and the Noise lab", async ({
+  page,
+}) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Noise patches");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "wavelet", "Wavelet thresholding");
+  await front(page, "Properties");
+  await expect(page.getByText("There is no live preview.")).toBeVisible();
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Wavelet thresholding");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText("Filter taps")).toBeVisible();
+  await expect(page.getByText("PyWavelets wavedec2 with sym4.")).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Noise lab" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Noise lab metrics" })).toContainText("dB");
+});
+
+test("the Iteration viewer runs an engine filter at growing iteration counts", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "total variation", "Total variation restoration");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Iteration viewer" })).toBeVisible();
+  await expect(page.getByText("once for each of the 4 counts on the plot")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 100" })).toBeVisible();
+});
+
+test("the Line profile runs an engine filter on the patch around the probe", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "debanding", "Debanding");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Line profile" })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Brightness along the row through the probe pixel/ }),
+  ).toBeVisible();
+});
+
+test("inpainting sends the selection to the engine as its mask", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "inpainting", "Image inpainting");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByText("Select the area first", { exact: true })).toBeVisible();
+  // The Learn demo may run its own small jobs meanwhile. None may be on the 512 px image.
+  expect(engine.jobs.filter((j) => engine.images.get(j.image)?.width === "512")).toHaveLength(0);
+  await marquee(page, [-40, -40], [40, 40]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Image inpainting");
+  const job = engine.jobs.at(-1);
+  const mask = engine.images.get(job?.mask ?? "");
+  expect(mask?.width).toBe("512");
+  const reds = [...(mask?.body ?? [])].filter((_, i) => i % 4 === 0);
+  const selected = reds.filter((v) => v === 255).length;
+  expect(selected).toBeGreaterThan(1000);
+  expect(selected).toBeLessThan((512 * 512) / 2);
+  await front(page, "Learn");
+  await expect(page.getByText("the hole is a disk of radius 8 pixels")).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Filled image, patch around the probe" }),
+  ).toBeVisible();
+});
+
+async function exportPng(page: Page) {
+  await canvas(page).focus();
+  await page.keyboard.press("Control+s");
+  const dialog = page.getByRole("dialog", { name: "Export image" });
+  await dialog.getByRole("radio", { name: "PNG" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dialog.getByRole("button", { name: "Export PNG" }).click(),
+  ]);
+  await expect(dialog).toBeHidden();
+  return readPng(await readFile(await download.path()));
+}
+
+test("the matched filter sends the selection as its template and changes the whole image", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  const before = await exportPng(page);
+  await chooseFilter(page, "matched filter", "Matched filter");
+  await front(page, "Properties");
+  await marquee(page, [-30, -30], [30, 30]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Matched filter");
+  const job = engine.jobs.at(-1);
+  const mask = engine.images.get(job?.mask ?? "");
+  expect(mask?.width).toBe("512");
+  // The stand-in engine inverts the image. A template only reads the selection, so the
+  // result covers the whole image, the corner far from the selection included.
+  const after = await exportPng(page);
+  expect(after.pixels[0]).toBe(255 - (before.pixels[0] ?? 0));
+  await front(page, "Learn");
+  await expect(page.getByText("the template is the 17 x 17 square")).toBeVisible();
+});
+
+test("a filter with an optional model shows its license and downloads it only on a click", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "structured edge", "Structured Edge Detector");
+  await front(page, "Properties");
+  const card = page.getByRole("region", { name: "Model" });
+  await expect(card).toContainText("6.39 MB");
+  await expect(card).toContainText("non-commercial");
+  expect(engine.modelDownloaded()).toBe(false);
+  await card.getByRole("button", { name: "Download model" }).click();
+  await expect(card).toContainText("The model is downloaded and checked.");
+  expect(engine.modelDownloaded()).toBe(true);
+});
+
+test("super-resolution replaces the image with the larger engine result", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "super-resolution", "Super-resolution reconstruction");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Super-resolution reconstruction");
+  await expect(page.getByRole("contentinfo")).toContainText("1024 x 1024 px");
+  await front(page, "Learn");
+  await expect(page.getByText("measured from the start at 0 iterations")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 10" })).toBeVisible();
+  await page.keyboard.press("Control+z");
+  await expect(page.getByRole("contentinfo")).toContainText("512 x 512 px");
+});
+
+test("a segmentation draws its regions and turns one into the selection", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "SLIC", "SLIC superpixels");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(announcer(page)).toContainText("SLIC superpixels found 2 superpixels");
+  await expect(page.getByTestId("label-overlay")).toBeVisible();
+  const table = page.getByRole("table", { name: "Features" });
+  await expect(table).toContainText("131072");
+  await page.getByRole("button", { name: "Select region 2" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText(
+    "Selection: 256 x 512 px at x 256, y 0",
+  );
+  await page.getByRole("button", { name: "Select all regions" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: the whole image");
+  await page.getByRole("switch", { name: "Show on the canvas" }).click();
+  await expect(page.getByTestId("label-overlay")).toHaveCount(0);
+});
+
+test("a level set starts from the selection and its inside becomes the selection", async ({
+  page,
+}) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "level set", "Level sets");
+  await front(page, "Properties");
+  await marquee(page, [-40, -40], [40, 40]);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection:");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByTestId("label-overlay")).toBeVisible();
+  // The selection is the starting contour, sent as the mask of a job on the whole image. The
+  // Learn panel also runs small jobs on a patch, so look for the one on the whole image.
+  const whole = engine.jobs.filter(
+    (job) => job.filter === "level-set" && engine.images.get(job.image)?.width === "512",
+  );
+  expect(whole).toHaveLength(1);
+  expect(engine.images.get(whole[0]?.mask ?? "")?.width).toBe("512");
+  await page.getByRole("button", { name: "Select region 1" }).click();
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  await front(page, "Learn");
+  await expect(page.getByText("the contour starts as the edge of a disk")).toBeVisible();
+});
+
+test("Select > Object sends the box to GrabCut and selects the object", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await marquee(page, [-60, -60], [60, 60]);
+  await page.getByRole("menuitem", { name: "Select", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Object", exact: true }).click();
+  // The stand-in engine's regions are the left half of the image.
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  const job = engine.jobs.find((j) => j.filter === "grabcut");
+  expect(job?.params.start).toBe("box");
+  expect(engine.images.get(job?.mask ?? "")?.width).toBe("512");
+});
+
+test("Click Select sends its seeds to the random walker and draws them", async ({ page }) => {
+  const engine = await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await page.getByRole("button", { name: "Click Select (classical)" }).click();
+  await expect(page.getByText("Click inside the object to start.")).toBeVisible();
+  const box = await canvas(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.click(cx, cy);
+  await expect(page.getByRole("contentinfo")).toContainText("Selection: 256 x 512 px at x 0, y 0");
+  const first = engine.jobs.filter((j) => j.filter === "random-walker").at(-1);
+  expect(first?.params.seeds).toBe("map");
+  // The map: 255 at the seed, 0 on the image edge before any background seed, 128 elsewhere.
+  const map = engine.images.get(first?.mask ?? "");
+  const at = (x: number, y: number) => map?.body[(y * 512 + x) * 4];
+  expect(at(256, 256)).toBe(255);
+  expect(at(0, 100)).toBe(0);
+  expect(at(100, 100)).toBe(128);
+  await page.keyboard.down("Alt");
+  await page.mouse.click(cx + 100, cy);
+  await page.keyboard.up("Alt");
+  await expect(page.getByText("1 object and 1 background seeds")).toBeVisible();
+  await expect(page.locator('[data-seed="object"]')).toHaveCount(1);
+  await expect(page.locator('[data-seed="background"]')).toHaveCount(1);
+  const second = engine.jobs.filter((j) => j.filter === "random-walker").at(-1);
+  // With a background seed, the image edge is no longer background.
+  expect(engine.images.get(second?.mask ?? "")?.body[100 * 512 * 4]).toBe(128);
+  await page.getByRole("button", { name: "Clear seeds" }).click();
+  await expect(page.getByTestId("seed-overlay")).toHaveCount(0);
+});
+
+test("a blob detector lists its features, draws them and exports CSV", async ({ page }) => {
+  await fakeEngine(page);
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: on" })).toBeVisible();
+  await chooseFilter(page, "LoG blob", "LoG blob detection");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(announcer(page)).toContainText("LoG blob detection found 2 blobs");
+  const table = page.getByRole("table", { name: "Features" });
+  await expect(table).toContainText("47.6");
+  // Each feature is drawn twice, dark under light.
+  const overlay = page.getByTestId("feature-overlay");
+  await expect(overlay.locator("circle")).toHaveCount(4);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export CSV" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/_blob-log\.csv$/);
+  await page.getByRole("switch", { name: "Show on the canvas" }).click();
+  await expect(overlay).toHaveCount(0);
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Feature viewer" })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Patch around the probe with 2 blobs/ }),
+  ).toBeVisible();
+});
+
+test("the studio works with the local engine stopped", async ({ page }) => {
+  // Whatever runs on this machine, the studio must find no engine here.
+  await page.route(`${ENGINE}/**`, (route) => route.abort());
+  await page.reload();
+  await openTestImage(page, "Disks");
+  await expect(page.getByRole("button", { name: "Local engine: off" })).toBeVisible();
+  await chooseFilter(page, "gaussian", "Gaussian filter");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Gaussian filter");
+});
+
+test("scale space shows its response and its selected scale", async ({ page }) => {
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "scale", "Scale-space filtering");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText("Normalized measure")).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Stage viewer" })).toBeVisible();
+  for (const stage of ["Strongest response", "Selected scale"]) {
+    await expect(page.getByRole("img", { name: `${stage}, patch around the probe` })).toBeVisible();
+  }
+});
+
+test("the structuring element editor shapes erosion, and the stepper shows it", async ({
+  page,
+}) => {
+  await openTestImage(page, "Disks and dots");
+  await chooseFilter(page, "erosion", "Erosion");
+  await front(page, "Properties");
+  await expect(
+    page.getByRole("img", { name: "Structuring element, 3 by 3, 5 pixels" }).first(),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Structuring element shape" }).click();
+  await page.getByRole("option", { name: "Rectangle" }).click();
+  await expect(
+    page.getByRole("img", { name: "Structuring element, 5 by 3, 15 pixels" }).first(),
+  ).toBeVisible();
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Morphology stepper" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Values under the element" })).toBeVisible();
+  await expect(page.getByText("Erosion keeps the smallest.")).toBeVisible();
+});
+
+test("a click in the Spectrum panel places a notch for the notch-reject filter", async ({
+  page,
+}) => {
+  await openTestImage(page, "Disks and dots");
+  // Stripes every 8 pixels make a peak at fx = 0.125 cycles per pixel.
+  await chooseFilter(page, "periodic noise", "Add periodic noise");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Add periodic noise");
+  await chooseFilter(page, "notch", "Notch-reject");
+  await front(page, "Spectrum");
+  const spectrum = page.getByRole("img", {
+    name: /Log magnitude spectrum of the image, with 1 notch$/,
+  });
+  await expect(spectrum).toBeVisible();
+  const box = await spectrum.boundingBox();
+  if (!box) throw new Error("The spectrum has no size.");
+  // The 512 x 512 spectrum has frequency 0 at column and row 256, so column 320 is fx = 0.125.
+  // The click lands one step away from the peak and snaps to it.
+  await spectrum.click({
+    position: { x: (box.width * 321.5) / 512, y: (box.height * 257.5) / 512 },
+  });
+  await expect(
+    page.getByRole("img", { name: /Log magnitude spectrum of the image, with 2 notches$/ }),
+  ).toBeVisible();
+  await front(page, "Properties");
+  await expect(page.getByRole("textbox", { name: "Notches" })).toHaveValue("0.2 0.1\n0.125 0");
+});
+
+test("the Inspector shows the model card of a learned filter", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "dncnn", "DnCNN");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Model" }).click();
+  const panel = page.getByRole("tabpanel", { name: "Model" });
+  await expect(panel.getByText("PyTorch weights, exported to ONNX on this computer")).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Tensors" })).toBeVisible();
+  await expect(panel.getByText(/Start the local engine|Download the model/)).toBeVisible();
+});
+
+test("the Learn panel draws the model pipeline from the catalog steps", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "dncnn", "DnCNN");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Model pipeline" })).toBeVisible();
+  const pipeline = page.getByRole("list", { name: "Pipeline of DnCNN" });
+  await expect(pipeline.getByText("Your image")).toBeVisible();
+  await expect(pipeline.getByText("Subtract the estimate from the input.")).toBeVisible();
+  await expect(pipeline.getByText(/AI result\. Detail may not exist/)).toBeVisible();
+});
+
+test("the Iteration viewer shows how anisotropic diffusion settles", async ({ page }) => {
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "anisotropic", "Anisotropic diffusion");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Iteration viewer" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Convergence over 15 iterations/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Estimate after iteration 15" })).toBeVisible();
+});
+
+test("the Learn panel runs its demos on the image", async ({ page }) => {
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "median", "Median filter");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Rank stepper" })).toBeVisible();
+  const sorted = page.getByRole("list", { name: "Sorted window values" });
+  await expect(sorted.getByRole("listitem")).toHaveCount(9);
+  await page.getByRole("button", { name: "One pixel to the right" }).first().click();
+  await expect(page.getByText("x 257, y 256").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Noise lab" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Noise lab metrics" })).toContainText("dB");
+  await page.getByRole("radio", { name: "Academic" }).click();
+  await expect(page.getByRole("button", { name: /Inspector/ })).toBeVisible();
+});
+
+test("the export name describes the last filter", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await chooseFilter(page, "gaussian", "Gaussian filter");
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Gaussian filter");
+  await page.keyboard.press("Control+s");
+  await expect(page.getByRole("textbox", { name: "File name without extension" })).toHaveValue(
+    "Siemens-star_gaussian_sigma-1",
+  );
+});
+
+test("filters run from the Filter menu and the command palette", async ({ page }) => {
+  await openTestImage(page, "Siemens star");
+  await page.getByRole("menuitem", { name: "Filter" }).click();
+  await page.getByRole("menuitem", { name: "Edge detection and boundary analysis" }).click();
+  await page.getByRole("menuitem", { name: "Sobel", exact: true }).click();
+  await front(page, "Properties");
+  await expect(page.getByRole("heading", { name: "Sobel", exact: true })).toBeVisible();
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox", { name: "Search commands" }).fill("motion blur");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Motion blur", exact: true })).toBeVisible();
+  await page.keyboard.press("Control+Enter");
+  await applied(page, "Motion blur");
+});
+
+test("the filter panels have no serious accessibility issues", async ({ page }) => {
+  await openTestImage(page, "Disks and dots");
+  await chooseFilter(page, "sobel", "Sobel");
+  for (const panel of ["Properties", "Inspector", "Learn", "Developer", "History"]) {
+    await front(page, panel);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
+    const serious = results.violations.filter(
+      (v) => v.impact === "serious" || v.impact === "critical",
+    );
+    expect(
+      serious.map(
+        (v) => `${panel}: ${v.id} (${v.nodes.length}) ${v.help} ${v.nodes[0]?.target.join(" ")}`,
+      ),
+    ).toEqual([]);
+  }
+});
+
+test("window filters show their ranks in the Inspector and the Rank stepper", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Noise patches");
+  await chooseFilter(page, "trimmed", "Alpha-trimmed mean filter");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(
+    page.getByText("the values at positions 3 to 7 of 9 make the output."),
+  ).toBeVisible();
+  await front(page, "Learn");
+  const sorted = page.getByRole("list", { name: "Sorted window values" });
+  await expect(sorted.locator("li[aria-current='true']")).toHaveCount(5);
+  await expect(page.getByText(/from the marked values at positions 3 to 7/)).toBeVisible();
+
+  await chooseFilter(page, "contraharmonic", "Contraharmonic mean filter");
+  await front(page, "Inspector");
+  await page.getByRole("tab", { name: "Operator" }).click();
+  await expect(page.getByText(/so dark specks \(pepper\) are removed/)).toBeVisible();
+  await front(page, "Properties");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await applied(page, "Contraharmonic mean filter");
+  expect(errors).toEqual([]);
+});
+
+test("the Weight viewer shows the bilateral weights at the probe pixel", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Disks");
+  await chooseFilter(page, "bilateral", "Bilateral filter");
+  await front(page, "Learn");
+  await expect(page.getByRole("heading", { name: "Weight viewer" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Product, normalized/ })).toBeVisible();
+  await expect(page.getByText(/of the total weight/)).toBeVisible();
+  expect(errors).toEqual([]);
+});

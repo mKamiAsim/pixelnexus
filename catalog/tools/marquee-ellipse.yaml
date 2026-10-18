@@ -1,0 +1,94 @@
+id: marquee-ellipse
+name: Elliptical marquee
+group: marquee
+tier: core
+engine: browser
+phase: '4'
+status: implemented-tested
+params:
+  - key: style
+    label: Style
+    type: select
+    default: normal
+    options:
+      - {value: normal, label: Normal}
+      - {value: ratio, label: Fixed ratio}
+      - {value: size, label: Fixed size}
+    description: How dragging sets the shape.
+    effect: Normal follows the pointer. Fixed ratio keeps the width to height ratio. Fixed size places a shape of the given size at the pointer.
+  - key: ratioWidth
+    label: Ratio width
+    type: number
+    default: 1
+    min: 0.01
+    max: 1000
+    step: 0.01
+    description: Width part of the fixed ratio.
+  - key: ratioHeight
+    label: Ratio height
+    type: number
+    default: 1
+    min: 0.01
+    max: 1000
+    step: 0.01
+    description: Height part of the fixed ratio.
+  - key: sizeWidth
+    label: Width
+    type: integer
+    default: 64
+    min: 1
+    max: 16384
+    unit: px
+    description: Width of the fixed size.
+  - key: sizeHeight
+    label: Height
+    type: integer
+    default: 64
+    min: 1
+    max: 16384
+    unit: px
+    description: Height of the fixed size.
+  - key: feather
+    label: Feather
+    type: number
+    default: 0
+    min: 0
+    max: 250
+    step: 0.5
+    unit: px
+    description: Softens the edge of the new selection.
+    effect: About 95% of the change from selected to unselected happens within this distance on each side of the edge.
+  - key: antiAlias
+    label: Anti-alias
+    type: boolean
+    default: true
+    description: Gives edge pixels a value for the part of them that the shape covers.
+    effect: Curved and slanted edges look smooth instead of stepped.
+summary: "Selects an ellipse or circle that you drag on the image."
+steps:
+  - "Snap the two corners of the drag to whole pixels. They bound the ellipse."
+  - "With Shift, make a circle. With Alt, use the start point as the center."
+  - "Give each pixel the part of it that lies inside the ellipse, from 4 rows of samples per pixel."
+  - "Feather the shape when the feather setting is above 0."
+  - "Combine it with the current selection by the mode."
+implementation:
+  path: "web/src/core/mask/raster.ts"
+  symbol: "ellipseMask"
+tests:
+  - "web/src/core/mask/mask.test.ts"
+  - "web/src/selection/gestures.test.ts"
+  - "web/tests/e2e/selection.spec.ts"
+learn:
+  oneSentence: "The elliptical marquee selects an ellipse that fits the box you drag."
+  howItWorks:
+    - "Drag a box. The ellipse touches the middle of each side of the box."
+    - "With anti-alias on, edge pixels are partly selected, so curves look smooth."
+    - "Shift makes a circle. Alt draws from the center."
+  paramNotes:
+    antiAlias: "Anti-alias gives edge pixels a value between 0 and 255 for the part the ellipse covers."
+  tryThis:
+    - "Turn on Quick Mask (Q) to see the soft edge pixels in red."
+  pitfalls:
+    - "A thin ellipse with anti-alias off looks stepped at the ends."
+  demos: []
+docsPage: "selection/marquee.md"

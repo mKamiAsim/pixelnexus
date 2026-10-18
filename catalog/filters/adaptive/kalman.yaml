@@ -1,0 +1,108 @@
+id: kalman
+name: Kalman filter
+aliases: [Kalman smoother, Row and column Kalman filter]
+family: adaptive
+tags: [purpose:denoise, noise:gaussian]
+tier: advanced
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: A separable Kalman smoother with a first-order autoregressive image model. Not the reduced update Kalman filter of Woods and Radewan.
+
+summary: Treats each row as a signal that changes a little from pixel to pixel, seen through noise. A Kalman filter estimates it along the row and a smoother runs back. The columns get the same, and the result is the mean of both. The noise level is the only setting.
+purpose: Show the Kalman filter, the best linear estimator for a signal model with noise, on an image.
+classification: {linearity: linear, domain: statistical, operation: Kalman filtering and smoothing}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/scan.ts, symbol: kalmanFilter}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own model. With the brightness
+  scope, only luma is filtered. Alpha is kept.
+boundary: Each row and column is filtered on its own, from its first pixel to its last. No padding is needed.
+
+params:
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0.5
+    max: 100
+    step: 0.5
+    default: 20
+    description: The standard deviation of the noise, in 8-bit levels.
+    effect: Higher values trust each pixel less and smooth more.
+formula: |
+  x_k = \rho\, x_{k-1} + w_k,\quad y_k = x_k + v_k,\qquad
+  K_k = \frac{P_k^-}{P_k^- + \sigma_v^2},\quad \hat{x}_k = \hat{x}_k^- + K_k\,(y_k - \hat{x}_k^-),\qquad
+  \hat{x}_k^{s} = \hat{x}_k + \frac{\rho P_k}{P_{k+1}^-}\,(\hat{x}_{k+1}^{s} - \hat{x}_{k+1}^-)
+formulaExplanation: >-
+  Along a row, the clean value x follows a first-order autoregressive model with correlation
+  rho. Each pixel y adds white noise v of variance sigma_v^2. The prediction is
+  x_k^- = rho x_(k-1). Its variance is P_k^- = rho^2 P_(k-1) + q, with q = sigma_x^2 (1 - rho^2).
+  The Kalman gain K weighs the prediction against the pixel. The Rauch-Tung-Striebel smoother
+  then runs back along the row, so each estimate also uses the pixels after it. Rho and the
+  signal variance sigma_x^2 come from the image. The signal variance is the variance of the
+  lines minus the noise variance. Rho comes from the covariance of neighbors, which white noise
+  does not change. The columns of
+  the noisy image get their own model and run, and the result is the mean of the row and column
+  runs. This separable form is PixelNexus's own.
+symbols:
+  - {symbol: 'y_k', meaning: 'The pixel, with the image mean taken off'}
+  - {symbol: 'x_k', meaning: 'The clean value'}
+  - {symbol: '\rho', meaning: 'The correlation of neighboring values'}
+  - {symbol: '\sigma_v', meaning: 'The noise sigma'}
+  - {symbol: 'P_k^-, P_k', meaning: 'The variance of the prediction and of the estimate'}
+  - {symbol: 'K_k', meaning: 'The Kalman gain'}
+  - {symbol: '\hat{x}_k^{s}', meaning: 'The smoothed estimate'}
+steps:
+  - Estimate the mean, rho and the signal variance of the rows, and of the columns.
+  - On each row, run the Kalman filter forward and the smoother back.
+  - On each column of the noisy image, do the same.
+  - Write the mean of the two results.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. A few multiplications per pixel and pass.
+useCases:
+  - Removing white noise of a known level from smooth images.
+  - Teaching the Kalman filter and smoother.
+advantages:
+  - The best linear estimate for its model, with a single setting.
+  - Linear time.
+limitations:
+  - One model for the whole image. Edges are smoothed like flat areas.
+  - The separable model is simpler than a true two-dimensional image model.
+artifacts:
+  - Soft edges, since one model covers the whole image.
+references:
+  - kind: paper
+    text: Kalman, R. E. A new approach to linear filtering and prediction problems. Journal of Basic Engineering 82(1), 35 to 45, 1960.
+    doi: 10.1115/1.3662552
+  - kind: paper
+    text: Rauch, H. E., Tung, F., and Striebel, C. T. Maximum likelihood estimates of linear dynamic systems. AIAA Journal 3(8), 1445 to 1450, 1965.
+    doi: 10.2514/3.3166
+implementation: {path: web/src/core/filters/adaptive/scan.ts, symbol: kalmanFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Guess the next pixel from the last one, then correct the guess by how far you trust the pixel.
+  howItWorks:
+    - Along a row, the next clean value is about the last one times rho.
+    - The filter blends that guess with the noisy pixel. The noisier the image, the more it trusts the guess.
+    - A second pass runs back along the row, so every pixel also learns from the pixels after it. The columns get the same, and the two results are averaged.
+  academic: >-
+    A scalar Kalman filter and Rauch-Tung-Striebel smoother on the rows and on the columns,
+    averaged, for a first-order autoregressive model estimated from the noisy image.
+  paramNotes:
+    sigma: The noise standard deviation in levels.
+  tryThis:
+    - Add Gaussian noise with sigma 20, then compare the Kalman filter at sigma 20 with a Gaussian blur.
+    - Set the noise sigma far too high or too low and watch the result.
+  pitfalls:
+    - A noise sigma far above the real noise blurs the image.
+  demos: [line-profile, noise-lab]
+related: [lms-2d, rls-2d, wiener-adaptive, gaussian]
+docsPage: filters/adaptive/kalman.md

@@ -1,0 +1,168 @@
+id: nnls-deconv
+name: Non-negative least-squares deconvolution
+aliases: [Projected Landweber, NNLS deconvolution, Non-negative deconvolution]
+family: restoration
+tags: [purpose:sharpening]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Undoes a known blur step by step like Landweber iteration, and sets negative values to 0 after each step.
+purpose: Deblur with the constraint that brightness cannot be negative, which removes some ringing below black.
+classification: {linearity: nonlinear, domain: iterative, operation: projected gradient descent}
+output: image
+representation: iterative
+representationLabel: exact
+representationSource: {path: web/src/core/filters/restoration/iterative.ts, symbol: iterate}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the
+  brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters. The filter needs the
+  whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: psf
+    label: Blur
+    type: select
+    default: gaussian
+    options:
+      - {value: gaussian, label: Gaussian}
+      - {value: motion, label: Motion}
+      - {value: defocus, label: Defocus}
+    description: The point spread function, the picture a single bright point turns into.
+    effect: Gaussian blur is soft, motion blur smears along a line, and defocus blur spreads into a disk.
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The standard deviation of the Gaussian blur. The PSF ends at 4 sigma.
+    effect: Larger values blur more.
+  - key: length
+    label: Motion length
+    type: number
+    min: 1
+    max: 51
+    step: 0.5
+    default: 9
+    unit: px
+    description: The length of the straight motion, for motion blur.
+    effect: Longer motion smears more.
+  - key: angle
+    label: Motion angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: The direction of the motion, counterclockwise from the x axis, as for motion blur.
+    effect: Turns the direction of the smear.
+  - key: radius
+    label: Defocus radius
+    type: number
+    min: 0.5
+    max: 15
+    step: 0.1
+    default: 3
+    unit: px
+    description: The radius of the defocus disk.
+    effect: Larger disks blur more.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 200
+    step: 1
+    default: 30
+    description: How many update steps to run.
+    effect: More iterations restore more detail, and after a point also raise the noise.
+  - key: tau
+    label: Step size
+    type: number
+    min: 0.05
+    max: 1.95
+    step: 0.05
+    default: 1.5
+    description: The step size tau of each update. The PSF adds up to 1, so steps below 2 converge.
+    effect: Larger steps converge in fewer iterations.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  f_{k+1} = \max\left(0,\ f_k + \tau\, h' \circledast (g - h \circledast f_k)\right),\quad \tau = {{tau}},\ k = 0, \ldots, K - 1,\ K = {{iterations}}
+formulaExplanation: >-
+  This is the Landweber step followed by a projection onto the non-negative values. It is
+  projected gradient descent on |h * f - g|^2 with f at least 0, a method for non-negative least
+  squares. With tau below 2 for a normalized PSF it converges toward the non-negative least
+  squares solution. The entry is labeled with its method, projected Landweber. The first
+  estimate is the image itself, with negative values set to 0. The PSF is the kernel of the Gaussian filter cut at 4 sigma, of the motion blur filter, or of the disk averaging filter.
+symbols:
+  - {symbol: 'g', meaning: The blurred image extended with the border mode}
+  - {symbol: 'f_k', meaning: The estimate after k steps}
+  - {symbol: 'K', meaning: The number of steps}
+  - {symbol: "h, h'", meaning: The PSF and the PSF turned by a half turn}
+  - {symbol: '\tau', meaning: The step size}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Start with the estimate f equal to the extended image g.
+  - Take a Landweber step.
+  - Set negative values to 0.
+  - Repeat for the chosen number of iterations.
+  - Crop the last estimate to the image.
+complexity:
+  time: O(K N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and K the number of iterations.
+useCases:
+  - Deblurring dark images, where Landweber iteration would go below black.
+advantages:
+  - The result is never negative.
+limitations:
+  - Like Landweber iteration, slow to restore weak frequencies.
+  - Values above 255 are not limited.
+artifacts:
+  - Ringing near strong edges, above black only.
+references:
+  - kind: paper
+    text: Landweber, L. An iteration formula for Fredholm integral equations of the first kind. American Journal of Mathematics 73(3), 615 to 624, 1951.
+    doi: 10.2307/2372313
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, image restoration and reconstruction.
+implementation: {path: web/src/core/filters/restoration/iterative.ts, symbol: nnlsDeconvFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/restoration/restoration.test.ts]
+learn:
+  oneSentence: Landweber iteration that never lets a pixel go below black.
+  howItWorks:
+    - Take a Landweber step toward an image that blurs into the photo.
+    - Set every negative value to 0.
+    - Repeat.
+  academic: >-
+    Projected Landweber iteration, projected gradient descent for the non-negative least
+    squares deconvolution problem.
+  paramNotes:
+    psf: The shape of the known blur.
+    sigma: The size of the Gaussian blur.
+    length: The length of the motion.
+    angle: The direction of the motion.
+    radius: The size of the defocus disk.
+    iterations: How long to refine the guess.
+    tau: How big each step is.
+  tryThis:
+    - Compare it with Landweber iteration on a dark image with bright points.
+  pitfalls:
+    - Expecting it to remove all ringing. Ringing above black stays.
+  demos: [iteration-viewer, noise-lab]
+related: [landweber, richardson-lucy]
+docsPage: filters/restoration/nnls-deconv.md

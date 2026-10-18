@@ -1,0 +1,107 @@
+id: leveling
+name: Morphological leveling
+aliases: [Leveling, Meyer leveling]
+family: morphology
+tags: [purpose:morphology, purpose:denoise]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Moves the image toward a marker, such as a blurred copy, while keeping every edge sharp. Flat zones grow and merge, but their borders never move.
+purpose: Simplify an image for segmentation without blurring or moving its contours.
+classification: {linearity: nonlinear, domain: spatial, operation: self-dual reconstruction from a marker}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: leveling}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  Set by the Border mode parameter for the Gaussian marker. The leveling stays inside the image, and the filter always runs on the whole image.
+
+params:
+  - key: sigma
+    label: Marker blur
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.1
+    default: 2
+    unit: px
+    description: The marker is the image blurred by a Gaussian of this sigma, cut at 4 sigma.
+    effect: A stronger blur gives a simpler result with larger flat zones.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined when the reconstruction spreads.
+    effect: With 4 neighbors, regions that touch only at a corner stay apart.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  g_{k+1} = \left(f \wedge \delta_N(g_k)\right) \vee \varepsilon_N(g_k)
+formulaExplanation: >-
+  f is the image and g_0 the marker. Each step dilates and erodes g with the 3 x 3 element N, caps the dilation at f and takes the larger of the two. The steps repeat until nothing changes, at most 2000 times. Where the marker lies below the image this is reconstruction by dilation, and where it lies above, reconstruction by erosion. The tests check both cases against scikit-image.
+symbols:
+  - {symbol: 'f', meaning: The image}
+  - {symbol: 'g_k', meaning: The leveling after k steps}
+  - {symbol: 'N', meaning: The 3 x 3 cross or square}
+steps:
+  - Blur the image with a Gaussian to get the marker.
+  - Repeat until nothing changes. Dilate and erode the marker, cap the dilation at the image, and take the larger value.
+complexity:
+  time: O(N s)
+  memory: O(N)
+  notes: N is the number of pixels per channel and s the number of steps, which can grow with the image size. So the preview runs only on demand.
+useCases:
+  - Simplify an image before watershed segmentation.
+  - Remove texture while keeping contours exactly in place.
+advantages:
+  - Edges never move or blur.
+  - Treats bright and dark details the same way.
+limitations:
+  - Slow on large images, since the steps repeat until nothing changes.
+  - The result depends on the marker.
+artifacts:
+  - Large flat zones with sharp borders, a cartoon look.
+references:
+  - kind: paper
+    text: Meyer, F. Levelings, image simplification filters for segmentation. Journal of Mathematical Imaging and Vision 20(1-2), 59 to 72, 2004.
+    doi: 10.1023/B:JMIV.0000011319.21884.39
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: levelingFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Pull the image toward a blurred copy, but only by merging flat areas, never by moving edges.
+  howItWorks:
+    - Blur the image to get a marker.
+    - Let the marker grow up under bright parts and shrink down over dark parts.
+    - Repeat until it settles. Edges stay where they were.
+  academic: >-
+    Meyer's leveling, a self-dual connected operator. Between any two neighbors with different values, the image changes in the same direction and at least as much.
+  paramNotes:
+    sigma: How simple the marker is.
+    connectivity: Which pixels count as joined.
+  tryThis:
+    - Compare the leveling with the Gaussian blur it starts from. The edges stay sharp.
+  pitfalls:
+    - Running it on a large image with the live preview. It runs on demand for that reason.
+  demos: [line-profile]
+related: [reconstruction, asf, gaussian]
+docsPage: filters/morphology/leveling.md

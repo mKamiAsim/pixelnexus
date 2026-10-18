@@ -1,0 +1,119 @@
+id: guided
+name: Guided filter
+family: nonlinear
+tags: [purpose:smoothing, purpose:denoise]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Box filters, linear cost.
+
+summary: Fits a straight-line model of the guide in every window, so it smooths flat areas and keeps edges, at a cost that does not grow with the radius.
+purpose: Edge-preserving smoothing that is fast for any radius and has no gradient reversal.
+classification: {linearity: nonlinear, domain: spatial, operation: local linear model}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/guided.ts, symbol: guidedPlane}
+supportRadius: 2 radius
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Each channel guides itself. With the brightness scope, only luma is filtered and the colors
+  stay. Alpha is kept.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by twice the radius, so the
+  second box mean also sees extended values. OpenCV's ximgproc.guidedFilter uses the reflect mode.
+
+params:
+  - key: radius
+    label: Radius
+    type: integer
+    min: 1
+    max: 30
+    default: 4
+    unit: px
+    description: The radius r of the box windows. Each window is 2r + 1 wide.
+    effect: Larger values smooth over larger areas. The cost stays the same.
+  - key: eps
+    label: Regularization
+    type: number
+    min: 0.0001
+    max: 1
+    step: 0.0001
+    default: 0.01
+    description: The penalty eps on the slope a, for values from 0 to 1, as in the paper. 0.01 is 0.1 squared.
+    effect: Windows whose variance is well below eps are flattened. Windows with much more variance keep their detail.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  a_k = \frac{\operatorname{cov}_k(I, p)}{\sigma_k^2 + \varepsilon},
+  \qquad
+  b_k = \bar{p}_k - a_k \bar{I}_k,
+  \qquad
+  q_i = \bar{a}_i\, I_i + \bar{b}_i
+formulaExplanation: >-
+  In each window k, the output is modeled as a I + b, a straight-line function of the guide I.
+  The slope a and offset b that fit the input p best, with a penalty eps on a, come from the
+  window mean, variance and covariance. A pixel lies in many windows, so its output uses the
+  mean of their a and b, written with a bar. Here the guide is the input itself, so cov(I, p)
+  is the variance and a is var / (var + eps). eps is scaled by 255 squared for 8-bit values.
+symbols:
+  - {symbol: 'I', meaning: 'The guide image, here the input'}
+  - {symbol: 'p', meaning: The input image}
+  - {symbol: 'a_k, b_k', meaning: 'Slope and offset of the model in window k'}
+  - {symbol: '\varepsilon', meaning: The regularization}
+  - {symbol: '\bar{a}_i, \bar{b}_i', meaning: The mean of a and b over the windows that hold pixel i}
+steps:
+  - Extend the image by twice the radius with the border mode.
+  - Compute box means of I, p, I times I and I times p.
+  - Compute a and b for every window from these means.
+  - Compute box means of a and b, and write a times I plus b. Cut the extension off.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Every step is a box mean with running sums, so the radius does not change the cost.
+useCases:
+  - Smooth noise and skin while keeping edges, fast for large radii.
+  - Refine masks and depth maps with an image as the guide.
+  - Detail enhancement, by boosting the difference between the image and its guided filter.
+advantages:
+  - Linear cost for any radius.
+  - No gradient reversal on smooth ramps, unlike the bilateral filter.
+limitations:
+  - Soft halos can appear next to strong edges.
+  - Here the guide is the image itself. A separate guide image is not offered yet.
+artifacts:
+  - Faint halos along high-contrast edges with large radii.
+references:
+  - kind: paper
+    text: He, K., Sun, J. and Tang, X. Guided image filtering. IEEE Transactions on Pattern Analysis and Machine Intelligence 35(6), 1397 to 1409, 2013.
+    doi: 10.1109/TPAMI.2012.213
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::guidedFilter.
+    url: https://docs.opencv.org/4.x/da/d17/group__ximgproc__filters.html
+implementation: {path: web/src/core/filters/nonlinear/guided.ts, symbol: guidedFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: In every small window, the output is a scaled copy of the guide plus an offset, fitted to the input.
+  howItWorks:
+    - In each window, fit the input as a straight-line function of the guide.
+    - Flat windows get a slope near 0, so they become their mean.
+    - Windows with an edge get a slope near 1, so they keep the edge.
+    - Average the fitted lines of all windows that cover a pixel.
+  academic: >-
+    A local linear model, solved by ridge regression in every window. With the input as its own
+    guide, the slope is var / (var + eps), so eps sets the variance below which detail is
+    smoothed. The filter is equal to a kernel that depends on the guide, and its cost is O(N).
+  paramNotes:
+    radius: The window radius in pixels.
+    eps: Detail with a variance well below eps is smoothed. Raise it to smooth stronger edges.
+  tryThis:
+    - Compare it with the bilateral filter on a smooth sky gradient. Look for steps in the gradient.
+  pitfalls:
+    - Using a tiny eps. Then the slope stays near 1 and almost nothing changes.
+  demos: [line-profile, noise-lab]
+related: [bilateral, joint-bilateral, box]
+docsPage: filters/nonlinear/guided.md

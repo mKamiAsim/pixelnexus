@@ -1,0 +1,115 @@
+id: niblack
+name: Niblack threshold
+aliases: [Niblack binarization, Local mean and deviation threshold]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Thresholds each pixel at the local mean plus k times the local standard deviation.
+purpose: Binarize documents and textured images, where the local contrast changes.
+classification: {linearity: nonlinear, domain: statistical, operation: local mean and deviation threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: niblackFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 151
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side of the square window around each pixel.
+    effect: Larger windows follow slower changes of lighting and ignore small details.
+  - key: k
+    label: k
+    type: number
+    min: -1
+    max: 1
+    step: 0.05
+    default: -0.2
+    description: The weight k of the local standard deviation.
+    effect: Negative values lower the threshold below the mean, so more pixels turn white.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  T = m + k\, s,
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > T \\ 0 & \text{otherwise} \end{cases},
+  \qquad k = {{k}}
+formulaExplanation: >-
+  m and s are the mean and the population standard deviation of the window around the pixel.
+  Niblack sets the threshold at m + k s, with k = -0.2 for dark text on a light page. The
+  deviation adapts the threshold to the local contrast. scikit-image's threshold_niblack
+  writes it as m - k s, so its k has the opposite sign. The result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with Invert.
+symbols:
+  - {symbol: 'm, s', meaning: 'The local mean and standard deviation'}
+  - {symbol: 'k', meaning: 'The weight of the deviation'}
+steps:
+  - Compute the local mean and standard deviation with running sums of the values and their squares.
+  - Set the threshold to m + k s.
+  - Compare each pixel with its own threshold.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Running sums make the cost independent of the window size.
+useCases:
+  - Documents with uneven lighting and varying contrast.
+advantages:
+  - Adapts to local brightness and local contrast.
+limitations:
+  - Turns noise in empty areas into speckle, since s is small there and T is close to m.
+artifacts:
+  - Heavy speckle in blank regions. Sauvola was designed to fix this.
+references:
+  - kind: book
+    text: Niblack, W. An Introduction to Digital Image Processing. Prentice Hall, 1986.
+  - kind: library
+    text: scikit-image documentation, skimage.filters.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: niblackFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Compare each pixel with its neighbors' average, moved by a share of how much they vary.
+  howItWorks:
+    - Find the average and the spread of the neighborhood.
+    - Move the threshold from the average by k times the spread.
+    - Make the pixel white if it is brighter than the threshold.
+  academic: >-
+    Niblack's local threshold T = m + k s from the window mean and standard deviation.
+  paramNotes:
+    size: How large the neighborhood is.
+    k: How much the spread moves the threshold.
+    invert: Swap white and black.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Compare Niblack and Sauvola on the empty margin of a scanned page.
+  pitfalls:
+    - Blank areas. They fill with speckle.
+  demos: [line-profile]
+related: [sauvola, wolf, threshold-adaptive-mean]
+docsPage: filters/segmentation/niblack.md

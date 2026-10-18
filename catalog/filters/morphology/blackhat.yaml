@@ -1,0 +1,105 @@
+id: blackhat
+name: Black-hat
+aliases: [Bottom-hat, Black top-hat]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: The closing minus the image. It keeps dark details smaller than the element.
+purpose: Extract small dark features, such as text or scratches, from a lighter background.
+classification: {linearity: nonlinear, domain: spatial, operation: closing minus image}
+output: image
+representation: structuring-element
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/gray.ts, symbol: morphology}
+supportRadius: 2 x iterations x the reach of the element
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own, which can create colors that were not
+  in the image. Brightness only keeps the colors and works on luma.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full reach, so strips and
+  whole images agree.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: disk 1
+    description: The shape and size of the neighborhood. Disk 1 is the 3 x 3 cross.
+    effect: Larger elements change larger structures. The shape decides which structures fit.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 1
+    description: How many times each erosion or dilation runs.
+    effect: More iterations act like a larger element of the same shape.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  (f \bullet B) - f
+formulaExplanation: >-
+  The closing fills every dark detail the element does not fit into, so the difference keeps only those dark details, as bright values. Erosion takes the smallest value of f(p + z) for z in B. Dilation takes the
+  largest value of f(p - z), which uses the element turned by 180 degrees. Both match the
+  grayscale erosion and dilation of SciPy. On an image of 0 and 255 they are binary erosion and
+  dilation.
+symbols:
+  - {symbol: 'f', meaning: The image}
+  - {symbol: 'B', meaning: The structuring element}
+steps:
+  - Extend the image by the reach of all steps with the border mode.
+  - Close the image with the element.
+  - Subtract the image from the closing, and cut the extension off.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the number of pixels in the element, times the number of steps.
+useCases:
+  - Extract dark text from a light, uneven page.
+  - Find small dark spots and cracks.
+advantages:
+  - Never negative.
+  - The element size sets which details count as small.
+limitations:
+  - Dark objects larger than the element vanish.
+artifacts:
+  - Halos where the background changes faster than the element.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.grey_erosion and grey_dilation.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.grey_erosion.html
+implementation: {path: web/src/core/filters/morphology/gray.ts, symbol: blackhatFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep the dark details that are smaller than the element, shown as bright values.
+  howItWorks:
+    - Close the image, which fills small dark details.
+    - Subtract the image from that.
+    - Only the small dark details remain, now bright.
+  academic: >-
+    The black top-hat transform, the dual of the white top-hat.
+  paramNotes:
+    element: The neighborhood shape and size.
+    iterations: How many times each step runs.
+  tryThis:
+    - Apply the black-hat to a page of text with a disk wider than the strokes.
+  pitfalls:
+    - Expecting dark output. The dark details come out bright.
+  demos: [line-profile]
+related: [tophat, closing]
+docsPage: filters/morphology/blackhat.md

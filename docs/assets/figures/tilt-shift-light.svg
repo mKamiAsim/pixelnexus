@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="165.24pt" viewBox="0 0 360 165.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 165.24 
+L 360 165.24 
+L 360 0 
+L 0 0 
+L 0 165.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#p1d9fa1ecab)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAB4CAYAAAB1ovlvAAABkUlEQVR4nO3asQkDMRQFwZO7UB3qvwS1oTbOHSgzC2YmPV62/ODQOOe8z8Va6/b52Xtfv9vb33yuX+HHBEhKgKQESEqApARISoCkxpzz+h+w/k9k/997F5CUAEkJkJQASQmQlABJCZDU8B7Qvty7gKQESEqApARISoCkBEhKgKS8B7RP9y4gKQGSEiApAZISICkBkhIgKe8B7dO9C0hKgKQESEqApARISoCkBEjKe0D7dO8CkhIgKQGSEiApAZISICkBkvIe0D7du4CkBEhKgKQESEqApARISoCkvAe0T/cuICkBkhIgKQGSEiApAZISICnvAe3TvQtISoCkBEhKgKQESEqApARIyntA+3TvApISICkBkhIgKQGSEiApAZLyHtA+3buApARISoCkBEhKgKQESEqApLwHtE/3LiApAZISICkBkhIgKQGSEiAp7wHt070LSEqApARISoCkBEhKgKQESMp7QPt07wKSEiApAZISICkBkhIgKQGS8h7QPt27gKQESEqApARISoCkBEhKgKS+cLbSGJiL444AAAAASUVORK5CYII=" id="image6c3708f1b2" width="160" height="120" transform="matrix(1.0875 0 0 1.0875 3.6 17.37)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="90.6" y="13.37" transform="rotate(-0 90.6 13.37)">Checkerboard</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#p3e906809c1)">
+    <image xlink:href="data:image/png;base64,
+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" id="image8355c9640f" width="160" height="120" transform="matrix(1.0875 0 0 1.0875 182.4 17.37)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #1f2328" x="269.4" y="13.37" transform="rotate(-0 269.4 13.37)">Tilt-shift</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p1d9fa1ecab">
+   <rect x="3.6" y="17.37" width="174" height="130.5"/>
+  </clipPath>
+  <clipPath id="p3e906809c1">
+   <rect x="182.4" y="17.37" width="174" height="130.5"/>
+  </clipPath>
+ </defs>
+</svg>

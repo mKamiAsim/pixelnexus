@@ -1,0 +1,94 @@
+id: histogram-eq
+name: Histogram equalization
+aliases: [Global histogram equalization, Equalize]
+family: enhancement
+tags: [purpose:contrast]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Global.
+
+summary: Spreads the brightness values so that each level is used about equally often, which raises contrast where most pixels are.
+purpose: Raise the contrast of images whose values bunch together in a narrow range.
+classification: {linearity: nonlinear, domain: point, operation: cumulative histogram transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/histogram.ts, symbol: equalizeTable}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  With the brightness scope, the default, the curve is built from the histogram of luma and
+  only luma goes through it, so colors stay. With RGB scope, each channel gets its own curve
+  from its own histogram, which can shift colors. Alpha is kept.
+boundary: >-
+  Not needed for the curve itself. The curve depends on the histogram of the whole image, so
+  the filter always runs on the whole image.
+
+params:
+  - ref: channelScope
+    default: luminance
+formula: |
+  I_{\text{out}} = T(I),
+  \qquad
+  T(k) = 255 \cdot \frac{1}{N} \sum_{j=0}^{k} h_j
+formulaExplanation: >-
+  h_j is the number of pixels at level j and N the number of pixels. T is the cumulative
+  histogram scaled to 0 to 255, the histogram equalization of Gonzalez and Woods. A level shared
+  by many pixels gets a big step up the curve, so crowded ranges spread out. The values stay
+  unrounded until the end. The darkest level that occurs maps to 255 times its share of the
+  pixels, not always to 0. OpenCV's equalizeHist shifts the curve so that it does. Values
+  between two levels take the output interpolated between them.
+symbols:
+  - {symbol: 'h_j', meaning: 'The number of pixels at level j'}
+  - {symbol: 'N', meaning: 'The number of pixels'}
+  - {symbol: 'T', meaning: 'The transfer curve'}
+steps:
+  - Count the histogram of the levels of the whole image.
+  - Add it up from level 0 to get the cumulative histogram.
+  - Scale it to 0 to 255 and apply it to every pixel.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. One pass counts the histogram, a second applies the 256-entry curve.
+useCases:
+  - Low-contrast medical, satellite and microscope images.
+  - A first look at detail hidden in a narrow range of values.
+advantages:
+  - Automatic, with no parameters.
+  - Uses the full range of output levels.
+limitations:
+  - One curve for the whole image, so it can overdo large flat areas. CLAHE works per region.
+  - Raises noise in flat areas along with detail.
+artifacts:
+  - Harsh, unnatural contrast and amplified noise in smooth areas.
+  - Gaps in the output histogram, since 8-bit levels cannot be split.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: OpenCV documentation, cv::equalizeHist.
+    url: https://docs.opencv.org/4.x/d6/dc7/group__imgproc__hist.html
+implementation: {path: web/src/core/filters/enhancement/histogram.ts, symbol: histogramEqFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Spread out the brightness levels so each one is used about equally often.
+  howItWorks:
+    - Count how many pixels have each brightness.
+    - Add the counts up from black to white.
+    - Use the running total as the new brightness, scaled to 0 to 255.
+  academic: >-
+    Histogram equalization by the cumulative distribution function of the intensities, which
+    makes the output histogram as flat as the 8-bit levels allow.
+  paramNotes:
+    channelScope: Equalize brightness only, or each color channel.
+  tryThis:
+    - Open the Point-op curve and see the curve rise steeply where the histogram has a peak.
+  pitfalls:
+    - RGB scope on a color photo. Each channel gets its own curve and the colors shift.
+  demos: [point-op-curve]
+related: [clahe, ahe, percentile-normalize, contrast-stretch]
+docsPage: filters/enhancement/histogram-eq.md

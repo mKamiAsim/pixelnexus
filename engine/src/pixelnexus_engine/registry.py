@@ -1,0 +1,102 @@
+"""The filters the engine can run, and the catalog entries that name the engine.
+
+A filter is a function of an RGBA image, its parameters and a progress callback. It returns
+an RGBA image, or a JSON-ready dict for features and tables. Filters register themselves by
+id in ``FILTERS``. The catalog stays the single source of truth for what a filter is: the
+engine lists the catalog entries whose engine is "science" and says which of them it can run.
+
+A filter registered with ``mask=True`` reads the selection as an input, such as the area to
+fill. Its job must carry a mask, and the worker passes it as ``params["mask"]``: an array of
+shape (height, width) from 0 (not selected) to 255 (selected). A filter may return an image of
+another size, such as an enlarged one. The result carries its own size.
+
+Ids that start with an underscore are internal diagnostics for the contract tests. They are not
+catalog filters and are never listed.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import yaml
+from numpy.typing import NDArray
+
+Rgba = NDArray[np.uint8]
+Progress = Callable[[float], None]
+Result = Rgba | dict[str, Any]
+Run = Callable[[Rgba, dict[str, Any], Progress], Result]
+Representation = Callable[[dict[str, Any]], dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class EngineFilter:
+    id: str
+    run: Run
+    representation: Representation | None = None
+    mask: bool = False
+
+
+FILTERS: dict[str, EngineFilter] = {}
+
+
+def register(
+    filter_id: str, representation: Representation | None = None, mask: bool = False
+) -> Callable[[Run], Run]:
+    def decorate(run: Run) -> Run:
+        FILTERS[filter_id] = EngineFilter(filter_id, run, representation, mask)
+        return run
+
+    return decorate
+
+
+def load_filters() -> None:
+    """Import the modules that register filters. Child processes call this too."""
+    from pixelnexus_engine import diagnostics, filters  # noqa: F401, registers by import
+
+
+def find_catalog(start: Path | None = None) -> Path | None:
+    """The catalog/filters folder of the repository, searched upward from a start folder."""
+    here = (start or Path.cwd()).resolve()
+    for folder in (here, *here.parents):
+        candidate = folder / "catalog" / "filters"
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def common_params(catalog_dir: Path | None) -> list[dict[str, Any]]:
+    """The shared parameters that entries reuse with ``ref``, from catalog/common-params.yaml."""
+    if catalog_dir is None:
+        return []
+    path = catalog_dir.parent / "common-params.yaml"
+    if not path.is_file():
+        return []
+    params: list[dict[str, Any]] = yaml.safe_load(path.read_text(encoding="utf-8"))["params"]
+    return params
+
+
+def science_entries(catalog_dir: Path | None) -> list[dict[str, Any]]:
+    """The catalog entries that run in this engine, sorted by id."""
+    if catalog_dir is None:
+        return []
+    entries = []
+    for path in sorted(catalog_dir.rglob("*.yaml")):
+        entry = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if isinstance(entry, dict) and entry.get("engine") == "science":
+            entries.append(entry)
+    return sorted(entries, key=lambda e: str(e.get("id")))
+
+
+def ai_tasks(catalog_dir: Path | None) -> list[dict[str, Any]]:
+    """The AI router tasks of catalog/ai-tasks.yaml, next to the filters folder."""
+    if catalog_dir is None:
+        return []
+    path = catalog_dir.parent / "ai-tasks.yaml"
+    if not path.is_file():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return list(data.get("tasks") or [])

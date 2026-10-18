@@ -1,0 +1,120 @@
+id: bitonic
+name: Bitonic filter
+aliases: [Bitonic smoothing, Treece bitonic filter]
+family: nonlinear
+tags: [purpose:denoise, purpose:smooth]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: Treece, from the definitions of his technical report TR 700 (read on 2026-10-16).
+
+summary: Smooths like a Gaussian but keeps edges, by Treece's definition of signal as bitonic, with at most one peak or one dip within the filter's reach. A centile opening and closing find the bitonic signal, and their errors, smoothed with a Gaussian, decide how to mix them. It needs no setting for the noise level.
+purpose: Edge-preserving noise reduction with no threshold on brightness, so edges of any height are kept.
+classification: {linearity: nonlinear, domain: morphological, operation: rank and linear combination}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/bitonic.py, symbol: bitonic_representation}
+supportRadius: about 1.7 x length
+supportsMask: true
+preview: on-demand
+colorHandling: Set by the Channel scope parameter.
+boundary: The image is extended symmetrically at its edges, as in the report.
+dependencies:
+  - {name: SciPy, optional: false, note: 'scipy.ndimage.percentile_filter and gaussian_filter.'}
+
+params:
+  - key: length
+    label: Filter length l
+    type: integer
+    min: 3
+    max: 31
+    step: 2
+    default: 9
+    unit: px
+    description: The diameter l of the disk for the rank filters. The Gaussian has sigma 0.33 l. Our choice of 9.
+    effect: Larger values smooth more and keep only larger bitonic features.
+  - key: centile
+    label: Centile c
+    type: number
+    min: 0
+    max: 25
+    step: 1
+    default: 10
+    unit: '%'
+    description: The low centile c of the opening and closing. The report uses 10 for noisy images and 2 for clean ones.
+    effect: Higher values reject more impulse noise, like a median. 0 keeps single impulses as signal.
+  - ref: channelScope
+formula: |
+  O = r_{100 - c}(r_c(x)),\quad C = r_c(r_{100 - c}(x)),
+  \qquad
+  e_O = \lvert G_\sigma * (x - O) \rvert,\quad e_C = \lvert G_\sigma * (C - x) \rvert,
+  \qquad
+  b = \frac{e_O\, C + e_C\, O}{e_O + e_C}
+formulaExplanation: >-
+  r_c is a rank filter that takes the c-th centile in a disk of diameter l. With a low c, r_c
+  then r_(100-c) is a centile opening, which keeps dips and removes peaks narrower than the disk.
+  The closing does the reverse. A bitonic signal survives one of them unchanged. The errors of
+  each against the input, smoothed with a Gaussian of sigma 0.33 l, show which fits better
+  nearby, and the output weighs each by the other's error. Where both errors are 0, both weights
+  are set to 0.5. In heavy noise, the opening and closing become nearly flat, and the output
+  tends to the Gaussian of the input.
+symbols:
+  - {symbol: 'r_c', meaning: 'The rank filter at the c-th centile over the disk'}
+  - {symbol: 'O, C', meaning: 'The centile opening and closing'}
+  - {symbol: 'G_\sigma', meaning: 'A Gaussian with sigma 0.33 l'}
+  - {symbol: 'e_O, e_C', meaning: 'The smoothed errors of the opening and the closing'}
+  - {symbol: 'b', meaning: 'The output'}
+steps:
+  - Take the c-th and the (100 - c)-th centile of each disk of diameter l.
+  - Filter each again with the other centile, to get the centile opening and closing.
+  - Smooth the difference between the input and each with a Gaussian of sigma 0.33 l.
+  - Mix the opening and closing, each weighted by the other's smoothed error.
+complexity:
+  time: O(N l^2)
+  memory: O(N)
+  notes: N is the number of pixels. The report says it takes 3 to 4 times as long as one rank filter of the same size.
+useCases:
+  - Removing noise while keeping edges of every height.
+  - Images with noise that varies from place to place, since no noise level is set.
+advantages:
+  - No setting for the noise or the brightness of edges.
+  - Keeps straight steps and ramps exactly when there is no noise.
+  - Tends to a Gaussian in heavy noise rather than making new artifacts.
+limitations:
+  - Features narrower than the disk with both a peak and a dip, such as fine texture, are smoothed away.
+  - Slower than a Gaussian, since it runs four rank filters.
+artifacts:
+  - Single stair-step pixels on pixelated curved outlines can change.
+  - Flattened thin lines and small spots at large lengths.
+references:
+  - kind: paper
+    text: Treece, G. The bitonic filter. Linear filtering in an edge-preserving morphological framework. IEEE Transactions on Image Processing 25(11), 5199 to 5211, 2016.
+    doi: 10.1109/TIP.2016.2605302
+  - kind: web
+    text: Treece, G. The bitonic filter. Linear filtering in an edge-preserving morphological framework. Technical report CUED/F-INFENG/TR 700, University of Cambridge, 2015.
+    url: https://www.repository.cam.ac.uk/handle/1810/252987
+implementation: {path: engine/src/pixelnexus_engine/filters/bitonic.py, symbol: bitonic}
+tests: [engine/tests/test_bitonic.py]
+learn:
+  oneSentence: Smooth like a Gaussian but keep every edge, using rank filters to find what is signal.
+  howItWorks:
+    - Remove small peaks with one rank filter pair and small dips with another.
+    - See which of the two stays closer to the image in each area.
+    - Mix them by that, so edges stay and the rest is smoothed.
+  academic: >-
+    Treece's bitonic filter: morphological opening and closing with centile rank filters,
+    combined with weights from Gaussian-smoothed errors.
+  paramNotes:
+    length: How much to smooth.
+    centile: How strongly to reject impulses.
+    channelScope: Which channels.
+  tryThis:
+    - Compare with the median and the Gaussian blur at the same size on a noisy image.
+    - Set the centile to 0 and add salt and pepper noise.
+  pitfalls:
+    - A length larger than the texture you want to keep.
+  demos: [line-profile, noise-lab]
+related: [median, gaussian, opening, closing]
+docsPage: filters/nonlinear/bitonic.md

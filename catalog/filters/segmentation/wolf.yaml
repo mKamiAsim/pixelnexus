@@ -1,0 +1,137 @@
+id: wolf
+name: Wolf threshold
+aliases: [Wolf-Jolion binarization, Wolf binarization]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Thresholds each pixel from its local mean and standard deviation, measured against the darkest value and the highest local contrast of the whole image.
+purpose: Binarize text in images with low or uneven contrast, such as video frames and faded documents.
+classification: {linearity: nonlinear, domain: statistical, operation: normalized local mean and deviation threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: wolfThresholds}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own, with its own M and R.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. The threshold also uses the
+  smallest value and the largest local deviation of the whole image, so the filter always runs
+  on the whole image.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 151
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side of the square window around each pixel.
+    effect: Larger windows follow slower changes of lighting and ignore small details.
+  - key: k
+    label: k
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 0.5
+    description: How far the threshold moves from the local mean toward the darkest value where the contrast is low.
+    effect: Higher values lower the threshold more in flat areas, which keeps them white.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  T = (1 - k)\, m + k M + k\, \frac{s}{R}\, (m - M),
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > T \\ 0 & \text{otherwise} \end{cases},
+  \qquad k = {{k}}
+formulaExplanation: >-
+  m and s are the mean and the population standard deviation of the window around the pixel. M
+  is the smallest value of the image, and R is the largest s over the image. The same rule can be
+  written T = m - k (1 - s / R) (m - M). Sauvola's rule is T = m - k (1 - s / R) m with a fixed R.
+  So Wolf's method measures from the darkest value M instead of 0, and takes R from the image.
+  Where the window has the highest contrast in the image, s = R and T = m. Where it is
+  flat, T falls from m toward M by the fraction k. This is the rule of Wolf's own program, which
+  uses k = 0.5 by default, and of OpenCV's niBlackThreshold with BINARIZATION_WOLF. If the whole
+  image is flat, R = 0. Then s / R counts as 0 and T equals the value, so every pixel turns 0. The
+  result is 255 where the value is above the threshold and 0 elsewhere, or the reverse with
+  Invert.
+symbols:
+  - {symbol: 'm, s', meaning: 'The local mean and standard deviation'}
+  - {symbol: 'M', meaning: 'The smallest value of the image'}
+  - {symbol: 'R', meaning: 'The largest local standard deviation in the image'}
+  - {symbol: 'k', meaning: 'The weight of the contrast term'}
+steps:
+  - Compute the local mean and standard deviation with running sums of the values and their squares.
+  - Find the smallest value M of the image and the largest standard deviation R.
+  - Set the threshold to (1 - k) m + k M + k (s / R) (m - M).
+  - Compare each pixel with its own threshold.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Running sums make the cost independent of the window size.
+useCases:
+  - Text in video frames and photos with low contrast.
+  - Faded or stained documents.
+advantages:
+  - Adapts to the contrast of the image, so there is no fixed range R to tune.
+  - Keeps blank areas clean, like Sauvola.
+limitations:
+  - One very dark pixel or one very busy window changes M or R, and so the threshold everywhere.
+  - Wolf's own program copies the threshold of the nearest full window at the image edges and finds R over full windows only. PixelNexus fills windows with the border mode, as OpenCV does with replicate, so results near the edges can differ.
+artifacts:
+  - Thin strokes can break where the contrast is weak.
+references:
+  - kind: paper
+    text: Wolf, C., Jolion, J.-M. and Chassaing, F. Text localization, enhancement and binarization in multimedia documents. Proceedings of the 16th International Conference on Pattern Recognition, volume 2, 1037 to 1040, 2002.
+    doi: 10.1109/ICPR.2002.1048482
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::niBlackThreshold.
+    url: https://docs.opencv.org/4.x/df/d2d/group__ximgproc.html
+  - kind: web
+    text: Wolf, C. Local adaptive binarization, the author's program.
+    url: https://github.com/chriswolfvision/local_adaptive_binarization
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: wolfFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Compare each pixel with its neighbors, and judge how much contrast counts as text by the image itself.
+  howItWorks:
+    - Find the average and the spread of the neighborhood.
+    - Find the darkest pixel and the largest spread in the whole image.
+    - Where the spread is small compared with the largest one, move the threshold from the average toward the darkest value.
+    - Make the pixel white if it is brighter than the threshold.
+  academic: >-
+    The threshold of Wolf, Jolion and Chassaing, T = (1 - k) m + k M + k (s / R) (m - M). It
+    normalizes Sauvola's rule by the minimum gray level and the largest local deviation.
+  paramNotes:
+    size: How large the neighborhood is.
+    k: How much a flat neighborhood lowers the threshold.
+    invert: Swap white and black.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Compare Wolf and Sauvola on a dim, low-contrast photo of a page. Sauvola needs a smaller R there, while Wolf finds its range on its own.
+  pitfalls:
+    - Expecting dark text to come out white without Invert.
+    - A single black dot or a busy corner changes the result everywhere.
+  demos: [line-profile]
+related: [sauvola, niblack, bradley]
+docsPage: filters/segmentation/wolf.md

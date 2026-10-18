@@ -1,0 +1,86 @@
+id: skeleton
+name: Skeletonization
+aliases: [Morphological skeleton, Lantuejoul skeleton]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: The morphological skeleton. It joins, over all sizes, what an opening removes from the eroded shape.
+purpose: Describe shapes by their center lines, in the morphological form that allows exact reconstruction.
+classification: {linearity: nonlinear, domain: spatial, operation: Lantuejoul skeleton}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/binary.ts, symbol: morphologicalSkeleton}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  The image is read as binary, with values at or above 128 as foreground. By default the
+  filter works on luma. With RGB scope, each channel is made binary and processed on its own.
+boundary: >-
+  Pixels outside the image count as background. The filter follows shapes across the whole image, so it always runs on the whole image.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: cross 1
+    description: The element B used for the erosions and openings.
+    effect: The shape of the element shapes the skeleton. A cross and a square give different branches.
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  S(A) = \bigcup_{k \ge 0} \left( (A \ominus kB) \setminus (A \ominus kB) \circ B \right)
+formulaExplanation: >-
+  A eroded k times by B, minus its opening by B, keeps the pixels where a copy of B of size k fits but a larger one does not. The union over k, until the erosion is empty, is the skeleton. Unlike thinning, it may be disconnected, but the shape can be rebuilt from it.
+symbols:
+  - {symbol: 'A \\ominus kB', meaning: A eroded k times by B}
+  - {symbol: '\\circ', meaning: Opening}
+steps:
+  - Make the image binary.
+  - For k = 0, 1, 2 and so on, erode k times and subtract the opening of that erosion.
+  - Join the results until the erosion is empty.
+complexity:
+  time: O(N K m)
+  memory: O(N)
+  notes: N is the number of pixels per channel, K the size of the element and m the number of erosions, about half the thickness of the widest shape.
+useCases:
+  - Shape description and compression.
+  - Teaching the link between erosion, opening and shape.
+advantages:
+  - Exact reconstruction of the shape is possible from it.
+limitations:
+  - Often disconnected and sensitive to noise on the outline.
+artifacts:
+  - Broken skeleton lines.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+implementation: {path: web/src/core/filters/morphology/binary.ts, symbol: skeletonFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Keep the center points of the largest copies of the element that fit inside the shape.
+  howItWorks:
+    - Erode the shape again and again.
+    - Each time, keep what an opening would remove.
+    - Join everything kept.
+  academic: >-
+    Lantuejoul's formula for the skeleton by openings. Each skeleton subset S_k, dilated k times, rebuilds the shape exactly.
+  paramNotes:
+    element: The element of the erosions.
+  tryThis:
+    - Compare the skeleton with thinning on the same shapes. Thinning is connected, the skeleton often is not.
+  pitfalls:
+    - Expecting connected lines. Use thinning for that.
+  demos: [line-profile]
+related: [thinning, erosion, opening]
+docsPage: filters/morphology/skeleton.md

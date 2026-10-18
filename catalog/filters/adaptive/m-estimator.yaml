@@ -1,0 +1,145 @@
+id: m-estimator
+name: Robust M-estimator filter
+aliases: [M-estimator smoothing, Huber filter, Tukey biweight filter, Robust mean filter]
+family: adaptive
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: Huber and Tukey weights, iteratively reweighted.
+
+summary: Replaces each pixel with a robust mean of its window, an M-estimate of location after Huber. Pixels far from the current estimate count less, or not at all, so outliers such as impulse noise and the other side of an edge barely pull the result. The estimate is found by iteratively reweighted least squares.
+purpose: Smooth Gaussian noise and ignore outliers at the same time, between a mean and a median.
+classification: {linearity: nonlinear, domain: statistical, operation: M-estimate of location}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/robust.py, symbol: m_estimator_representation}
+supportRadius: radius
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness
+  scope, only luma is filtered and the colors stay. With the color scope, only Cb and Cr are
+  filtered.
+boundary: The edge pixels repeat outward.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.restoration.estimate_sigma, for the automatic scale.'}
+  - {name: SciPy, optional: false, note: 'The median of the window, as the start.'}
+
+params:
+  - key: estimator
+    label: Weights
+    type: select
+    default: huber
+    options:
+      - {value: tukey, label: Tukey biweight}
+      - {value: huber, label: Huber}
+    description: Huber's weights shrink the pull of far pixels but never reach 0. Tukey's biweight drops pixels beyond c times the scale. Huber is our choice of default, since it scored higher on the worked example.
+    effect: Tukey ignores outliers fully. Huber is gentler and never ignores a pixel.
+  - key: scale
+    label: Scale
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    unit: levels
+    description: The scale s that residuals are divided by, about the noise sigma. 0 estimates it from the channel with scikit-image's estimate_sigma.
+    effect: Smaller values treat more pixels as outliers, so edges stay sharper and less noise is averaged.
+  - key: radius
+    label: Radius
+    type: integer
+    min: 1
+    max: 7
+    step: 1
+    default: 2
+    unit: px
+    description: The window reaches this far in each direction, so 2 gives a 5 x 5 window. Our choice.
+    effect: Larger windows remove more noise and take longer.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 20
+    step: 1
+    default: 5
+    description: The number of reweighting steps after the median start. Our choice.
+    effect: The estimate settles within a few steps.
+  - ref: channelScope
+    default: rgb
+formula: |
+  \hat\mu = \arg\min_\mu \sum_{q \in W} \rho\!\left(\frac{I_q - \mu}{s}\right),
+  \qquad
+  \mu_{t+1} = \frac{\sum_q w(r_q)\, I_q}{\sum_q w(r_q)},\quad r_q = \frac{I_q - \mu_t}{s}
+formulaExplanation: >-
+  An M-estimator picks the value mu that makes the sum of rho of the scaled residuals smallest.
+  With rho the square, that is the mean. With rho the absolute value, it is the median. Huber's
+  rho is a square near 0 and grows only linearly beyond k, so outliers pull less. Tukey's biweight
+  stops growing beyond c, so far outliers stop pulling at all. Holland and Welsch solve this by
+  iteratively reweighted least squares. Each step weighs every pixel by w = rho' (r) / r and takes
+  the weighted mean. Huber's weight is min(1, k / |r|) with k = 1.345. Tukey's is
+  (1 - (r / c)^2)^2 inside c = 4.685 and 0 outside. These are the usual constants for 95 percent
+  efficiency at the normal distribution.
+symbols:
+  - {symbol: '\hat\mu', meaning: 'The robust estimate at the pixel'}
+  - {symbol: '\rho', meaning: 'The loss of the estimator'}
+  - {symbol: 'w', meaning: 'The weight of a window pixel'}
+  - {symbol: 's', meaning: 'The scale'}
+  - {symbol: 'W', meaning: 'The window'}
+steps:
+  - Start with the median of the window.
+  - Weigh each window pixel by how far it is from the estimate, in units of the scale.
+  - Take the weighted mean as the new estimate.
+  - Repeat for the given number of steps.
+complexity:
+  time: O(N R^2 K)
+  memory: O(N R^2)
+  notes: N is the number of pixels, R the window side and K the number of steps.
+useCases:
+  - Noise that mixes Gaussian noise with impulses.
+  - Teaching robust statistics, between the mean and the median.
+advantages:
+  - Smoother than the median on Gaussian noise, and outliers barely pull it, unlike the mean.
+  - Keeps edges, since the other side counts as outliers.
+limitations:
+  - The scale matters. Too large and it acts like a mean, too small and it keeps the noise.
+  - Fine detail smaller than the window is lost.
+artifacts:
+  - Small flat patches where Tukey's weights drop a whole cluster.
+references:
+  - kind: paper
+    text: Huber, P. J. Robust estimation of a location parameter. The Annals of Mathematical Statistics 35(1), 73 to 101, 1964.
+    doi: 10.1214/aoms/1177703732
+  - kind: paper
+    text: Beaton, A. E., and Tukey, J. W. The fitting of power series, meaning polynomials, illustrated on band-spectroscopic data. Technometrics 16(2), 147 to 185, 1974.
+    doi: 10.1080/00401706.1974.10489171
+  - kind: paper
+    text: Holland, P. W., and Welsch, R. E. Robust regression using iteratively reweighted least-squares. Communications in Statistics, Theory and Methods 6(9), 813 to 827, 1977.
+    doi: 10.1080/03610927708827533
+implementation: {path: engine/src/pixelnexus_engine/filters/robust.py, symbol: m_estimator}
+tests: [engine/tests/test_robust.py]
+learn:
+  oneSentence: A mean that stops listening to pixels that are far off.
+  howItWorks:
+    - Start with the median of the window.
+    - Give each pixel a weight that falls the farther it is from the current guess.
+    - Take the weighted mean as the new guess, and repeat a few times.
+  academic: >-
+    Local M-estimation of location with Huber or Tukey biweight loss, solved by iteratively
+    reweighted least squares from a median start.
+  paramNotes:
+    estimator: How far pixels lose their weight.
+    scale: The size of a normal residual.
+    radius: The window size.
+    iterations: How many reweighting steps.
+    channelScope: Which channels to filter.
+  tryThis:
+    - Add salt and pepper noise and Gaussian noise together. Compare this filter with the mean and the median.
+  pitfalls:
+    - A scale far above the noise. The filter then acts like a plain mean and blurs edges.
+  demos: [line-profile, noise-lab]
+related: [median, box, susan-smoothing, bilateral]
+docsPage: filters/adaptive/m-estimator.md

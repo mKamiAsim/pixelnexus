@@ -1,0 +1,137 @@
+id: sato
+name: Sato filter
+aliases: [Sato tubeness, Line filter]
+family: features
+tags: [purpose:analysis, purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6d
+status: implemented-tested
+
+summary: Finds tube-like lines with the multiscale line filter of Sato et al. Each pixel gets the larger curvature across the line, scaled by sigma squared, so lines of different widths are compared fairly.
+purpose: Enhance vessels, neurites and other tubes, with a response that grows with their contrast.
+classification: {linearity: nonlinear, domain: spatial, operation: Hessian eigenvalue tubeness}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/ridges.py, symbol: ridge_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma, with the BT.709 weights, and gives a gray result. With
+  the RGB scope, each channel is filtered on its own. In retinal photos the green channel often
+  shows vessels best. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect, as in scikit-image. It fills the Gaussian derivatives past the edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.filters.sato and the Hessian (skimage.feature.hessian_matrix).'}
+
+params:
+  - key: ridges
+    label: Ridges
+    type: select
+    default: dark
+    options:
+      - {value: dark, label: Dark ridges}
+      - {value: bright, label: Bright ridges}
+    description: Whether the lines to find are darker or brighter than their surroundings. Vessels in retinal photos are dark.
+    effect: The wrong choice finds the gaps between lines instead.
+  - key: sigmaMin
+    label: Smallest scale
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 1
+    unit: px
+    description: The smallest Gaussian sigma. A line of width w responds most near sigma = w / 2 or a little less.
+    effect: Smaller values find thinner lines, and also more noise.
+  - key: sigmaMax
+    label: Largest scale
+    type: number
+    min: 0.5
+    max: 20
+    step: 0.5
+    default: 9
+    unit: px
+    description: The largest Gaussian sigma. If it is below the smallest scale, only the smallest is used.
+    effect: Larger values also find wide lines, and take longer.
+  - key: sigmaStep
+    label: Scale step
+    type: number
+    min: 0.5
+    max: 10
+    step: 0.5
+    default: 2
+    unit: px
+    description: The step between the scales. The defaults give 1, 3, 5, 7 and 9, the scikit-image defaults.
+    effect: Smaller steps try more scales and take longer.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  T_\sigma = \sigma^2 \max(\lambda_{\max}, 0),
+  \qquad
+  R(x) = \max_\sigma T_\sigma(x)
+formulaExplanation: >-
+  The Hessian is the matrix of second derivatives of the image smoothed by a Gaussian of sigma.
+  Across a dark line, the brightness bends up, so the larger eigenvalue lambda_max is positive.
+  Sato's measure in 2D is that eigenvalue, clipped at 0. Second derivatives shrink as the
+  Gaussian grows, so the factor sigma^2 makes the scales comparable, as in scale-space theory.
+  The filter keeps the largest T over the scales and stretches the result so the strongest
+  response is white.
+symbols:
+  - {symbol: '\lambda_{\max}', meaning: 'The larger Hessian eigenvalue'}
+  - {symbol: '\sigma', meaning: 'The scale'}
+steps:
+  - Compute the Hessian with Gaussian derivatives at each scale.
+  - Take the larger eigenvalue, clip it at 0 and multiply it by sigma squared.
+  - Keep the largest value over the scales.
+  - Stretch the result to the full range.
+complexity:
+  time: O(K N sigma)
+  memory: O(N)
+  notes: N is the number of pixels, K the number of scales and sigma the largest scale. The Gaussian derivatives are separable, and their windows reach 8 sigma.
+useCases:
+  - Vessels and neurites in medical and microscope images.
+  - A simple line measure to compare with Frangi and Meijering.
+advantages:
+  - Simple, with no constants to tune.
+  - Scale normalized, so thin and wide lines of the same contrast give similar values.
+limitations:
+  - Also responds to the dark side of edges and to dark blobs, since it does not look at the smaller eigenvalue.
+artifacts:
+  - Blobs and corners respond as strongly as lines.
+references:
+  - kind: paper
+    text: Sato, Y., Nakajima, S., Shiraga, N., Atsumi, H., Yoshida, S., Koller, T., Gerig, G., and Kikinis, R. Three-dimensional multi-scale line filter for segmentation and visualization of curvilinear structures in medical images. Medical Image Analysis 2(2), 143 to 168, 1998.
+    doi: 10.1016/S1361-8415(98)80009-1
+  - kind: library
+    text: scikit-image documentation, skimage.filters.sato.
+implementation: {path: engine/src/pixelnexus_engine/filters/ridges.py, symbol: sato_filter}
+tests: [engine/tests/test_ridges.py]
+learn:
+  oneSentence: Measure how strongly the brightness bends across each line, at several scales.
+  howItWorks:
+    - Smooth the image at several scales.
+    - At each pixel, measure how the brightness bends across and along each direction.
+    - A line bends strongly across and hardly at all along.
+    - Keep the strongest answer over the scales.
+  academic: >-
+    Scale-normalized largest Hessian eigenvalue, clipped at 0, maximized over scales, after Sato et al.
+  paramNotes:
+    ridges: Dark or bright lines.
+    sigmaMin: The thinnest lines to find.
+    sigmaMax: The widest lines to find.
+    sigmaStep: How many widths are tried.
+    border: How the image is filled past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Choose Bright ridges on the Disks image. Sato also lights up the middle of the smaller disks, which Frangi leaves black, since Frangi removes round blobs.
+  pitfalls:
+    - Expecting only lines. Dark blobs respond too.
+  demos: [line-profile]
+related: [frangi, hessian, meijering, matched-vessel]
+docsPage: filters/features/sato.md

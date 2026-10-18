@@ -1,0 +1,161 @@
+id: retinex-msr
+name: Multi-scale Retinex
+aliases: [MSR, MSRCP, Multi-scale Retinex with chromaticity preservation]
+family: enhancement
+tags: [purpose:enhancement, purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Averages single-scale Retinex at a small, a middle and a large scale, so it lifts detail and evens out light while keeping a good color rendition.
+purpose: Even out uneven lighting and lift detail in shadows on everyday photos.
+classification: {linearity: nonlinear, domain: color, operation: mean of log ratios to Gaussian surrounds}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/retinex.ts, symbol: multiscaleRetinex}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  With Apply to set to each channel, red, green and blue are processed and balanced on their
+  own, so colors can shift toward gray. With intensity, this is the MSRCP of Petro, Sbert and
+  Morel: the Retinex runs on (R + G + B) / 3 and every pixel keeps its color ratios. Alpha is kept.
+boundary: >-
+  The image is mirrored at its edges, as in the article by Petro, Sbert and Morel. The color
+  balance uses the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: sigma1
+    label: Small scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 15
+    unit: px
+    description: The standard deviation of the first Gaussian surround.
+    effect: Brings out fine detail and local contrast.
+  - key: sigma2
+    label: Middle scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 80
+    unit: px
+    description: The standard deviation of the second Gaussian surround.
+    effect: Balances detail against color rendition.
+  - key: sigma3
+    label: Large scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 250
+    unit: px
+    description: The standard deviation of the third Gaussian surround.
+    effect: Keeps the colors and the tone of large areas, and evens out the broadest changes of light.
+  - key: apply
+    label: Apply to
+    type: select
+    default: channels
+    options:
+      - {value: channels, label: Each channel}
+      - {value: intensity, label: 'Intensity, keep colors'}
+    description: Run the Retinex on each color channel, or on the intensity while each pixel keeps its color (MSRCP).
+    effect: Intensity keeps the colors of the image. Each channel can also remove a color cast, but it makes colors grayer.
+  - key: clipLow
+    label: Clip dark
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s1 of the darkest values that the color balance sets to 0.
+    effect: Higher values deepen the shadows and raise the contrast.
+  - key: clipHigh
+    label: Clip bright
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s2 of the brightest values that the color balance sets to 255.
+    effect: Higher values brighten the image and raise the contrast.
+formula: |
+  R_c = \frac{1}{3} \sum_{n=1}^{3} \left[\log(I_c + 1) - \log\left(G_{\sigma_n} * (I_c + 1)\right)\right],
+  \qquad \sigma_1 = {{sigma1}},\ \sigma_2 = {{sigma2}},\ \sigma_3 = {{sigma3}}
+formulaExplanation: >-
+  Each term is a single-scale Retinex with the Gaussian surround G_sigma_n. Jobson, Rahman and
+  Woodell found three scales enough for most images, with equal weights, and fixed the scales at
+  15, 80 and 250 pixels. The small scale brings out detail, the large one keeps the colors and
+  the tone. As Petro, Sbert and Morel do, Simplest Color Balance stretches the result to 0 to 255.
+  It clips s1 percent of the values at the bottom and s2 percent at the top. With Apply to set to
+  intensity, R is computed on I = (R + G + B) / 3 and balanced to I_1. Then each pixel is scaled
+  by A = min(255 / max(R, G, B), I_1 / I). PixelNexus takes the log of I + 1 so that black
+  pixels have a finite log, and a result with no spread turns mid gray.
+symbols:
+  - {symbol: 'I_c', meaning: 'Channel c of the input, 0 to 255'}
+  - {symbol: 'G_{\sigma_n}', meaning: 'The Gaussian surround at scale n'}
+  - {symbol: 'R_c', meaning: 'The Retinex output before the color balance'}
+steps:
+  - Add 1 to every value and take the log.
+  - For each scale, blur the image with the Gaussian on the image mirrored at its edges, and subtract the log of the blur.
+  - Average the three results.
+  - Stretch the average to 0 to 255 with Simplest Color Balance.
+  - With intensity, scale each pixel so that its intensity matches the result and its color ratios stay.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. Three Gaussian blurs through the FFT of each row and column, whatever the scales.
+useCases:
+  - Photos with strong shadows and bright areas.
+  - Images from dim scenes, aerial and underwater photos.
+advantages:
+  - Compresses the range and keeps colors better than one scale.
+  - The intensity mode keeps the colors of the input.
+limitations:
+  - On each channel, colors turn grayish where one color fills a large area. Use intensity or MSRCR.
+  - The scales are in pixels. On a small image the large scale averages almost the whole image, so scale them down with the image.
+artifacts:
+  - Mild halos along strong edges.
+  - Noise in dark, flat areas is boosted.
+references:
+  - kind: paper
+    text: Jobson, D. J., Rahman, Z. and Woodell, G. A. A multiscale retinex for bridging the gap between color images and the human observation of scenes. IEEE Transactions on Image Processing 6(7), 965 to 976, 1997.
+    doi: 10.1109/83.597272
+  - kind: paper
+    text: Petro, A. B., Sbert, C. and Morel, J.-M. Multiscale Retinex. Image Processing On Line 4, 71 to 88, 2014.
+    doi: 10.5201/ipol.2014.107
+  - kind: paper
+    text: Limare, N., Lisani, J.-L., Morel, J.-M., Petro, A. B. and Sbert, C. Simplest Color Balance. Image Processing On Line 1, 297 to 315, 2011.
+    doi: 10.5201/ipol.2011.llmps-scb
+implementation: {path: web/src/core/filters/enhancement/retinex.ts, symbol: retinexMsrFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/retinex.test.ts]
+learn:
+  oneSentence: Run Retinex at three scales and average them, so detail comes out and colors stay.
+  howItWorks:
+    - Compare each pixel with a small, a middle and a large blur of the image, in the log domain.
+    - Average the three comparisons.
+    - Stretch the result to the full range, clipping a few percent at each end.
+  academic: >-
+    Jobson's multi-scale Retinex with equal weights, as implemented by Petro, Sbert and Morel,
+    including their intensity variant MSRCP.
+  paramNotes:
+    sigma1: The scale for fine detail.
+    sigma2: The middle scale.
+    sigma3: The scale for the tone and color of large areas.
+    apply: Work on each color, or on brightness while keeping the colors.
+    clipLow: How many of the darkest values turn black.
+    clipHigh: How many of the brightest values turn white.
+  tryThis:
+    - Compare Each channel with Intensity on a photo of a red car in shade.
+  pitfalls:
+    - Using the default scales on a thumbnail. Scale them down with the image.
+  demos: [line-profile]
+related: [retinex-ssr, msrcr, clahe]
+docsPage: filters/enhancement/retinex-msr.md

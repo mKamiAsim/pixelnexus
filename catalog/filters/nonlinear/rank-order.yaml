@@ -1,0 +1,148 @@
+id: rank-order
+name: Rank-order filter
+aliases:
+- Percentile filter
+- Order-statistic filter
+family: nonlinear
+tags: [purpose:denoise, noise:impulse]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Percentile filter. Rank given as an index or a percentile.
+
+summary: Sorts each window and keeps the value at a chosen rank or percentile.
+purpose: Pick any order statistic, from the minimum through the median to the maximum.
+classification: {linearity: nonlinear, domain: spatial, operation: order statistic}
+output: image
+representation: rank
+representationLabel: exact
+representationSource: {path: web/src/core/filters/nonlinear/rank-order.ts, symbol: chosenRank}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, so the three values can come from different
+  pixels. With the brightness scope, luma is rounded to whole values first, then filtered.
+  Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows reach further. The number of values is the size squared.
+  - key: by
+    label: Choose by
+    type: select
+    default: rank
+    options:
+      - {value: rank, label: Rank}
+      - {value: percentile, label: Percentile}
+    description: Give the position in the sorted window as a rank number or as a percentile.
+    effect: Both pick one value from the sorted window.
+  - key: rank
+    label: Rank
+    type: integer
+    min: 1
+    max: 625
+    default: 5
+    description: Used when Choose by is Rank. Position in the sorted window, from 1 (the smallest) to the number of values. Larger ranks are lowered to the last one.
+    effect: Low ranks darken, high ranks brighten. The middle rank is the median.
+  - key: percentile
+    label: Percentile
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 50
+    unit: '%'
+    description: Used when Choose by is Percentile. Position in the sorted window as a percentage. 0 picks the smallest value and 100 the largest.
+    effect: 50 gives the median for odd windows.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = W_{(k)},
+  \qquad
+  k = \begin{cases}
+  \text{the rank} & \text{by rank} \\
+  \lfloor n p / 100 \rfloor + 1 & \text{by percentile, } p < 100 \\
+  n & p = 100
+  \end{cases}
+formulaExplanation: >-
+  W is the list of the n = size squared values in the window. W with index (k) is its k-th
+  smallest value. Rank 1 gives the min filter, rank n gives the max filter, and rank
+  (n + 1) / 2 gives the median. The percentile rule is the one of
+  scipy.ndimage.percentile_filter.
+symbols:
+  - {symbol: 'W_{(k)}', meaning: The k-th smallest value of the window}
+  - {symbol: 'n', meaning: Number of values in the window}
+  - {symbol: 'p', meaning: Percentile from 0 to 100}
+  - {symbol: 'k', meaning: Rank from 1 to n}
+steps:
+  - Turn the percentile into a rank, if it is given.
+  - Pad the image with the border mode.
+  - Keep a 256-bin histogram of the window as it slides along each row.
+  - Move a pointer to the value that holds rank k and write it to the output pixel.
+complexity:
+  time: O(N\,k)
+  memory: O(N)
+  notes: >-
+    N is the number of pixels per channel and k is the window width. The histogram changes by
+    one column per step, and the rank pointer moves only as far as the window changes.
+useCases:
+  - Remove salt noise with a low rank, or pepper noise with a high rank, more gently than min or max.
+  - Find a local background level, for example the 10th percentile.
+  - Explore how min, median and max relate.
+advantages:
+  - One filter covers the whole family of order statistics.
+  - A rank between the median and an extreme removes specks of one kind with less damage.
+limitations:
+  - Ranks away from the middle make the whole image darker or brighter.
+  - Values are rounded to whole numbers.
+artifacts:
+  - Square blocks with large windows and extreme ranks, as with min and max.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Section 3.6 and section 5.3.
+  - kind: paper
+    text: >-
+      Huang, T. S., Yang, G. J. and Tang, G. Y. A fast two-dimensional median filtering
+      algorithm. IEEE Transactions on Acoustics, Speech, and Signal Processing, 27(1), 1979.
+    doi: 10.1109/TASSP.1979.1163188
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.rank_filter and scipy.ndimage.percentile_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.percentile_filter.html
+implementation: {path: web/src/core/filters/nonlinear/rank-order.ts, symbol: rankOrderFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/nonlinear/nonlinear5b.test.ts]
+learn:
+  oneSentence: Sort the neighbors and keep the value at the position you choose.
+  howItWorks:
+    - Take the window around the pixel.
+    - Sort its values from dark to bright.
+    - Keep the value at the chosen position in the list.
+  academic: >-
+    The k-th order statistic of the window. It generalizes the median, min and max filters. Each
+    one is translation invariant and commutes with any increasing change of the values, such as
+    a gamma curve, apart from rounding.
+  paramNotes:
+    by: Give the position as a rank number or a percentile.
+    rank: 1 is the darkest value, the last rank is the brightest.
+    percentile: 0 is the darkest, 100 the brightest, 50 the middle.
+  tryThis:
+    - Set a 3x3 window and step the rank from 1 to 9. Watch the image go from dark to bright.
+    - Add salt noise only and try rank 3 of 9.
+  pitfalls:
+    - Expecting rank 5 in a 5x5 window to be the median. The median there is rank 13.
+  demos: [rank-stepper, line-profile]
+related: [median, min, max, alpha-trimmed-mean]
+docsPage: filters/nonlinear/rank-order.md

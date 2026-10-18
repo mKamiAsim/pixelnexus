@@ -1,0 +1,37 @@
+# Shared parameters. Filters reuse them with `ref`.
+params:
+  - key: border
+    label: Border mode
+    type: select
+    default: reflect101
+    options:
+      - {value: reflect101, label: Reflect 101 (default)}
+      - {value: reflect, label: Reflect}
+      - {value: replicate, label: Replicate}
+      - {value: constant, label: Constant (zero)}
+      - {value: wrap, label: Wrap}
+    description: How pixels outside the image are filled when the window reaches past the edge.
+    effect: Changes only the pixels near the image border.
+    advanced: true
+  - key: outputMapping
+    label: Output mapping
+    type: select
+    default: abs
+    options:
+      - {value: abs, label: Absolute value}
+      - {value: offset, label: Offset by 128}
+      - {value: normalize, label: Stretch to full range}
+      - {value: clip, label: Clip to 0 to 255}
+    description: How signed results, such as gradients, become 8-bit pixel values.
+    effect: Changes how the result looks. The computed values stay the same.
+  - key: channelScope
+    label: Channels
+    type: select
+    default: rgb
+    options:
+      - {value: rgb, label: RGB}
+      - {value: per-channel, label: Each channel separately}
+      - {value: luminance, label: Brightness only}
+      - {value: chroma, label: Color only}
+    description: Which part of the color image the filter changes.
+    effect: Brightness only keeps colors stable. Color only keeps detail stable.

@@ -1,0 +1,104 @@
+id: wiener-denoise
+name: Wiener filter (global)
+aliases: [Global Wiener filter, Wiener smoothing filter]
+family: linear
+alsoIn: [frequency]
+tags: [purpose:denoise, noise:gaussian]
+tier: core
+engine: browser
+phase: 5e
+status: implemented-tested
+
+summary: Removes white noise by turning each frequency down by how much of its power the noise explains.
+purpose: Reduce Gaussian noise across the whole image when its level is known, with the least squared error a linear filter can give.
+classification: {linearity: nonlinear, domain: frequency, operation: Wiener gain from a power estimate}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/frequency/shaping.ts, symbol: wienerValues}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own. With the brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, so the circular wrap of the FFT does not mix opposite
+  edges. The filter needs the whole spectrum, so it always runs on the whole image.
+
+params:
+  - key: noiseSigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 10
+    unit: levels
+    description: The standard deviation sigma of the white noise, in 8-bit levels.
+    effect: Higher values remove more, and also more of the weak detail.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: rgb
+formula: |
+  H(f) = \max\left(0,\ 1 - \frac{\sigma^2}{P(f)}\right),\quad P(f) = \operatorname{mean}_{5 \times 5} \frac{|G(f)|^2}{N},\quad \sigma = {{noiseSigma}}
+formulaExplanation: >-
+  The Wiener filter for noise alone is H = S / (S + sigma^2), with S the power of the clean
+  image at each frequency. White noise adds sigma^2 to the power at every frequency. So S is
+  estimated as P - sigma^2, which gives H = 1 - sigma^2 / P, and 0 where P is below sigma^2.
+  Here P is the power |G|^2 / N of the image extended with the border mode, with N the number
+  of FFT samples. It is averaged over the 5 x 5 nearest frequencies to steady it. This estimate
+  of S is this filter's own. The Wiener filter itself follows Gonzalez and Woods.
+symbols:
+  - {symbol: 'G', meaning: The spectrum of the noisy image}
+  - {symbol: 'P', meaning: The averaged power of G}
+  - {symbol: 'N', meaning: The number of FFT samples}
+  - {symbol: '\sigma', meaning: The noise standard deviation}
+steps:
+  - Extend the image with the border mode by half its size, at most 256 pixels, on each side.
+  - Take the 2D FFT and the power |G|^2 / N.
+  - Average the power over 5 x 5 frequencies.
+  - Multiply each frequency by max(0, 1 - sigma^2 / P).
+  - Take the inverse FFT and keep the real part.
+  - Crop the extension.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image, about 4 times the image for images up to 512 pixels on a side.
+useCases:
+  - Removing Gaussian noise of a known level.
+  - Comparing a global linear filter with local ones such as the adaptive Wiener filter.
+advantages:
+  - The gain follows the image, so strong detail is kept and weak frequencies are removed.
+limitations:
+  - The same gain applies everywhere, so it smooths edges and flat areas alike.
+  - The noise level must be known. Too low leaves noise, too high removes detail.
+artifacts:
+  - A faint ripple in flat areas, from frequencies that are partly kept.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5, Wiener filtering.
+  - kind: book
+    text: Lim, J. S. Two-Dimensional Signal and Image Processing. Prentice Hall, 1990.
+implementation: {path: web/src/core/filters/frequency/shaping.ts, symbol: wienerDenoiseFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/frequency/frequency.test.ts]
+learn:
+  oneSentence: Turn down each frequency by how much of it is noise, judged from the image itself.
+  howItWorks:
+    - Measure the power of the image at each frequency.
+    - Noise adds the same power everywhere. Subtract it to estimate the clean power.
+    - Keep each frequency in proportion to its clean share.
+  academic: >-
+    A noncausal Wiener smoothing filter with a white noise model and a periodogram estimate of
+    the signal spectrum.
+  paramNotes:
+    noiseSigma: How strong the noise is.
+  tryThis:
+    - Add Gaussian noise with sigma 20, then set the noise sigma to 20 and check the PSNR in the Noise lab.
+  pitfalls:
+    - Setting the noise sigma far above the real noise. Detail is removed with the noise.
+  demos: [noise-lab, frequency-explorer]
+related: [wiener-adaptive, wiener-deconv, gaussian]
+docsPage: filters/linear/wiener-denoise.md

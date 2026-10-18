@@ -1,0 +1,112 @@
+id: box
+name: Box filter
+aliases: [Mean filter, Average filter, Per-channel box filter]
+family: linear
+tags: [purpose:smoothing, purpose:denoise, noise:gaussian]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Running sums, so the cost per pixel does not depend on the window size.
+
+summary: Replaces each pixel with the plain average of a square window.
+purpose: Smooth an image quickly, or show the simplest possible blur for comparison.
+classification: {linearity: linear, domain: spatial, operation: separable convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/box.ts, symbol: boxKernel}
+supportRadius: (size - 1) / 2
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance, chroma]
+colorHandling: >-
+  Red, green and blue are averaged with the same window. Alpha is kept. On images with
+  transparency, colors are weighted by alpha, so transparent pixels add no color.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 51
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: Width and height of the square window.
+    effect: Larger windows blur more. The cost stays the same.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}}(x,y) = \frac{1}{n^2} \sum_{j=-r}^{r} \sum_{i=-r}^{r} I(x+i,\, y+j),
+  \qquad
+  n = {{size}},
+  \quad
+  r = \frac{n-1}{2}
+formulaExplanation: >-
+  Each output pixel is the mean of the n by n window around it. Every weight is 1 / n^2, so the
+  weights add up to 1. The kernel is the outer product of two 1D means, so the filter runs as a
+  mean along rows and then a mean along columns.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: '(x, y)', meaning: 'Pixel position. x grows to the right and y grows downward.'}
+  - {symbol: 'n', meaning: 'Window width in pixels. It is odd.'}
+  - {symbol: 'r', meaning: 'Window radius in pixels'}
+steps:
+  - Pad each row with the border mode and add up its first n values.
+  - Slide along the row. Add the value that enters the window and subtract the value that leaves it.
+  - Divide each sum by n to get the row means.
+  - Do the same along each column of the row means.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: >-
+    N is the number of pixels per channel. Running sums make the cost per pixel independent of
+    the window size. Adding up every window directly would cost O(N\,n^2).
+useCases:
+  - Fast smoothing before thresholding.
+  - A baseline to compare other blurs with.
+  - Local means for adaptive filters.
+advantages:
+  - The fastest blur. Its cost does not depend on the window size.
+  - Simple to check by hand, because every weight is the same.
+limitations:
+  - Every neighbor counts the same, so the result looks blockier than a Gaussian blur.
+  - Its frequency response has negative side lobes. Some fine stripes come back with reversed contrast.
+  - Edges blur as much as noise does.
+artifacts:
+  - A bright point spreads into a square.
+  - Faint rings with reversed contrast in fine repeating patterns.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.uniform_filter.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.uniform_filter.html
+implementation: {path: web/src/core/filters/linear/box.ts, symbol: boxFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel becomes the plain average of the pixels in a square around it.
+  howItWorks:
+    - Take the square window around the pixel.
+    - Add up all the values in it.
+    - Divide by the number of pixels in the window.
+    - Use the result as the new pixel.
+  academic: >-
+    The kernel has n^2 equal weights of 1 / n^2. It is separable into two 1D means, and running
+    sums make each mean cost the same for any window size.
+  paramNotes:
+    size: Width of the square. It is odd, so the pixel sits in the middle.
+  tryThis:
+    - Compare a 5x5 box filter with a Gaussian of sigma 1 in the Impulse response demo. One spot is square, the other is round.
+    - Open the zone plate test image and use a 9x9 window. Some rings come back with reversed contrast.
+  pitfalls:
+    - Using a box filter where a natural look matters. A Gaussian blur looks smoother.
+  demos: [neighborhood-stepper, impulse-response, line-profile]
+related: [gaussian, median, motion-blur]
+docsPage: filters/linear/box.md

@@ -1,0 +1,129 @@
+# The kernel matrices are not written here. The Inspector reads them from sobelKernels.
+id: sobel
+name: Sobel
+aliases: [Sobel X, Sobel Y]
+family: edges
+alsoIn: [linear]
+tags: [purpose:edge, purpose:gradient]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Outputs Gx, Gy, magnitude and direction.
+
+summary: Estimates the brightness gradient with two 3x3 kernels.
+purpose: Find edges, their strength and their direction.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: fixed-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/edges/sobel.ts, symbol: sobelKernels}
+supportRadius: "1"
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own gradient.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: gx, label: Horizontal change (Gx)}
+      - {value: gy, label: Vertical change (Gy)}
+      - {value: direction, label: Direction}
+    description: Which part of the gradient to show.
+    effect: Gx and Gy are signed. Magnitude is never negative. Direction is an angle.
+  - key: norm
+    label: Magnitude norm
+    type: select
+    default: l2
+    options:
+      - {value: l2, label: L2 (square root of the sum of squares)}
+      - {value: l1, label: L1 (sum of absolute values)}
+    description: How Gx and Gy are combined into the magnitude.
+    effect: L1 is a little faster and gives slightly larger values on diagonal edges.
+  - ref: outputMapping
+    default: normalize
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  G_x = K_x \star I, \qquad G_y = K_y \star I,
+  \\[4pt]
+  \lvert \nabla I \rvert_2 = \sqrt{G_x^2 + G_y^2}, \qquad
+  \lvert \nabla I \rvert_1 = \lvert G_x \rvert + \lvert G_y \rvert, \qquad
+  \theta = \operatorname{atan2}(G_y,\, G_x)
+formulaExplanation: >-
+  K_x responds to changes from left to right and K_y to changes from top to bottom. Each kernel
+  takes a difference across the edge and a 1, 2, 1 weighted average along it. G_x and G_y are
+  linear filters. The magnitude and the direction combine them in a nonlinear way.
+symbols:
+  - {symbol: 'I', meaning: 'Input values. Luma by default.'}
+  - {symbol: 'K_x,\ K_y', meaning: 'The horizontal and vertical Sobel kernels shown in the Operator tab'}
+  - {symbol: '\star', meaning: 'Correlation. The kernel is applied without flipping.'}
+  - {symbol: 'G_x,\ G_y', meaning: 'Horizontal and vertical change at each pixel'}
+  - {symbol: '\lvert \nabla I \rvert', meaning: 'Gradient magnitude, which is the edge strength'}
+  - {symbol: '\theta', meaning: 'Gradient direction in radians, measured from the x axis toward the y axis. The y axis points down.'}
+steps:
+  - Convert to luma when the scope is brightness only.
+  - Pad the image with the border mode.
+  - Correlate with K_x and with K_y.
+  - Combine them into the chosen output.
+  - Map the values to 0 to 255 with the output mapping.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each kernel is separable into a 1, 2, 1 average and a -1, 0, 1 difference.
+useCases:
+  - Edge maps.
+  - Gradient input for Canny, Harris and HOG.
+  - Direction fields for texture analysis.
+advantages:
+  - Very fast.
+  - The built-in averaging makes it less sensitive to noise than plain pixel differences.
+limitations:
+  - Still responds to noise. Smooth first on noisy images.
+  - Edges are several pixels thick. Canny gives thin edges.
+  - Direction estimates are not equally accurate at all angles. Scharr kernels do better.
+artifacts:
+  - Double lines along thin bright lines.
+references:
+  - kind: paper
+    text: >-
+      Sobel, I. and Feldman, G. A 3x3 isotropic gradient operator for image processing.
+      Talk at the Stanford Artificial Intelligence Project, 1968.
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 10.
+  - kind: library
+    text: OpenCV documentation, image filtering, Sobel.
+    url: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html
+implementation: {path: web/src/core/filters/edges/sobel.ts, symbol: sobelFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It measures how fast brightness changes at each pixel, and in which direction.
+  howItWorks:
+    - Look at the 3x3 window around the pixel.
+    - Compare the right column with the left column. This gives the horizontal change.
+    - Compare the bottom row with the top row. This gives the vertical change.
+    - Combine the two changes into one strength and one direction.
+  academic: >-
+    G_x and G_y approximate the partial derivatives of a slightly smoothed image. The center
+    row and column get weight 2, which adds smoothing along the edge.
+  paramNotes:
+    output: Show the horizontal change, the vertical change, the edge strength or the direction.
+    norm: How the two changes are combined into one strength.
+  tryThis:
+    - Open the step edge sample. Compare the Gx and Gy outputs.
+    - Open the Gradient explorer and place the probe on an edge. The arrow points from dark to bright.
+  pitfalls:
+    - Running Sobel on a noisy image. Smooth it first, or use Canny.
+  demos: [gradient-explorer, neighborhood-stepper, stage-viewer]
+related: [prewitt, scharr, roberts, canny, laplacian]
+docsPage: filters/edges/sobel.md

@@ -1,0 +1,138 @@
+id: unsharp-mask
+name: Unsharp mask
+aliases: [Unsharp masking, Sharpen]
+family: linear
+alsoIn: [enhancement]
+tags: [purpose:sharpening]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Unsharp masking. Cross-listed in enhancement.
+
+summary: Sharpens by adding back the detail that a Gaussian blur removes.
+purpose: Make edges and fine detail look crisper.
+classification: {linearity: linear, domain: spatial, operation: convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/unsharp-mask.ts, symbol: unsharpKernel}
+supportRadius: floor(3 * sigma + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is sharpened. With the brightness scope only luma is sharpened,
+  which avoids color fringes. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Radius (sigma)
+    type: number
+    min: 0.1
+    max: 20
+    step: 0.1
+    default: 2
+    unit: px
+    description: Sigma of the Gaussian blur that defines what counts as detail.
+    effect: Larger values sharpen larger structures and make wider halos.
+  - key: amount
+    label: Amount
+    type: number
+    min: 0
+    max: 5
+    step: 0.05
+    default: 1
+    description: How much of the detail is added back.
+    effect: Larger values give stronger sharpening and stronger halos.
+  - key: threshold
+    label: Threshold
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 0
+    unit: levels
+    description: Detail smaller than this, in 8-bit levels, is left alone.
+    effect: Higher values keep flat areas and noise from being sharpened.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  D(x,y) = I(x,y) - (G_{\sigma} \star I)(x,y),
+  \\[4pt]
+  I_{\text{out}}(x,y) =
+  \begin{cases}
+  I(x,y) + a\, D(x,y) & \text{if } \lvert D(x,y) \rvert \ge t \\
+  I(x,y) & \text{otherwise}
+  \end{cases}
+  \\[4pt]
+  \sigma = {{sigma}}, \quad a = {{amount}}, \quad t = {{threshold}}
+formulaExplanation: >-
+  The blur keeps the coarse picture. Subtracting it from the image leaves the detail D. Adding
+  a times D back makes the detail stronger. Where the detail is smaller than the threshold, the
+  pixel keeps its value. With threshold 0 the filter is linear, and the Operator tab shows its
+  single kernel: (1 + a) at the center minus a times the Gaussian kernel.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value'}
+  - {symbol: 'G_{\sigma}', meaning: 'Normalized Gaussian kernel with this sigma and radius floor(3 sigma + 0.5)'}
+  - {symbol: '\star', meaning: 'Correlation. The Gaussian is symmetric, so it equals convolution.'}
+  - {symbol: 'D', meaning: 'Detail, the difference between the image and its blur'}
+  - {symbol: 'a', meaning: 'Amount'}
+  - {symbol: 't', meaning: 'Threshold in 8-bit levels'}
+steps:
+  - Blur the image with a Gaussian of the given sigma.
+  - Subtract the blur from the image to get the detail.
+  - Where the detail reaches the threshold, add amount times the detail to the image.
+  - Elsewhere keep the pixel.
+  - Clip to 0 to 255 and round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N\,(2r+1))
+  memory: O(N)
+  notes: N is the number of pixels per channel and r is the Gaussian radius. The blur is separable.
+useCases:
+  - Sharpen photos after resizing.
+  - Restore crispness after a mild blur.
+  - Make text and line art easier to read.
+advantages:
+  - Three plain controls set how wide, how strong and from which size of detail.
+  - With threshold 0 it is a single linear kernel that the Inspector can show exactly.
+limitations:
+  - Cannot recover detail that the blur destroyed. It only boosts contrast at edges.
+  - Strong settings make bright and dark halos along edges.
+  - Without a threshold it also sharpens noise.
+artifacts:
+  - Halos along high-contrast edges.
+  - Clipped highlights and shadows where the boost pushes values past 0 or 255.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: scikit-image documentation, skimage.filters.unsharp_mask.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.unsharp_mask
+implementation: {path: web/src/core/filters/linear/unsharp-mask.ts, symbol: unsharpMaskFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It finds the fine detail by subtracting a blurred copy, then adds that detail back more strongly.
+  howItWorks:
+    - Make a blurred copy of the image.
+    - Subtract the copy from the image. What is left is the fine detail.
+    - Multiply the detail by the amount.
+    - Add it back to the image.
+  academic: >-
+    The result is I + a (I - G * I). With threshold 0 this equals correlation with one kernel,
+    (1 + a) times a unit impulse minus a times the Gaussian. It boosts high frequencies.
+  paramNotes:
+    sigma: How wide the blur is. It sets the size of the detail that gets boosted.
+    amount: How strongly the detail is added back.
+    threshold: The smallest detail that is boosted. It protects smooth areas and noise.
+  tryThis:
+    - Open the step edge test image and use the Line profile. Look for the overshoot on both sides of the edge.
+    - Add Gaussian noise, then raise the threshold until flat areas stop getting grainy.
+  pitfalls:
+    - Using a large amount with a large radius. Halos appear around every edge.
+  demos: [line-profile, impulse-response, neighborhood-stepper]
+related: [gaussian, laplacian, box]
+docsPage: filters/linear/unsharp-mask.md

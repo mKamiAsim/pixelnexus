@@ -1,0 +1,77 @@
+# Workspace root for all Python code: the science engine, the repo tools and the docs.
+# This root is not a package. Run commands with `uv run ...` from the repo root.
+[project]
+name = "pixelnexus-workspace"
+version = "1.0.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["pixelnexus-engine[optional]"]
+
+# The model runtime for this machine. Choose one: `uv sync --extra cpu` everywhere, or
+# `uv sync --extra cuda` on a Linux or Windows machine with an NVIDIA GPU. `uv run` keeps it.
+[project.optional-dependencies]
+cpu = ["pixelnexus-engine[models]"]
+cuda = ["pixelnexus-engine[cuda]"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=6",
+  "httpx2",
+  "ruff>=0.13",
+  "mypy>=1.18",
+  "types-PyYAML",
+  "types-jsonschema",
+  # Builds the tiny ONNX models of the engine tests.
+  "onnx>=1.19",
+]
+docs = [
+  "matplotlib>=3.10",
+  "mkdocs>=1.6,<2",
+  "mkdocs-material>=9.7,<10",
+  "pymdown-extensions>=10",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev", "docs"]
+# Dependency age rule: ignore releases newer than this date.
+# Move it forward when you update dependencies.
+exclude-newer = "2026-10-01T00:00:00Z"
+# The CPU and GPU builds of ONNX Runtime install the same module.
+conflicts = [
+  [{ extra = "cpu" }, { extra = "cuda" }],
+  [{ package = "pixelnexus-engine", extra = "models" }, { package = "pixelnexus-engine", extra = "cuda" }],
+]
+
+[tool.uv.workspace]
+members = ["engine"]
+
+[tool.uv.sources]
+pixelnexus-engine = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["engine/src", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["engine/src", "tools"]
+mypy_path = ["engine/src", "tools"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+  "cv2", "cv2.*", "pywt", "pywt.*", "skimage", "skimage.*", "scipy", "scipy.*", "pyrtools.*",
+  "onnxruntime", "onnxruntime.*", "torch", "torch.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["engine/tests", "tools/tests"]
+pythonpath = ["tools"]
+addopts = "-q"

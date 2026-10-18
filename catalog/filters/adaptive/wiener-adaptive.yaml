@@ -1,0 +1,114 @@
+id: wiener-adaptive
+name: Adaptive Wiener filter
+aliases: [Local Wiener filter, Lee local statistics filter]
+family: adaptive
+tags: [purpose:denoise, noise:gaussian]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Wiener filter in the requirements 2 smoothing list. Local mean and variance (Lee 1980).
+
+summary: Moves each pixel toward its local mean by an amount set by how the local variance compares with the noise variance.
+purpose: Remove additive noise strongly in flat areas and weakly near edges and texture.
+classification: {linearity: nonlinear, domain: statistical, operation: local linear estimator}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/local-noise.ts, symbol: localNoisePlane}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue each use their own local mean and variance. With the brightness scope,
+  only luma is filtered. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101. scipy.signal.wiener pads with zeros, the constant mode.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 25
+    step: 2
+    oddOnly: true
+    default: 5
+    unit: px
+    description: Width and height of the window for the local mean and variance.
+    effect: Larger windows give steadier statistics but blur edges more.
+  - key: noise
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 10
+    description: The standard deviation n of the noise, in 8-bit levels. The filter uses n squared.
+    effect: Higher values smooth more. Set it near the true noise level.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}} = m + \frac{\max\bigl(0,\, s^2 - n^2\bigr)}{\max\bigl(s^2,\, n^2\bigr)}\,(z - m)
+formulaExplanation: >-
+  m and s squared are the mean and variance of the window, z is the pixel and n is the noise
+  sigma. Where the window varies about as much as the noise, the gain is near 0 and the output
+  is the local mean. Where it varies much more, there is real detail, the gain is near 1 and
+  the pixel is kept. This is the estimate of Lee (1980) for additive noise, in the form of
+  MATLAB's wiener2 and scipy.signal.wiener. Those estimate n squared from the whole image when
+  it is not given. Here it is a parameter, so a strip of the image gives the same result as the
+  whole image.
+symbols:
+  - {symbol: 'm', meaning: The local mean}
+  - {symbol: 's^2', meaning: The local variance}
+  - {symbol: 'n', meaning: The noise standard deviation}
+  - {symbol: 'z', meaning: The pixel value}
+steps:
+  - Pad the image with the border mode.
+  - Compute the local mean and variance with running sums in float64.
+  - Compute the gain from the variance and the noise variance.
+  - Write the mean plus the gain times the difference between the pixel and the mean.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Remove Gaussian noise of a known level.
+  - Smooth flat areas while keeping edges and texture.
+advantages:
+  - Adapts to the image. Detail is kept where the signal is stronger than the noise.
+  - Fast for any window size.
+limitations:
+  - Needs the noise level. Too low leaves noise, too high blurs detail.
+  - Assumes additive noise of the same strength everywhere.
+artifacts:
+  - Noisy halos next to edges, where the local variance is high and the gain stays near 1.
+references:
+  - kind: paper
+    text: Lee, J.-S. Digital image enhancement and noise filtering by use of local statistics. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-2(2), 165 to 168, 1980.
+    doi: 10.1109/TPAMI.1980.4766994
+  - kind: library
+    text: SciPy documentation, scipy.signal.wiener.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.wiener.html
+implementation: {path: web/src/core/filters/adaptive/local-noise.ts, symbol: wienerAdaptiveFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Flat-looking areas get the local mean, busy areas keep their pixels.
+  howItWorks:
+    - Find the mean and variance of the window.
+    - Compare the variance with the noise variance.
+    - Move the pixel toward the mean, more where the variance is close to the noise.
+  academic: >-
+    The linear minimum mean-square error estimate of the signal under additive white noise,
+    with the signal mean and variance estimated locally. The gain is the local signal variance
+    over the local total variance.
+  paramNotes:
+    noise: The noise standard deviation in levels. The Standard deviation filter on a flat area measures it.
+  tryThis:
+    - Add Gaussian noise with sigma 15. Apply the filter with noise 5, 15 and 30.
+  pitfalls:
+    - Setting the noise far above the true level. Then texture counts as noise and is blurred.
+  demos: [rank-stepper, line-profile, noise-lab]
+related: [adaptive-local-noise, lee, local-variance, gaussian]
+docsPage: filters/adaptive/wiener-adaptive.md

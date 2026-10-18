@@ -1,0 +1,119 @@
+id: deriche
+name: Deriche
+aliases: [Deriche edge detector, Deriche gradient, Recursive optimal edge detector]
+family: edges
+tags: [purpose:edge]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: OpenCV ximgproc gradients.
+
+summary: Finds the gradient with Deriche's derivative filter, which he derived from Canny's criteria for an infinitely long filter. It runs as a recursive filter, so its cost does not grow with the amount of smoothing. OpenCV computes it.
+purpose: A smoothed gradient whose smoothing costs the same at any scale, as the first step of an edge detector.
+classification: {linearity: linear, domain: spatial, operation: recursive derivative filter}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/deriche.py, symbol: deriche_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, rounded to 8 bits. The result is gray, with
+  the alpha of the image.
+boundary: OpenCV starts the recursive filters at the image edge.
+dependencies:
+  - {name: OpenCV, optional: false, note: 'cv2.ximgproc.GradientDericheX and GradientDericheY.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: magnitude
+    options:
+      - {value: magnitude, label: Magnitude}
+      - {value: gx, label: Horizontal change (Gx)}
+      - {value: gy, label: Vertical change (Gy)}
+    description: The gradient magnitude in levels, or one signed component, shown as 128 plus half its value.
+    effect: Gx and Gy are signed. The magnitude is never negative.
+  - key: alpha
+    label: Sharpness alpha
+    type: number
+    min: 0.1
+    max: 5
+    step: 0.05
+    default: 1
+    description: The alpha of the filter, how fast it decays. Our choice of 1.
+    effect: Smaller values smooth more, so noise drops and edges widen.
+  - key: omega
+    label: Omega
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.1
+    description: The omega of the filter, the frequency of its sine. Our choice of 0.1, a small value, which brings the filter close to Deriche's limit x e^(-alpha |x|).
+    effect: Larger values add a ripple to the filter.
+formula: |
+  f(x) = -c\, e^{-\alpha \lvert x \rvert} \sin(\omega x)
+formulaExplanation: >-
+  Canny asked for an edge filter with good detection, good localization and one response per
+  edge. Deriche solved these criteria for a filter of infinite length and found f, a sine
+  under an exponential envelope. Because it is a sum of exponentials, it runs as a recursive
+  filter, two passes along each row or column, in time that does not depend on alpha. The
+  derivative along x is paired with Deriche's smoothing filter along y, and the other way around.
+  At alpha 1 and above, OpenCV's scaling makes a step of h levels peak at h.
+symbols:
+  - {symbol: 'f', meaning: 'The derivative filter'}
+  - {symbol: '\alpha', meaning: 'How fast the filter decays'}
+  - {symbol: '\omega', meaning: 'The frequency of the sine'}
+  - {symbol: 'c', meaning: 'A scale factor'}
+steps:
+  - Take the luma, rounded to 8 bits.
+  - Filter along x with the derivative and along y with the smoothing filter, both recursive.
+  - Do the same with the roles swapped.
+  - Combine the two into the magnitude, or show one of them.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels, at any alpha.
+useCases:
+  - A gradient for edge detection at a large scale, where a Gaussian would be slow.
+  - Comparing recursive and finite filters.
+advantages:
+  - Cost independent of the smoothing.
+  - Derived from Canny's criteria.
+limitations:
+  - Recursive filters can ring slightly on strong steps.
+  - Only the gradient. Thinning and thresholds are left to other filters.
+artifacts:
+  - Wide edges at small alpha.
+references:
+  - kind: paper
+    text: Deriche, R. Using Canny's criteria to derive a recursively implemented optimal edge detector. International Journal of Computer Vision 1(2), 167 to 187, 1987.
+    doi: 10.1007/BF00123164
+  - kind: library
+    text: OpenCV documentation, cv::ximgproc::GradientDericheX.
+implementation: {path: engine/src/pixelnexus_engine/filters/deriche.py, symbol: deriche}
+tests: [engine/tests/test_deriche.py]
+learn:
+  oneSentence: A smoothed gradient whose smoothing costs the same at any scale.
+  howItWorks:
+    - Smooth and differentiate each row with a filter that runs forward and backward once.
+    - Do the same down each column.
+    - Combine the two directions into the edge strength.
+  academic: >-
+    Deriche's recursive implementation of an optimal edge filter under Canny's criteria, as in
+    OpenCV.
+  paramNotes:
+    output: Magnitude or one component.
+    alpha: How sharp or smooth.
+    omega: The ripple of the filter.
+  tryThis:
+    - Lower alpha on a noisy image and compare the magnitude with Sobel.
+  pitfalls:
+    - A very small alpha. Nearby edges merge.
+  demos: [line-profile]
+related: [sobel, canny, shen-castan]
+docsPage: filters/edges/deriche.md

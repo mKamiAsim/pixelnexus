@@ -1,0 +1,212 @@
+id: directional-curvelet
+name: Curvelet-inspired directional filter
+aliases:
+- Curvelet-inspired denoising
+- Polar wedge filter
+- Directional frequency tiling
+family: frequency
+tags: [purpose:denoise, purpose:edge]
+tier: advanced
+engine: science
+phase: 6b
+status: implemented-tested
+planNotes: Wedge masks in polar frequency tiles. Not a true curvelet transform.
+
+summary: Cuts the spectrum into smooth polar wedges, one per band of sizes and range of directions, and removes noise in each wedge or keeps the wedges of one direction. Inspired by curvelets, not a curvelet transform.
+purpose: Remove noise around lines and curved edges, or pull out the structures that run in one direction.
+classification: {linearity: nonlinear, domain: frequency, operation: directional tile thresholding}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/directional.py, symbol: directional_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default only luma is filtered, and the colors stay. With the RGB scope, each of the red,
+  green and blue channels is filtered on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect. The image is extended by half its
+  size, at most 256 pixels, on each side, as for the frequency filters of the browser.
+dependencies:
+  - {name: SciPy, optional: false, note: 'The FFTs (scipy.fft.rfft2 and irfft2).'}
+  - {name: PyWavelets, optional: false, note: The noise estimate from wavelet details.}
+
+params:
+  - key: mode
+    label: Mode
+    type: select
+    default: denoise
+    options:
+      - {value: denoise, label: Remove noise}
+      - {value: orientation, label: Keep one direction}
+    description: Remove noise sets the small coefficients of every tile to 0. Keep one direction keeps only the tiles near one orientation.
+    effect: Keep one direction pulls out the lines and edges that run at the chosen angle.
+  - key: scales
+    label: Scales
+    type: integer
+    min: 2
+    max: 5
+    step: 1
+    default: 3
+    description: How many bands of directional tiles, each an octave of frequency. A coarse low-pass tile covers the rest.
+    effect: More scales split coarser structures by direction too, and take longer.
+  - key: directions
+    label: Directions
+    type: select
+    default: '16'
+    options:
+      - {value: '8', label: '8'}
+      - {value: '16', label: '16'}
+      - {value: '32', label: '32'}
+    description: The number of directions at the finest scale, over 180 degrees. It halves every second scale toward the coarse end, down to 4.
+    effect: More directions follow lines more closely, and take longer.
+  - key: factor
+    label: Threshold factor
+    type: number
+    min: 0
+    max: 8
+    step: 0.1
+    default: 3
+    description: For removing noise, the threshold is this factor times the noise in each tile. 0 keeps every coefficient.
+    effect: Larger factors remove more noise and more faint detail.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal wavelet details.
+    effect: Larger values remove more.
+  - key: direction
+    label: Line angle
+    type: angle
+    min: 0
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: For keeping one direction, the angle of the lines to keep, counterclockwise on screen. 0 keeps horizontal lines.
+    effect: Lines at other angles fade.
+  - key: width
+    label: Angle range
+    type: number
+    min: 1
+    max: 90
+    step: 1
+    default: 15
+    unit: deg
+    description: For keeping one direction, the tiles whose orientation is within this many degrees of the line angle are kept.
+    effect: Smaller ranges keep fewer directions. A range below the spacing of the tiles keeps only the nearest one.
+  - key: keepCoarse
+    label: Keep coarse part
+    type: boolean
+    default: true
+    description: For keeping one direction, also keep the coarse low-pass tile, which has no direction.
+    effect: With this off, the result shows only the kept lines and edges, around a mid gray of 128.
+  - ref: border
+    default: reflect
+  - ref: channelScope
+    default: luminance
+formula: |
+  W_{j,l}(f) = W_j(|f|)\, V\!\left(\frac{\theta(f) - \pi l / L_j}{\pi / L_j}\right),
+  \quad
+  V(u) = \cos\!\big(\tfrac{\pi}{2}\, \nu(|u|)\big),
+  \qquad
+  c_{j,l} = \mathcal{F}^{-1}\big(W_{j,l}\, \mathcal{F} I\big),
+  \qquad
+  \hat{I} = \mathcal{F}^{-1}\Big(W_{\text{low}}^2\, \mathcal{F} I + \sum_{j,l} W_{j,l}\, \mathcal{F}\big(\eta(c_{j,l})\big)\Big),
+  \qquad
+  L_0 = {{directions}}
+formulaExplanation: >-
+  The tiles follow the frequency tiling of the curvelet transform of Candes, Demanet, Donoho
+  and Ying. It has octave bands in radius, each cut into wedges by angle, with more wedges at
+  finer scales. Here the radial windows are W_j^2 = Phi_(j-1)^2 - Phi_j^2. Phi_j is 1 up to a radius of
+  0.125 / 2^j cycles per pixel and falls smoothly to 0 at twice that radius. The finest band
+  is 1 - Phi_0^2 and the coarse low-pass tile is Phi_(S-1)^2. These squares add up to 1. In
+  each band, L_j wedges are centered at the angles pi l / L_j. V uses Meyer's polynomial nu, so
+  the squares of neighboring wedges also add up to 1. Here theta is the angle of the frequency,
+  modulo pi. L_j halves every second scale toward the coarse end. To remove noise,
+  each tile is filtered, and coefficients below the factor k times sigma times the RMS of the
+  mask are set to 0. That is the standard deviation that white noise of sigma has in the tile.
+  Filtering once more with the mask and adding all tiles rebuilds the image. The tiles are not
+  the curvelets of a curvelet transform, which come with their own sampling and a fast
+  algorithm, so this is a curvelet-inspired filter.
+symbols:
+  - {symbol: 'f, |f|, \theta(f)', meaning: 'A frequency in cycles per pixel, its distance from 0 and its angle modulo pi'}
+  - {symbol: 'W_j', meaning: The radial window of band j. Band 0 is the finest.}
+  - {symbol: 'V', meaning: 'The angular window, with Meyer''s polynomial nu'}
+  - {symbol: 'L_j', meaning: The number of wedges in band j}
+  - {symbol: 'c_{j,l}', meaning: The coefficients of tile j l}
+  - {symbol: '\eta', meaning: Hard thresholding at k sigma times the RMS of the mask}
+steps:
+  - Extend the channel with the border mode and take its FFT.
+  - Build the tiles, smooth masks whose squares add up to 1 at every frequency.
+  - To keep one direction, multiply the spectrum by the sum of the squared masks of the kept tiles and transform back.
+  - To remove noise, for each tile multiply the spectrum by its mask and transform back to get its coefficients.
+  - Set the coefficients below the factor times the noise of the tile to 0. Keep the coarse low-pass tile as it is.
+  - Transform each tile back, multiply by its mask again, add all tiles and transform back.
+  - Cut the result back to the image.
+complexity:
+  time: O(T N log N)
+  memory: O(N)
+  notes: N is the number of pixels of the extended image and T the number of tiles. Removing noise needs two FFTs per tile. Keeping one direction needs one FFT each way.
+useCases:
+  - Removing noise from images with lines and edges, such as drawings, roads, fibers or wood grain.
+  - Pulling out the lines that run in one direction, such as scratches or a fabric weave.
+  - Learning how directional frequency tilings work, before the real transforms.
+advantages:
+  - The squares of the masks add up to 1, so with nothing removed the image comes back exactly.
+  - Long lines and edges fall into few tiles, so they survive a high threshold.
+limitations:
+  - Not a curvelet transform. The tiles borrow the curvelet tiling, but the coefficients are full-size images, one per tile, without the sampling of a real curvelet transform.
+  - The noise level of each tile assumes white noise of the same strength everywhere.
+  - Slower than wavelet thresholding, since every tile needs its own FFTs.
+artifacts:
+  - Faint directional streaks where noise lines up by chance with a tile.
+  - Ringing along edges at angles between two tiles, where both tiles are thresholded apart.
+references:
+  - kind: paper
+    text: Candes, E. J., Demanet, L., Donoho, D. L., and Ying, L. Fast discrete curvelet transforms. Multiscale Modeling and Simulation 5(3), 861 to 899, 2006.
+    doi: 10.1137/05064182X
+  - kind: paper
+    text: Starck, J.-L., Candes, E. J., and Donoho, D. L. The curvelet transform for image denoising. IEEE Transactions on Image Processing 11(6), 670 to 684, 2002.
+    doi: 10.1109/TIP.2002.1014998
+  - kind: book
+    text: Daubechies, I. Ten Lectures on Wavelets. SIAM, 1992. Meyer's auxiliary polynomial nu.
+    doi: 10.1137/1.9781611970104
+implementation: {path: engine/src/pixelnexus_engine/filters/directional.py, symbol: directional_curvelet}
+tests: [engine/tests/test_directional.py]
+learn:
+  oneSentence: Split the image into many directional pieces by size and angle, clean each piece, and put them back.
+  howItWorks:
+    - Take the spectrum of the image.
+    - Cut it into tiles, each for one band of sizes and one range of directions.
+    - In each tile, keep the strong parts, which belong to lines and edges, and drop the weak ones. Or keep only the tiles of one direction.
+    - Put the tiles back together.
+  academic: >-
+    A tight frame of smooth polar wedge masks in the Fourier domain, after the curvelet
+    frequency tiling, with octave radial bands and angular windows built from Meyer's
+    polynomial. Hard thresholding of the tile coefficients at k times their noise level, or
+    selection of tiles by orientation.
+  paramNotes:
+    mode: Clean noise, or keep one direction.
+    scales: How many sizes of detail are split by direction.
+    directions: How finely the directions are split.
+    factor: How high the cut-off is, in noise levels.
+    sigma: How strong the noise is. 0 measures it.
+    direction: Which lines to keep.
+    width: How many directions near it to keep.
+    keepCoarse: Whether to keep the blurred base image.
+    border: How the image is extended past its edges.
+    channelScope: Which part of the color image is used.
+  tryThis:
+    - Open an image with lines, choose Keep one direction and turn the line angle.
+    - Compare this filter with wavelet thresholding on a noisy drawing.
+  pitfalls:
+    - An angle range smaller than the spacing of the tiles. It keeps only the one nearest tile.
+  demos: [noise-lab]
+related: [directional-shearlet, radon-filter, ridgelet, log-gabor, swt-denoise]
+docsPage: filters/frequency/directional-curvelet.md

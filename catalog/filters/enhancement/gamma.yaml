@@ -1,0 +1,99 @@
+id: gamma
+name: Gamma correction
+aliases: [Power-law transformation, Gamma adjustment]
+family: enhancement
+tags: [purpose:contrast, purpose:brightness]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Point operation.
+
+summary: Brightens or darkens the midtones with a power curve, while black and white stay put.
+purpose: Fix images that are too dark or too bright in the middle tones.
+classification: {linearity: nonlinear, domain: point, operation: power-law transfer}
+output: image
+representation: point-transfer
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/gamma.ts, symbol: gammaTransfer}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel goes through the curve, which can shift colors a little. With the
+  brightness scope only luma goes through it, and the color differences stay as they were.
+  Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own value.
+
+params:
+  - key: gamma
+    label: Gamma
+    type: number
+    min: 0.1
+    max: 5
+    step: 0.01
+    default: 0.6
+    description: The exponent of the power curve.
+    effect: Values below 1 brighten the midtones. Values above 1 darken them. 1 changes nothing.
+  - ref: channelScope
+
+formula: |
+  I_{\text{out}} = 255 \left( \frac{I}{255} \right)^{\gamma},
+  \qquad
+  \gamma = {{gamma}}
+formulaExplanation: >-
+  The value is scaled to the range 0 to 1, raised to the power gamma and scaled back. 0 and 255
+  map to themselves. Gamma below 1 lifts every value in between, gamma above 1 lowers it. This
+  is the power law used by Gonzalez and Woods and by skimage.exposure.adjust_gamma.
+symbols:
+  - {symbol: 'I', meaning: 'Input value from 0 to 255'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output value before rounding'}
+  - {symbol: '\gamma', meaning: 'The exponent'}
+steps:
+  - Compute the curve for all 256 input values once.
+  - Look up the output for each pixel and channel. Brightness values that are not whole numbers use the formula directly.
+  - Round to 8 bits. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The 256-entry table makes each pixel a single lookup.
+useCases:
+  - Brighten a dark photo without clipping the highlights.
+  - Darken a washed-out image.
+  - Show how display gamma changes the look of an image.
+advantages:
+  - Black and white stay fixed, so nothing clips.
+  - One number controls the whole curve.
+limitations:
+  - Changes all midtones together. It cannot brighten one area and darken another.
+  - Strong values compress the tones at one end, which can show banding.
+artifacts:
+  - Banding in smooth gradients after strong corrections, because 8-bit values get merged.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 3.
+  - kind: library
+    text: scikit-image documentation, skimage.exposure.adjust_gamma.
+    url: https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.adjust_gamma
+implementation: {path: web/src/core/filters/enhancement/gamma.ts, symbol: gammaFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It bends the brightness curve so the middle tones get brighter or darker, while black and white stay the same.
+  howItWorks:
+    - Turn the pixel value into a number from 0 to 1.
+    - Raise it to the power gamma.
+    - Turn it back into a value from 0 to 255.
+  academic: >-
+    A power-law point transformation s = c r^gamma with c chosen so that 1 maps to 1. Gamma
+    below 1 expands the dark tones and compresses the bright ones.
+  paramNotes:
+    gamma: Below 1 brightens, above 1 darkens. 1 changes nothing.
+  tryThis:
+    - Open the gray ramp test image and use the Line profile. The straight ramp becomes a curve.
+    - Compare gamma 0.5 with the RGB scope and with the brightness scope on a colorful photo.
+  pitfalls:
+    - Expecting gamma to fix contrast. It moves the midtones but leaves the black and white points.
+  demos: [point-op-curve, line-profile]
+related: [grayscale, log-transform, contrast-stretch, histogram-eq]
+docsPage: filters/enhancement/gamma.md

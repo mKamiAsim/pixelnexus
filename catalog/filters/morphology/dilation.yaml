@@ -1,0 +1,107 @@
+id: dilation
+name: Dilation
+aliases: [Maximum filter with a structuring element, Grayscale dilation]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Takes the largest value under the turned structuring element, so bright objects grow and dark details shrink.
+purpose: Grow bright objects, fill small dark gaps, and build the other morphology filters.
+classification: {linearity: nonlinear, domain: spatial, operation: maximum over the structuring element}
+output: image
+representation: structuring-element
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/gray.ts, symbol: morphology}
+supportRadius: iterations x the reach of the element
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own, which can create colors that were not
+  in the image. Brightness only keeps the colors and works on luma.
+boundary: >-
+  Set by the Border mode parameter. The image is extended once by the full reach, so strips and
+  whole images agree.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: disk 1
+    description: The shape and size of the neighborhood. Disk 1 is the 3 x 3 cross.
+    effect: Larger elements change larger structures. The shape decides which structures fit.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 1
+    description: How many times each erosion or dilation runs.
+    effect: More iterations act like a larger element of the same shape.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  (f \oplus B)(p) = \max_{z \in B} f(p - z)
+formulaExplanation: >-
+  Each pixel becomes the largest value under the element turned by 180 degrees. For symmetric elements the turn changes nothing. Erosion takes the smallest value of f(p + z) for z in B. Dilation takes the
+  largest value of f(p - z), which uses the element turned by 180 degrees. Both match the
+  grayscale erosion and dilation of SciPy. On an image of 0 and 255 they are binary erosion and
+  dilation.
+symbols:
+  - {symbol: 'f', meaning: The image}
+  - {symbol: 'B', meaning: The structuring element}
+steps:
+  - Extend the image by the reach of all steps with the border mode.
+  - Take the largest value under the turned element at each pixel.
+  - Repeat for each iteration, and cut the extension off.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the number of pixels in the element, times the number of steps.
+useCases:
+  - Fill small dark holes and gaps.
+  - Join broken parts of an object.
+  - The first step of closing and of the gradients.
+advantages:
+  - Simple, and the element controls exactly what is filled.
+  - Works on binary and grayscale images.
+limitations:
+  - Grows every object, not only the gaps.
+  - Bright noise grows.
+artifacts:
+  - Bright points become copies of the element.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 9, morphological image processing.
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: SciPy documentation, scipy.ndimage.grey_erosion and grey_dilation.
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.grey_erosion.html
+implementation: {path: web/src/core/filters/morphology/gray.ts, symbol: dilationFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Each pixel takes the brightest value around it, so bright shapes grow.
+  howItWorks:
+    - Place the turned element on a pixel.
+    - Look at the values it covers.
+    - Keep the largest one.
+  academic: >-
+    The supremum of translates of f by the points of B. It is the dual of erosion and an increasing, extensive operation.
+  paramNotes:
+    element: The neighborhood shape and size.
+    iterations: How many times each step runs.
+  tryThis:
+    - Dilate a single bright pixel with a line element. The result is the line itself.
+  pitfalls:
+    - Using an element that is not symmetric and expecting it unturned. Dilation turns it by 180 degrees.
+  demos: [morphology-stepper, line-profile]
+related: [erosion, closing, external-gradient, max]
+docsPage: filters/morphology/dilation.md

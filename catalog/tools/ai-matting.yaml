@@ -1,0 +1,40 @@
+id: ai-matting
+name: AI soft edges
+group: ai
+tier: optional
+engine: model
+phase: '7'
+status: implemented-tested
+planNotes: 'Matting model. License: check. A classical guided-filter refinement is always available.'
+params: []
+summary: "Select > AI soft edges selects a portrait with soft edges, such as hair, with a learned matting model."
+steps:
+  - "The whole image goes to the provider you chose for Soft edges."
+  - "In the engine, MODNet scales the image to -1 to 1."
+  - "If the image is smaller or larger than 512 pixels, it is resized so the shorter side is 512."
+  - "Both sides are rounded down to a multiple of 32."
+  - "MODNet answers with an alpha matte from 0 to 1, which is resized back to the image."
+  - "The matte replaces the selection as a soft selection. It is labeled as an AI result."
+implementation:
+  path: "web/src/app/aiSelectActions.ts"
+  symbol: "aiSelect"
+tests:
+  - "web/src/app/aiSelectActions.test.ts"
+  - "engine/tests/test_ai.py"
+references:
+  - kind: "paper"
+    text: "Ke, Z., Sun, J., Li, K., Yan, Q., and Lau, R. W. H. MODNet. Real-time trimap-free portrait matting via objective decomposition. Proceedings of the AAAI Conference on Artificial Intelligence 36(1), 1140 to 1147, 2022."
+    doi: "10.1609/aaai.v36i1.19999"
+learn:
+  oneSentence: "A learned model finds how much each pixel belongs to the person, so hair gets a soft edge."
+  howItWorks:
+    - "A selection that is only on or off cuts hair badly. A matte gives each pixel a share from 0 to 1."
+    - "MODNet predicts that share from the photo alone, with no trimap."
+  academic: "Trimap-free portrait matting. MODNet splits the work into a semantic branch, a detail branch and a fusion branch."
+  tryThis:
+    - "Use AI soft edges on a portrait, then fill the selection to see the soft hair edge."
+  pitfalls:
+    - "MODNet is trained on portraits. Other subjects may get a poor matte."
+    - "The result is an AI result. Detail may not exist in the original scene."
+  demos: []
+docsPage: "selection/ai-selection.md"

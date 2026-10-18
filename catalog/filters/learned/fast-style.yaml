@@ -1,0 +1,109 @@
+id: fast-style
+name: Neural style and texture filters
+aliases: [Fast neural style, Style transfer, Perceptual loss style]
+family: learned
+tags: [purpose:artistic]
+tier: optional
+engine: science
+phase: '7'
+status: optional-model
+model: style-mosaic
+modelChoices:
+  param: style
+  models: {mosaic: style-mosaic, candy: style-candy, udnie: style-udnie, rain-princess: style-rain-princess, pointilism: style-pointilism}
+planNotes: Fast neural style models of the ONNX model zoo, one model per painting.
+
+summary: Repaints the image in the style of a painting with a fast feed-forward network, one network per style, after Johnson, Alahi and Fei-Fei. Each network was trained once to match the textures of its painting while keeping the content of any photo. Each style needs its own downloaded model.
+purpose: Artistic effects, and a way to see what a network learns as texture.
+classification: {linearity: nonlinear, domain: learned, operation: feed-forward style transfer}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: style_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: The network reads RGB from 0 to 255. Alpha stays.
+boundary: The network pads by reflection inside. The published models declare a 224 x 224 input. The engine frees the size in memory, since the network is fully convolutional.
+dependencies:
+  - {name: ONNX Runtime, optional: true, note: 'The models extra (CPU) or the cuda extra (NVIDIA GPU).'}
+
+params:
+  - key: style
+    label: Style
+    type: select
+    default: mosaic
+    options:
+      - {value: mosaic, label: Mosaic}
+      - {value: candy, label: Candy}
+      - {value: udnie, label: Udnie}
+      - {value: rain-princess, label: Rain princess}
+      - {value: pointilism, label: Pointilism}
+    description: The painting the network was trained on. Each style downloads on its own.
+    effect: Changes the colors and brush textures.
+  - key: strength
+    label: Strength
+    type: number
+    min: 0
+    max: 1
+    step: 0.05
+    default: 1
+    description: How much of the styled image to mix with the input. Our choice.
+    effect: Lower values keep more of the original.
+formula: |
+  y = f_{\text{style}}(x),\qquad \text{out} = (1 - s)\, x + s\, y
+formulaExplanation: >-
+  f is a network of convolutions, residual blocks with instance normalization, and upsampling
+  layers. It was trained to make the deep features of y, in a fixed VGG network, match the
+  feature correlations of the painting and the features of x. After training, one pass styles
+  any image. s mixes the result with the input, our addition.
+symbols:
+  - {symbol: 'x', meaning: 'The input image'}
+  - {symbol: 'f_{\text{style}}', meaning: 'The network for one style'}
+  - {symbol: 's', meaning: 'The strength'}
+steps:
+  - Run the network for the chosen style on the image, at its own size.
+  - Crop the output to the image size.
+  - Mix with the input by the strength.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Artistic effects.
+  - Seeing what texture statistics a network has learned.
+advantages:
+  - One pass per image, fast on a GPU.
+limitations:
+  - Only the five trained styles.
+  - Large images give smaller brush strokes than small ones, since the network works in pixels.
+artifacts:
+  - Repeating texture in flat areas.
+references:
+  - kind: paper
+    text: Johnson, J., Alahi, A., and Fei-Fei, L. Perceptual losses for real-time style transfer and super-resolution. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 694 to 711, 2016.
+    doi: 10.1007/978-3-319-46475-6_43
+  - kind: library
+    text: ONNX model zoo, fast neural style transfer models.
+    url: https://github.com/onnx/models
+implementation: {path: engine/src/pixelnexus_engine/filters/learned.py, symbol: fast_style}
+tests: [engine/tests/test_learned.py]
+learn:
+  oneSentence: A network repaints the image in the style of a painting, in one pass.
+  howItWorks:
+    - The network was trained once for one painting.
+    - It keeps the shapes of your image and borrows the painting's colors and strokes.
+    - Strength mixes the result with your image.
+  academic: >-
+    Feed-forward style transfer with perceptual losses, after Johnson et al., from the ONNX model
+    zoo.
+  paramNotes:
+    style: Which painting.
+    strength: How much of the style.
+  tryThis:
+    - Run the same style on a small and a large copy of one photo, and compare the brush size.
+  pitfalls:
+    - A learned model can add detail that was never in the scene. Results carry the AI result label.
+  demos: [model-pipeline, line-profile]
+related: [oil-painting, cartoon]
+docsPage: filters/learned/fast-style.md

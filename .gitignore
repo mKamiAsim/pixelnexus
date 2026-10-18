@@ -1,0 +1,49 @@
+# Dependencies and environments
+node_modules/
+.venv/
+.pnpm-store/
+
+# Build output
+dist/
+site/
+web/src/generated/
+
+# Caches and reports
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.coverage
+htmlcov/
+playwright-report/
+test-results/
+.vitest/
+*.tsbuildinfo
+
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+
+# Figure data, made by web/scripts/gen-filter-docs.mjs. Only the finished figures are committed.
+tools/figures/data/
+
+# Downloaded AI models
+/models/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+*.log
+
+# Claude Code session worktrees
+.claude/worktrees/
+
+# The environment of tools/export_models.py, with PyTorch from the system Python
+.venv-export/
+
+# Local reports from tools/audit_catalog.py and web/scripts/check-figures.mjs
+docs/_meta/

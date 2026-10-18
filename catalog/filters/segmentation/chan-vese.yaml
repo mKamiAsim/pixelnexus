@@ -1,0 +1,182 @@
+id: chan-vese
+name: Chan-Vese segmentation
+aliases: [Active contours without edges, Chan-Vese]
+family: segmentation
+tags: [purpose:segmentation]
+tier: advanced
+engine: science
+phase: 6e
+status: implemented-tested
+
+summary: Splits the image into two phases with a level set, after Chan and Vese. Each phase should be as even in brightness as it can be, and the boundary between them as short as it can be. It needs no edges, so it finds objects with soft or blurred borders.
+purpose: Split an image into a brighter and a darker part along borders that may be soft, noisy or missing.
+classification: {linearity: nonlinear, domain: iterative, operation: level set evolution}
+output: labels
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: chan_vese_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The filter reads the luma with the BT.709 weights, scaled from 0 to 1. The two phases go to the
+  Features panel and are drawn over the image. The boundaries and mean colors are color images
+  and the level set a gray image, all with the alpha of the image.
+boundary: The level set repeats its edge values in each step. The phases end at the image edge.
+dependencies:
+  - {name: scikit-image, optional: false, note: 'skimage.segmentation.chan_vese.'}
+
+params:
+  - key: output
+    label: Output
+    type: select
+    default: regions
+    options:
+      - {value: regions, label: Phases}
+      - {value: boundaries, label: Boundaries over the image}
+      - {value: mean, label: Mean color of each phase}
+      - {value: levelSet, label: Level set}
+    description: The two phases as a label map, drawn over the image and listed in the Features panel. Or the boundary in yellow over the image, or each phase filled with its mean color. Or the final level set as gray, with 0 at middle gray.
+    effect: A phase can become the selection from the Features panel. The other outputs change the image.
+  - key: mu
+    label: Length weight
+    type: number
+    min: 0
+    max: 2
+    step: 0.01
+    default: 0.25
+    description: The weight mu of the length of the boundary. scikit-image uses 0.25.
+    effect: Higher values give smoother, shorter boundaries and drop small specks.
+  - key: lambda1
+    label: Phase 1 weight
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 1
+    description: How much an uneven phase 1 costs, lambda 1. scikit-image uses 1.
+    effect: A higher value makes phase 1 more even, so it keeps fewer pixels that differ from its mean.
+  - key: lambda2
+    label: Phase 2 weight
+    type: number
+    min: 0
+    max: 5
+    step: 0.1
+    default: 1
+    description: How much an uneven phase 2 costs, lambda 2. scikit-image uses 1.
+    effect: A higher value makes phase 2 more even.
+  - key: init
+    label: Start
+    type: select
+    default: checkerboard
+    options:
+      - {value: checkerboard, label: Checkerboard}
+      - {value: disk, label: Large disk}
+      - {value: small disk, label: Small disk}
+    description: The starting level set from scikit-image. The checkerboard has squares of 5 pixels. The large disk spans the shorter side of the image, the small disk half of it.
+    effect: The notes in scikit-image say, after Getreuer, that the checkerboard converges fast. The disks start from one round shape.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 2000
+    step: 1
+    default: 500
+    description: The most steps to take. scikit-image uses 500.
+    effect: More steps let the boundary settle, and take longer.
+  - key: tolerance
+    label: Tolerance
+    type: number
+    min: 0
+    max: 0.1
+    step: 0.0001
+    default: 0.001
+    description: The level set stops when its root mean square change in one step is at most this. scikit-image uses 0.001.
+    effect: Lower values run longer for a more settled result.
+  - key: dt
+    label: Time step
+    type: number
+    min: 0.01
+    max: 2
+    step: 0.01
+    default: 0.5
+    description: The size of each step, delta t. scikit-image uses 0.5.
+    effect: Larger steps move faster but can overshoot.
+formula: |
+  F(c_1, c_2, \phi) = \mu \, \text{Length}(\phi = 0)
+  + \lambda_1 \sum_{\phi > 0} (Y - c_1)^2
+  + \lambda_2 \sum_{\phi \le 0} (Y - c_2)^2
+formulaExplanation: >-
+  The level set phi has one value per pixel. Phase 1 is where phi is above 0, phase 2 is the
+  rest, and the boundary is where phi is 0. The mean luma Y of the two phases is c1 and c2. The
+  energy F adds the length of the boundary, times mu, to how far each pixel is from the mean of
+  its phase, squared. Each step finds c1 and c2, then moves phi down the slope of F. A pixel
+  closer to c1 than to c2 is pushed into phase 1, while the length term keeps the boundary
+  smooth. No step looks at edges, so the boundary can cross a soft or broken border. scikit-image
+  follows the scheme of Getreuer. It leaves out the area term of the paper, and it does not
+  reset phi to a distance during the steps.
+symbols:
+  - {symbol: '\phi', meaning: 'The level set, above 0 in phase 1'}
+  - {symbol: 'c_1, c_2', meaning: 'The mean luma of each phase'}
+  - {symbol: '\mu', meaning: 'The weight of the boundary length'}
+  - {symbol: '\lambda_1, \lambda_2', meaning: 'The weights of the two phases'}
+  - {symbol: 'Y', meaning: 'The luma, from 0 to 1'}
+steps:
+  - Scale the luma from 0 to 1 and start the level set.
+  - Find the mean luma of each phase.
+  - Move the level set so each pixel leans to the phase with the closer mean, and the boundary stays short.
+  - Stop when the level set barely changes, or after the most steps.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels and K the number of steps.
+useCases:
+  - Objects with soft or blurred borders, such as cells and clouds.
+  - Noisy images where edge detectors break up.
+advantages:
+  - Needs no edges, so blurred and broken borders are fine.
+  - Finds several objects at once, holes included.
+limitations:
+  - Only two phases, so it suits images with one kind of object on one background.
+  - The two phases must differ in mean brightness.
+  - Slow for large images at the default steps.
+artifacts:
+  - Small specks when the length weight is low.
+  - Which phase is the object depends on the start.
+references:
+  - kind: paper
+    text: Chan, T. F., and Vese, L. A. Active contours without edges. IEEE Transactions on Image Processing 10(2), 266 to 277, 2001.
+    doi: 10.1109/83.902291
+  - kind: paper
+    text: Getreuer, P. Chan-Vese segmentation. Image Processing On Line 2, 214 to 224, 2012.
+    doi: 10.5201/ipol.2012.g-cv
+  - kind: library
+    text: scikit-image documentation, skimage.segmentation.chan_vese.
+implementation: {path: engine/src/pixelnexus_engine/filters/contours.py, symbol: chan_vese_filter}
+tests: [engine/tests/test_contours.py]
+learn:
+  oneSentence: Split the image in two, so each part is as even as it can be and the border between them is short.
+  howItWorks:
+    - Start with a guess that splits the image in two.
+    - Find the average brightness of each part.
+    - Move each pixel toward the part whose average is closer, while keeping the border smooth.
+    - Repeat until the border stops moving.
+  academic: >-
+    Chan-Vese level set minimization of the piecewise constant Mumford-Shah energy, with the
+    scheme of Getreuer, as in scikit-image.
+  paramNotes:
+    output: Phases, boundary, mean colors, or the level set.
+    mu: How smooth the border is.
+    lambda1: How even phase 1 must be.
+    lambda2: How even phase 2 must be.
+    init: The starting split.
+    iterations: The most steps.
+    tolerance: When to stop.
+    dt: The step size.
+  tryThis:
+    - Raise the length weight on a noisy image. The specks disappear and the border smooths out.
+  pitfalls:
+    - An image with three or more brightness levels. Two of them end up in the same phase.
+  demos: [stage-viewer]
+related: [level-set, active-contour, otsu, multi-otsu]
+docsPage: filters/segmentation/chan-vese.md

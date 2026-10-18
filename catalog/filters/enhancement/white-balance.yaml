@@ -1,0 +1,98 @@
+id: white-balance
+name: White balance
+aliases: [Neutral point white balance, Gray point, Click white balance]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Pick a neutral point.
+
+summary: Removes a color cast by making a color you pick, which should be neutral, into gray.
+purpose: Fix the color of a photo taken under colored light, using a gray card, a white wall or another neutral object in it.
+classification: {linearity: linear, domain: color, operation: neutral point channel gains}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: neutralGains}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  Each channel is multiplied by its own gain. The gains come from the picked color. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: neutral
+    label: Neutral color
+    type: color
+    default: "#d2c8b4"
+    description: The color of something in the image that should be neutral gray or white. Take it from the image with the probe pixel.
+    effect: The image shifts away from this color, so it turns gray.
+  - key: linearLight
+    label: Linear light
+    type: boolean
+    default: true
+    description: Scale the linear light values instead of the encoded sRGB values.
+    effect: Linear light matches how a change of light color acts on a scene.
+formula: |
+  g_C = \frac{Y_n}{n_C},
+  \quad
+  Y_n = 0.2126\, n_R + 0.7152\, n_G + 0.0722\, n_B,
+  \quad
+  C' = \begin{cases} \operatorname{srgb}\left(g_C \operatorname{lin}(C)\right) & \text{linear light} \\ g_C\, C & \text{otherwise} \end{cases}
+formulaExplanation: >-
+  n is the picked neutral color and Y_n its luminance, with the BT.709 weights. The gain of each
+  channel turns the neutral into the gray (Y_n, Y_n, Y_n), so it keeps its brightness and loses
+  its color. All other colors get the same gains, which is the von Kries idea of scaling each
+  channel on its own. With Linear light on, the default, the gains act on linear light values: decoded from sRGB, scaled, and encoded again. A change in the color of the light scales linear values, so this is the physical model. With it off, the gains scale the encoded values. A channel of the neutral at 0 gets gain 1.
+symbols:
+  - {symbol: 'n_C', meaning: 'Channel C of the neutral color'}
+  - {symbol: 'Y_n', meaning: 'The luminance of the neutral color'}
+  - {symbol: 'g_C', meaning: 'The gain of channel C'}
+steps:
+  - Decode the neutral color to linear light, if Linear light is on.
+  - Compute its luminance and the three gains.
+  - Scale each channel by its gain, in linear light or on the encoded values.
+  - Encode back to sRGB and clip to 0 to 255.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. The gains or the matrix are computed once per run.
+useCases:
+  - Photos with a gray card or another known neutral object.
+  - Fixing the orange of tungsten light or the green of some fluorescent lights.
+advantages:
+  - Exact for the picked color, and simple to follow.
+  - Works on any image with something neutral in it.
+limitations:
+  - Needs a truly neutral object. Picking a colored object gives a new cast.
+  - One set of gains for the whole image, so mixed lighting stays mixed.
+artifacts:
+  - Clipped highlights in channels whose gain is above 1.
+references:
+  - kind: web
+    text: Lindbloom, B. Chromatic adaptation, with the cone response matrices and the white points of ASTM E308-01. Web Archive copy of 14 March 2026.
+    url: https://web.archive.org/web/20260314100017/http://brucelindbloom.com/Eqn_ChromAdapt.html
+implementation: {path: web/src/core/filters/enhancement/white-balance.ts, symbol: whiteBalanceFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/enhancement.test.ts]
+learn:
+  oneSentence: Pick something that should be gray, and the whole image shifts so that it is.
+  howItWorks:
+    - Pick a color that should be neutral.
+    - Find how much each channel must change to make it gray.
+    - Change every pixel by the same amounts.
+  academic: >-
+    Diagonal (von Kries) white balance in linear RGB, with gains from a reference neutral
+    normalized to keep its luminance.
+  paramNotes:
+    neutral: The color that should become gray.
+    linearLight: Work on linear light values, as light does.
+  tryThis:
+    - Set the probe on a white wall with the Probe tool, then press Use probe pixel.
+  pitfalls:
+    - Picking a colored object. Its color is removed from the whole image.
+  demos: [line-profile]
+related: [gray-world, white-patch, temperature-tint, chromatic-adaptation]
+docsPage: filters/enhancement/white-balance.md

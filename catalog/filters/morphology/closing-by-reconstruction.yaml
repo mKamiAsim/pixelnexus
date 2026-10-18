@@ -1,0 +1,110 @@
+id: closing-by-reconstruction
+name: Closing by reconstruction
+aliases: [Reconstructive closing]
+family: morphology
+tags: [purpose:morphology]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: A dilation followed by reconstruction by erosion. It fills dark objects the element does not fit into and restores the others exactly.
+purpose: Fill small dark objects without changing the shape of the dark objects that remain.
+classification: {linearity: nonlinear, domain: spatial, operation: dilation and reconstruction by erosion}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: reconstruct}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  Set by the Border mode parameter for the first step. The reconstruction stays inside the image, and the filter always runs on the whole image.
+
+params:
+  - key: element
+    label: Structuring element
+    type: structuring-element
+    default: disk 1
+    description: The element of the first step. Bright or dark details it does not fit into are removed.
+    effect: Larger elements remove larger details.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 1
+    description: How many times the first step runs.
+    effect: More iterations act like a larger element.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined when the reconstruction spreads.
+    effect: With 4 neighbors, regions that touch only at a corner stay apart.
+  - ref: border
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  \varphi_R(f) = R^{\varepsilon}_f(f \oplus B)
+formulaExplanation: >-
+  The dilation fills every dark object the element does not fit into. Reconstruction by erosion over the image then brings back every dark object that kept at least one pixel, with its exact shape.
+symbols:
+  - {symbol: 'B', meaning: The structuring element}
+  - {symbol: 'R^{\varepsilon}_f', meaning: Reconstruction by erosion over f}
+steps:
+  - Extend the image with the border mode and dilate it with the element, then cut the extension off.
+  - Reconstruct the dilation by erosion over the image.
+complexity:
+  time: O(N K)
+  memory: O(N)
+  notes: N is the number of pixels per channel and K the size of the element. The reconstruction adds O(N).
+useCases:
+  - Remove small dark specks while keeping the outlines of dark objects.
+  - Keep only dark objects larger than the element.
+advantages:
+  - Remaining dark objects keep their exact shape.
+limitations:
+  - Dark objects joined to a large dark object by a thin bridge come back with it.
+artifacts:
+  - Thin dark bridges keep small dark objects alive.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.reconstruction.
+    url: https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.reconstruction
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: closingByReconstructionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Dilate to find which dark objects are big enough, then bring those back exactly as they were.
+  howItWorks:
+    - Dilate, so small dark objects fill in.
+    - Shrink what is left back over the image.
+    - Big dark objects return with their exact shape.
+  academic: >-
+    The dual of opening by reconstruction, an algebraic closing and a connected operator.
+  paramNotes:
+    element: The smallest dark object size that survives.
+    iterations: How many dilations.
+    connectivity: Which pixels count as joined.
+  tryThis:
+    - Close a page of dark text by reconstruction with a disk smaller than the strokes. Specks go, letters stay.
+  pitfalls:
+    - Expecting thin dark bridges to fill. Reconstruction follows them.
+  demos: [line-profile]
+related: [closing, reconstruction, opening-by-reconstruction]
+docsPage: filters/morphology/closing-by-reconstruction.md

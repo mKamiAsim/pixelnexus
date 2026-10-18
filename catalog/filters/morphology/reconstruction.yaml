@@ -1,0 +1,116 @@
+id: reconstruction
+name: Morphological reconstruction
+aliases: [Reconstruction by dilation, Reconstruction by erosion, h-dome]
+family: morphology
+tags: [purpose:morphology, purpose:segmentation]
+tier: core
+engine: browser
+phase: 5d
+status: implemented-tested
+
+summary: Grows a marker under the image until it stops, which restores every bright region the marker touches and flattens the rest.
+purpose: Flatten small peaks or valleys, find regional maxima, and build other connected filters.
+classification: {linearity: nonlinear, domain: spatial, operation: geodesic reconstruction}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: reconstruct}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  With RGB scope, each channel is processed on its own. Brightness only keeps the colors and
+  works on luma.
+boundary: >-
+  No border is needed for the reconstruction, which stays inside the image. The filter always runs on the whole image.
+
+params:
+  - key: method
+    label: Method
+    type: select
+    default: dilation
+    options:
+      - {value: dilation, label: By dilation (bright parts)}
+      - {value: erosion, label: By erosion (dark parts)}
+    description: Whether the marker grows up under the image or shrinks down over it.
+    effect: By dilation flattens bright peaks. By erosion fills dark valleys.
+  - key: h
+    label: Height h
+    type: number
+    min: 0
+    max: 255
+    step: 1
+    default: 20
+    description: The marker is the image moved down by h for dilation, or up by h for erosion.
+    effect: Peaks or valleys less than h deep are flattened. Deeper ones lose h at their top or bottom.
+  - key: connectivity
+    label: Neighbors
+    type: select
+    default: "8"
+    options:
+      - {value: "8", label: 8 neighbors}
+      - {value: "4", label: 4 neighbors}
+    description: Which pixels count as joined when the reconstruction spreads.
+    effect: With 4 neighbors, regions that touch only at a corner stay apart.
+  - ref: channelScope
+    default: rgb
+
+formula: |
+  R^{\delta}_f(J) = \lim_{k \to \infty} \delta^{(k)}_f(J),\qquad \delta^{(1)}_f(J) = \delta_N(J) \wedge f
+formulaExplanation: >-
+  J is the marker, here the image moved down by h, and f is the mask, the image itself. Each geodesic step dilates J with the 3 x 3 element N and takes the minimum with f, so J never rises above f. Repeating until nothing changes gives the reconstruction. By erosion is the same with the roles of minimum and maximum swapped. The marker is first clamped below (or above) the mask. The filter uses the hybrid algorithm of Vincent and matches skimage.morphology.reconstruction.
+symbols:
+  - {symbol: 'f', meaning: The image itself as the mask}
+  - {symbol: 'J', meaning: The marker}
+  - {symbol: 'N', meaning: The 3 x 3 cross or square}
+steps:
+  - Build the marker, the image moved down by h for dilation or up for erosion.
+  - Scan in raster order, then in reverse order, spreading the marker under the mask.
+  - Spread the rest with a queue until nothing changes.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each pixel is visited a few times.
+useCases:
+  - Remove peaks lower than h, the h-dome transform.
+  - Find regional maxima as image minus reconstruction.
+  - The core of opening and closing by reconstruction and of leveling.
+advantages:
+  - Regions are either kept whole or flattened. Their shape never changes.
+  - Fast, with a cost that hardly depends on the image.
+limitations:
+  - A single marker pixel brings back a whole region, so noise in the marker matters.
+artifacts:
+  - Flat plateaus where peaks were cut.
+references:
+  - kind: paper
+    text: Vincent, L. Morphological grayscale reconstruction in image analysis, applications and efficient algorithms. IEEE Transactions on Image Processing 2(2), 176 to 201, 1993.
+    doi: 10.1109/83.217222
+  - kind: book
+    text: Soille, P. Morphological Image Analysis, 2nd edition. Springer, 2004.
+    doi: 10.1007/978-3-662-05088-0
+  - kind: library
+    text: scikit-image documentation, skimage.morphology.reconstruction.
+    url: https://scikit-image.org/docs/stable/api/skimage.morphology.html#skimage.morphology.reconstruction
+implementation: {path: web/src/core/filters/morphology/reconstruction.ts, symbol: reconstructionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Let a lowered copy of the image grow back up under the image, so only the tops of peaks are cut.
+  howItWorks:
+    - Lower the whole image by h.
+    - Let it grow, pixel by pixel, but never above the image.
+    - Peaks taller than h come back with their tops cut. Smaller ones vanish.
+  academic: >-
+    The geodesic reconstruction of a marker under a mask, the limit of iterated geodesic dilations. It is a connected operator: it merges flat zones but never moves their borders.
+  paramNotes:
+    method: Bright peaks or dark valleys.
+    h: How deep a peak or valley must be to keep part of it.
+    connectivity: Which pixels count as joined.
+  tryThis:
+    - Subtract the reconstruction from the image to see the h-domes, the tops of the peaks.
+  pitfalls:
+    - Expecting it to blur. It only flattens tops and bottoms, edges stay sharp.
+  demos: [line-profile]
+related: [opening-by-reconstruction, closing-by-reconstruction, geodesic, leveling]
+docsPage: filters/morphology/reconstruction.md

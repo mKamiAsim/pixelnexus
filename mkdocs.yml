@@ -1,0 +1,486 @@
+site_name: PixelNexus
+site_description: Technical reference for the PixelNexus image processing studio.
+site_url: https://mkamiasim.github.io/pixelnexus/
+repo_url: https://github.com/mKamiAsim/pixelnexus
+repo_name: mKamiAsim/pixelnexus
+edit_uri: edit/main/docs/
+copyright: PixelNexus contributors. MIT License.
+
+# Pinned to MkDocs 1.6 and Material 9.7 (newer versions change the theme and plugins).
+# Keep this file free of plugins that would block a later move to Zensical.
+
+exclude_docs: |
+  _generated/
+  _meta/
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+theme:
+  name: material
+  language: en
+  font: false
+  icon:
+    repo: fontawesome/brands/github
+  # The look of the Hacker theme for GitHub Pages (docs/stylesheets/extra.css). It is dark only.
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets:
+      base_path: [docs/_generated, "."]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+      - Development environment: getting-started/development-environment.md
+      - Configuration: getting-started/configuration.md
+      - Running tests: getting-started/running-tests.md
+      - Deployment: getting-started/deployment.md
+  - User guide:
+      - The studio: user-guide/studio.md
+      - The workspace: user-guide/workspace.md
+      - Panels: user-guide/panels.md
+      - The Learn panel: user-guide/learn-panel.md
+      - Pipelines: user-guide/pipelines.md
+      - Compare grid: user-guide/compare-grid.md
+      - Metrics: user-guide/metrics.md
+      - Projects: user-guide/projects.md
+      - Export: user-guide/export.md
+      - AI providers and consent: user-guide/ai-providers.md
+      - Keyboard shortcuts: user-guide/keyboard-shortcuts.md
+  - Filters:
+      - filters/index.md
+      - Linear:
+          - Box filter: filters/linear/box.md
+          - Gaussian filter: filters/linear/gaussian.md
+          - Weighted average filter: filters/linear/weighted-average.md
+          - Binomial filter: filters/linear/binomial.md
+          - Triangular filter: filters/linear/triangular.md
+          - Disk averaging filter: filters/linear/disk-average.md
+          - Low-pass FIR filter: filters/linear/fir-lowpass.md
+          - Motion blur: filters/linear/motion-blur.md
+          - Laplacian: filters/linear/laplacian.md
+          - Laplacian sharpening: filters/linear/laplacian-sharpen.md
+          - High-pass filter: filters/linear/high-pass.md
+          - High-boost filter: filters/linear/high-boost.md
+          - Unsharp mask: filters/linear/unsharp-mask.md
+          - Difference of Gaussians: filters/linear/dog.md
+          - Laplacian of Gaussian: filters/linear/log.md
+          - Gabor filter: filters/linear/gabor.md
+          - Wiener filter (global): filters/linear/wiener-denoise.md
+          - Steerable filters: filters/linear/steerable.md
+          - Matched filter: filters/linear/matched-filter.md
+      - Nonlinear:
+          - Median filter: filters/nonlinear/median.md
+          - Weighted median filter: filters/nonlinear/weighted-median.md
+          - Adaptive median filter: filters/nonlinear/adaptive-median.md
+          - Switching median filter: filters/nonlinear/switching-median.md
+          - Vector median filter: filters/nonlinear/vector-median.md
+          - Kuwahara filter: filters/nonlinear/kuwahara.md
+          - Nagao-Matsuyama filter: filters/nonlinear/nagao-matsuyama.md
+          - Bilateral filter: filters/nonlinear/bilateral.md
+          - Bilateral solver: filters/nonlinear/bilateral-solver.md
+          - Non-local means: filters/nonlinear/nlm.md
+          - Total variation denoising: filters/nonlinear/tv-denoise.md
+          - BM3D-inspired denoising: filters/nonlinear/bm3d-lite.md
+          - Bitonic filter: filters/nonlinear/bitonic.md
+          - Domain transform filter: filters/nonlinear/domain-transform.md
+          - Rolling guidance filter: filters/nonlinear/rolling-guidance.md
+          - SUSAN noise filter: filters/nonlinear/susan-smoothing.md
+          - Joint bilateral filter: filters/nonlinear/joint-bilateral.md
+          - Guided filter: filters/nonlinear/guided.md
+          - Anisotropic diffusion: filters/nonlinear/anisotropic-diffusion.md
+          - Vector anisotropic diffusion: filters/nonlinear/vector-anisotropic-diffusion.md
+          - Min filter: filters/nonlinear/min.md
+          - Max filter: filters/nonlinear/max.md
+          - Midpoint filter: filters/nonlinear/midpoint.md
+          - Rank-order filter: filters/nonlinear/rank-order.md
+          - Mode filter: filters/nonlinear/mode.md
+          - Alpha-trimmed mean filter: filters/nonlinear/alpha-trimmed-mean.md
+          - Geometric mean filter: filters/nonlinear/geometric-mean.md
+          - Harmonic mean filter: filters/nonlinear/harmonic-mean.md
+          - Contraharmonic mean filter: filters/nonlinear/contraharmonic-mean.md
+      - Adaptive:
+          - Adaptive Wiener filter: filters/adaptive/wiener-adaptive.md
+          - Adaptive local noise reduction: filters/adaptive/adaptive-local-noise.md
+          - Sigma filter: filters/adaptive/sigma.md
+          - Adaptive smoothing: filters/adaptive/adaptive-smoothing.md
+          - Lee filter: filters/adaptive/lee.md
+          - Enhanced Lee filter: filters/adaptive/enhanced-lee.md
+          - Kuan filter: filters/adaptive/kuan.md
+          - Frost filter: filters/adaptive/frost.md
+          - Gamma-MAP filter: filters/adaptive/gamma-map.md
+          - Speckle reducing anisotropic diffusion: filters/adaptive/srad.md
+          - 2D LMS adaptive filter: filters/adaptive/lms-2d.md
+          - 2D RLS adaptive filter: filters/adaptive/rls-2d.md
+          - Kalman filter: filters/adaptive/kalman.md
+          - Local variance filter: filters/adaptive/local-variance.md
+          - Standard deviation filter: filters/adaptive/local-std.md
+          - Range filter: filters/adaptive/local-range.md
+          - Entropy filter: filters/adaptive/local-entropy.md
+          - MAD thresholding: filters/adaptive/mad-outlier.md
+          - Savitzky-Golay filter: filters/adaptive/savgol.md
+          - Robust M-estimator filter: filters/adaptive/m-estimator.md
+          - Steering kernel regression: filters/adaptive/steering-kernel.md
+          - RANSAC surface fit: filters/adaptive/ransac-surface.md
+      - Edges:
+          - Sobel: filters/edges/sobel.md
+          - Sobel with non-maximum suppression: filters/edges/sobel-nms.md
+          - Hysteresis thresholding: filters/edges/hysteresis.md
+          - Canny: filters/edges/canny.md
+          - Prewitt: filters/edges/prewitt.md
+          - Scharr: filters/edges/scharr.md
+          - Roberts Cross: filters/edges/roberts.md
+          - Farid-Simoncelli: filters/edges/farid-simoncelli.md
+          - Kirsch compass: filters/edges/kirsch.md
+          - Robinson compass: filters/edges/robinson.md
+          - Frei-Chen: filters/edges/frei-chen.md
+          - Zero-crossing detector: filters/edges/zero-crossing.md
+          - Marr-Hildreth: filters/edges/marr-hildreth.md
+          - Phase congruency: filters/edges/phase-congruency.md
+          - Hough-based edge linking: filters/edges/hough-linking.md
+          - Structured Edge Detector: filters/edges/structured-edge.md
+          - Deriche: filters/edges/deriche.md
+          - Shen-Castan: filters/edges/shen-castan.md
+          - SUSAN edge detector: filters/edges/susan-edge.md
+      - Features:
+          - Line detectors: filters/features/line-detector.md
+          - Laws' texture energy: filters/features/laws.md
+          - Gabor filter bank: filters/features/gabor-bank.md
+          - Matched vessel filter: filters/features/matched-vessel.md
+          - Frangi vesselness: filters/features/frangi.md
+          - Hessian-based filter: filters/features/hessian.md
+          - Sato filter: filters/features/sato.md
+          - Meijering filter: filters/features/meijering.md
+          - LoG blob detection: filters/features/blob-log.md
+          - DoG blob detection: filters/features/blob-dog.md
+          - Determinant of Hessian: filters/features/blob-doh.md
+          - SIFT: filters/features/sift.md
+          - ORB: filters/features/orb.md
+          - BRISK: filters/features/brisk.md
+          - AKAZE: filters/features/akaze.md
+          - SURF-inspired detector: filters/features/surf-inspired.md
+          - SUSAN corner detector: filters/features/susan-corner.md
+          - MSER region detector: filters/features/mser.md
+          - Local Binary Pattern: filters/features/lbp.md
+          - Local Ternary Pattern: filters/features/ltp.md
+          - GLCM features: filters/features/glcm.md
+          - Histogram of Oriented Gradients: filters/features/hog.md
+          - Hough transform for lines: filters/features/hough-lines.md
+          - Hough transform for circles: filters/features/hough-circles.md
+          - Harris corner detector: filters/features/harris.md
+          - Shi-Tomasi: filters/features/shi-tomasi.md
+          - Moravec corner detector: filters/features/moravec.md
+          - FAST corner detector: filters/features/fast.md
+      - Morphology:
+          - Erosion: filters/morphology/erosion.md
+          - Dilation: filters/morphology/dilation.md
+          - Opening: filters/morphology/opening.md
+          - Closing: filters/morphology/closing.md
+          - Morphological gradient: filters/morphology/morph-gradient.md
+          - Internal gradient: filters/morphology/internal-gradient.md
+          - External gradient: filters/morphology/external-gradient.md
+          - Top-hat: filters/morphology/tophat.md
+          - Black-hat: filters/morphology/blackhat.md
+          - Morphological reconstruction: filters/morphology/reconstruction.md
+          - Opening by reconstruction: filters/morphology/opening-by-reconstruction.md
+          - Closing by reconstruction: filters/morphology/closing-by-reconstruction.md
+          - Geodesic filtering: filters/morphology/geodesic.md
+          - Alternating sequential filter: filters/morphology/asf.md
+          - Morphological leveling: filters/morphology/leveling.md
+          - Hit-or-miss transform: filters/morphology/hit-or-miss.md
+          - Thinning: filters/morphology/thinning.md
+          - Thickening: filters/morphology/thickening.md
+          - Skeletonization: filters/morphology/skeleton.md
+          - Pruning: filters/morphology/pruning.md
+          - Convex hull: filters/morphology/convex-hull.md
+          - Connected-component filtering: filters/morphology/ccl-filter.md
+          - Medial axis: filters/morphology/medial-axis.md
+          - Area opening: filters/morphology/area-opening.md
+          - Area closing: filters/morphology/area-closing.md
+          - Attribute opening: filters/morphology/attribute-opening.md
+      - Frequency:
+          - Ideal low-pass: filters/frequency/ideal-lowpass.md
+          - Ideal high-pass: filters/frequency/ideal-highpass.md
+          - Ideal band-pass: filters/frequency/ideal-bandpass.md
+          - Ideal band-reject: filters/frequency/ideal-bandreject.md
+          - Butterworth low-pass: filters/frequency/butterworth-lowpass.md
+          - Butterworth high-pass: filters/frequency/butterworth-highpass.md
+          - Butterworth band-pass: filters/frequency/butterworth-bandpass.md
+          - Butterworth band-reject: filters/frequency/butterworth-bandreject.md
+          - Gaussian low-pass: filters/frequency/gaussian-lowpass.md
+          - Gaussian high-pass: filters/frequency/gaussian-highpass.md
+          - Gaussian band-pass: filters/frequency/gaussian-bandpass.md
+          - Gaussian band-reject: filters/frequency/gaussian-bandreject.md
+          - Notch-reject: filters/frequency/notch-reject.md
+          - Notch-pass: filters/frequency/notch-pass.md
+          - Comb filter: filters/frequency/comb.md
+          - Periodic-noise suppression: filters/frequency/periodic-noise.md
+          - Homomorphic filter: filters/frequency/homomorphic.md
+          - Phase-only filter: filters/frequency/phase-only.md
+          - Spectral whitening: filters/frequency/spectral-whitening.md
+          - Log-Gabor filter: filters/frequency/log-gabor.md
+          - Radon and Fourier slice filtering: filters/frequency/radon-filter.md
+          - Curvelet-inspired directional filter: filters/frequency/directional-curvelet.md
+          - Shearlet-inspired directional filter: filters/frequency/directional-shearlet.md
+      - Multiscale:
+          - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
+          - Multiresolution diffusion: filters/multiscale/multires-diffusion.md
+          - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
+          - Scale-space filtering: filters/multiscale/scale-space.md
+          - Stationary wavelet filtering: filters/multiscale/swt-denoise.md
+          - Wavelet thresholding: filters/multiscale/wavelet-threshold.md
+          - Wavelet Wiener filtering: filters/multiscale/wavelet-wiener.md
+          - Ridgelet filtering: filters/multiscale/ridgelet.md
+          - Contourlet filtering: filters/multiscale/contourlet.md
+          - Steerable pyramid filters: filters/multiscale/steerable-pyramid.md
+      - Enhancement:
+          - Gamma correction: filters/enhancement/gamma.md
+          - Grayscale conversion: filters/enhancement/grayscale.md
+          - Log transformation: filters/enhancement/log-transform.md
+          - Contrast stretching: filters/enhancement/contrast-stretch.md
+          - Percentile normalization: filters/enhancement/percentile-normalize.md
+          - Invert: filters/enhancement/invert.md
+          - Histogram equalization: filters/enhancement/histogram-eq.md
+          - Adaptive histogram equalization: filters/enhancement/ahe.md
+          - CLAHE: filters/enhancement/clahe.md
+          - Black-and-white conversion: filters/enhancement/bw-mix.md
+          - Sepia: filters/enhancement/sepia.md
+          - Saturation adjustment: filters/enhancement/saturation.md
+          - Vibrance: filters/enhancement/vibrance.md
+          - Hue rotation: filters/enhancement/hue-rotate.md
+          - Hue, saturation and value adjustment: filters/enhancement/hsv-adjust.md
+          - Channel mixer: filters/enhancement/channel-mixer.md
+          - Color balance: filters/enhancement/color-balance.md
+          - White balance: filters/enhancement/white-balance.md
+          - Gray-world correction: filters/enhancement/gray-world.md
+          - White-patch correction: filters/enhancement/white-patch.md
+          - Chromatic adaptation: filters/enhancement/chromatic-adaptation.md
+          - Temperature and tint: filters/enhancement/temperature-tint.md
+          - Single-scale Retinex: filters/enhancement/retinex-ssr.md
+          - Multi-scale Retinex: filters/enhancement/retinex-msr.md
+          - Multi-scale Retinex with color restoration: filters/enhancement/msrcr.md
+          - Bilateral tone mapping: filters/enhancement/bilateral-tonemap.md
+          - Detail enhancement: filters/enhancement/detail-enhance.md
+          - Chroma denoising: filters/enhancement/chroma-denoise.md
+          - Demosaicing: filters/enhancement/demosaic.md
+          - Color threshold: filters/enhancement/color-threshold.md
+          - Tone mapping: filters/enhancement/tone-mapping.md
+          - Local Laplacian filtering: filters/enhancement/local-laplacian.md
+      - Artistic:
+          - Posterize: filters/artistic/posterize.md
+          - Solarize: filters/artistic/solarize.md
+          - Emboss: filters/artistic/emboss.md
+          - Outline: filters/artistic/outline.md
+          - Edge enhance: filters/artistic/edge-enhance.md
+          - Vignette: filters/artistic/vignette.md
+          - Pixelate: filters/artistic/pixelate.md
+          - Dithering: filters/artistic/dithering.md
+          - Halftone: filters/artistic/halftone.md
+          - Oil-painting effect: filters/artistic/oil-painting.md
+          - Pencil sketch: filters/artistic/pencil-sketch.md
+          - Cartoon effect: filters/artistic/cartoon.md
+          - Bloom and glow: filters/artistic/bloom.md
+          - Bokeh blur: filters/artistic/bokeh.md
+          - Tilt-shift blur: filters/artistic/tilt-shift.md
+          - Fisheye distortion: filters/artistic/fisheye.md
+          - Barrel distortion: filters/artistic/barrel.md
+          - Pincushion distortion: filters/artistic/pincushion.md
+          - Swirl distortion: filters/artistic/swirl.md
+          - Ripple distortion: filters/artistic/ripple.md
+          - Wave distortion: filters/artistic/wave.md
+      - Restoration:
+          - Dead-pixel correction: filters/restoration/dead-pixel.md
+          - Inverse filtering: filters/restoration/inverse-filter.md
+          - Wiener deconvolution: filters/restoration/wiener-deconv.md
+          - Tikhonov regularization: filters/restoration/tikhonov.md
+          - Constrained least squares: filters/restoration/cls.md
+          - Richardson-Lucy: filters/restoration/richardson-lucy.md
+          - Regularized Richardson-Lucy: filters/restoration/regularized-rl.md
+          - Landweber iteration: filters/restoration/landweber.md
+          - Non-negative least-squares deconvolution: filters/restoration/nnls-deconv.md
+          - Total variation restoration: filters/restoration/tv-deblur.md
+          - Sparse regularization: filters/restoration/sparse-fista.md
+          - Blind deconvolution: filters/restoration/blind-deconv.md
+          - Plug-and-play restoration: filters/restoration/pnp-admm.md
+          - Regularization by Denoising: filters/restoration/red.md
+          - Dehazing: filters/restoration/dehaze.md
+          - Debanding: filters/restoration/deband.md
+          - Descreening: filters/restoration/descreen.md
+          - Deblocking: filters/restoration/deblock.md
+          - Deringing: filters/restoration/dering.md
+          - JPEG artifact removal (classical): filters/restoration/jpeg-cleanup.md
+          - Image inpainting: filters/restoration/inpaint.md
+          - Super-resolution reconstruction: filters/restoration/sr-classical.md
+      - Segmentation:
+          - Global threshold: filters/segmentation/threshold-global.md
+          - Otsu threshold: filters/segmentation/otsu.md
+          - Adaptive mean threshold: filters/segmentation/threshold-adaptive-mean.md
+          - Adaptive Gaussian threshold: filters/segmentation/threshold-adaptive-gaussian.md
+          - Niblack threshold: filters/segmentation/niblack.md
+          - Sauvola threshold: filters/segmentation/sauvola.md
+          - Wolf threshold: filters/segmentation/wolf.md
+          - Bradley threshold: filters/segmentation/bradley.md
+          - Region growing: filters/segmentation/region-growing.md
+          - K-means color segmentation: filters/segmentation/kmeans-color.md
+          - Connected-component labeling: filters/segmentation/ccl.md
+          - Multi-level Otsu: filters/segmentation/multi-otsu.md
+          - SLIC superpixels: filters/segmentation/slic.md
+          - Felzenszwalb-Huttenlocher segmentation: filters/segmentation/felzenszwalb.md
+          - Quickshift: filters/segmentation/quickshift.md
+          - Watershed: filters/segmentation/watershed.md
+          - Marker-controlled watershed: filters/segmentation/marker-watershed.md
+          - Mean shift: filters/segmentation/mean-shift.md
+          - Split-and-merge segmentation: filters/segmentation/split-merge.md
+          - Chan-Vese segmentation: filters/segmentation/chan-vese.md
+          - Level sets: filters/segmentation/level-set.md
+          - Active contours: filters/segmentation/active-contour.md
+          - Graph cuts: filters/segmentation/graph-cut.md
+          - Random walker: filters/segmentation/random-walker.md
+          - GrabCut: filters/segmentation/grabcut.md
+      - Learned:
+          - DnCNN: filters/learned/dncnn.md
+          - FFDNet: filters/learned/ffdnet.md
+          - Real-ESRGAN: filters/learned/real-esrgan.md
+          - EDSR: filters/learned/edsr.md
+          - SwinIR: filters/learned/swinir.md
+          - SwinIR super-resolution: filters/learned/swinir-sr.md
+          - Restormer: filters/learned/restormer.md
+          - SRCNN and FSRCNN: filters/learned/srcnn.md
+          - Neural style and texture filters: filters/learned/fast-style.md
+          - Learned edge detector: filters/learned/learned-edges.md
+      - Utility:
+          - Add Gaussian noise: filters/utility/noise-gaussian.md
+          - Add periodic noise: filters/utility/noise-periodic.md
+          - Apply a known blur: filters/utility/degrade-blur.md
+          - Add salt-and-pepper noise: filters/utility/noise-salt-pepper.md
+          - Add speckle noise: filters/utility/noise-speckle.md
+          - Add Poisson noise: filters/utility/noise-poisson.md
+          - Quality metrics: filters/utility/metrics.md
+          - Resize: filters/utility/resize.md
+          - Crop: filters/utility/crop.md
+          - Rotate and flip: filters/utility/rotate-flip.md
+          - Free rotation: filters/utility/rotate-free.md
+  - Mathematics:
+      - Foundations: mathematics/foundations.md
+      - Image representation: mathematics/image-representation.md
+      - Convolution and correlation: mathematics/convolution-and-correlation.md
+      - Boundary conditions: mathematics/boundary-conditions.md
+      - Linearity and superposition: mathematics/linearity-and-superposition.md
+      - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
+      - Numerical precision: mathematics/numerical-precision.md
+      - Spatial and frequency domains: mathematics/spatial-and-frequency-domains.md
+      - Fourier transform: mathematics/fourier-transform.md
+      - Wavelet transforms: mathematics/wavelet-transforms.md
+      - Color spaces: mathematics/color-spaces.md
+      - Computational complexity: mathematics/computational-complexity.md
+      - Noise models: mathematics/noise-models.md
+      - Image quality metrics: mathematics/image-quality-metrics.md
+  - Mathematical Inspector:
+      - The Inspector: mathematical-inspector/overview.md
+      - Kernel generation: mathematical-inspector/kernel-generation.md
+      - Formula rendering: mathematical-inspector/formula-rendering.md
+      - Parameter synchronization: mathematical-inspector/parameter-synchronization.md
+      - Developer mode: mathematical-inspector/developer-mode.md
+  - Selections:
+      - selection/index.md
+      - Marquee: selection/marquee.md
+      - Lasso: selection/lasso.md
+      - Magnetic lasso: selection/magnetic-lasso.md
+      - Selection brush and eraser: selection/selection-brush.md
+      - Magic Wand: selection/magic-wand.md
+      - Color Range and tone: selection/color-range.md
+      - Quick Selection: selection/quick-selection.md
+      - Snap to edges: selection/snap-to-edges.md
+      - Subject and background: selection/subject.md
+      - Object and Click Select: selection/seeds.md
+      - AI selection: selection/ai-selection.md
+      - Masks and refinement: selection/masks-and-refinement.md
+  - AI models:
+      - Model reference: models/reference.md
+      - Model integration: models/integration.md
+      - Hardware needs: models/hardware.md
+      - Connecting an external API: models/external-api.md
+  - Reference:
+      - Filter catalog: reference/filter-catalog.md
+      - Parameter reference: reference/parameter-reference.md
+      - API reference: reference/api-reference.md
+      - Dependencies and licenses: reference/dependencies.md
+      - Limitations: reference/limitations.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Glossary: reference/glossary.md
+      - Release notes: release-notes.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Frontend architecture: architecture/frontend-architecture.md
+      - Image data model: architecture/image-data-model.md
+      - Preview and rendering: architecture/preview-and-rendering.md
+      - Filter catalog and registry: architecture/filter-catalog.md
+      - Processing pipeline: architecture/processing-pipeline.md
+      - Selection and masking: architecture/selection-and-masking.md
+      - Execution model: architecture/execution-model.md
+      - Performance: architecture/performance.md
+      - Science engine: architecture/science-engine.md
+      - Learn panel architecture: architecture/learn-panel.md
+  - Implementation:
+      - Adding a filter: implementation/adding-a-filter.md
+      - Filter definition schema: implementation/filter-definition-schema.md
+      - Science engine integration: implementation/science-engine-integration.md
+      - Frontend integration: implementation/frontend-integration.md
+      - Testing guidelines: implementation/testing-guidelines.md
+      - Optional dependencies: implementation/optional-dependencies.md
+      - Model integration: implementation/model-integration.md
+  - Contributing: contributing.md

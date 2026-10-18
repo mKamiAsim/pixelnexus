@@ -1,0 +1,126 @@
+id: noise-gaussian
+name: Add Gaussian noise
+aliases: [Gaussian noise, Additive white Gaussian noise]
+family: utility
+tags: [purpose:simulation, noise:gaussian]
+tier: core
+engine: browser
+phase: "3"
+status: implemented-tested
+planNotes: Noise lab.
+
+summary: Adds random values with a normal distribution to every pixel.
+purpose: Make noisy test images, so you can compare denoising filters on a known noise.
+classification: {linearity: nonlinear, domain: statistical, operation: additive random noise}
+output: image
+representation: random-process
+representationLabel: exact
+representationSource: {path: web/src/core/math/random.ts, symbol: positionNormal}
+supportRadius: "0"
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  Each channel gets its own noise, unless Monochrome is on. Then the same value goes to all
+  three channels. Alpha is kept. Results are clipped to 0 to 255.
+boundary: Not needed. Each pixel depends only on its own value and position.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 10
+    unit: levels
+    description: Standard deviation of the noise, in 8-bit levels.
+    effect: Larger values give stronger noise.
+  - key: monochrome
+    label: Monochrome
+    type: boolean
+    default: false
+    description: Add the same noise value to red, green and blue.
+    effect: The noise looks gray instead of colored.
+  - key: seed
+    label: Seed
+    type: integer
+    min: 0
+    max: 999999
+    step: 1
+    default: 1
+    description: The starting number of the random generator.
+    effect: The same seed always gives the same noise. Change it to get different noise.
+
+formula: |
+  I_{\text{out}}(x,y,c) = I(x,y,c) + \sigma\, n(x,y,c),
+  \qquad
+  n(x,y,c) \sim \mathcal{N}(0,\,1),
+  \qquad
+  \sigma = {{sigma}}
+formulaExplanation: >-
+  Every pixel and channel gets a value drawn from a normal distribution with mean 0 and
+  standard deviation sigma. The values come from two uniform numbers through the Box-Muller
+  transform. The uniform numbers depend only on the seed, the position and the channel. So a
+  region gives the same noise as the whole image, and the same seed always gives the same
+  result. Results outside 0 to 255 are clipped.
+symbols:
+  - {symbol: 'I', meaning: 'Input channel value'}
+  - {symbol: 'I_{\text{out}}', meaning: 'Output channel value before clipping and rounding'}
+  - {symbol: '(x, y, c)', meaning: 'Pixel position and channel'}
+  - {symbol: 'n', meaning: 'A standard normal random number'}
+  - {symbol: '\sigma', meaning: 'Standard deviation of the noise in 8-bit levels'}
+steps:
+  - For each pixel and channel, hash the seed, the position and the channel into two uniform numbers.
+  - Turn them into one standard normal number with the Box-Muller transform.
+  - Add sigma times that number to the value.
+  - Clip to 0 to 255 and round. Keep alpha unchanged.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels.
+useCases:
+  - Test images for denoising filters.
+  - Compare the Gaussian, box and median filters on a known noise level.
+advantages:
+  - The noise level is known exactly, so a repair can be measured.
+  - The same seed always gives the same noise, so experiments can be repeated.
+limitations:
+  - Real camera noise depends on the brightness. This noise does not.
+  - Clipping at 0 and 255 changes the distribution near black and white.
+artifacts:
+  - Colored speckles, unless Monochrome is on.
+references:
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 5.
+  - kind: paper
+    text: >-
+      Box, G. E. P. and Muller, M. E. A note on the generation of random normal deviates. The
+      Annals of Mathematical Statistics, 29(2), 1958.
+    doi: 10.1214/aoms/1177706645
+  - kind: web
+    text: Wellons, C. Prospecting for hash functions, 2018. The source of the integer hash.
+    url: https://nullprogram.com/blog/2018/07/31/
+implementation: {path: web/src/core/filters/utility/noise.ts, symbol: gaussianNoiseFilter}
+tests: [web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: It adds a small random amount to every pixel, mostly small changes and rarely large ones.
+  howItWorks:
+    - Pick a random number for the pixel. Most numbers are near 0.
+    - Multiply it by sigma.
+    - Add it to the pixel value.
+    - Keep the result between 0 and 255.
+  academic: >-
+    Additive white Gaussian noise with mean 0 and standard deviation sigma, independent for
+    each pixel and channel. A Gaussian blur is the best linear filter for this kind of noise.
+  paramNotes:
+    sigma: How strong the noise is, in 8-bit levels.
+    monochrome: Whether all three channels get the same noise.
+    seed: Which random numbers to use. The same seed repeats the same noise.
+  tryThis:
+    - Add noise with sigma 20, then try a Gaussian blur and a median filter. Compare them with the Line profile.
+  pitfalls:
+    - Comparing filters on different noise. Keep the seed the same.
+  demos: [line-profile]
+related: [noise-salt-pepper, gaussian, box, median]
+docsPage: filters/utility/noise-gaussian.md

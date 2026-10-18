@@ -1,0 +1,108 @@
+id: kuan
+name: Kuan filter
+aliases: [Kuan speckle filter]
+family: adaptive
+tags: [purpose:denoise, noise:speckle]
+tier: core
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: Speckle.
+
+summary: A speckle filter like the Lee filter, with a weight derived without the approximation Lee made.
+purpose: Reduce speckle while keeping edges, with a statistically exact weight for multiplicative noise.
+classification: {linearity: nonlinear, domain: statistical, operation: local linear estimator for multiplicative noise}
+output: image
+representation: estimator
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/speckle.ts, symbol: kuanWeight}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own statistics. With the
+  brightness scope, only luma is filtered. Alpha is kept. The filter is meant for intensity
+  images, where values are 0 or more.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 15
+    step: 2
+    oddOnly: true
+    default: 7
+    unit: px
+    description: Width and height of the window for the local statistics.
+    effect: Larger windows give steadier statistics and smooth more.
+  - key: cu
+    label: Speckle variation C_u
+    type: number
+    min: 0.01
+    max: 1
+    step: 0.01
+    default: 0.25
+    description: The coefficient of variation of the speckle, its standard deviation over its mean. For an L-look intensity image it is 1 over the square root of L.
+    effect: Larger values treat more of the image as speckle and smooth more.
+  - ref: border
+  - ref: channelScope
+
+formula: |
+  \hat{R} = m + W\,(z - m),
+  \qquad
+  W = \max\Bigl(0,\; \frac{1 - C_u^2 / C_I^2}{1 + C_u^2}\Bigr)
+formulaExplanation: >-
+  m is the window mean and C_I its coefficient of variation. Kuan, Sawchuk, Strand and Chavel turn the multiplicative noise into a signal-dependent additive noise and derive the linear minimum mean-square error weight without the linear approximation of Lee. The result is the Lee weight divided by 1 + C_u squared, as Lopes, Touzi and Nezry write it.
+symbols:
+  - {symbol: 'm', meaning: The window mean}
+  - {symbol: 'C_I', meaning: The coefficient of variation of the window}
+  - {symbol: 'C_u', meaning: The coefficient of variation of the speckle}
+  - {symbol: 'W', meaning: The weight of the pixel}
+steps:
+  - Pad the image with the border mode.
+  - Compute the mean and variance of each window with running sums.
+  - Compute C_I and the Kuan weight W.
+  - Write the mean plus W times the difference between the pixel and the mean.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Running sums make the cost independent of the window size.
+useCases:
+  - Reduce speckle in radar and ultrasound images.
+advantages:
+  - Exact for the multiplicative noise model, no linear approximation.
+  - Fast for any window size.
+limitations:
+  - The weight never reaches 1, so even strong edges are smoothed a little.
+  - Leaves speckle next to edges.
+artifacts:
+  - Noisy halos along edges, as with the Lee filter.
+references:
+  - kind: paper
+    text: Kuan, D. T., Sawchuk, A. A., Strand, T. C. and Chavel, P. Adaptive noise smoothing filter for images with signal-dependent noise. IEEE Transactions on Pattern Analysis and Machine Intelligence PAMI-7(2), 165 to 177, 1985.
+    doi: 10.1109/TPAMI.1985.4767641
+  - kind: paper
+    text: Lopes, A., Touzi, R. and Nezry, E. Adaptive speckle filters and scene heterogeneity. IEEE Transactions on Geoscience and Remote Sensing 28(6), 992 to 1000, 1990.
+    doi: 10.1109/36.62623
+implementation: {path: web/src/core/filters/adaptive/speckle.ts, symbol: kuanFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Like the Lee filter, with a slightly smaller weight that is exact for speckle.
+  howItWorks:
+    - Find the mean and the variation of the window.
+    - Compute the Lee weight and divide it by 1 + C_u squared.
+    - Move the pixel toward the mean by the rest.
+  academic: >-
+    The local linear minimum mean-square error filter for signal-dependent noise. For multiplicative noise its weight is the Lee weight over 1 + C_u squared.
+  paramNotes:
+    cu: The speckle variation, the sigma of multiplicative noise.
+  tryThis:
+    - Compare the Kuan and Lee filters with the same settings on a speckled edge with the Line profile.
+  pitfalls:
+    - Expecting strong edges to stay untouched. The weight is at most 1 / (1 + C_u squared).
+  demos: [rank-stepper, line-profile]
+related: [lee, enhanced-lee, frost, gamma-map]
+docsPage: filters/adaptive/kuan.md

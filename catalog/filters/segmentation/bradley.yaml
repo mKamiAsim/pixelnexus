@@ -1,0 +1,129 @@
+id: bradley
+name: Bradley threshold
+aliases: [Bradley-Roth threshold, Integral image threshold]
+family: segmentation
+tags: [purpose:segmentation]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Makes each pixel black when it is a set percent darker than the mean of its window, and white otherwise.
+purpose: Fast binarization of text and markers under strong changes of lighting, for example in live video.
+classification: {linearity: nonlinear, domain: statistical, operation: local mean ratio threshold}
+output: mask
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: bradleyFilter}
+supportRadius: floor(size / 2)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and the result is a gray mask. With RGB scope, each
+  channel is thresholded on its own.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. The paper does not say how
+  windows at the image edge are handled.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 301
+    step: 2
+    oddOnly: true
+    default: 15
+    unit: px
+    description: The side s of the square window around each pixel.
+    effect: Larger windows follow slower changes of lighting and keep larger dark objects whole.
+  - key: percent
+    label: Percent t
+    type: number
+    min: 0
+    max: 100
+    step: 1
+    default: 15
+    unit: "%"
+    description: How many percent darker than its window mean a pixel must be to turn black.
+    effect: Higher values make fewer pixels black, so faint marks and noise drop out.
+  - key: invert
+    label: Invert
+    type: boolean
+    default: false
+    description: Make the pixels at or below the threshold white instead.
+    effect: Dark objects become the white foreground.
+  - ref: border
+  - ref: outputMapping
+    default: clip
+  - ref: channelScope
+    default: luminance
+formula: |
+  T = m\, \frac{100 - t}{100},
+  \quad
+  I_{\text{out}} = \begin{cases} 255 & I > T \\ 0 & \text{otherwise} \end{cases},
+  \qquad s = {{size}},\ t = {{percent}}
+formulaExplanation: >-
+  m is the mean of the s by s window around the pixel. A pixel turns black when it is at least t
+  percent darker than m, and white otherwise. Bradley and Roth sum each window with an integral
+  image, so the cost per pixel does not depend on s. PixelNexus uses running sums, which give
+  the same sums. Their method improves on Wellner's, which compares each pixel with a moving
+  average of the last s pixels of the scan. They cite Wellner's choices of s as one eighth of
+  the image width and t = 15. Since
+  T is a fixed fraction of the mean, making the whole image darker or brighter by a factor gives
+  the same result. The result is 255 where the value is above the threshold and 0 elsewhere, or
+  the reverse with Invert.
+symbols:
+  - {symbol: 'm', meaning: 'The mean of the s by s window'}
+  - {symbol: 's', meaning: 'The window size'}
+  - {symbol: 't', meaning: 'The percent below the mean at which pixels turn black'}
+steps:
+  - Sum every s by s window with running sums, as an integral image does.
+  - Divide by the window area to get the mean m.
+  - Make the pixel black if it is at or below m (100 - t) / 100, and white otherwise.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. The cost does not depend on the window size.
+useCases:
+  - Text and printed markers under shadows and strong lighting changes.
+  - Live video, where speed matters.
+advantages:
+  - Very fast, with a cost that does not depend on the window size.
+  - Does not change when the lighting changes by a factor.
+limitations:
+  - Assumes most pixels are background. A dark object larger than the window turns white in its middle, as Bradley and Roth note.
+  - In very dark areas the percent rule leaves only a small margin, so noise can turn black.
+artifacts:
+  - Hollow dark objects when the window is too small.
+  - Speckle in dark, noisy areas.
+references:
+  - kind: paper
+    text: Bradley, D. and Roth, G. Adaptive Thresholding using the Integral Image. Journal of Graphics Tools 12(2), 13 to 21, 2007.
+    doi: 10.1080/2151237X.2007.10129236
+  - kind: paper
+    text: Wellner, P. D. Adaptive thresholding for the DigitalDesk. Technical report EPC-93-110, EuroPARC, 1993.
+implementation: {path: web/src/core/filters/segmentation/thresholds.ts, symbol: bradleyFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/segmentation/segmentation.test.ts]
+learn:
+  oneSentence: Make a pixel black when it is clearly darker than the average around it.
+  howItWorks:
+    - Average the window around each pixel.
+    - Lower that average by t percent.
+    - Make the pixel black if it is not brighter than the result, and white otherwise.
+  academic: >-
+    Bradley and Roth's adaptive threshold T = m (1 - t / 100) against the box mean of an s by s
+    window, computed with an integral image.
+  paramNotes:
+    size: How large the neighborhood is.
+    percent: How much darker than the neighborhood a pixel must be to turn black.
+    invert: Swap white and black.
+    border: How the window is filled past the image edge.
+  tryThis:
+    - Threshold a page with a deep shadow. Then make the window smaller than the text strokes and watch the strokes turn hollow.
+  pitfalls:
+    - A window smaller than the dark objects. Their middles turn white.
+  demos: [line-profile]
+related: [threshold-adaptive-mean, sauvola, wolf]
+docsPage: filters/segmentation/bradley.md

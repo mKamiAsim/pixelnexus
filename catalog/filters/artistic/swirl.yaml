@@ -1,0 +1,120 @@
+id: swirl
+name: Swirl distortion
+aliases: [Twirl, Whirlpool]
+family: artistic
+tags: [purpose:geometry]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Turns the image around its center, most strongly near the center and fading with distance, like a whirlpool.
+purpose: Create twirl and whirlpool effects.
+classification: {linearity: linear, domain: geometric, operation: swirl mapping}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/artistic/distort.ts, symbol: swirlMapping}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [rgb]
+colorHandling: >-
+  All channels move together, and alpha moves with them, so transparency stays with its colors.
+boundary: >-
+  Set by the Border mode parameter. The default is reflect 101. It fills positions that the
+  mapping reads from outside the image. With the constant border they are black and transparent.
+  The mapping depends on the position in the whole image, so the filter always runs on the whole
+  image.
+
+params:
+  - key: strength
+    label: Strength
+    type: number
+    min: -10
+    max: 10
+    step: 0.1
+    default: 3
+    description: The turn at the center, in radians. Negative values turn the other way.
+    effect: Larger values twist more.
+  - key: radius
+    label: Radius
+    type: number
+    min: 1
+    max: 2000
+    step: 1
+    default: 120
+    unit: px
+    description: The distance at which the turn has faded to about a thousandth.
+    effect: Larger values twist a larger area.
+  - key: rotation
+    label: Rotation
+    type: angle
+    min: -180
+    max: 180
+    step: 1
+    default: 0
+    unit: deg
+    description: A turn added everywhere, in degrees.
+    effect: Turns the whole image.
+  - ref: border
+formula: |
+  \theta_s = \theta + \phi + s\, e^{-\rho / (R \ln 2 / 5)},
+  \quad \rho_s = \rho,
+  \qquad s = {{strength}},\ R = {{radius}},\ \phi = {{rotation}}^{\circ}
+formulaExplanation: >-
+  rho and theta are the polar coordinates of an output pixel around the image center. It reads
+  the source at the same distance, turned by the rotation phi plus s times an exponential decay.
+  With the decay length R ln 2 / 5, the turn at rho = R has fallen by the factor e^(-5 / ln 2),
+  about 0.0007, as scikit-image intends. This is the mapping of scikit-image's transform.swirl. scikit-image puts its
+  default center at (W / 2, H / 2) in pixel indices, half a pixel from the true center. This
+  filter uses the true center ((W - 1) / 2, (H - 1) / 2). Each output pixel reads the source at the mapped position with bilinear interpolation, the inverse mapping of Gonzalez and Woods, so no holes appear.
+symbols:
+  - {symbol: '\rho, \theta', meaning: 'The polar coordinates around the image center'}
+  - {symbol: 's', meaning: 'The strength, the turn at the center in radians'}
+  - {symbol: 'R', meaning: 'The radius'}
+  - {symbol: '\phi', meaning: 'The rotation added everywhere'}
+steps:
+  - For each output pixel, find its distance and angle from the center.
+  - Add the rotation and the decaying turn to the angle.
+  - Read the source there with bilinear interpolation, using the border mode outside the image.
+complexity:
+  time: O(N)
+  memory: O(N)
+  notes: N is the number of pixels. Each output pixel reads four source pixels.
+useCases:
+  - Twirl effects for fun and design.
+advantages:
+  - Smooth and continuous, with the same mapping as scikit-image.
+limitations:
+  - Centered on the image. The center cannot be moved.
+artifacts:
+  - Smeared detail where the twist is strong, since neighbors spread apart.
+references:
+  - kind: library
+    text: scikit-image documentation, skimage.transform.swirl.
+    url: https://scikit-image.org/docs/stable/api/skimage.transform.html
+  - kind: book
+    text: Gonzalez, R. C. and Woods, R. E. Digital Image Processing, 4th edition. Pearson, 2018. Chapter 2, geometric transformations and image interpolation.
+implementation: {path: web/src/core/filters/artistic/distort.ts, symbol: swirlFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/artistic/artistic.test.ts]
+learn:
+  oneSentence: Twist the image around its center, most at the middle and less further out.
+  howItWorks:
+    - Measure each pixel's distance and angle from the center.
+    - Turn the angle by an amount that fades with the distance.
+    - Read the image at the turned position.
+  academic: >-
+    A swirl warp with an exponentially decaying angular displacement, as in skimage.transform.swirl.
+  paramNotes:
+    strength: How much the center is twisted.
+    radius: How far out the twist reaches.
+    rotation: A turn of the whole image.
+    border: How positions outside the image are filled.
+  tryThis:
+    - Use the checkerboard test image with strength 5 and radius 80.
+  pitfalls:
+    - A radius much larger than the image. The whole image turns almost evenly.
+  demos: [line-profile]
+related: [ripple, wave, fisheye]
+docsPage: filters/artistic/swirl.md

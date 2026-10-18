@@ -1,0 +1,139 @@
+id: steering-kernel
+name: Steering kernel regression
+aliases: [Iterative steering kernel regression, SKR, Adaptive kernel regression]
+family: adaptive
+tags: [purpose:denoise]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: Takeda, Farsiu and Milanfar, in our own code, from the paper.
+
+summary: Removes noise by fitting a small polynomial around each pixel, with weights from a kernel that is steered by the local edges. Near an edge the kernel is long and thin along it, and in flat areas it is wide and round. The kernel shapes are estimated again from each result, for a few iterations.
+purpose: Strong denoising that follows edges and fine lines, from the kernel regression framework that also explains the bilateral filter.
+classification: {linearity: nonlinear, domain: spatial, operation: adaptive kernel regression}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/steering_kernel.py, symbol: steering_kernel_representation}
+supportRadius: radius x iterations, plus 2 per iteration for the gradient window
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  Set by the Channel scope parameter. The paper filters the Y, Cr and Cb channels each on their
+  own. The luminance scope filters only Y.
+boundary: Reflect 101 for the regression window and the gradient window, our choice.
+dependencies:
+  - {name: NumPy, optional: false, note: 'The weighted sums and numpy.linalg for the local systems and the 2 x 2 eigen decompositions.'}
+
+params:
+  - key: h
+    label: Smoothing h
+    type: number
+    min: 0.5
+    max: 5
+    step: 0.1
+    default: 2
+    description: The global smoothing parameter h of the kernel. 2.0 as in the paper's experiments on JPEG artifacts and film grain.
+    effect: Larger values smooth more.
+  - key: order
+    label: Regression order N
+    type: select
+    default: '2'
+    options:
+      - {value: '0', label: 0 (weighted average)}
+      - {value: '1', label: 1 (local plane)}
+      - {value: '2', label: 2 (local quadratic)}
+    description: The order of the local polynomial. The paper's denoising experiments use 2.
+    effect: Higher orders keep peaks and ridges better but let more noise through.
+  - key: iterations
+    label: Iterations
+    type: integer
+    min: 1
+    max: 10
+    step: 1
+    default: 3
+    description: How many times the kernels are estimated again and the regression repeated. The paper uses 3 for real noise and 7 for strong Gaussian noise.
+    effect: More iterations remove more noise and, past a point, blur.
+  - key: radius
+    label: Window radius
+    type: integer
+    min: 2
+    max: 8
+    step: 1
+    default: 5
+    unit: px
+    description: The regression window is 2 radius + 1 pixels on each side. Our choice of 5, since the paper does not give its window.
+    effect: Larger windows let the kernel spread further in flat areas, and take longer.
+    advanced: true
+  - ref: channelScope
+formula: |
+  \min_{\beta} \sum_{i} \left[ y_i - \beta_0 - \beta_1^T (x_i - x) - \beta_2^T \operatorname{vech}\{(x_i - x)(x_i - x)^T\} \right]^2 K(x_i - x),
+  \qquad
+  K(x_i - x) = \frac{\sqrt{\det C_i}}{2 \pi h^2} \exp\!\left(-\frac{(x_i - x)^T C_i (x_i - x)}{2 h^2}\right)
+formulaExplanation: >-
+  At each pixel x, a polynomial is fitted to the nearby samples y_i by weighted least squares,
+  and the constant term beta_0 is the result. The weights come from a Gaussian kernel shaped by
+  C_i, the steering matrix of each sample. C_i is built from the gradients in a small window
+  around the sample. Its rotation follows the dominant edge direction. Its elongation sigma_i =
+  (s_1 + 1) / (s_2 + 1) grows with the gap between the two singular values of the gradients.
+  Its scale gamma_i = sqrt((s_1 s_2 + 0.01) / M) makes the kernel large in flat areas and small
+  in textured ones. Each iteration estimates the gradients again from the last result.
+symbols:
+  - {symbol: 'y_i', meaning: 'The sample at position x_i'}
+  - {symbol: '\beta_0', meaning: 'The estimate at x'}
+  - {symbol: '\beta_1', meaning: 'The gradient at x'}
+  - {symbol: 'C_i', meaning: 'The steering matrix of sample i'}
+  - {symbol: 'h', meaning: 'The global smoothing parameter'}
+  - {symbol: 's_1, s_2', meaning: 'The singular values of the local gradients'}
+  - {symbol: 'M', meaning: 'The number of gradients in the local window, 25'}
+steps:
+  - Estimate the gradients with a classic kernel regression.
+  - From the gradients in a 5 x 5 window around each pixel, build its steering matrix.
+  - Fit a weighted polynomial around each pixel with the steered kernels, and keep the constant term.
+  - Repeat from the gradients of that fit, on its result, for the chosen number of iterations.
+complexity:
+  time: O(N R^2 K)
+  memory: O(N)
+  notes: N is the number of pixels, R the window side and K the number of iterations.
+useCases:
+  - Removing Gaussian noise while keeping edges and fine lines.
+  - Reducing JPEG artifacts and film grain, as in the paper.
+advantages:
+  - The kernel follows edges, so it smooths along them and not across.
+  - One framework covers classic kernel regression and the bilateral filter as special cases.
+limitations:
+  - Slower than the bilateral filter, since each pixel solves a small least squares system.
+  - Too many iterations blur fine detail.
+artifacts:
+  - Painterly streaks along strong edges with many iterations.
+  - Small wiggles in flat areas at low noise, where the gradients are mostly noise.
+references:
+  - kind: paper
+    text: Takeda, H., Farsiu, S., and Milanfar, P. Kernel regression for image processing and reconstruction. IEEE Transactions on Image Processing 16(2), 349 to 366, 2007.
+    doi: 10.1109/TIP.2006.888330
+implementation: {path: engine/src/pixelnexus_engine/filters/steering_kernel.py, symbol: steering_kernel}
+tests: [engine/tests/test_steering_kernel.py]
+learn:
+  oneSentence: Average each pixel with its neighbors through a kernel that stretches along the edges.
+  howItWorks:
+    - Find the direction and strength of the edges around each pixel.
+    - Shape a kernel for each pixel, long along an edge and wide in a flat area.
+    - Fit a small surface through the neighbors with those weights, and repeat a few times.
+  academic: >-
+    Iterative steering kernel regression of Takeda, Farsiu and Milanfar, with Gaussian steering
+    kernels from the local gradient covariance and a local polynomial fit of order 0 to 2.
+  paramNotes:
+    h: How much to smooth.
+    order: The fitted polynomial.
+    iterations: How many passes.
+    radius: The window size.
+    channelScope: Which channels.
+  tryThis:
+    - Add noise in the Noise lab, then compare one and five iterations.
+    - Compare order 0 and order 2 on thin lines.
+  pitfalls:
+    - Many iterations on a clean image. Fine texture smears.
+  demos: [line-profile, noise-lab]
+related: [bilateral, m-estimator, nlm, tv-denoise]
+docsPage: filters/adaptive/steering-kernel.md

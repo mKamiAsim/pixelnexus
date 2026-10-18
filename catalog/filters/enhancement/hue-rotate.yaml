@@ -1,0 +1,94 @@
+id: hue-rotate
+name: Hue rotation
+aliases: [Hue shift, Hue-rotate]
+family: enhancement
+tags: [purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+
+summary: Turns every hue around the color wheel by the same angle, while the gray value of each pixel stays about the same.
+purpose: Change the colors of an image, such as turning red into green, for effects or for color studies.
+classification: {linearity: linear, domain: color, operation: color matrix}
+output: image
+representation: color-transform
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: hueRotateMatrix}
+supportRadius: "0"
+supportsMask: true
+preview: live
+colorHandling: >-
+  All three channels are mixed by one 3 by 3 matrix. Alpha is kept.
+boundary: Not needed. Each pixel depends only on its own color.
+
+params:
+  - key: angle
+    label: Angle
+    type: angle
+    min: -180
+    max: 180
+    step: 1
+    default: 90
+    unit: deg
+    description: The angle theta to turn the hues by.
+    effect: 120 turns red toward green, and 180 turns colors toward their opposites.
+formula: |
+  M(\theta) =
+  \begin{bmatrix} 0.213 & 0.715 & 0.072 \\ 0.213 & 0.715 & 0.072 \\ 0.213 & 0.715 & 0.072 \end{bmatrix}
+  + \cos\theta
+  \begin{bmatrix} 0.787 & -0.715 & -0.072 \\ -0.213 & 0.285 & -0.072 \\ -0.213 & -0.715 & 0.928 \end{bmatrix}
+  + \sin\theta
+  \begin{bmatrix} -0.213 & -0.715 & 0.928 \\ 0.143 & 0.140 & -0.283 \\ -0.787 & 0.715 & 0.072 \end{bmatrix},
+  \qquad \theta = {{angle}}^{\circ}
+formulaExplanation: >-
+  This is the matrix of the CSS hue-rotate() function in the W3C Filter Effects spec. The first
+  part keeps the gray value, the other two turn the color difference around the gray axis.
+  Grays stay gray. The rotation happens in a luma and chroma plane, not in HSV, so the gray
+  value of each color changes little, but HSV hue does not move by exactly theta. The HSV
+  adjustment filter turns the HSV hue exactly. The matrix acts on the encoded sRGB values from 0 to 255, and the results are clipped to 0 to 255.
+symbols:
+  - {symbol: 'R, G, B', meaning: 'The encoded channel values from 0 to 255'}
+  - {symbol: '\theta', meaning: 'The rotation angle'}
+steps:
+  - Build the matrix for the angle.
+  - Multiply each pixel's color by it.
+complexity:
+  time: O(N)
+  memory: O(1)
+  notes: N is the number of pixels. Each pixel takes a fixed number of operations.
+useCases:
+  - Color effects and recoloring.
+  - Checking how a design looks in other hues.
+advantages:
+  - Linear and fast. Grays stay gray.
+  - Brightness stays close to the original.
+limitations:
+  - Some colors leave the 0 to 255 range and clip.
+  - The hue does not turn by exactly the angle in HSV terms.
+artifacts:
+  - Clipped, flat patches in strong colors.
+references:
+  - kind: standard
+    text: W3C. Filter Effects Module Level 1, section 13.1, the filter functions. W3C Working Draft, 18 December 2018.
+    url: https://www.w3.org/TR/filter-effects-1/
+implementation: {path: web/src/core/filters/enhancement/color-adjust.ts, symbol: hueRotateFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Turn all colors around the color wheel by the same angle.
+  howItWorks:
+    - Split each color into its gray and its color difference.
+    - Turn the color difference by the angle.
+    - Add the gray back.
+  academic: >-
+    A rotation of the chroma components about the luma axis, written as one 3 by 3 matrix as in
+    the CSS hue-rotate() filter.
+  paramNotes:
+    angle: How far to turn the colors around the wheel.
+  tryThis:
+    - Use the hue sweep test image and an angle of 120.
+  pitfalls:
+    - Expecting exact HSV hue steps. Use the HSV adjustment for that.
+  demos: [line-profile]
+related: [hsv-adjust, saturation]
+docsPage: filters/enhancement/hue-rotate.md

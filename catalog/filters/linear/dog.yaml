@@ -1,0 +1,114 @@
+id: dog
+name: Difference of Gaussians
+aliases: [DoG]
+family: linear
+alsoIn: [edges]
+tags: [purpose:edge, purpose:analysis]
+tier: core
+engine: browser
+phase: 5c
+status: implemented-tested
+planNotes: Cross-listed in edges.
+
+summary: Subtracts a wide Gaussian blur from a narrow one, which keeps details of one size range and removes the rest.
+purpose: Find blobs and edges at a chosen scale, and approximate the Laplacian of Gaussian cheaply.
+classification: {linearity: linear, domain: spatial, operation: band-pass convolution}
+output: image
+representation: dynamic-kernel
+representationLabel: exact
+representationSource: {path: web/src/core/filters/linear/dog-log.ts, symbol: dogFilter}
+supportRadius: floor(3 sigma ratio + 0.5)
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  By default the filter works on luma and gives a gray result. With RGB scope, each channel
+  gets its own result.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: sigma
+    label: Sigma
+    type: number
+    min: 0.3
+    max: 20
+    step: 0.1
+    default: 1.5
+    unit: px
+    description: The sigma of the narrow Gaussian.
+    effect: Larger values keep larger details.
+  - key: ratio
+    label: Ratio k
+    type: number
+    min: 1.05
+    max: 5
+    step: 0.05
+    default: 1.6
+    description: The wide Gaussian has sigma k times the narrow one. 1.6 is the ratio of Marr and Hildreth.
+    effect: Larger ratios pass a wider band of sizes.
+  - ref: outputMapping
+    default: offset
+  - ref: border
+  - ref: channelScope
+    default: luminance
+
+formula: |
+  D = G_{\sigma} * I - G_{k\sigma} * I = (G_{\sigma} - G_{k\sigma}) * I
+formulaExplanation: >-
+  G is a normalized Gaussian. Both blurs keep the mean, so their difference is 0 in flat areas.
+  The narrow blur keeps details that the wide one removes, so the difference holds the details
+  between the two scales. For k near 1 it is close to (k - 1) sigma squared times the
+  Laplacian of Gaussian, which is why it serves as a cheap blob and edge detector. Both
+  Gaussians are truncated at 3 sigma.
+symbols:
+  - {symbol: 'G_{\sigma}', meaning: A normalized Gaussian with standard deviation sigma}
+  - {symbol: 'k', meaning: The ratio of the two sigmas}
+steps:
+  - Pad the image with the border mode.
+  - Blur with the narrow Gaussian and with the wide Gaussian, each as two 1D passes.
+  - Subtract the wide blur from the narrow blur.
+  - Map the signed result to 8 bits with the output mapping.
+complexity:
+  time: O(N\,k\sigma)
+  memory: O(N)
+  notes: N is the number of pixels per channel. Each blur costs two passes of about 6 sigma taps.
+useCases:
+  - Detect blobs of a chosen size, as in scale-space feature detectors.
+  - Enhance edges and fine detail for a sketch look.
+  - Approximate the Laplacian of Gaussian.
+advantages:
+  - Built from two Gaussian blurs, which are fast and separable.
+  - Two parameters set the scale and the width of the band.
+limitations:
+  - Only an approximation of the Laplacian of Gaussian.
+  - The result is signed and needs an output mapping.
+artifacts:
+  - Light and dark halos on both sides of edges.
+references:
+  - kind: paper
+    text: Marr, D. and Hildreth, E. Theory of edge detection. Proceedings of the Royal Society of London, Series B 207(1167), 187 to 217, 1980.
+    doi: 10.1098/rspb.1980.0020
+  - kind: library
+    text: scikit-image documentation, skimage.filters.difference_of_gaussians.
+    url: https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.difference_of_gaussians
+implementation: {path: web/src/core/filters/linear/dog-log.ts, symbol: dogFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Blur a little, blur a lot, and keep the difference, the details in between.
+  howItWorks:
+    - Blur the image with a narrow Gaussian.
+    - Blur it again with a wide Gaussian.
+    - Subtract the wide blur from the narrow one.
+  academic: >-
+    A band-pass filter made of two low-pass filters. With a ratio near 1.6 it closely
+    approximates the Laplacian of Gaussian, as Marr and Hildreth noted.
+  paramNotes:
+    sigma: The scale of the details to keep.
+    ratio: The width of the band of sizes.
+  tryThis:
+    - Apply it to the Disks image with sigma 1 and then sigma 4. Watch which disks respond.
+  pitfalls:
+    - Reading the result with the clip mapping. Half of the values are negative.
+  demos: [impulse-response, line-profile]
+related: [log, gaussian, marr-hildreth]
+docsPage: filters/linear/dog.md

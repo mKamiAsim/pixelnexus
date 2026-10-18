@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="360pt" height="75.24pt" viewBox="0 0 360 75.24" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 75.24 
+L 360 75.24 
+L 360 0 
+L 0 0 
+L 0 75.24 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g clip-path="url(#pc0d49e138f)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAA3UlEQVR4nO3SywrCMBRAwTz+/5t1G8EiinAUZjahN2kW7ZljjNtaa8w5x7l+Y3Y+n7O998M7r2ZX9/zK7Op7PNv/p3Pv/tuPzg0ICZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASQmQlABJCZCUAEkJkJQASd0BwSAEdNCKqMcAAAAASUVORK5CYII=" id="imageb7eba8c92b" width="160" height="60" transform="matrix(0.715 0 0 0.715 3.6 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="60.8" y="12.17" transform="rotate(-0 60.8 12.17)">Gray ramp</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g clip-path="url(#pcb07643d25)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAv0lEQVR4nO3SMRGAAAzAwILH+pcCDlgYwh3/CjLkmJlrPmx364RH+t456wD+zYCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSMqApAxIyoCkDEjKgKQMSOoGwhAEdHSfEKgAAAAASUVORK5CYII=" id="image4b328e8959" width="160" height="60" transform="matrix(0.715 0 0 0.715 122.8 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="180" y="12.17" transform="rotate(-0 180 12.17)">4 levels</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g clip-path="url(#pf4a875694a)">
+    <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAAKAAAAA8CAYAAADha7EVAAAAyElEQVR4nO3SQQ0DQRADwblg2eUP8YIhykj9qQJg+dHPzLyz6JyzOTf33tU9//6z/e+zugY/EiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkhIgKQGSEiApAZISICkBkvoCwhAEdGjxMnUAAAAASUVORK5CYII=" id="image2d13f78b40" width="160" height="60" transform="matrix(0.715 0 0 0.715 242 16.17)" style="image-rendering:crisp-edges;image-rendering:pixelated"/>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Inter', 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #e6edf3" x="299.2" y="12.17" transform="rotate(-0 299.2 12.17)">8 levels</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc0d49e138f">
+   <rect x="3.6" y="16.17" width="114.4" height="42.9"/>
+  </clipPath>
+  <clipPath id="pcb07643d25">
+   <rect x="122.8" y="16.17" width="114.4" height="42.9"/>
+  </clipPath>
+  <clipPath id="pf4a875694a">
+   <rect x="242" y="16.17" width="114.4" height="42.9"/>
+  </clipPath>
+ </defs>
+</svg>

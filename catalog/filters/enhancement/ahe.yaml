@@ -1,0 +1,119 @@
+id: ahe
+name: Adaptive histogram equalization
+aliases: [AHE, Tiled histogram equalization]
+family: enhancement
+tags: [purpose:contrast]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: CLAHE without a clip limit.
+
+summary: Equalizes the histogram of each tile of a grid on its own and blends the tile curves smoothly, so each region gets its own contrast.
+purpose: Bring out local detail in every region of an image, and show why CLAHE adds a clip limit.
+classification: {linearity: nonlinear, domain: point, operation: tiled histogram equalization}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/clahe.ts, symbol: tileCurves}
+supportRadius: global
+supportsMask: true
+preview: live
+channelScopes: [luminance, rgb]
+colorHandling: >-
+  With the brightness scope, the default, only luma is equalized and the colors stay. With RGB
+  scope, each channel is equalized on its own, which can shift colors. Alpha is kept.
+boundary: >-
+  When the image size is not a multiple of the grid, the image is extended at the right and
+  bottom with the reflect 101 rule, as OpenCV does. Pixels outside the outermost tile centers
+  use the curves of the nearest tiles. The tile grid covers the whole image, so the filter
+  always runs on the whole image.
+
+params:
+  - key: tilesX
+    label: Tiles across
+    type: integer
+    min: 1
+    max: 64
+    step: 1
+    default: 8
+    description: How many tiles the grid has from left to right. Never more than the image width.
+    effect: More tiles adapt to smaller regions and raise local contrast more.
+  - key: tilesY
+    label: Tiles down
+    type: integer
+    min: 1
+    max: 64
+    step: 1
+    default: 8
+    description: How many tiles the grid has from top to bottom. Never more than the image height.
+    effect: More tiles adapt to smaller regions and raise local contrast more.
+  - ref: channelScope
+    default: luminance
+formula: |
+  T^{(t)}(k) = \operatorname{round}\!\left(\frac{255}{M} \sum_{j=0}^{k} h^{(t)}_j\right),
+  \quad
+  I_{\text{out}} = \sum_{t} w_t(x, y)\, T^{(t)}(I),
+  \qquad
+  {{tilesX}} \times {{tilesY}}\ \text{tiles}
+formulaExplanation: >-
+  h^(t) is the histogram of tile t and M the number of pixels in a tile. Each tile gets the
+  histogram equalization curve of its own pixels, rounded to whole levels. Each pixel blends the
+  curves of the four nearest tile centers with bilinear weights w_t, as Pizer and colleagues
+  describe for interpolated AHE. This is CLAHE without a clip limit, and it uses the same code.
+  A flat tile has one tall bin, so its curve jumps steeply at that level. That stretches small
+  differences, such as noise, to large ones.
+symbols:
+  - {symbol: 'h^{(t)}_k', meaning: 'The number of pixels of tile t at level k'}
+  - {symbol: 'M', meaning: 'The number of pixels in one tile'}
+  - {symbol: 'T^{(t)}', meaning: 'The curve of tile t'}
+  - {symbol: 'w_t(x, y)', meaning: 'The bilinear weight of tile t at the pixel'}
+steps:
+  - Extend the image at the right and bottom so that its size is a multiple of the grid.
+  - Count the histogram of the levels in each tile.
+  - Turn each tile histogram into a curve, 255 / M times its running total, rounded.
+  - For each pixel, blend the curves of the four nearest tile centers bilinearly and apply the blend to the pixel's value.
+complexity:
+  time: O(N + 256 T)
+  memory: O(256 T)
+  notes: N is the number of pixels and T the number of tiles. Each pixel blends four table lookups.
+useCases:
+  - Seeing the faintest local detail, when noise does not matter.
+  - Teaching why CLAHE needs its clip limit.
+advantages:
+  - The strongest local contrast of the equalization methods.
+  - Smooth blending, with no tile edges.
+limitations:
+  - Raises noise strongly in flat areas.
+  - The tile size must suit the size of the detail.
+artifacts:
+  - Grainy, noisy flat areas, such as sky or background.
+  - Halos near large bright or dark objects.
+references:
+  - kind: paper
+    text: Pizer, S. M., Amburn, E. P., Austin, J. D., Cromartie, R., Geselowitz, A., Greer, T., ter Haar Romeny, B., Zimmerman, J. B. and Zuiderveld, K. Adaptive histogram equalization and its variations. Computer Vision, Graphics, and Image Processing 39(3), 355 to 368, 1987.
+    doi: 10.1016/S0734-189X(87)80186-X
+  - kind: book
+    text: Zuiderveld, K. Contrast Limited Adaptive Histogram Equalization. In Heckbert, P. S. (editor), Graphics Gems IV, 474 to 485. Academic Press, 1994.
+    doi: 10.1016/B978-0-12-336156-1.50061-6
+implementation: {path: web/src/core/filters/enhancement/clahe.ts, symbol: aheFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/enhancement.test.ts]
+learn:
+  oneSentence: Equalize the brightness in each part of the image on its own, so every region uses the full range.
+  howItWorks:
+    - Cut the image into a grid of tiles.
+    - Build a histogram equalization curve for each tile.
+    - Blend the curves of the nearest tiles smoothly for every pixel.
+  academic: >-
+    Interpolated adaptive histogram equalization: per-tile equalization mappings blended
+    bilinearly between tile centers.
+  paramNotes:
+    tilesX: How many tiles across.
+    tilesY: How many tiles down.
+  tryThis:
+    - Open a photo with a plain sky and compare AHE with CLAHE. AHE turns the sky grainy.
+  pitfalls:
+    - Using it on noisy images. Flat regions turn into strong grain.
+  demos: [point-op-curve]
+related: [clahe, histogram-eq]
+docsPage: filters/enhancement/ahe.md

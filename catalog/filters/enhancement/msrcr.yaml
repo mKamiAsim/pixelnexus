@@ -1,0 +1,161 @@
+id: msrcr
+name: Multi-scale Retinex with color restoration
+aliases: [MSRCR, Retinex-based color enhancement]
+family: enhancement
+tags: [purpose:enhancement, purpose:color]
+tier: core
+engine: browser
+phase: 5f
+status: implemented-tested
+planNotes: Retinex-based color enhancement.
+
+summary: Multi-scale Retinex on each channel, multiplied by a color restoration factor that brings back the colors the Retinex grays out.
+purpose: Even out uneven lighting and lift detail in shadows while keeping vivid colors.
+classification: {linearity: nonlinear, domain: color, operation: multi-scale log ratio with color restoration}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/enhancement/retinex.ts, symbol: msrcrFilter}
+supportRadius: global
+supportsMask: true
+preview: live
+colorHandling: >-
+  Works on red, green and blue together. Each channel's Retinex is scaled by a factor from that
+  channel's share of the pixel. Then each channel is balanced on its own. Alpha is kept.
+boundary: >-
+  The image is mirrored at its edges, as in the article by Petro, Sbert and Morel. The color
+  balance uses the whole image, so the filter always runs on the whole image.
+
+params:
+  - key: sigma1
+    label: Small scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 15
+    unit: px
+    description: The standard deviation of the first Gaussian surround.
+    effect: Brings out fine detail and local contrast.
+  - key: sigma2
+    label: Middle scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 80
+    unit: px
+    description: The standard deviation of the second Gaussian surround.
+    effect: Balances detail against color rendition.
+  - key: sigma3
+    label: Large scale
+    type: number
+    min: 1
+    max: 1000
+    step: 1
+    default: 250
+    unit: px
+    description: The standard deviation of the third Gaussian surround.
+    effect: Keeps the colors and the tone of large areas, and evens out the broadest changes of light.
+  - key: alpha
+    label: Alpha
+    type: number
+    min: 1
+    max: 500
+    step: 1
+    default: 125
+    description: The constant alpha inside the log of the color restoration.
+    effect: Lower values make the restoration depend more on each channel's share, which makes colors stronger.
+  - key: clipLow
+    label: Clip dark
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s1 of the darkest values that the color balance sets to 0.
+    effect: Higher values deepen the shadows and raise the contrast.
+  - key: clipHigh
+    label: Clip bright
+    type: number
+    min: 0
+    max: 20
+    step: 0.1
+    default: 1
+    unit: "%"
+    description: The percent s2 of the brightest values that the color balance sets to 255.
+    effect: Higher values brighten the image and raise the contrast.
+formula: |
+  R'_c = R_c \left[\log\left(\alpha\, (I_c + 1)\right) - \log \sum_{j} (I_j + 1)\right],
+  \qquad \alpha = {{alpha}}
+formulaExplanation: >-
+  R_c is the multi-scale Retinex of channel c with the scales sigma_1, sigma_2 and sigma_3 and
+  equal weights. Jobson, Rahman and Woodell multiply it by the color restoration function
+  beta log(alpha I'_c). Here I'_c = I_c / sum_j I_j is the channel's share of the pixel. They
+  use alpha = 125, beta = 46 and the scales 15, 80 and 250, then a gain G = 192 and an offset
+  b = -30. Petro, Sbert and Morel found that no fixed gain and offset suits all images, and
+  stretch each channel with Simplest Color Balance instead. That stretch removes any common
+  factor, so beta, G and b have no effect here. They also warn that the restoration can invert
+  colors where a channel is near 0, because both factors are then negative. PixelNexus takes the
+  log of I + 1 so that black pixels have a finite log, and a result with no spread turns mid gray.
+symbols:
+  - {symbol: 'R_c', meaning: 'The multi-scale Retinex of channel c'}
+  - {symbol: '\alpha', meaning: 'The constant of the color restoration'}
+  - {symbol: 'I_j', meaning: 'The red, green and blue values of the pixel, 0 to 255'}
+steps:
+  - Compute the multi-scale Retinex of each channel with the three scales.
+  - Multiply it by log(alpha (I_c + 1)) - log of the sum of the three channels plus 3.
+  - Stretch each channel to 0 to 255 with Simplest Color Balance.
+complexity:
+  time: O(N log N)
+  memory: O(N)
+  notes: N is the number of pixels. Nine Gaussian blurs through the FFT of each row and column, three scales for each channel.
+useCases:
+  - Photos of dim or hazy scenes where colors should stay strong.
+  - Comparing with MSR and its intensity mode, to see what color restoration does.
+advantages:
+  - Brings back much of the color that the Retinex on each channel removes.
+  - The original method of Jobson and colleagues, apart from the final stretch.
+limitations:
+  - Saturated colors can invert where a channel is near 0, as Petro, Sbert and Morel show.
+  - Colors can come out stronger than in the scene.
+artifacts:
+  - Odd colors in pixels with a channel near 0, such as deep blue or red.
+  - Mild halos along strong edges.
+references:
+  - kind: paper
+    text: Jobson, D. J., Rahman, Z. and Woodell, G. A. A multiscale retinex for bridging the gap between color images and the human observation of scenes. IEEE Transactions on Image Processing 6(7), 965 to 976, 1997.
+    doi: 10.1109/83.597272
+  - kind: paper
+    text: Petro, A. B., Sbert, C. and Morel, J.-M. Multiscale Retinex. Image Processing On Line 4, 71 to 88, 2014.
+    doi: 10.5201/ipol.2014.107
+  - kind: paper
+    text: Limare, N., Lisani, J.-L., Morel, J.-M., Petro, A. B. and Sbert, C. Simplest Color Balance. Image Processing On Line 1, 297 to 315, 2011.
+    doi: 10.5201/ipol.2011.llmps-scb
+implementation: {path: web/src/core/filters/enhancement/retinex.ts, symbol: msrcrFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts, web/src/core/filters/enhancement/retinex.test.ts]
+learn:
+  oneSentence: Run multi-scale Retinex on each color, then give back the color that it took away.
+  howItWorks:
+    - Run Retinex at three scales on each color channel.
+    - Measure how much of the pixel's total each channel holds.
+    - Scale each channel's result by the log of that share, so strong colors stay strong.
+    - Stretch each channel to the full range.
+  academic: >-
+    Jobson's MSRCR, R'_c = R_c beta log(alpha I'_c). As in the IPOL implementation of Petro,
+    Sbert and Morel, the Simplest Color Balance replaces the gain and offset.
+  paramNotes:
+    sigma1: The scale for fine detail.
+    sigma2: The middle scale.
+    sigma3: The scale for the tone and color of large areas.
+    alpha: How strongly a channel's share changes its result.
+    clipLow: How many of the darkest values turn black.
+    clipHigh: How many of the brightest values turn white.
+  tryThis:
+    - Compare MSRCR with Multi-scale Retinex on each channel and on the intensity, on a colorful photo in shade.
+  pitfalls:
+    - Strongly saturated blue or red objects. Their colors can flip. Use Multi-scale Retinex on the intensity there.
+  demos: [line-profile]
+related: [retinex-msr, retinex-ssr, vibrance]
+docsPage: filters/enhancement/msrcr.md
