@@ -8,8 +8,7 @@ A filter is a function from an RGBA image and its parameters to a result:
 
 ```python
 @register("my-filter", representation=my_filter_representation)
-def my_filter(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
-    ...
+def my_filter(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba: ...
 ```
 
 - The id must equal the catalog id.
