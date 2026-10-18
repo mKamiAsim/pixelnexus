@@ -1,7 +1,124 @@
 id: lms-2d
-name: LMS adaptive filter
+name: 2D LMS adaptive filter
+aliases: [LMS adaptive filter, TDLMS, Two-dimensional LMS predictor]
 family: adaptive
-tier: planned
-engine: none
-status: planned
-reason: Needs a reference signal. A 2D LMS predictor may be added later with an honest label.
+tags: [purpose:denoise, noise:gaussian]
+tier: advanced
+engine: browser
+phase: 5b
+status: implemented-tested
+planNotes: A 2D LMS predictor after Hadhoud and Thomas, with an honest label. It predicts each pixel from its neighbors.
+
+summary: Predicts each pixel from its neighbors with weights that learn as the filter scans the image. Noise that the neighbors do not share cannot be predicted, so the prediction is a denoised image. The error shows what the neighbors could not explain.
+purpose: Show how an adaptive filter learns its weights from the image itself, without a model of the noise.
+classification: {linearity: nonlinear, domain: statistical, operation: adaptive linear prediction}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/adaptive/scan.ts, symbol: lms2dFilter}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately, each with its own weights. With the brightness
+  scope, only luma is filtered. Alpha is kept.
+boundary: Set by the Border mode parameter. The default is reflect 101.
+
+params:
+  - key: size
+    label: Window size
+    type: integer
+    min: 3
+    max: 7
+    step: 2
+    oddOnly: true
+    default: 3
+    unit: px
+    description: The window of neighbors that predict the center, which itself is left out.
+    effect: Larger windows use more neighbors and smooth more, but learn more slowly.
+  - key: mu
+    label: Step size mu
+    type: number
+    min: 0
+    max: 1
+    step: 0.01
+    default: 0.05
+    description: How far the weights move after each pixel. The update is normalized by the energy of the neighbors, so 0 to 1 is stable.
+    effect: A large step follows changes in the image fast but lets the weights pick up noise. A small step learns slowly. At 0 the weights stay the plain mean of the neighbors.
+  - key: output
+    label: Output
+    type: select
+    default: prediction
+    options:
+      - {value: prediction, label: Prediction (denoised)}
+      - {value: error, label: Prediction error (around mid gray)}
+    description: The prediction from the neighbors, or the pixel minus its prediction, shown around 128.
+    effect: The error is high at edges, at noise and where the weights still learn.
+  - ref: border
+  - ref: channelScope
+formula: |
+  \hat{d}(n) = \mathbf{w}(n)^{\top} \mathbf{x}(n),\quad e(n) = d(n) - \hat{d}(n),\quad
+  \mathbf{w}(n+1) = \mathbf{w}(n) + \frac{\mu\, e(n)\, \mathbf{x}(n)}{\varepsilon + \mathbf{x}(n)^{\top} \mathbf{x}(n)}
+formulaExplanation: >-
+  n runs over the pixels in raster order. d is the pixel, scaled to 0 to 1. x holds its
+  neighbors in the window without the center. The weights w start as the plain mean of the
+  neighbors. After each pixel they move by the error e times x. Hadhoud and Thomas brought this
+  LMS update to two dimensions. Here the step is divided by the energy of x, as in normalized
+  LMS. That is our choice, so that one step size suits any image. A tiny epsilon avoids a division
+  by zero.
+symbols:
+  - {symbol: 'd(n)', meaning: 'The pixel, from 0 to 1'}
+  - {symbol: '\mathbf{x}(n)', meaning: 'Its neighbors in the window, without the center'}
+  - {symbol: '\mathbf{w}(n)', meaning: 'The weights at pixel n'}
+  - {symbol: 'e(n)', meaning: 'The prediction error'}
+  - {symbol: '\mu', meaning: 'The step size'}
+steps:
+  - Start with weights that give the mean of the neighbors.
+  - For each pixel in raster order, predict it from its neighbors.
+  - Write the prediction, or the error.
+  - Move the weights by the error times the neighbors, divided by their energy.
+complexity:
+  time: O(N k^2)
+  memory: O(N)
+  notes: N is the number of pixels per channel and k the window width. The scan runs in one pass and cannot be split into tiles, so the filter is global.
+useCases:
+  - Teaching adaptive filters on images.
+  - Removing white noise from textures with a direction, such as stripes, where the plain mean of the neighbors fails.
+advantages:
+  - Needs no noise level and no model of the image.
+  - The error image shows edges and texture, the parts that are hard to predict.
+limitations:
+  - The result depends on the scan order. The weights learned at the top shape the result further down.
+  - It smooths edges that cross the window, like a linear filter.
+  - It cannot run in tiles, so large images take a while.
+artifacts:
+  - Streaks along the scan direction where the weights change fast.
+references:
+  - kind: paper
+    text: Hadhoud, M. M., and Thomas, D. W. The two-dimensional adaptive LMS (TDLMS) algorithm. IEEE Transactions on Circuits and Systems 35(5), 485 to 494, 1988.
+    doi: 10.1109/31.1775
+implementation: {path: web/src/core/filters/adaptive/scan.ts, symbol: lms2dFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Guess each pixel from its neighbors, and learn better weights from every mistake.
+  howItWorks:
+    - Start with the plain mean of the neighbors as the guess.
+    - Compare the guess with the pixel. The difference is the error.
+    - Nudge each weight in the direction that makes the error smaller, then go on to the next pixel.
+  academic: >-
+    A two-dimensional normalized LMS predictor with a noncausal window that leaves out the
+    center. White noise is not predictable from the neighbors, so the prediction estimates the
+    clean image.
+  paramNotes:
+    size: The window of neighbors.
+    mu: The step size of the weight update.
+    output: The prediction, or the error.
+  tryThis:
+    - Add Gaussian noise with sigma 20 and compare the prediction with a 3x3 box filter.
+    - Set mu to 0. The filter becomes the mean of the eight neighbors.
+  pitfalls:
+    - A step size near 1 makes the weights jump, and the result gets noisy again.
+  demos: [line-profile, noise-lab]
+related: [rls-2d, kalman, wiener-adaptive, box]
+docsPage: filters/adaptive/lms-2d.md

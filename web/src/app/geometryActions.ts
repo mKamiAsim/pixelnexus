@@ -11,7 +11,8 @@ import {
   type ResizeMethod,
 } from "@/core/image/resample";
 import type { RgbaImage } from "@/core/image/types";
-import { createMask, maskToImage, type Mask } from "@/core/mask/mask";
+import { clampCrop, crop, type CropRect } from "@/core/image/transform";
+import { createMask, cropMask, maskToImage, type Mask } from "@/core/mask/mask";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { announce } from "@/state/notifications";
 import { useUi, type DialogId } from "@/state/ui";
@@ -22,6 +23,8 @@ import { showPanel } from "./layout";
 const COMMAND_DIALOGS: Readonly<Record<string, DialogId>> = {
   "image.resize": "image-resize",
   "image.rotate-free": "image-rotate",
+  "image.rotate-flip": "image-rotate-flip",
+  "image.crop": "image-crop",
 };
 
 /** Run the studio command a catalog entry names. Returns false for an unknown command. */
@@ -109,3 +112,26 @@ export function rotateActive(
   useDocuments.getState().edit(doc.id, image, label, { id: "rotate-free", params }, selection);
   announce(`${label} applied. The image is ${image.width} by ${image.height} pixels.`);
 }
+
+/** Crop the active image to the rectangle, cut to the image. The selection is cropped with it. */
+export function cropActive(rect: CropRect): void {
+  const doc = activeDocument();
+  if (!doc) return;
+  const inside = clampCrop(rect, doc.current.width, doc.current.height);
+  if (!inside) return;
+  const image = crop(doc.current, inside);
+  const selection = doc.selection ? cropMask(doc.selection, inside) : undefined;
+  const label = `Crop to ${inside.width} x ${inside.height} at x ${inside.x}, y ${inside.y}`;
+  const params: Record<string, ParamValue> = { ...inside };
+  useDocuments.getState().edit(doc.id, image, label, { id: "crop", params }, selection);
+  announce(`${label} applied. The image is ${inside.width} by ${inside.height} pixels.`);
+}
+
+/** The quarter turns and mirrors of Rotate and flip, by the commands of the Image menu. */
+export const ROTATE_FLIP_COMMANDS: Readonly<Record<string, string>> = {
+  cw: "image.rotate-cw",
+  ccw: "image.rotate-ccw",
+  half: "image.rotate-180",
+  horizontal: "image.flip-h",
+  vertical: "image.flip-v",
+};

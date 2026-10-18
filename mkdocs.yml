@@ -202,6 +202,7 @@ nav:
           - Kuwahara filter: filters/nonlinear/kuwahara.md
           - Nagao-Matsuyama filter: filters/nonlinear/nagao-matsuyama.md
           - Bilateral filter: filters/nonlinear/bilateral.md
+          - Bilateral solver: filters/nonlinear/bilateral-solver.md
           - Non-local means: filters/nonlinear/nlm.md
           - Total variation denoising: filters/nonlinear/tv-denoise.md
           - BM3D-inspired denoising: filters/nonlinear/bm3d-lite.md
@@ -233,6 +234,9 @@ nav:
           - Frost filter: filters/adaptive/frost.md
           - Gamma-MAP filter: filters/adaptive/gamma-map.md
           - Speckle reducing anisotropic diffusion: filters/adaptive/srad.md
+          - 2D LMS adaptive filter: filters/adaptive/lms-2d.md
+          - 2D RLS adaptive filter: filters/adaptive/rls-2d.md
+          - Kalman filter: filters/adaptive/kalman.md
           - Local variance filter: filters/adaptive/local-variance.md
           - Standard deviation filter: filters/adaptive/local-std.md
           - Range filter: filters/adaptive/local-range.md
@@ -344,6 +348,7 @@ nav:
           - Shearlet-inspired directional filter: filters/frequency/directional-shearlet.md
       - Multiscale:
           - Gaussian pyramid filtering: filters/multiscale/gaussian-pyramid.md
+          - Multiresolution diffusion: filters/multiscale/multires-diffusion.md
           - Laplacian pyramid filtering: filters/multiscale/laplacian-pyramid.md
           - Scale-space filtering: filters/multiscale/scale-space.md
           - Stationary wavelet filtering: filters/multiscale/swt-denoise.md
@@ -462,6 +467,7 @@ nav:
           - EDSR: filters/learned/edsr.md
           - SwinIR: filters/learned/swinir.md
           - SwinIR super-resolution: filters/learned/swinir-sr.md
+          - Restormer: filters/learned/restormer.md
           - SRCNN and FSRCNN: filters/learned/srcnn.md
           - Neural style and texture filters: filters/learned/fast-style.md
           - Learned edge detector: filters/learned/learned-edges.md
@@ -474,4 +480,6 @@ nav:
           - Add Poisson noise: filters/utility/noise-poisson.md
           - Quality metrics: filters/utility/metrics.md
           - Resize: filters/utility/resize.md
+          - Crop: filters/utility/crop.md
+          - Rotate and flip: filters/utility/rotate-flip.md
           - Free rotation: filters/utility/rotate-free.md

@@ -6,6 +6,7 @@
 from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     ai,
     artifacts,
+    bilateral_solver,
     bitonic,
     blobs,
     bm3d_lite,

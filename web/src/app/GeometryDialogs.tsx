@@ -1,9 +1,12 @@
 /**
- * Image > Resize and Image > Rotate by angle. The controls come from the catalog entries
- * catalog/filters/utility/resize.yaml and rotate-free.yaml. Width and height start at the
- * current image size each time the dialog opens.
+ * Image > Resize, Rotate by angle, Rotate and flip, and Crop. The controls come from the catalog
+ * entries in catalog/filters/utility/: resize, rotate-free, rotate-flip and crop. Width and height
+ * start at the current image size each time the dialog opens. The crop starts at the bounds of the
+ * selection, or at the whole image.
  */
 import { useId, useState } from "react";
+
+import { runCommand } from "./commands";
 
 import type { Filter } from "@/catalog";
 
@@ -12,12 +15,19 @@ import { ParamControl } from "@/components/params/ParamControl";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { rotatedSize, type Interpolation, type ResizeMethod } from "@/core/image/resample";
+import { maskBounds } from "@/core/mask/mask";
 import { activeDocument, useDocuments } from "@/state/documents";
 import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 import { filterById } from "./filterActions";
-import { resizeActive, rotateActive, type RotateFill } from "./geometryActions";
+import {
+  cropActive,
+  resizeActive,
+  ROTATE_FLIP_COMMANDS,
+  rotateActive,
+  type RotateFill,
+} from "./geometryActions";
 import { useFilterValues } from "./useFilterValues";
 
 function entryOf(id: string): Filter {
@@ -28,12 +38,150 @@ function entryOf(id: string): Filter {
 
 const RESIZE = entryOf("resize");
 const ROTATE = entryOf("rotate-free");
+const ROTATE_FLIP = entryOf("rotate-flip");
+const CROP = entryOf("crop");
 
 export function GeometryDialogs() {
   return (
     <>
       <ResizeDialog />
       <RotateDialog />
+      <RotateFlipDialog />
+      <CropDialog />
+    </>
+  );
+}
+
+function RotateFlipDialog() {
+  const open = useUi((s) => s.dialog === "image-rotate-flip");
+  const setDialog = useUi((s) => s.setDialog);
+  const doc = useDocuments((s) => activeDocument(s));
+  const entry = ROTATE_FLIP;
+  const { values } = useFilterValues(entry);
+  const setValue = useFilters((s) => s.setValue);
+  const formId = useId();
+  if (!doc) return null;
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => setDialog(next ? "image-rotate-flip" : null)}
+      title="Rotate and flip"
+      description="Quarter turns and mirrors move whole pixels, so no value changes."
+      className="max-w-sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => setDialog(null)}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form={formId}>
+            Apply
+          </Button>
+        </>
+      }
+    >
+      <form
+        id={formId}
+        className="flex flex-col gap-3 p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setDialog(null);
+          runCommand(ROTATE_FLIP_COMMANDS[String(values.operation)] ?? "image.rotate-cw");
+        }}
+      >
+        {entryParams(entry).map((param) => (
+          <ParamControl
+            key={param.key}
+            param={param}
+            value={values[param.key] ?? param.default}
+            onChange={(value) => setValue(entry.id, param.key, value)}
+          />
+        ))}
+      </form>
+    </Dialog>
+  );
+}
+
+function CropDialog() {
+  const open = useUi((s) => s.dialog === "image-crop");
+  const setDialog = useUi((s) => s.setDialog);
+  const doc = useDocuments((s) => activeDocument(s));
+  if (!doc) return null;
+  const bounds = doc.selection ? maskBounds(doc.selection) : null;
+  const start = bounds ?? { x: 0, y: 0, width: doc.current.width, height: doc.current.height };
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => setDialog(next ? "image-crop" : null)}
+      title="Crop"
+      description={
+        bounds
+          ? "The rectangle starts at the bounds of the selection."
+          : `The image is ${doc.current.width} x ${doc.current.height} pixels now.`
+      }
+      className="max-w-sm"
+      focusField
+    >
+      <CropForm
+        key={`${doc.id}-${start.x}-${start.y}-${start.width}-${start.height}`}
+        start={start}
+        imageWidth={doc.current.width}
+        imageHeight={doc.current.height}
+        onDone={() => setDialog(null)}
+      />
+    </Dialog>
+  );
+}
+
+function CropForm({
+  start,
+  imageWidth,
+  imageHeight,
+  onDone,
+}: {
+  start: { x: number; y: number; width: number; height: number };
+  imageWidth: number;
+  imageHeight: number;
+  onDone: () => void;
+}) {
+  const [rect, setRect] = useState(start);
+  const formId = useId();
+  const right = Math.min(imageWidth, rect.x + rect.width);
+  const bottom = Math.min(imageHeight, rect.y + rect.height);
+  const valid = rect.x < imageWidth && rect.y < imageHeight && right > rect.x && bottom > rect.y;
+  return (
+    <>
+      <form
+        id={formId}
+        className="flex flex-col gap-3 p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!valid) return;
+          cropActive(rect);
+          onDone();
+        }}
+      >
+        {entryParams(CROP).map((param) => (
+          <ParamControl
+            key={param.key}
+            param={param}
+            value={rect[param.key as keyof typeof rect] ?? param.default}
+            onChange={(value) => setRect((r) => ({ ...r, [param.key]: Number(value) }))}
+          />
+        ))}
+        <p className="text-xs text-text-muted">
+          {valid
+            ? `The result is ${right - rect.x} x ${bottom - rect.y} pixels.`
+            : "The rectangle lies outside the image."}
+        </p>
+      </form>
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">
+        <Button variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button variant="primary" type="submit" form={formId} disabled={!valid}>
+          Crop
+        </Button>
+      </div>
     </>
   );
 }

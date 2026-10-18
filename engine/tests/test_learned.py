@@ -211,7 +211,7 @@ def test_edge_networks_get_their_own_normalization(
 @pytest.mark.parametrize(
     "filter_id",
     ["dncnn", "ffdnet", "real-esrgan", "edsr", "srcnn", "fast-style", "learned-edges", "swinir",
-     "swinir-sr"],
+     "swinir-sr", "restormer"],
 )  # fmt: skip
 def test_the_representations(filter_id: str) -> None:
     from pixelnexus_engine.registry import FILTERS
@@ -288,6 +288,70 @@ def test_swinir_sr_enlarges_two_times_with_alpha(
     assert out.shape == (38, 52, 4)
     np.testing.assert_array_equal(out[::2, ::2, :3], image[..., :3])
     assert (out[..., 3] == 255).all()
+
+
+# Restormer ---------------------------------------------------------------------------------------
+
+
+def multiple_of_8_model(tmp_path: Path, factor: float) -> Path:
+    """y = factor * x, refusing sides that are not multiples of 8, as Restormer's shapes would."""
+    k = helper.make_tensor("k", TensorProto.FLOAT, [], [factor])
+    eight = helper.make_tensor("eight", TensorProto.INT64, [], [8])
+    zero = helper.make_tensor("zero", TensorProto.INT64, [], [0])
+    starts = helper.make_tensor("starts", TensorProto.INT64, [1], [2])
+    ends = helper.make_tensor("ends", TensorProto.INT64, [1], [4])
+    nodes = [
+        helper.make_node("Shape", ["image"], ["shape"]),
+        # Height and width only.
+        helper.make_node("Slice", ["shape", "starts", "ends"], ["sides"]),
+        helper.make_node("Mod", ["sides", "eight"], ["rest"]),
+        helper.make_node("ReduceMax", ["rest"], ["worst"], keepdims=0),
+        helper.make_node("Equal", ["worst", "zero"], ["ok"]),
+        helper.make_node("Cast", ["ok"], ["okf"], to=TensorProto.FLOAT),
+        # A side that is not a multiple of 8 gives 0 * x / 0 = NaN.
+        helper.make_node("Div", ["k", "okf"], ["kk"]),
+        helper.make_node("Mul", ["image", "kk"], ["out"]),
+    ]
+    return save(tmp_path, "mult8", nodes, [image_io("image", 3)], [image_io("out", 3)],
+                [k, eight, zero, starts, ends])  # fmt: skip
+
+
+def test_restormer_pads_to_multiples_of_8_and_crops_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = multiple_of_8_model(tmp_path, 0.5)
+    monkeypatch.setattr(learned, "model_file", lambda _: path)
+    image = rgba(np.random.default_rng(7), 37, 29, alpha=90)
+    out = learned.restormer(image, values("restormer"), NOTHING)
+    assert out.shape == image.shape
+    np.testing.assert_array_equal(out[..., :3], np.rint(image[..., :3] / 2).astype(np.uint8))
+    assert (out[..., 3] == 90).all()
+
+
+def test_restormer_clamps_and_averages_overlapping_tiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = multiple_of_8_model(tmp_path, 3.0)
+    monkeypatch.setattr(learned, "model_file", lambda _: path)
+    monkeypatch.setattr(learned, "RESTORMER_TILE", 16)
+    monkeypatch.setattr(learned, "RESTORMER_OVERLAP", 4)
+    image = rgba(np.random.default_rng(8), 40, 33)
+    out = learned.restormer(image, values("restormer", task="deblur"), NOTHING)
+    # Three times the values, clamped to 255, the same in every tile and overlap.
+    expected = np.clip(image[..., :3].astype(float) * 3, 0, 255)
+    np.testing.assert_array_equal(out[..., :3], expected.astype(np.uint8))
+
+
+def test_averaged_tiles_cover_the_image_and_average_overlaps() -> None:
+    x = np.random.default_rng(9).random((3, 40, 56), dtype=np.float32)
+    calls: list[tuple[int, ...]] = []
+
+    def run(chw: np.ndarray) -> np.ndarray:
+        calls.append(chw.shape)
+        return chw * 2
+
+    np.testing.assert_allclose(learned.averaged_tiles(run, x, 24, 8), x * 2, rtol=1e-6)
+    assert set(calls) == {(3, 24, 24)}
 
 
 # Real models, where they are on disk ------------------------------------------------------------
@@ -434,3 +498,23 @@ def test_real_swinir_sr_enlarges_two_times_and_beats_bicubic(real_models: None) 
     assert out.shape == (96, 128, 4)
     bicubic = cv2.resize(small, (128, 96), interpolation=cv2.INTER_CUBIC)
     assert psnr(out[..., :3], clean) > psnr(bicubic[..., :3], clean)
+
+
+@real("restormer-real-denoising")
+def test_real_restormer_removes_noise(real_models: None) -> None:
+    image, clean = noisy_scene(20)
+    out = learned.restormer(image, values("restormer"), NOTHING)
+    assert psnr(out[..., :3], clean) > psnr(image[..., :3], clean) + 6
+
+
+@real("restormer-motion-deblurring")
+def test_real_restormer_sharpens_motion_blur(real_models: None) -> None:
+    import cv2
+
+    _, clean = noisy_scene(0)
+    kernel = np.full((1, 9), 1 / 9, np.float32)
+    blurred = cv2.filter2D(clean.astype(np.float32), -1, kernel, borderType=cv2.BORDER_REFLECT)
+    image = np.dstack([np.clip(np.rint(blurred), 0, 255), np.full(clean.shape[:2], 255)])
+    image = image.astype(np.uint8)
+    out = learned.restormer(image, values("restormer", task="deblur"), NOTHING)
+    assert psnr(out[..., :3], clean) > psnr(image[..., :3], clean)

@@ -2,7 +2,11 @@ import { expect, test } from "@playwright/test";
 
 test.use({ serviceWorkers: "allow" });
 
-test("the studio can be installed and opens and filters offline", async ({ page, context, browserName }) => {
+test("the studio can be installed and opens and filters offline", async ({
+  page,
+  context,
+  browserName,
+}) => {
   await page.goto("/");
   const href = await page.locator('link[rel="manifest"]').getAttribute("href");
   const manifest = (await (await page.request.get(href ?? "")).json()) as {

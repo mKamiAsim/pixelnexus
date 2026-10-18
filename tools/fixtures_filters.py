@@ -30,12 +30,14 @@ from fixtures_frequency import add_frequency_cases
 from fixtures_gradients import add_gradient_cases
 from fixtures_impulse import add_impulse_cases, color_cases
 from fixtures_morphology import add_morphology_cases, element_cases
+from fixtures_multires import add_multires_cases
 from fixtures_multiscale import add_multiscale_cases
 from fixtures_oriented import add_oriented_cases
 from fixtures_painterly import add_painterly_plane_cases
 from fixtures_point import add_clahe_cases, add_point_cases
 from fixtures_rank import add_rank_cases
 from fixtures_restoration import add_restoration_cases
+from fixtures_scan import add_scan_cases
 from fixtures_speckle import add_speckle_cases
 from fixtures_threshold import add_threshold_cases
 from fixtures_tone import add_detail_cases
@@ -470,6 +472,8 @@ def filter_cases() -> dict[str, Any]:
     extra_inputs = add_rank_cases(plane, add) | add_impulse_cases(plane, add)
     add_edge_plane_cases(plane, add)
     add_adaptive_cases(plane, add)
+    add_scan_cases(plane, add)
+    add_multires_cases(plane, add)
     extra_inputs |= add_speckle_cases(plane, add)
     add_gradient_cases(plane, add)
     add_canny_cases(plane, add)

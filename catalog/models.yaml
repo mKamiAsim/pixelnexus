@@ -228,6 +228,40 @@ models:
       kind: paper
       text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
       doi: 10.1109/ICCVW54120.2021.00210
+  - id: restormer-real-denoising
+    name: Restormer, real noise
+    task: denoise
+    license: MIT License, from the Restormer project, whose release holds this file.
+    licenseUrl: https://github.com/swz30/Restormer/blob/main/LICENSE.md
+    sourceUrl: https://github.com/swz30/Restormer/releases/download/v1.0/real_denoising.pth
+    sha256: 4cae18bed8a291b9a5deeeab48756bbe6f61fcf7f31a4cca0969b24608601387
+    sizeMB: 104.61
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, with sides that are multiples of 8, with the noise of a real camera.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Zamir, S. W., Arora, A., Khan, S., Hayat, M., Khan, F. S., and Yang, M.-H. Restormer. Efficient transformer for high-resolution image restoration. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 5718 to 5729, 2022.
+      doi: 10.1109/CVPR52688.2022.00564
+  - id: restormer-motion-deblurring
+    name: Restormer, motion blur
+    task: deblur
+    license: MIT License, from the Restormer project, whose release holds this file.
+    licenseUrl: https://github.com/swz30/Restormer/blob/main/LICENSE.md
+    sourceUrl: https://github.com/swz30/Restormer/releases/download/v1.0/motion_deblurring.pth
+    sha256: 194e38fb5b607c9dc5a5b3e08e65b2e79ee2bf0ef5048e0612f6b2ff2f79da31
+    sizeMB: 104.70
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, with sides that are multiples of 8, blurred by camera or object motion.
+    outputs: The sharpened image.
+    reference:
+      kind: paper
+      text: Zamir, S. W., Arora, A., Khan, S., Hayat, M., Khan, F. S., and Yang, M.-H. Restormer. Efficient transformer for high-resolution image restoration. IEEE/CVF Conference on Computer Vision and Pattern Recognition, 5718 to 5729, 2022.
+      doi: 10.1109/CVPR52688.2022.00564
   - id: realesr-general-x4v3
     name: Real-ESRGAN general, 4x
     task: super-resolution

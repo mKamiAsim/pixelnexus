@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { flip, rotate } from "@/core/image/transform";
+import { clampCrop, crop, flip, rotate } from "@/core/image/transform";
 import { createImage, getChannel, type RgbaImage } from "@/core/image/types";
 
 /** A 3x2 image whose red channel holds the pixel index, so moves are easy to read. */
@@ -60,5 +60,26 @@ describe("rotate and flip", () => {
     let image = indexed();
     for (let i = 0; i < 4; i++) image = rotate(image, "cw");
     expect(image.data).toEqual(indexed().data);
+  });
+});
+
+describe("crop", () => {
+  it("keeps the rectangle, every channel unchanged", () => {
+    const out = crop(indexed(), { x: 1, y: 0, width: 2, height: 2 });
+    expect(reds(out)).toEqual([
+      [1, 2],
+      [4, 5],
+    ]);
+    expect(Array.from(out.data.subarray(0, 4))).toEqual([1, 11, 21, 254]);
+  });
+
+  it("cuts a rectangle to the image, and refuses one outside it", () => {
+    expect(clampCrop({ x: -2, y: 1, width: 4, height: 9 }, 3, 2)).toEqual({
+      x: 0,
+      y: 1,
+      width: 2,
+      height: 1,
+    });
+    expect(clampCrop({ x: 3, y: 0, width: 2, height: 2 }, 3, 2)).toBeNull();
   });
 });

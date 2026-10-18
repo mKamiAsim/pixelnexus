@@ -22,6 +22,8 @@ export type DialogId =
   | "select-snap"
   | "image-resize"
   | "image-rotate"
+  | "image-rotate-flip"
+  | "image-crop"
   | "compare-grid"
   | null;
 

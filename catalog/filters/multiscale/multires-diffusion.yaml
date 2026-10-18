@@ -1,7 +1,143 @@
 id: multires-diffusion
 name: Multiresolution diffusion
+aliases: [Multigrid anisotropic diffusion, Pyramid diffusion, Coarse-to-fine diffusion]
 family: multiscale
-tier: planned
-engine: none
-status: planned
-reason: Definitions vary in the literature. A documented variant may be added later.
+tags: [purpose:denoise, purpose:smooth, noise:gaussian]
+tier: advanced
+engine: browser
+phase: 5e
+status: implemented-tested
+planNotes: A documented variant of PixelNexus, coarse to fine on a Gaussian pyramid, close in idea to the multigrid anisotropic diffusion of Acton.
+
+summary: Runs Perona-Malik diffusion on a Gaussian pyramid, from the coarsest level to the image. The coarse levels remove wide blotches of noise in a few steps. Each finer level starts from that smoothing and refines it near edges.
+purpose: Show why diffusion on one grid is slow for wide noise, and how a pyramid speeds it up.
+classification: {linearity: nonlinear, domain: iterative, operation: coarse-to-fine anisotropic diffusion}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: web/src/core/filters/multiscale/multires-diffusion.ts, symbol: multiresDiffusionFilter}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  Red, green and blue are filtered separately. With the brightness scope, only luma is filtered.
+  Alpha is kept.
+boundary: The pyramid uses the Border mode parameter. Each diffusion step repeats the edge of its level, the zero-flux boundary.
+
+params:
+  - key: levels
+    label: Levels
+    type: integer
+    min: 0
+    max: 6
+    default: 3
+    description: How many times the image is halved. 0 is plain Perona-Malik diffusion.
+    effect: More levels remove wider blotches of noise, and also wider low-contrast detail.
+  - key: iterations
+    label: Steps per level
+    type: integer
+    min: 1
+    max: 50
+    default: 10
+    description: The diffusion steps at each level.
+    effect: More steps smooth more at every level.
+  - key: kappa
+    label: Edge threshold K
+    type: number
+    min: 1
+    max: 100
+    step: 1
+    default: 20
+    description: Differences much smaller than K are smoothed, much larger ones are kept as edges.
+    effect: Higher values smooth more and keep fewer edges.
+  - key: lambda
+    label: Step size lambda
+    type: number
+    min: 0.05
+    max: 0.25
+    step: 0.01
+    default: 0.2
+    description: How far each step moves. 0.25 is the largest stable step with four neighbors.
+    effect: Larger steps smooth faster.
+  - key: conduction
+    label: Conduction
+    type: select
+    default: exponential
+    options:
+      - {value: exponential, label: 'exp(-(d/K)^2), favors high-contrast edges'}
+      - {value: quadratic, label: '1 / (1 + (d/K)^2), favors wide regions'}
+    description: The function that turns a difference into a conduction.
+    effect: The exponential function stops at edges more sharply.
+  - ref: border
+  - ref: channelScope
+formula: |
+  u_L = D(G_L),\qquad u_k = D\big(G_k + \operatorname{EXPAND}(u_{k+1} - G_{k+1})\big),\ k = L-1 \ldots 0,\qquad
+  D:\ I \leftarrow I + \lambda \sum_{d \in \{N, S, E, W\}} g(|\nabla_d I|)\, \nabla_d I
+formulaExplanation: >-
+  G_0 is the image and G_k its Gaussian pyramid. D is a number of Perona-Malik steps. Each step
+  moves a value toward its four neighbors. The conduction g is near 1 for small differences and
+  near 0 for large ones, so flat areas smooth and edges stay. The coarsest level is diffused
+  first. The change it made is enlarged with EXPAND and added to the next finer level, which is
+  diffused in turn. The result is u_0. This form is PixelNexus's own.
+symbols:
+  - {symbol: 'G_k', meaning: 'Level k of the Gaussian pyramid. G_0 is the image.'}
+  - {symbol: 'u_k', meaning: 'The diffused level k'}
+  - {symbol: 'D', meaning: 'A number of Perona-Malik steps'}
+  - {symbol: 'g', meaning: 'The conduction function with threshold K'}
+  - {symbol: '\nabla_d I', meaning: 'The difference to the neighbor in direction d'}
+  - {symbol: '\lambda', meaning: 'The step size'}
+steps:
+  - Build the Gaussian pyramid of the image.
+  - Diffuse the coarsest level.
+  - Going finer, enlarge the change of the level above, add it to the level, and diffuse.
+  - Write the finest level.
+complexity:
+  time: O(N n)
+  memory: O(N)
+  notes: N is the number of pixels and n the steps per level. The coarser levels add a third of the work at most.
+useCases:
+  - Removing noise that forms wide blotches, such as noise that was blurred.
+  - Showing the speed-up that pyramids give to diffusion.
+advantages:
+  - A few steps per level do what plain diffusion does in many steps.
+  - Keeps strong edges, like Perona-Malik diffusion.
+limitations:
+  - Low-contrast detail wider than a few pixels at a coarse level is smoothed away.
+  - The same K at every level, although differences are smaller at coarse levels.
+artifacts:
+  - Slight blockiness from the pyramid where the coarse change is large.
+references:
+  - kind: paper
+    text: Perona, P., and Malik, J. Scale-space and edge detection using anisotropic diffusion. IEEE Transactions on Pattern Analysis and Machine Intelligence 12(7), 629 to 639, 1990.
+    doi: 10.1109/34.56205
+  - kind: paper
+    text: Burt, P., and Adelson, E. The Laplacian pyramid as a compact image code. IEEE Transactions on Communications 31(4), 532 to 540, 1983.
+    doi: 10.1109/TCOM.1983.1095851
+  - kind: paper
+    text: Acton, S. T. Multigrid anisotropic diffusion. IEEE Transactions on Image Processing 7(3), 280 to 291, 1998.
+    doi: 10.1109/83.661178
+implementation: {path: web/src/core/filters/multiscale/multires-diffusion.ts, symbol: multiresDiffusionFilter}
+tests: [web/src/core/filters/filters.test.ts, web/src/core/filters/run.test.ts]
+learn:
+  oneSentence: Smooth a small copy of the image first, then carry that smoothing up to the full size.
+  howItWorks:
+    - Shrink the image a few times by half.
+    - Smooth the smallest copy, keeping its edges.
+    - Enlarge the change, add it to the next larger copy, and smooth again, up to the full size.
+  academic: >-
+    Coarse-to-fine Perona-Malik diffusion on a Gaussian pyramid, with the change of each level
+    carried to the next by EXPAND. Close in idea to the multigrid anisotropic diffusion of Acton.
+  paramNotes:
+    levels: How many times the image is halved.
+    iterations: The steps at each level.
+    kappa: The edge threshold.
+    lambda: The step size.
+    conduction: The conduction function.
+  tryThis:
+    - Add Gaussian noise, blur it with a Gaussian of sigma 2, then compare 0 levels with 3 levels.
+  pitfalls:
+    - Too many levels smooth away wide, faint detail.
+  demos: [line-profile, noise-lab]
+related: [anisotropic-diffusion, gaussian-pyramid, laplacian-pyramid]
+docsPage: filters/multiscale/multires-diffusion.md

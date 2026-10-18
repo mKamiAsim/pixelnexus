@@ -41,6 +41,7 @@ from pixelnexus_engine.filters.artifacts import (
     descreen,
     jpeg_cleanup,
 )
+from pixelnexus_engine.filters.bilateral_solver import bilateral_solver
 from pixelnexus_engine.filters.bitonic import bitonic_parts
 from pixelnexus_engine.filters.bitonic import disk as bitonic_disk
 from pixelnexus_engine.filters.blobs import blob_dog_filter, blob_doh_filter, blob_log_filter
@@ -93,6 +94,7 @@ from pixelnexus_engine.filters.learned import (
     learned_edges,
     model_file,
     real_esrgan,
+    restormer,
     srcnn,
     swinir,
     swinir_sr,
@@ -4134,6 +4136,106 @@ def swinir_docs(out: dict[Path, str]) -> None:
     )
 
 
+def restormer_docs(out: dict[Path, str]) -> None:
+    if not models_on_disk(
+        "restormer-real-denoising", "restormer-motion-deblurring", "dncnn-color-blind"
+    ):
+        return
+    clean = lines_scene().astype(np.uint8)
+    reference = np.dstack([clean] * 3)
+    rows = []
+    for sigma in (15, 25, 50):
+        seen = color_noise(clean, sigma, seed=9)
+        rows.append(
+            [
+                str(sigma),
+                db(seen, reference),
+                db(run_color(dncnn, seen, "dncnn"), reference),
+                db(run_color(restormer, seen, "restormer", task="denoise"), reference),
+            ]
+        )
+    texture = texture_scene()
+
+    def motion(image: Gray, length: int) -> Gray:
+        """A horizontal motion: the mean of `length` neighbors in each row, edges mirrored."""
+        mean = ndimage.uniform_filter1d(image.astype(np.float64), length, axis=1, mode="mirror")
+        out: Gray = np.clip(np.rint(mean), 0, 255).astype(np.uint8)
+        return out
+
+    blurred = motion(clean, 9)
+    sharpened = run(restormer, blurred, "restormer", task="deblur")
+    figure(
+        out,
+        "restormer",
+        "The step and three thin lines of the DnCNN figure, blurred by a horizontal motion of 9 "
+        "pixels, then Restormer with its motion blur model.",
+        [
+            {"title": "Original", "image": picture(clean)},
+            {"title": "Motion blur", "image": picture(blurred)},
+            {"title": "Restormer", "image": picture(sharpened)},
+        ],
+    )
+    blur_rows = []
+    for name, scene, length in (
+        ("Step and lines", clean, 5),
+        ("Step and lines", clean, 9),
+        ("Texture", texture, 9),
+    ):
+        smeared = motion(scene, length)
+        blur_rows.append(
+            [
+                name,
+                str(length),
+                db(smeared, scene),
+                db(run(restormer, smeared, "restormer", task="deblur"), scene),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / "restormer.md"] = (
+        header("restormer")
+        + "Gaussian noise in each color channel, on the image of the DnCNN figure:\n\n"
+        + md_table(["Noise sigma", "Noisy (dB)", "DnCNN (dB)", "Restormer, real noise (dB)"], rows)
+        + "\nMotion blur along the rows, on the image of the figure and on the texture image of "
+        "the edge pages:\n\n"
+        + md_table(
+            ["Image", "Blur length", "Blurred (dB)", "Restormer, motion blur (dB)"], blur_rows
+        )
+        + "\nPSNR against the clean images, over the three channels for the noise and on gray "
+        "for the blur. Noise and blur are rounded and clipped to 8 bits.\n"
+    )
+
+
+def bilateral_solver_docs(out: dict[Path, str]) -> None:
+    clean = lines_scene().astype(np.uint8)
+    reference = np.dstack([clean] * 3)
+    observed = color_noise(clean, 20, seed=9)
+
+    def solved(rgb: Color, lam: float) -> Color:
+        return run_color(bilateral_solver, rgb, "bilateral-solver", **{"lambda": lam})
+
+    figure(
+        out,
+        "bilateral-solver",
+        "The step and three thin lines with noise of sigma 20 in each color channel. Then the "
+        "solver with lambda 0, where each pixel gets the mean of its grid cell, and with lambda "
+        "128. The figure shows the red channel.",
+        [
+            {"title": "Noisy", "image": picture(observed[..., 0])},
+            {"title": "Lambda 0", "image": picture(solved(observed, 0)[..., 0])},
+            {"title": "Lambda 128", "image": picture(solved(observed, 128)[..., 0])},
+        ],
+    )
+    rows = [["Noisy", db(observed, reference)]] + [
+        [f"Lambda {lam}", db(solved(observed, lam), reference)] for lam in (0, 32, 128, 512)
+    ]
+    out[ROOT / "docs" / "_generated" / "examples" / "bilateral-solver.md"] = (
+        header("bilateral-solver")
+        + md_table(["Result", "PSNR (dB)"], rows)
+        + "\nPSNR against the clean image of the figure, 120 x 120, over the three channels. "
+        "Gaussian noise of sigma 20 in each channel, rounded and clipped to 8 bits. The other "
+        "parameters have their defaults: spatial sigma 8, brightness and color sigma 16.\n"
+    )
+
+
 def learned_edges_docs(out: dict[Path, str]) -> None:
     from skimage import feature
 
@@ -4405,6 +4507,8 @@ def build() -> dict[Path, str]:
     denoise_docs(out)
     super_resolution_docs(out)
     swinir_docs(out)
+    restormer_docs(out)
+    bilateral_solver_docs(out)
     style_docs(out)
     learned_edges_docs(out)
     tone_docs(out)

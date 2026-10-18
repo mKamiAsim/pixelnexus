@@ -21,6 +21,7 @@ import {
   leeFilter,
 } from "./adaptive/speckle";
 import { sradFilter } from "./adaptive/srad";
+import { kalmanFilter, lms2dFilter, rls2dFilter } from "./adaptive/scan";
 import { freiChenFilter, kirschFilter, lineDetectorFilter, robinsonFilter } from "./edges/compass";
 import { faridFilter, prewittFilter, robertsFilter, scharrFilter } from "./edges/gradients";
 import { lawsFilter } from "./edges/laws";
@@ -100,6 +101,7 @@ import {
 } from "./frequency/shaping";
 import { gaborFilter } from "./linear/gabor";
 import { gaussianPyramidFilter, laplacianPyramidFilter } from "./multiscale/pyramid";
+import { multiresDiffusionFilter } from "./multiscale/multires-diffusion";
 import { scaleSpaceFilter } from "./multiscale/scale-space";
 import {
   blackhatFilter,
@@ -290,6 +292,7 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   wienerDenoiseFilter,
   gaussianPyramidFilter,
   laplacianPyramidFilter,
+  multiresDiffusionFilter,
   scaleSpaceFilter,
   medianFilter,
   weightedMedianFilter,
@@ -328,6 +331,9 @@ export const BROWSER_FILTERS: readonly BrowserFilter[] = [
   frostFilter,
   gammaMapFilter,
   sradFilter,
+  lms2dFilter,
+  rls2dFilter,
+  kalmanFilter,
   minFilter,
   maxFilter,
   midpointFilter,

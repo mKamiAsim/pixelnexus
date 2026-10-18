@@ -62,3 +62,33 @@ test("Image > Rotate by angle grows the canvas, and the Library opens the dialog
   await page.getByRole("button", { name: "Open Resize" }).click();
   await expect(page.getByRole("dialog", { name: "Resize image" })).toBeVisible();
 });
+
+test("Image > Crop keeps a typed rectangle, and Rotate and flip turns the image", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openTestImage(page, "Zone plate");
+  // Without a selection the rectangle is the whole image.
+  await page.getByRole("menuitem", { name: "Image", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Crop..." }).click();
+  const dialog = page.getByRole("dialog", { name: "Crop" });
+  await expect(dialog.getByRole("textbox", { name: "Width" })).toHaveValue("512");
+  await dialog.getByRole("textbox", { name: "Left" }).fill("100");
+  await dialog.getByRole("textbox", { name: "Width" }).fill("300");
+  await dialog.getByRole("textbox", { name: "Height" }).fill("200");
+  await dialog.getByRole("textbox", { name: "Height" }).press("Tab");
+  await expect(dialog).toContainText("The result is 300 x 200 pixels.");
+  await dialog.getByRole("button", { name: "Crop", exact: true }).click();
+  await expect(status(page)).toContainText("300 x 200 px");
+  await expect(announcer(page)).toContainText("Crop to 300 x 200 at x 100, y 0 applied");
+
+  await page.getByRole("menuitem", { name: "Image", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Rotate and flip..." }).click();
+  const turn = page.getByRole("dialog", { name: "Rotate and flip" });
+  await turn.getByRole("button", { name: "Apply" }).click();
+  await expect(status(page)).toContainText("200 x 300 px");
+  await page.keyboard.press("Control+z");
+  await expect(status(page)).toContainText("300 x 200 px");
+  expect(errors).toEqual([]);
+});

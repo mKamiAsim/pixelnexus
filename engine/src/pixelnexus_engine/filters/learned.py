@@ -27,6 +27,12 @@ up to rounding. Pixels outside the image are zeros, as in a run on the whole ima
   SWINIR_MARGIN pixels on each side, as in the tile mode of SwinIR's own test script, and only its
   center is kept. The image is mirrored past its edges to fill the tiles. Shifted windows let
   every layer see a little further, so a tiled run is close to a run on the whole image, not equal.
+* restormer: Restormer for real camera noise, or for motion blur, as in demo.py of the Restormer
+  repository: the image is mirrored at the bottom and right to sides that are multiples of 8.
+  Images up to RESTORMER_TILE pixels on each side run whole. Larger ones run in tiles of that
+  size that overlap by at least 32 pixels, and the overlaps are averaged. Its attention spans the
+  whole input across channels, so tiles are close to a whole run, not equal. The result is
+  clamped to 0 to 1.
 """
 
 from __future__ import annotations
@@ -60,6 +66,9 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], np.float32)
 # test script.
 SWINIR_TILE = {"swinir-lightweight-x2": 128, "swinir-color-dn25": 256}
 SWINIR_MARGIN = 32
+# The tile size and overlap of the example in Restormer's demo.py.
+RESTORMER_TILE = 720
+RESTORMER_OVERLAP = 32
 
 
 @cache
@@ -525,3 +534,65 @@ def swinir_sr(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
     result = fixed_tiles(run, colors, SWINIR_TILE[model], SWINIR_MARGIN, scale=2, progress=progress)
     progress(1.0)
     return straight(result, enlarge_alpha(alpha, 2))
+
+
+# Restormer -------------------------------------------------------------------------------------
+
+
+def averaged_tiles(run: Callable[[Float], Float], image: Float, tile: int, overlap: int) -> Float:
+    """demo.py of Restormer: tiles of tile x tile pixels with a stride of tile - overlap, the last
+    one flush with the edge, and the mean where tiles overlap. Sides are multiples of 8."""
+    _, height, width = image.shape
+    tile = min(tile, height, width)
+    stride = tile - overlap
+    rows = [*range(0, height - tile, stride), height - tile]
+    cols = [*range(0, width - tile, stride), width - tile]
+    total = np.zeros_like(image)
+    count = np.zeros((1, height, width), np.float32)
+    for y in rows:
+        for x in cols:
+            total[:, y : y + tile, x : x + tile] += run(image[:, y : y + tile, x : x + tile])
+            count[:, y : y + tile, x : x + tile] += 1
+    out: Float = total / count
+    return out
+
+
+def restormer_representation(params: dict[str, Any]) -> dict[str, Any]:
+    return network_stages(
+        "Restormer",
+        chosen_model("restormer", params),
+        [
+            (
+                "Pad",
+                "H, W \\to \\text{multiples of } 8",
+                "The image is mirrored at the bottom and right, as in Restormer's demo.",
+            ),
+            (
+                "Network",
+                "\\hat{x} = y + f(y)",
+                "A U-shaped network of transformer blocks. Their attention compares channels, not "
+                "pixels, so its cost grows only linearly with the image size.",
+            ),
+            (
+                "Tiles",
+                f"{RESTORMER_TILE} \\times {RESTORMER_TILE}",
+                f"Larger images run in tiles that overlap by at least {RESTORMER_OVERLAP} pixels, "
+                "and the overlaps are averaged.",
+            ),
+        ],
+    )
+
+
+@register("restormer", representation=restormer_representation)
+def restormer(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
+    run = network(model_file(chosen_model("restormer", params)))
+    height, width = image.shape[:2]
+    pad_y, pad_x = -height % 8, -width % 8
+    chw = to_chw(image)
+    padded = np.pad(chw, ((0, 0), (0, pad_y), (0, pad_x)), mode="reflect")
+    if max(padded.shape[1:]) <= RESTORMER_TILE:
+        result = run(padded)
+    else:
+        result = averaged_tiles(run, padded, RESTORMER_TILE, RESTORMER_OVERLAP)
+    progress(1.0)
+    return from_chw(np.clip(result[:, :height, :width], 0, 1), image[..., 3])

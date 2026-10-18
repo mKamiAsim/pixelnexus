@@ -1,7 +1,134 @@
 id: bilateral-solver
 name: Bilateral solver
+aliases: [Fast bilateral solver, Edge-aware smoothing by optimization]
 family: nonlinear
-tier: planned
-engine: none
-status: planned
-reason: Large sparse solver. High effort for its teaching value.
+tags: [purpose:denoise, purpose:smooth, noise:gaussian]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: The fast bilateral solver of Barron and Poole, as an edge-aware smoother of the image guided by itself.
+
+summary: Finds the smoothest image that stays close to the input, where smooth means that pixels of similar position and color have similar values. It works on a coarse bilateral grid, so it is fast, and edges between different colors stay sharp.
+purpose: Show edge-aware smoothing as an optimization problem, solved on a bilateral grid.
+classification: {linearity: nonlinear, domain: iterative, operation: bilateral-space least squares}
+output: image
+representation: algorithm
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/bilateral_solver.py, symbol: bilateral_solver_representation}
+supportRadius: the whole image
+supportsMask: true
+preview: on-demand
+colorHandling: >-
+  The guide is the image in Y'CbCr with the BT.709 weights, in levels. Red, green and blue are
+  each solved with the same grid and system. Alpha stays.
+boundary: Only pixels of the image take part. No padding is needed.
+
+params:
+  - key: sigmaSpatial
+    label: Spatial sigma
+    type: number
+    min: 2
+    max: 64
+    step: 1
+    default: 8
+    unit: px
+    description: The cell size of the grid in x and y. Pixels further apart than this rarely share a vertex.
+    effect: Larger cells smooth over larger areas and make the grid smaller and faster.
+  - key: sigmaLuma
+    label: Brightness sigma
+    type: number
+    min: 2
+    max: 64
+    step: 1
+    default: 16
+    description: The cell size of the grid in brightness Y, in levels.
+    effect: Larger values join pixels of more different brightness, so noise is removed but weak edges blur. Below the noise level, noise splits the cells and little is smoothed.
+  - key: sigmaChroma
+    label: Color sigma
+    type: number
+    min: 2
+    max: 64
+    step: 1
+    default: 16
+    description: The cell size of the grid in Cb and Cr, in levels.
+    effect: Larger values join pixels of more different color.
+  - key: lambda
+    label: Smoothness lambda
+    type: number
+    min: 0
+    max: 1024
+    step: 1
+    default: 128
+    description: The weight of smoothness against closeness to the input.
+    effect: At 0 each pixel becomes the mean of its grid cell. Larger values spread values further along areas of similar color.
+formula: |
+  \min_{\mathbf{y}}\; \frac{\lambda}{2} \sum_{i,j} \hat{W}_{ij} (y_i - y_j)^2 + \sum_i c_i (y_i - t_i)^2,\qquad
+  \Big(\lambda\,(D_m - D_n \bar{B} D_n) + \operatorname{diag}(S\mathbf{c})\Big)\, \mathbf{y} = S(\mathbf{c} \circ \mathbf{t}),\qquad
+  \hat{\mathbf{x}} = S^{\top} \mathbf{y}
+formulaExplanation: >-
+  t is the input channel and c the confidence of each pixel, here 1 everywhere. The first sum
+  asks for similar values where the bilateral affinity W is high: near in position and color.
+  On the grid, S adds pixels into vertices and the blur B joins neighboring vertices. D_n and
+  D_m come from bistochastization, which scales B so that its rows keep the pixel counts. The
+  problem then becomes the sparse linear system shown, one unknown per vertex. Its solution y is
+  sliced back to the pixels by S transposed.
+symbols:
+  - {symbol: '\mathbf{t}', meaning: 'The input channel'}
+  - {symbol: '\mathbf{c}', meaning: 'The confidence of each pixel, 1 here'}
+  - {symbol: '\lambda', meaning: 'The smoothness weight'}
+  - {symbol: 'S', meaning: 'The matrix that adds pixels into grid vertices'}
+  - {symbol: '\bar{B}', meaning: 'The blur over neighboring vertices, [1, 2, 1] in each of the 5 dimensions'}
+  - {symbol: 'D_n, D_m', meaning: 'The diagonal scalings from bistochastization'}
+  - {symbol: '\mathbf{y}', meaning: 'The values at the vertices'}
+steps:
+  - Give each pixel the grid cell of its position, brightness and color, each divided by its sigma and rounded down.
+  - Build S, which adds pixels into cells, and the blur B over neighboring cells.
+  - Scale B by bistochastization, in 10 steps.
+  - For each color channel, solve the sparse linear system with preconditioned conjugate gradients.
+  - Give each pixel the value of its cell.
+complexity:
+  time: O(N + V k)
+  memory: O(N + V)
+  notes: N is the number of pixels, V the number of occupied grid cells, often hundreds of times fewer, and k the conjugate gradient steps, at most 50.
+useCases:
+  - Edge-aware smoothing of noisy images.
+  - Teaching edge-aware optimization and the bilateral grid.
+advantages:
+  - Fast, since the work is on the grid and not on the pixels.
+  - Keeps edges between colors that fall into different cells.
+limitations:
+  - Pixels of the same cell always get the same value, so fine detail inside a cell is lost.
+  - Cells are cut at fixed boundaries, so two similar colors on either side of a boundary are not joined.
+artifacts:
+  - Isolated noise pixels with a far-off color stay as specks, alone in their cell.
+  - Slight banding in smooth ramps, at the brightness boundaries of the cells.
+references:
+  - kind: paper
+    text: Barron, J. T., and Poole, B. The fast bilateral solver. Computer Vision, ECCV 2016, Lecture Notes in Computer Science, 617 to 632, 2016.
+    doi: 10.1007/978-3-319-46487-9_38
+implementation: {path: engine/src/pixelnexus_engine/filters/bilateral_solver.py, symbol: bilateral_solver}
+tests: [engine/tests/test_bilateral_solver.py]
+learn:
+  oneSentence: Find the smoothest image that stays close to the original, where only pixels of similar color must agree.
+  howItWorks:
+    - Sort the pixels into cells by position, brightness and color.
+    - Ask every cell to be close to its pixels and similar to its neighboring cells.
+    - Solve for all cells at once, then give each pixel the value of its cell.
+  academic: >-
+    Bilateral-space least squares: a quadratic problem whose smoothness term uses bilateral
+    affinities, made small by a simplified bilateral grid and solved with preconditioned
+    conjugate gradients after bistochastization.
+  paramNotes:
+    sigmaSpatial: The cell size in pixels.
+    sigmaLuma: The cell size in brightness.
+    sigmaChroma: The cell size in color.
+    lambda: Smoothness against closeness.
+  tryThis:
+    - Add Gaussian noise with sigma 20, then compare the bilateral solver with the bilateral filter.
+    - Set lambda to 0 and see the cells themselves.
+  pitfalls:
+    - A brightness sigma below the noise level leaves the noise, since the noise splits the cells.
+  demos: [line-profile]
+related: [bilateral, guided, domain-transform, tv-denoise]
+docsPage: filters/nonlinear/bilateral-solver.md

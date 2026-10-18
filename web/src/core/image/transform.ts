@@ -1,6 +1,7 @@
 /**
- * Lossless geometric operations: quarter turns and mirrors. Catalog entry: utility/rotate-flip.
- * They move whole pixels, so no value changes. Each pixel is copied as one 32-bit word.
+ * Lossless geometric operations: quarter turns, mirrors and crops. Catalog entries:
+ * utility/rotate-flip and utility/crop. They move whole pixels, so no value changes. Each pixel
+ * is copied as one 32-bit word.
  */
 import { createImage, type RgbaImage } from "@/core/image/types";
 
@@ -40,6 +41,34 @@ export function flip(image: RgbaImage, axis: FlipAxis): RgbaImage {
       const target = axis === "horizontal" ? y * w + (w - 1 - x) : (h - 1 - y) * w + x;
       dst[target] = src[y * w + x] ?? 0;
     }
+  }
+  return out;
+}
+
+export interface CropRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The part of a crop rectangle that lies inside a width x height image, or null if none does. */
+export function clampCrop(rect: CropRect, width: number, height: number): CropRect | null {
+  const x = Math.max(0, Math.round(rect.x));
+  const y = Math.max(0, Math.round(rect.y));
+  const right = Math.min(width, Math.round(rect.x + rect.width));
+  const bottom = Math.min(height, Math.round(rect.y + rect.height));
+  return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null;
+}
+
+/** Keep the rectangle of the image. The rectangle must lie inside the image. */
+export function crop(image: RgbaImage, rect: CropRect): RgbaImage {
+  const out = createImage(rect.width, rect.height);
+  const src = words(image);
+  const dst = words(out);
+  for (let y = 0; y < rect.height; y++) {
+    const from = (rect.y + y) * image.width + rect.x;
+    dst.set(src.subarray(from, from + rect.width), y * rect.width);
   }
   return out;
 }

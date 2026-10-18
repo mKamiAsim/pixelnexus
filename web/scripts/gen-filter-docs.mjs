@@ -1029,6 +1029,10 @@ try {
     ...{ run, pic, row, figure, example, planeAt, matrix, block, mdTable, fix, synthetic },
     ...{ createImage, savgolCoefficients },
   });
+  const { scanDocs } = await import("./filter-docs/scan.mjs");
+  scanDocs({ run, pic, row, figure, example, mdTable, fix, synthetic, createImage });
+  const { multiresDocs } = await import("./filter-docs/multires.mjs");
+  multiresDocs({ run, pic, figure, example, mdTable, fix, synthetic, createImage });
   const { speckleDocs } = await import("./filter-docs/speckle.mjs");
   const speckle = await load("/src/core/filters/adaptive/speckle.ts");
   speckleDocs({
