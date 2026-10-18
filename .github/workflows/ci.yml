@@ -28,13 +28,14 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm format:check
-      # Browser tests (Vitest browser mode) need Chromium. End-to-end tests run in all three browsers.
-      - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium firefox webkit
+      # Browser tests (Vitest browser mode) and end-to-end tests run in Chromium here.
+      # Firefox and WebKit run in the Full checks workflow.
+      - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium
       - run: pnpm test:coverage
       # Kernels and worked examples in the docs come from the filter code.
       - run: pnpm --filter @pixelnexus/web gen:filter-docs --check
       - run: pnpm build
-      - run: pnpm e2e
+      - run: pnpm e2e --project=chromium
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -54,12 +55,12 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
-      - run: uv run pytest
+      - run: uv run pytest -n auto
       - run: uv run python tools/check_catalog.py --summary
       - run: uv run python tools/lint_prose.py
       - run: uv run python tools/make_fixtures.py --check
       - run: uv run python tools/gen_docs.py --check
       - run: uv run python tools/check_docs.py
       - run: uv run python tools/make_probe_model.py --check
-      - run: uv run python tools/engine_docs.py --check
+      # tools/engine_docs.py --check takes over 30 minutes. It runs in the Full checks workflow.
       - run: uv run mkdocs build --strict

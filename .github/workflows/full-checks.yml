@@ -1,0 +1,48 @@
+name: Full checks
+
+# The slow checks that CI leaves out: end-to-end tests in all three browsers, and the
+# science engine docs material. They run every Monday, and on demand from the Actions tab.
+# They do not block pull requests.
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-checks
+  cancel-in-progress: true
+
+jobs:
+  browsers:
+    name: End-to-end, three browsers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @pixelnexus/web exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: web/playwright-report
+          retention-days: 7
+
+  engine-docs:
+    name: Engine docs material
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --extra cpu
+      - run: uv run python tools/engine_docs.py --check

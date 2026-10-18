@@ -101,6 +101,8 @@ The first command runs the TypeScript filters and writes the figure data and the
 
 ## Continuous integration
 
-GitHub Actions runs all of the above on every push and pull request to `main`. The workflow is in `.github/workflows/ci.yml`.
+GitHub Actions runs the checks on every push and pull request to `main`. The workflow is in `.github/workflows/ci.yml`. A pull request can be merged only when it passes.
+
+To keep it fast, CI runs the end-to-end tests in Chromium only, and leaves out `tools/engine_docs.py --check`. The Full checks workflow, `.github/workflows/full-checks.yml`, runs both in full every Monday. You can also start it from the Actions tab.
 
 A filter is marked "Implemented and tested" only after its tests have run and passed.
