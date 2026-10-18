@@ -18,6 +18,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # configure-pages reads the Pages settings of the repository.
+    permissions:
+      contents: read
+      pages: read
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
