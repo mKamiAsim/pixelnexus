@@ -2,7 +2,7 @@
 
 The studio shows the same list under **Help > Keyboard shortcuts** (Ctrl+/ or Cmd+/). The command palette (Ctrl+K or Cmd+K) also shows the shortcut next to each command.
 
-Shortcuts with Ctrl or Cmd work anywhere, except while you type in a text field. Single-letter tool keys work when the focus is not in a field or a menu.
+Shortcuts with Ctrl or Cmd work anywhere, except while you type in a text field, such as the search box. In a number field they work too, so Ctrl+Enter applies the value you typed and Ctrl+Z undoes. Single-letter tool keys work when the focus is not in a field or a menu.
 
 ## Commands
 

@@ -154,3 +154,24 @@ test("an image can be opened, filtered and undone with the keyboard only", async
   await page.keyboard.press("Enter");
   await expect(page.locator('canvas[tabindex="0"]')).toBeFocused();
 });
+
+test("Ctrl+Enter applies and Ctrl+Z undoes while a number field has focus", async ({ page }) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /Siemens star/ })
+    .first()
+    .click();
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("Gaussian filter");
+  await page.keyboard.press("Enter");
+  const sigma = page.getByRole("textbox", { name: "Sigma" });
+  await sigma.click();
+  await sigma.fill("6");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByTestId("announcer")).toContainText("Applied Gaussian filter (sigma 6 px)");
+  await expect(sigma).toBeFocused();
+  await page.keyboard.press("Control+z");
+  await expect(page.getByTestId("announcer")).toContainText("Undid Gaussian filter (sigma 6 px)");
+  await page.keyboard.press("Control+Shift+z");
+  await expect(page.getByTestId("announcer")).toContainText("Redid Gaussian filter (sigma 6 px)");
+});

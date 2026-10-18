@@ -17,7 +17,8 @@ export function isTyping(target: EventTarget | null): boolean {
 
 /**
  * Keyboard shortcuts for every command, plus the hold-to-see-original key.
- * While you type in a field, only the command palette shortcut works.
+ * While you type in a text field, only the command palette shortcut works. In a number field,
+ * every shortcut with Ctrl or Cmd works, so Ctrl+Z undoes and Ctrl+Enter applies.
  */
 export function useGlobalKeys(): void {
   useEffect(() => {
@@ -43,7 +44,16 @@ export function useGlobalKeys(): void {
       for (const command of commands) {
         if (!command.shortcut || command.browserKey) continue;
         if (!matchesShortcut(event, command.shortcut)) continue;
-        if (typing && command.id !== "help.palette") return;
+        // In a number field, shortcuts with Ctrl or Cmd still work, such as undo and apply.
+        const numeric = Boolean(
+          (event.target as HTMLElement | null)?.closest?.("[data-studio-shortcuts]"),
+        );
+        if (
+          typing &&
+          command.id !== "help.palette" &&
+          !(numeric && command.shortcut.includes("Mod"))
+        )
+          return;
         // Single keys such as H must not fire inside menus or other widgets that use letters.
         const single = !command.shortcut.includes("+");
         if (

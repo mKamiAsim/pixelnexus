@@ -6,7 +6,7 @@ More panels arrive with later phases, such as Pipeline.
 
 ## Library
 
-The Library lists every filter in the catalog, grouped by family. Each row has a status badge: **Tested** filters can run, **Planned** filters cannot run yet.
+The Library lists every filter in the catalog, grouped by family. Point at a filter to read what it does. A badge marks filters that need something extra, such as an AI model or the engine.
 
 - **Search.** Type part of a name, an alias, a method or a purpose, for example "blur", "edge" or "salt". Every word must match. Names count most.
 - **Show.** **All**, **Ready** (filters that can run) or **Planned**.

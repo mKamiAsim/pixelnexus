@@ -43,6 +43,13 @@ export function NumberField({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.ctrlKey || event.metaKey) {
+      // Studio shortcuts such as Ctrl+Enter (apply) and Ctrl+Z (undo) work here too. A typed value
+      // is applied first, so Ctrl+Enter runs with it. Undo and redo drop it instead.
+      if (event.key === "z" || event.key === "Z" || event.key === "y") setDraft(null);
+      else commit();
+      return;
+    }
     if (event.key === "Enter") {
       // An edit in progress is applied first. Without this, Enter would also submit the form
       // around the field with the value from before the edit.
@@ -69,6 +76,7 @@ export function NumberField({
         id={id}
         aria-label={label}
         inputMode="decimal"
+        data-studio-shortcuts
         disabled={disabled}
         value={shown}
         onChange={(event) => setDraft(event.target.value)}

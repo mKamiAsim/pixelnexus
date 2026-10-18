@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { EngineBadge } from "@/components/ui/EngineBadge";
 import { IconButton } from "@/components/ui/IconButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { Select } from "@/components/ui/Select";
 import { useFilters } from "@/state/filters";
 
@@ -30,25 +31,27 @@ function FilterRow({ filter }: { filter: Filter }) {
   const runnable = isRunnable(filter);
   return (
     <li className="group flex items-center gap-1">
-      <button
-        type="button"
-        aria-current={selected ? "true" : undefined}
-        onClick={() => selectFilter(filter.id)}
-        className={clsx(
-          "flex h-7 min-w-0 flex-1 items-center gap-2 rounded-control pr-1 pl-5 text-left text-sm",
-          selected
-            ? "bg-accent-subtle text-text"
-            : runnable
-              ? "text-text hover:bg-hover"
-              : "text-text-muted hover:bg-hover",
-        )}
-      >
-        <span className="truncate">{filter.name}</span>
-        <span className="ml-auto flex shrink-0 gap-1">
-          <EngineBadge entry={filter} />
-          <StatusBadge status={filter.status} />
-        </span>
-      </button>
+      <Tooltip content={filter.summary ?? filter.name} side="right">
+        <button
+          type="button"
+          aria-current={selected ? "true" : undefined}
+          onClick={() => selectFilter(filter.id)}
+          className={clsx(
+            "flex h-7 min-w-0 flex-1 items-center gap-2 rounded-control pr-1 pl-5 text-left text-sm",
+            selected
+              ? "bg-accent-subtle text-text"
+              : runnable
+                ? "text-text hover:bg-hover"
+                : "text-text-muted hover:bg-hover",
+          )}
+        >
+          <span className="truncate">{filter.name}</span>
+          <span className="ml-auto flex shrink-0 gap-1">
+            <EngineBadge entry={filter} />
+            <StatusBadge status={filter.status} />
+          </span>
+        </button>
+      </Tooltip>
       <IconButton
         label={
           favorite ? `Remove ${filter.name} from favorites` : `Add ${filter.name} to favorites`

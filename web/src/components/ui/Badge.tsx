@@ -51,8 +51,12 @@ const STATUS_STYLE: Record<Status, { tone: BadgeTone; short: string; icon: React
   unsupported: { tone: "danger", short: "Unsupported", icon: <Ban size={11} /> },
 };
 
-/** Catalog status as a badge. The icon and the word carry the meaning, not the color alone. */
+/**
+ * Catalog status as a badge. The icon and the word carry the meaning, not the color alone.
+ * Tested filters show no badge: every filter that runs is tested, so the badge says nothing.
+ */
 export function StatusBadge({ status }: { status: Status }) {
+  if (status === "implemented-tested") return null;
   const style = STATUS_STYLE[status];
   return (
     <Badge tone={style.tone} icon={style.icon} title={STATUS_LABELS[status]}>
