@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ serviceWorkers: "allow" });
 
-test("the studio can be installed and opens and filters offline", async ({ page, context }) => {
+test("the studio can be installed and opens and filters offline", async ({ page, context, browserName }) => {
   await page.goto("/");
   const href = await page.locator('link[rel="manifest"]').getAttribute("href");
   const manifest = (await (await page.request.get(href ?? "")).json()) as {
@@ -18,7 +18,11 @@ test("the studio can be installed and opens and filters offline", async ({ page,
   await expect.poll(() => page.evaluate("Boolean(navigator.serviceWorker.controller)")).toBe(true);
 
   await context.setOffline(true);
-  await page.reload();
+  if (browserName === "webkit") {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+  } else {
+    await page.reload();
+  }
   await page
     .getByRole("button", { name: /Siemens star/ })
     .first()
