@@ -1,7 +1,0 @@
-id: shearlet
-name: Shearlet filtering
-family: multiscale
-tier: planned
-engine: none
-status: planned
-reason: pyShearLab license to check. The shearlet-inspired filter is available.

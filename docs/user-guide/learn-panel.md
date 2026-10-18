@@ -25,7 +25,6 @@ The switch at the top sets the level of detail.
 | Common mistakes | Settings and situations that give poor results. |
 | Where to go next | Related filters and the docs page of this filter. |
 
-Planned filters show a note instead. Their lesson arrives with their code.
 
 ## Choose the pixel
 

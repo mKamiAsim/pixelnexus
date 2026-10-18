@@ -234,5 +234,5 @@ learn:
   pitfalls:
     - Salt and pepper noise. Single extreme pixels give large coefficients that pass the threshold. Use a median filter first.
   demos: [noise-lab]
-related: [swt-denoise, wavelet-wiener, dtcwt-denoise, laplacian-pyramid, nlm, bilateral, wiener-denoise]
+related: [swt-denoise, wavelet-wiener, laplacian-pyramid, nlm, bilateral, wiener-denoise]
 docsPage: filters/multiscale/wavelet-threshold.md

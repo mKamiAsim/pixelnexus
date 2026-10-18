@@ -9,7 +9,7 @@ export interface LibraryFacets {
   readonly noise: string;
   readonly engine: string;
   /** "runnable" shows only filters that can run now. */
-  readonly status: "runnable" | "all" | "planned";
+  readonly status: "runnable" | "all";
 }
 
 export const ANY = "any";
@@ -57,7 +57,6 @@ export function facetValues(
 
 function matchesFacets(filter: Filter, facets: LibraryFacets): boolean {
   if (facets.status === "runnable" && !isRunnable(filter)) return false;
-  if (facets.status === "planned" && isRunnable(filter)) return false;
   if (
     facets.family !== ANY &&
     filter.family !== facets.family &&

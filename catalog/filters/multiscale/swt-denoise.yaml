@@ -219,5 +219,5 @@ learn:
   pitfalls:
     - Very large images with many levels. Every level keeps three full-size subbands.
   demos: [noise-lab]
-related: [wavelet-threshold, wavelet-wiener, dtcwt-denoise, nlm, bilateral]
+related: [wavelet-threshold, wavelet-wiener, nlm, bilateral]
 docsPage: filters/multiscale/swt-denoise.md

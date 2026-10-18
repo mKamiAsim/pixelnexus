@@ -13,7 +13,6 @@ What PixelNexus does not do, or does with limits. Each filter page also lists it
 ## Filters
 
 - Each filter has exactly one engine. Science filters need the local PixelNexus engine running.
-- Planned filters are listed in the Library but cannot run.
 - Canny runs as one piece, since its hysteresis follows edges across the whole image. It is the slowest of the common filters on large images. See [Performance](../architecture/performance.md).
 - A pipeline cannot hold filters that make tables or features, filters that run from their own dialog, or filters that need a selection as their input.
 - Deleting a history step recomputes the later steps, but not a rotation, an AI result or a pipeline run.
@@ -35,8 +34,8 @@ What PixelNexus does not do, or does with limits. Each filter page also lists it
 
 ## Catalog
 
-- 24 filters are planned and cannot run yet. 7 are listed as unsupported, with the reason on their pages.
-- 8 science filters need a model that you download, and 1 needs an optional package.
+- The catalog lists only filters that run. Methods that are not implemented, such as diffusion models, Noise2Void or BM3D in full, are not in it.
+- 10 science filters need a model that you download, and 1 needs an optional package.
 
 ## Testing
 

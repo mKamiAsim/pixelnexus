@@ -1,7 +1,0 @@
-id: deep-image-prior
-name: Deep Image Prior
-family: learned
-tier: planned
-engine: none
-status: planned
-reason: Trains a network per image. Slow, needs PyTorch.

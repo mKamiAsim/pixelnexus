@@ -1,7 +1,0 @@
-id: learned-deconvolution
-name: Learned deconvolution
-family: learned
-tier: planned
-engine: none
-status: planned
-reason: A family of methods, not one model.

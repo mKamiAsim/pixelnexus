@@ -8,7 +8,7 @@ PixelNexus has two parts that deploy separately: the studio, a static web app, a
 
 ## GitHub Pages
 
-The workflow `.github/workflows/pages.yml` builds the docs, puts the studio in `studio/` next to them, and publishes both. The docs are at the root of the site and the studio is at `/studio/`. The workflow runs only when you start it by hand, from the Actions tab.
+The workflow `.github/workflows/pages.yml` builds the docs, puts the studio in `studio/` next to them, and publishes both. The docs are at the root of the site and the studio is at `/studio/`. The workflow runs on every push to `main`, and you can also start it by hand from the Actions tab.
 
 Before the first run, open the repository settings, then Pages, and set the source to GitHub Actions.
 

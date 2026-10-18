@@ -1,7 +1,0 @@
-id: deformable-conv
-name: Deformable convolution
-family: learned
-tier: unsupported
-engine: none
-status: unsupported
-reason: A layer type, not a filter. Explained in the docs.

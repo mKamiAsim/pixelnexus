@@ -83,7 +83,7 @@ describe("pipeline steps", () => {
     const table = catalog.filters.find((f) => f.output === "table" || f.output === "features");
     if (command) expect(pipelineProblem(command)).toMatch(/own dialog/);
     if (table) expect(pipelineProblem(table)).toMatch(/table or features/);
-    expect(pipelineProblem(entry("kalman"))).toMatch(/cannot run yet/);
+    expect(pipelineProblem({ ...entry("gaussian"), status: "planned" })).toMatch(/cannot run yet/);
   });
 
   it("validates saved values against the catalog", () => {

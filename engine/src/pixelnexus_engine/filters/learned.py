@@ -21,6 +21,12 @@ up to rounding. Pixels outside the image are zeros, as in a run on the whole ima
   pixels of margin, more than the reach of either network.
 * fast-style: the fast neural style models of the ONNX model zoo, at any size: their fixed 224 x
   224 input is made free in memory. Their output is rounded up to a multiple of 4 and cropped.
+* swinir, swinir-sr: SwinIR color denoising for noise 25, and lightweight 2x super-resolution.
+  SwinIR builds its attention masks from the input size, so each model is exported for one tile
+  size (SWINIR_TILE) and runs in tiles of exactly that size. Each tile overlaps its neighbors by
+  SWINIR_MARGIN pixels on each side, as in the tile mode of SwinIR's own test script, and only its
+  center is kept. The image is mirrored past its edges to fill the tiles. Shifted windows let
+  every layer see a little further, so a tiled run is close to a run on the whole image, not equal.
 """
 
 from __future__ import annotations
@@ -50,6 +56,10 @@ REACH = {"dncnn": 24, "ffdnet": 32, "real-esrgan": 40, "learned-edges": 128}
 HED_MEAN = np.array([104.00698793, 116.66876762, 122.67891434], np.float32)
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], np.float32)
+# Tile sizes of the SwinIR exports (tools/export_models.py), and the overlap of SwinIR's own
+# test script.
+SWINIR_TILE = {"swinir-lightweight-x2": 128, "swinir-color-dn25": 256}
+SWINIR_MARGIN = 32
 
 
 @cache
@@ -438,3 +448,80 @@ def learned_edges(image: Rgba, params: dict[str, Any], progress: Progress) -> Rg
     out[..., :3] = np.clip(np.rint(edges * 255), 0, 255).astype(np.uint8)[..., None]
     progress(1.0)
     return out
+
+
+# SwinIR -----------------------------------------------------------------------------------------
+
+
+def fixed_tiles(
+    run: Callable[[Float], Float],
+    image: Float,
+    size: int,
+    margin: int,
+    scale: int = 1,
+    progress: Progress | None = None,
+) -> Float:
+    """Run a network that takes only size x size inputs on a CHW image of any size.
+
+    Each tile keeps its center of (size - 2 margin) pixels. The image is mirrored past its edges,
+    so the tiles at the edges are full too."""
+    _, height, width = image.shape
+    core = size - 2 * margin
+    rows, cols = -(-height // core), -(-width // core)
+    pad_y, pad_x = rows * core - height + margin, cols * core - width + margin
+    padded = np.pad(image, ((0, 0), (margin, pad_y), (margin, pad_x)), mode="symmetric")
+    out = np.zeros((3, rows * core * scale, cols * core * scale), np.float32)
+    for row in range(rows):
+        for col in range(cols):
+            y, x = row * core, col * core
+            result = run(np.ascontiguousarray(padded[:, y : y + size, x : x + size]))
+            keep = result[
+                :,
+                margin * scale : (margin + core) * scale,
+                margin * scale : (margin + core) * scale,
+            ]
+            out[:, y * scale : (y + core) * scale, x * scale : (x + core) * scale] = keep
+            if progress is not None:
+                progress(0.9 * (row * cols + col + 1) / (rows * cols))
+    cropped: Float = out[:, : height * scale, : width * scale]
+    return cropped
+
+
+def swinir_representation(params: dict[str, Any]) -> dict[str, Any]:
+    return network_stages(
+        "SwinIR",
+        "swinir-color-dn25",
+        [
+            (
+                "Network",
+                "\\hat{x} = x + f(x)",
+                "Swin Transformer blocks attend inside windows of 8 x 8 pixels, shifted by 4 in "
+                "every second block. The network adds a correction to the image.",
+            ),
+            (
+                "Tiles",
+                f"{SWINIR_TILE['swinir-color-dn25']} \\times {SWINIR_TILE['swinir-color-dn25']}",
+                f"Tiles overlap by {SWINIR_MARGIN} pixels on each side, and only their centers "
+                "are kept.",
+            ),
+        ],
+    )
+
+
+@register("swinir", representation=swinir_representation)
+def swinir(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
+    model = "swinir-color-dn25"
+    run = network(model_file(model))
+    result = fixed_tiles(run, to_chw(image), SWINIR_TILE[model], SWINIR_MARGIN, progress=progress)
+    progress(1.0)
+    return from_chw(result, image[..., 3])
+
+
+@register("swinir-sr", representation=sr_representation("SwinIR", "swinir-sr", 2))
+def swinir_sr(image: Rgba, params: dict[str, Any], progress: Progress) -> Rgba:
+    model = "swinir-lightweight-x2"
+    run = network(model_file(model))
+    colors, alpha = premultiplied(image)
+    result = fixed_tiles(run, colors, SWINIR_TILE[model], SWINIR_MARGIN, scale=2, progress=progress)
+    progress(1.0)
+    return straight(result, enlarge_alpha(alpha, 2))

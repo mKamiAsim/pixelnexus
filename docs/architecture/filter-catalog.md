@@ -61,7 +61,7 @@ A browser filter in code is small. It states its kind and supplies one function.
 
 ## Status
 
-A filter can run only when its status says it is implemented. The studio still lists planned filters, with a badge and a disabled **Apply** button. The seven statuses and their labels are the same in the catalog, the studio and the docs:
+A filter can run only when its status says it is implemented. The catalog holds only filters that run, or that run after you add a model or a package. The statuses `planned` and `unsupported` remain in the schema for future entries. The seven statuses and their labels are the same in the catalog, the studio and the docs:
 
 | Status key | Shown as |
 |---|---|

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { catalog, countBy, isRunnable, modelFor, STATUS_LABELS } from "@/catalog";
 
 describe("catalog module", () => {
-  it("loads every planned entry", () => {
-    expect(catalog.filters.length + catalog.tools.length).toBe(337);
+  it("loads every entry", () => {
+    expect(catalog.filters.length + catalog.tools.length).toBe(317);
     expect(catalog.families).toHaveLength(14);
   });
 

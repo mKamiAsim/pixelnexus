@@ -1,7 +1,0 @@
-id: dynamic-filter-net
-name: Dynamic filter networks
-family: learned
-tier: unsupported
-engine: none
-status: unsupported
-reason: A design idea, not a runnable filter. Explained in the docs.

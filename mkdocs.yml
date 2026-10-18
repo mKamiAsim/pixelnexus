@@ -460,6 +460,8 @@ nav:
           - FFDNet: filters/learned/ffdnet.md
           - Real-ESRGAN: filters/learned/real-esrgan.md
           - EDSR: filters/learned/edsr.md
+          - SwinIR: filters/learned/swinir.md
+          - SwinIR super-resolution: filters/learned/swinir-sr.md
           - SRCNN and FSRCNN: filters/learned/srcnn.md
           - Neural style and texture filters: filters/learned/fast-style.md
           - Learned edge detector: filters/learned/learned-edges.md

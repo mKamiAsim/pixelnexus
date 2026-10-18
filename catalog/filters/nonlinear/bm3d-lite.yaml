@@ -133,5 +133,5 @@ learn:
   pitfalls:
     - A sigma far above the real noise. Detail is lost.
   demos: [line-profile, noise-lab]
-related: [nlm, wavelet-threshold, steering-kernel, bm3d]
+related: [nlm, wavelet-threshold, steering-kernel]
 docsPage: filters/nonlinear/bm3d-lite.md

@@ -34,8 +34,6 @@ describe("library search", () => {
         isRunnable(catalog.filters.find((f) => f.id === id) ?? { status: "planned" }),
       ),
     ).toBe(true);
-    const planned = ids("", { ...DEFAULT_FACETS, status: "planned" });
-    expect(planned).not.toContain("gaussian");
     expect(ids("", { ...DEFAULT_FACETS, family: "edges" })).toContain("laplacian");
     expect(ids("", { ...DEFAULT_FACETS, status: "runnable", linearity: "nonlinear" })).toContain(
       "median",

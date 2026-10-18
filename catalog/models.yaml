@@ -194,6 +194,40 @@ models:
       kind: paper
       text: Conde, M. V., Choi, U.-J., Burchi, M., and Timofte, R. Swin2SR. SwinV2 transformer for compressed image super-resolution and restoration. Computer Vision, ECCV 2022 Workshops, Lecture Notes in Computer Science, 669 to 687, 2023.
       doi: 10.1007/978-3-031-25063-7_42
+  - id: swinir-lightweight-x2
+    name: SwinIR lightweight, 2x
+    task: super-resolution
+    license: Apache License 2.0, from the SwinIR project, whose release holds this file.
+    licenseUrl: https://github.com/JingyunLiang/SwinIR/blob/main/LICENSE
+    sourceUrl: https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.pth
+    sha256: 193b229909ca89cd8b55de9c9e7fce146ae759d59dfcd78d8feb9dd1d6fa0fd7
+    sizeMB: 17.15
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, in tiles of 128 x 128 pixels.
+    outputs: The image at twice the width and height.
+    reference:
+      kind: paper
+      text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+      doi: 10.1109/ICCVW54120.2021.00210
+  - id: swinir-color-dn25
+    name: SwinIR color denoising, noise 25
+    task: denoise
+    license: Apache License 2.0, from the SwinIR project, whose release holds this file.
+    licenseUrl: https://github.com/JingyunLiang/SwinIR/blob/main/LICENSE
+    sourceUrl: https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/005_colorDN_DFWB_s128w8_SwinIR-M_noise25.pth
+    sha256: 39e264322ba762682de5acee4705aaeda7077b947204b9ce1899519ebd540724
+    sizeMB: 122.91
+    format: pytorch
+    runtimes: [engine]
+    phoneSuitable: false
+    inputs: An RGB image from 0 to 1, in tiles of 256 x 256 pixels, with Gaussian noise near 25 of 255.
+    outputs: The denoised image.
+    reference:
+      kind: paper
+      text: Liang, J., Cao, J., Sun, G., Zhang, K., Van Gool, L., and Timofte, R. SwinIR. Image restoration using Swin Transformer. IEEE/CVF International Conference on Computer Vision Workshops, 1833 to 1844, 2021.
+      doi: 10.1109/ICCVW54120.2021.00210
   - id: realesr-general-x4v3
     name: Real-ESRGAN general, 4x
     task: super-resolution

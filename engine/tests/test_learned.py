@@ -210,8 +210,9 @@ def test_edge_networks_get_their_own_normalization(
 
 @pytest.mark.parametrize(
     "filter_id",
-    ["dncnn", "ffdnet", "real-esrgan", "edsr", "srcnn", "fast-style", "learned-edges"],
-)
+    ["dncnn", "ffdnet", "real-esrgan", "edsr", "srcnn", "fast-style", "learned-edges", "swinir",
+     "swinir-sr"],
+)  # fmt: skip
 def test_the_representations(filter_id: str) -> None:
     from pixelnexus_engine.registry import FILTERS
 
@@ -219,6 +220,74 @@ def test_the_representations(filter_id: str) -> None:
     assert stages[-1]["name"] == "Model"
     for stage in stages:
         assert all(ch >= " " for ch in stage["formula"] + stage["note"])
+
+
+# SwinIR: fixed-size tiles -----------------------------------------------------------------------
+
+
+def fixed_model(
+    tmp_path: Path, size: int, nodes: list[Any], out: str, scale: int = 1, inits: Any = None
+) -> Path:
+    """A model that accepts only size x size inputs, as the SwinIR exports do."""
+    return save(tmp_path, f"fixed{size}x{scale}", nodes, [image_io("image", 3, size, size)],
+                [image_io(out, 3, size * scale, size * scale)], inits)  # fmt: skip
+
+
+def test_fixed_tiles_feed_only_full_tiles_and_keep_every_pixel(tmp_path: Path) -> None:
+    k = helper.make_tensor("k", TensorProto.FLOAT, [], [0.5])
+    path = fixed_model(tmp_path, 16, [helper.make_node("Mul", ["image", "k"], ["out"])], "out",
+                       inits=[k])  # fmt: skip
+    run = learned.network(path)
+    x = np.random.default_rng(2).random((3, 37, 23), dtype=np.float32)
+    # ONNX Runtime refuses any other input size, so every tile had to be 16 x 16.
+    np.testing.assert_allclose(learned.fixed_tiles(run, x, 16, 4), x * 0.5, atol=1e-7)
+
+
+def test_fixed_tiles_with_enough_margin_equal_a_whole_run_inside(tmp_path: Path) -> None:
+    # Two 3 x 3 box convolutions reach 2 pixels. Away from the image edges, where the mirrored
+    # padding and the zero padding of a whole run differ, the tiles must equal a whole run.
+    weight = helper.make_tensor("w", TensorProto.FLOAT, [3, 1, 3, 3], [1 / 9] * 27)
+    nodes = [
+        helper.make_node("Conv", ["image", "w"], ["c0"], pads=[1, 1, 1, 1], group=3),
+        helper.make_node("Conv", ["c0", "w"], ["c1"], pads=[1, 1, 1, 1], group=3),
+    ]
+    tiled_run = learned.network(fixed_model(tmp_path, 16, nodes, "c1", inits=[weight]))
+    whole = save(tmp_path, "box2", nodes, [image_io("image", 3)], [image_io("c1", 3)], [weight])
+    x = np.random.default_rng(3).random((3, 40, 50), dtype=np.float32)
+    got = learned.fixed_tiles(tiled_run, x, 16, 2)
+    np.testing.assert_allclose(got[:, 2:-2, 2:-2], learned.network(whole)(x)[:, 2:-2, 2:-2],
+                               atol=1e-6)  # fmt: skip
+
+
+def test_swinir_runs_on_rgb_in_its_tiles_and_keeps_alpha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    k = helper.make_tensor("k", TensorProto.FLOAT, [], [0.5])
+    path = fixed_model(tmp_path, 16, [helper.make_node("Mul", ["image", "k"], ["out"])], "out",
+                       inits=[k])  # fmt: skip
+    monkeypatch.setattr(learned, "model_file", lambda _: path)
+    monkeypatch.setitem(learned.SWINIR_TILE, "swinir-color-dn25", 16)
+    monkeypatch.setattr(learned, "SWINIR_MARGIN", 4)
+    image = rgba(np.random.default_rng(5), 30, 21, alpha=180)
+    out = learned.swinir(image, values("swinir"), NOTHING)
+    np.testing.assert_array_equal(out[..., :3], np.rint(image[..., :3] / 2).astype(np.uint8))
+    assert (out[..., 3] == 180).all()
+
+
+def test_swinir_sr_enlarges_two_times_with_alpha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scales = helper.make_tensor("s", TensorProto.FLOAT, [4], [1, 1, 2, 2])
+    nodes = [helper.make_node("Resize", ["image", "", "s"], ["out"], mode="nearest")]
+    path = fixed_model(tmp_path, 16, nodes, "out", scale=2, inits=[scales])
+    monkeypatch.setattr(learned, "model_file", lambda _: path)
+    monkeypatch.setitem(learned.SWINIR_TILE, "swinir-lightweight-x2", 16)
+    monkeypatch.setattr(learned, "SWINIR_MARGIN", 4)
+    image = rgba(np.random.default_rng(6), 19, 26)
+    out = learned.swinir_sr(image, values("swinir-sr"), NOTHING)
+    assert out.shape == (38, 52, 4)
+    np.testing.assert_array_equal(out[::2, ::2, :3], image[..., :3])
+    assert (out[..., 3] == 255).all()
 
 
 # Real models, where they are on disk ------------------------------------------------------------
@@ -345,3 +414,23 @@ def test_real_hed_tiles_on_the_pooling_grid_equal_a_whole_run(real_models: None)
     whole = run(np.ascontiguousarray(x))
     tiles = learned.tiled(run, np.ascontiguousarray(x), learned.REACH["learned-edges"], tile=96)
     np.testing.assert_allclose(tiles, whole, atol=1e-3)
+
+
+@real("swinir-color-dn25")
+def test_real_swinir_removes_noise(real_models: None) -> None:
+    image, clean = noisy_scene(25)
+    out = learned.swinir(image, values("swinir"), NOTHING)
+    assert psnr(out[..., :3], clean) > psnr(image[..., :3], clean) + 6
+
+
+@real("swinir-lightweight-x2")
+def test_real_swinir_sr_enlarges_two_times_and_beats_bicubic(real_models: None) -> None:
+    import cv2
+
+    image, clean = noisy_scene(0)
+    # The model was trained on images shrunk with bicubic.
+    small = cv2.resize(image, (64, 48), interpolation=cv2.INTER_CUBIC)
+    out = learned.swinir_sr(small, values("swinir-sr"), NOTHING)
+    assert out.shape == (96, 128, 4)
+    bicubic = cv2.resize(small, (128, 96), interpolation=cv2.INTER_CUBIC)
+    assert psnr(out[..., :3], clean) > psnr(bicubic[..., :3], clean)

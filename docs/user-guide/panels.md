@@ -9,7 +9,6 @@ More panels arrive with later phases, such as Pipeline.
 The Library lists every filter in the catalog, grouped by family. Point at a filter to read what it does. A badge marks filters that need something extra, such as an AI model or the engine.
 
 - **Search.** Type part of a name, an alias, a method or a purpose, for example "blur", "edge" or "salt". Every word must match. Names count most.
-- **Show.** **All**, **Ready** (filters that can run) or **Planned**.
 - **Refine.** Narrow the list by family, linearity, domain, purpose, noise type and engine. **Clear refinements** removes them.
 - **Favorites.** The star next to a filter adds it to **Favorites** at the top of the list. Favorites are saved in this browser.
 
@@ -24,7 +23,7 @@ The Properties panel shows the settings of the selected filter and runs it.
 - **Apply to.** When the image has a selection, choose **Selection**, **Outside** (everything except the selection) or **Whole image**. Soft selection edges blend the result with the image. Without a selection, filters work on the whole image.
 - **Preview.** Shows the result on the canvas while you change values. With a selection, the preview shows only where the filter will work. A line below it says whether the preview is exact or approximate. See [Execution model](../architecture/execution-model.md).
 - **Apply** runs the filter at full resolution (Ctrl+Enter or Cmd+Enter), on the part that **Apply to** names. While it runs, a progress bar and **Cancel** appear.
-- **Reset** returns the parameters to their defaults.
+- **Reset** returns the parameters to their defaults. If the latest steps in the history came from this filter, it also undoes them, so the image is back to how it was before. **Redo** brings them back.
 - **Presets.** Save the current values under a name, load them later or delete them. Presets are saved in this browser.
     - The export button saves the presets of this filter as a JSON file. The import button reads such a file back.
     - **File > Export all presets** saves the presets of every filter in one file. **File > Import presets** reads one.
@@ -32,7 +31,7 @@ The Properties panel shows the settings of the selected filter and runs it.
 - **Copy JSON** copies the filter id and the values.
 - **Last run** shows how long the last preview or Apply took.
 
-A planned filter shows its settings where they are known, says which phase brings it, and keeps **Apply** disabled.
+A filter that needs a model shows **Download model** first, with the model's size and license.
 
 ## Inspector
 

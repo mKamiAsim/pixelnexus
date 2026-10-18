@@ -55,6 +55,20 @@ KAIR_FILES = [
     (f"{KAIR}/models/network_ffdnet.py", "models/network_ffdnet.py",
      "8cc4c5eaddf2ee04dccacfd7d93714c72366f29d22850f843b8258bbc1573391"),
 ]  # fmt: skip
+SWINIR_FILES = [
+    (f"{KAIR}/models/network_swinir.py", "models/network_swinir.py",
+     "682e605680a23416243214bcec83fd816b03f6c213e3b3b328563f56c6635bde"),
+]  # fmt: skip
+RESTORMER = (
+    "https://raw.githubusercontent.com/swz30/Restormer/68dc6ac472db26f16361150cb7a96a1bc87da93f"
+)
+RESTORMER_FILES = [
+    (f"{RESTORMER}/basicsr/models/archs/restormer_arch.py", "restormer_arch.py",
+     "3be243fa3c8e2cb2c9459eeac062b04d6084dbcc328292dae1c3e52ba6f7434a"),
+]  # fmt: skip
+# SwinIR is exported for one tile size, since it builds its attention masks from the input size
+# while it runs. The engine runs it in tiles of exactly this size (filters/learned.py).
+SWINIR_TILE = {"swinir-lightweight-x2": 128, "swinir-color-dn25": 256}
 ESRGAN_FILES = [
     (f"{ESRGAN}/realesrgan/archs/srvgg_arch.py", "srvgg_arch.py",
      "7419a75e789ca09295266563d74a6d7c08d6c24502af6b0a919b1811d0a0be59"),
@@ -112,6 +126,8 @@ class Built:
         output: str,
         even: bool = False,
         reference: Callable[[Any], Any] | None = None,
+        fixed: int | None = None,
+        multiple: int = 1,
     ) -> None:
         self.net = net.eval()
         self.inputs = inputs
@@ -122,6 +138,10 @@ class Built:
         self.even = even
         # An outside reference to compare with, for weights that PyTorch did not train.
         self.reference = reference
+        # A square input size that the export is fixed to, for networks that need one.
+        self.fixed = fixed
+        # Input sides must be multiples of this, for networks that downsample.
+        self.multiple = multiple
 
 
 def build_dncnn(folder: Path, channels: int, pth: Path) -> Built:
@@ -166,6 +186,56 @@ def build_realesrgan(folder: Path, pth: Path) -> Built:
     )
     net.load_state_dict(weights(pth), strict=True)
     return Built(net, lambda h, w: (torch.rand(1, 3, h, w),), ["image"], "enlarged")
+
+
+def stand_in_timm() -> None:
+    """network_swinir.py imports three helpers from timm. DropPath is the identity outside
+    training, and trunc_normal_ only sets starting weights, which the checkpoint replaces."""
+    layers = types.ModuleType("timm.models.layers")
+    layers.DropPath = lambda *args, **kwargs: torch.nn.Identity()  # type: ignore[attr-defined]
+    layers.to_2tuple = lambda x: x if isinstance(x, tuple) else (x, x)  # type: ignore[attr-defined]
+    layers.trunc_normal_ = lambda tensor, **kwargs: tensor  # type: ignore[attr-defined]
+    for name in ("timm", "timm.models"):
+        sys.modules.setdefault(name, types.ModuleType(name))
+    sys.modules["timm.models.layers"] = layers
+
+
+def build_swinir(folder: Path, pth: Path, model_id: str) -> Built:
+    stand_in_timm()
+    fetch(SWINIR_FILES, folder)
+    from models.network_swinir import SwinIR  # type: ignore[import-not-found]
+
+    # The settings of main_test_swinir.py in the SwinIR repository, commit 6545850, for the
+    # tasks lightweight_sr and color_dn.
+    if model_id == "swinir-lightweight-x2":
+        net = SwinIR(upscale=2, in_chans=3, img_size=64, window_size=8, img_range=1.0,
+                     depths=[6, 6, 6, 6], embed_dim=60, num_heads=[6, 6, 6, 6], mlp_ratio=2,
+                     upsampler="pixelshuffledirect", resi_connection="1conv")  # fmt: skip
+        output = "enlarged"
+    else:
+        net = SwinIR(upscale=1, in_chans=3, img_size=128, window_size=8, img_range=1.0,
+                     depths=[6] * 6, embed_dim=180, num_heads=[6] * 6, mlp_ratio=2,
+                     upsampler="", resi_connection="1conv")  # fmt: skip
+        output = "restored"
+    net.load_state_dict(weights(pth), strict=True)
+    tile = SWINIR_TILE[model_id]
+    return Built(net, lambda h, w: (torch.rand(1, 3, h, w),), ["image"], output, fixed=tile)
+
+
+def build_restormer(folder: Path, pth: Path, layer_norm: str) -> Built:
+    # restormer_arch.py imports einops, which the export environment needs (MIT License).
+    fetch(RESTORMER_FILES, folder)
+    from restormer_arch import Restormer  # type: ignore[import-not-found]
+
+    # The network_g settings of Denoising/Options/RealDenoising_Restormer.yml and
+    # Motion_Deblurring/Options/Deblurring_Restormer.yml at commit 68dc6ac. They differ only in
+    # the layer norm.
+    net = Restormer(inp_channels=3, out_channels=3, dim=48, num_blocks=[4, 6, 6, 8],
+                    num_refinement_blocks=4, heads=[1, 2, 4, 8], ffn_expansion_factor=2.66,
+                    bias=False, LayerNorm_type=layer_norm, dual_pixel_task=False)  # fmt: skip
+    net.load_state_dict(weights(pth), strict=True)
+    # Three downsamplings by 2: the engine pads every tile to a multiple of 8.
+    return Built(net, lambda h, w: (torch.rand(1, 3, h, w),), ["image"], "restored", multiple=8)
 
 
 class FusedEdges(torch.nn.Module):  # type: ignore[misc]
@@ -304,7 +374,14 @@ def opencv_hed(model: Path, array: Any) -> Any:
     return net.forward()
 
 
-TEMPORARY_PACKAGES = {"models", "pidinet_models", "srvgg_arch", "caffe_pb2"}
+TEMPORARY_PACKAGES = {
+    "models",
+    "pidinet_models",
+    "srvgg_arch",
+    "caffe_pb2",
+    "timm",
+    "restormer_arch",
+}
 
 # Formats the engine cannot run directly. OpenCV 5 dropped its Caffe importer.
 EXPORTED = ("pytorch", "caffe")
@@ -316,6 +393,10 @@ BUILDERS: dict[str, Callable[[Path, Path], Built]] = {
     "realesr-general-x4v3": build_realesrgan,
     "pidinet": build_pidinet,
     "hed-bsds": build_hed,
+    "swinir-lightweight-x2": lambda folder, pth: build_swinir(folder, pth, "swinir-lightweight-x2"),
+    "swinir-color-dn25": lambda folder, pth: build_swinir(folder, pth, "swinir-color-dn25"),
+    "restormer-real-denoising": lambda folder, pth: build_restormer(folder, pth, "BiasFree"),
+    "restormer-motion-deblurring": lambda folder, pth: build_restormer(folder, pth, "WithBias"),
 }
 
 
@@ -338,9 +419,13 @@ def export(model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
         finally:
             sys.path.remove(temporary)
         target = folder / "model.onnx"
-        example = built.inputs(64, 96)
+        size = built.fixed
+        example = built.inputs(size, size) if size else built.inputs(64, 96)
+        # The check sizes and the example are multiples of 8 and 16, which suits every network.
         axes = {name: {2: "height", 3: "width"} for name in built.names if name != "sigma"}
         axes[built.output] = {2: "height", 3: "width"}
+        if size:
+            axes = {}
         with torch.no_grad():
             torch.onnx.export(
                 built.net,
@@ -354,7 +439,13 @@ def export(model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
             )
         session = ort.InferenceSession(str(target), providers=["CPUExecutionProvider"])
         errors = []
-        for h, w in ((48, 80), (96, 62)) if built.even else ((48, 80), (97, 61)):
+        sizes = ((48, 80), (96, 62)) if built.even else ((48, 80), (97, 61))
+        if built.multiple > 1:
+            sizes = ((48, 80), (96, 64))
+        if size:
+            # A fixed size is checked twice, with two random images.
+            sizes = ((size, size), (size, size))
+        for h, w in sizes:
             inputs = built.inputs(h, w)
             with torch.no_grad():
                 expected = built.net(*inputs).numpy()
@@ -379,6 +470,8 @@ def export(model_id: str, entry: dict[str, Any]) -> dict[str, Any]:
         "inputs": built.names,
         "output": built.output,
         "evenSize": built.even,
+        "fixedSize": built.fixed,
+        "sideMultiple": built.multiple,
         "maxDifferenceFromPyTorch": max(errors),
         "reference": "OpenCV 4 Caffe importer" if built.reference is not None else None,
     }

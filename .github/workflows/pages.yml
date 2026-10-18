@@ -1,8 +1,11 @@
-# Publishes the docs at the site root and the studio at /studio/.
-# Manual only until the project owner enables GitHub Pages (planning/PLAN.md, Phase 9 checkpoint).
+# Publishes the docs at the site root and the studio at /studio/, on every push to main and by
+# hand from the Actions tab. GitHub Pages must be switched on once: Settings, Pages, source
+# "GitHub Actions".
 name: Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

@@ -16,7 +16,6 @@ import {
 import { StatusBadge } from "@/components/ui/Badge";
 import { EngineBadge } from "@/components/ui/EngineBadge";
 import { IconButton } from "@/components/ui/IconButton";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Select } from "@/components/ui/Select";
 import { useFilters } from "@/state/filters";
@@ -52,18 +51,19 @@ function FilterRow({ filter }: { filter: Filter }) {
           </span>
         </button>
       </Tooltip>
-      <IconButton
-        label={
-          favorite ? `Remove ${filter.name} from favorites` : `Add ${filter.name} to favorites`
-        }
-        pressed={favorite}
-        icon={<Star size={12} className={favorite ? "fill-warning text-warning" : undefined} />}
-        size="sm"
-        className={
-          favorite ? undefined : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-        }
-        onClick={() => toggleFavorite(filter.id)}
-      />
+      {/* The star takes room only for a favorite, or while the row is pointed at or focused,
+          so the badges sit at the right edge. */}
+      <span className={favorite ? "flex" : "hidden group-focus-within:flex group-hover:flex"}>
+        <IconButton
+          label={
+            favorite ? `Remove ${filter.name} from favorites` : `Add ${filter.name} to favorites`
+          }
+          pressed={favorite}
+          icon={<Star size={12} className={favorite ? "fill-warning text-warning" : undefined} />}
+          size="sm"
+          onClick={() => toggleFavorite(filter.id)}
+        />
+      </span>
     </li>
   );
 }
@@ -161,19 +161,6 @@ export function LibraryPanel() {
             className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-muted"
           />
         </label>
-        <SegmentedControl
-          label="Which filters to show"
-          value={facets.status}
-          onChange={(value) =>
-            setFacets((f) => ({ ...f, status: value as LibraryFacets["status"] }))
-          }
-          fullWidth
-          segments={[
-            { value: "all", label: "All" },
-            { value: "runnable", label: "Ready" },
-            { value: "planned", label: "Planned" },
-          ]}
-        />
         <Collapsible.Root defaultOpen={false}>
           <Collapsible.Trigger className="group flex h-6 w-full items-center gap-1 text-xs text-text-secondary hover:text-text">
             <ChevronRight

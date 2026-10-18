@@ -1,8 +1,0 @@
-id: nafnet
-name: NAFNet
-family: learned
-tier: optional
-engine: model
-phase: '7'
-status: planned
-planNotes: Denoising and deblurring.

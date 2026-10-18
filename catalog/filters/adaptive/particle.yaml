@@ -1,7 +1,0 @@
-id: particle
-name: Particle filter
-family: adaptive
-tier: unsupported
-engine: none
-status: unsupported
-reason: A sequential tracking method. It has no meaningful still-image form.

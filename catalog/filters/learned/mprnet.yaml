@@ -1,7 +1,0 @@
-id: mprnet
-name: MPRNet
-family: learned
-tier: planned
-engine: none
-status: planned
-reason: Overlaps with NAFNet and Restormer. Added only if there is a clear reason.

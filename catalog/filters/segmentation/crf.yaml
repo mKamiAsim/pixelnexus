@@ -1,7 +1,0 @@
-id: crf
-name: Conditional Random Fields
-family: segmentation
-tier: planned
-engine: none
-status: planned
-reason: The common Python package is unmaintained. Revisit later.

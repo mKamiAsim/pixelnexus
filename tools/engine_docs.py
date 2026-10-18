@@ -94,6 +94,8 @@ from pixelnexus_engine.filters.learned import (
     model_file,
     real_esrgan,
     srcnn,
+    swinir,
+    swinir_sr,
 )
 from pixelnexus_engine.filters.local_laplacian import local_laplacian
 from pixelnexus_engine.filters.matched import correlation_map, matched_filter, ncc_map
@@ -4070,6 +4072,68 @@ def super_resolution_docs(out: dict[Path, str]) -> None:
         )
 
 
+def swinir_docs(out: dict[Path, str]) -> None:
+    if not models_on_disk(
+        "swinir-color-dn25", "swinir-lightweight-x2", "dncnn-color-blind", "fsrcnn-x2"
+    ):
+        return
+    clean = lines_scene().astype(np.uint8)
+    reference = np.dstack([clean] * 3)
+    observed = color_noise(clean, 25, seed=9)
+    figure(
+        out,
+        "swinir",
+        "The image of the DnCNN figure with noise of sigma 25 in each color channel. Then DnCNN "
+        "and SwinIR. The figure shows the red channel.",
+        [
+            {"title": "Noisy", "image": picture(observed[..., 0])},
+            {"title": "DnCNN", "image": picture(run_color(dncnn, observed, "dncnn")[..., 0])},
+            {"title": "SwinIR", "image": picture(run_color(swinir, observed, "swinir")[..., 0])},
+        ],
+    )
+    rows = []
+    for sigma in (15, 25, 50):
+        seen = color_noise(clean, sigma, seed=9)
+        rows.append(
+            [
+                str(sigma),
+                db(seen, reference),
+                db(run_color(dncnn, seen, "dncnn"), reference),
+                db(run_color(swinir, seen, "swinir"), reference),
+            ]
+        )
+    out[ROOT / "docs" / "_generated" / "examples" / "swinir.md"] = (
+        header("swinir")
+        + md_table(["Noise sigma", "Noisy (dB)", "DnCNN (dB)", "SwinIR, trained for 25 (dB)"], rows)
+        + "\nPSNR against the clean image of the figure, 120 x 120, over the three channels. "
+        "Gaussian noise in each channel, rounded and clipped to 8 bits.\n"
+    )
+
+    texture = texture_scene()
+    small = pil_shrink(texture, 2)
+    results = {
+        "Bicubic": bicubic_up(small, 2),
+        "FSRCNN": run(srcnn, small, "srcnn"),
+        "SwinIR": run(swinir_sr, small, "swinir-sr"),
+    }
+    figure(
+        out,
+        "swinir-sr",
+        f"{TEXTURE_MESSAGE} Shrunk two times with bicubic, then enlarged two times with bicubic, "
+        "FSRCNN and SwinIR.",
+        [{"title": "Original", "image": picture(texture)}]
+        + [{"title": name, "image": picture(image)} for name, image in results.items()],
+    )
+    out[ROOT / "docs" / "_generated" / "examples" / "swinir-sr.md"] = (
+        header("swinir-sr")
+        + md_table(
+            ["Method", "PSNR (dB)"], [[name, db(image, texture)] for name, image in results.items()]
+        )
+        + "\nPSNR against the original, 160 x 160, gray. The small copy was made with Pillow's "
+        "bicubic resize, which filters before it samples.\n"
+    )
+
+
 def learned_edges_docs(out: dict[Path, str]) -> None:
     from skimage import feature
 
@@ -4340,6 +4404,7 @@ def build() -> dict[Path, str]:
     bitonic_docs(out)
     denoise_docs(out)
     super_resolution_docs(out)
+    swinir_docs(out)
     style_docs(out)
     learned_edges_docs(out)
     tone_docs(out)
