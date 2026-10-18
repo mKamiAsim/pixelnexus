@@ -30,6 +30,7 @@ from numpy.typing import NDArray
 from PIL import Image
 from scipy import ndimage
 
+from pixelnexus_engine.filters import contourlet as ct
 from pixelnexus_engine.filters.artifacts import (
     atmospheric_light,
     dark_channel,
@@ -586,6 +587,76 @@ def ridgelet_docs(out: dict[Path, str]) -> None:
         f"{fix(cap, 2)} dB, since the sampled transform blurs thin lines. That caps what any "
         "threshold can reach. Here ridgelet filtering beats the round trip but not wavelet "
         "thresholding.\n"
+    )
+
+
+# Contourlet ---------------------------------------------------------------------------------
+
+
+def one_wedge(clean: Gray, degrees: float) -> tuple[Gray, float]:
+    """The clean image rebuilt from the subbands of one wedge alone, at every level, without the
+    coarse image. Mid gray is 0. Also the middle angle of that wedge."""
+    params = catalog_values("contourlet")
+    levels, directions = params["levels"], int(params["directions"])
+    found = ct.wedges(int(math.log2(directions)))
+    index = min(range(len(found)), key=lambda i: abs(found[i].degrees() - degrees))
+    extended, (top, left) = ct.extend(clean.astype(np.float64), 2 ** (levels + 3))
+    coarse, bands = ct.contourlet_dec(extended, levels, directions)
+    kept = [[b if i == index else 0 * b for i, b in enumerate(subbands)] for subbands in bands]
+    part = ct.contourlet_rec(0 * coarse, kept, directions)
+    part = part[top : top + clean.shape[0], left : left + clean.shape[1]]
+    return np.clip(np.rint(128 + part), 0, 255).astype(np.uint8), found[index].degrees()
+
+
+def contourlet_docs(out: dict[Path, str]) -> None:
+    filter_id = "contourlet"
+    lines = lines_image()
+    damaged = noisy(lines, 20, 7)
+
+    def contour(gray: Gray, **values: Any) -> Gray:
+        return run(ct.contourlet, gray, filter_id, **values)
+
+    # The line y = 0.3 x + 90 falls to the left on screen, at about 163 degrees.
+    wedge, middle = one_wedge(lines, 163.3)
+    figure(
+        out,
+        filter_id,
+        "Three lines with Gaussian noise of sigma 20, contourlet filtering with the defaults, "
+        "wavelet thresholding, and the clean lines rebuilt from one directional wedge alone.",
+        [
+            {"title": "Noisy", "image": picture(damaged)},
+            {"title": "Contourlet", "image": picture(contour(damaged))},
+            {
+                "title": "Wavelet threshold",
+                "image": picture(run(wavelet_threshold, damaged, "wavelet-threshold")),
+            },
+            {"title": f"Wedge at {middle:.0f} degrees", "image": picture(wedge)},
+        ],
+    )
+    rows = []
+    for label, clean in (("Lines", lines), ("Disks", disks(160, 160))):
+        dirty = noisy(clean, 20, 7)
+        rows.append(
+            [
+                label,
+                fix(psnr(dirty, clean), 2),
+                *(fix(psnr(contour(dirty, directions=d), clean), 2) for d in ("4", "8", "16")),
+                fix(psnr(contour(dirty, mode="soft"), clean), 2),
+                fix(psnr(run(wavelet_threshold, dirty, "wavelet-threshold"), clean), 2),
+            ]
+        )
+    rebuilt = contour(damaged, factor=0)
+    out[ROOT / "docs" / "_generated" / "examples" / f"{filter_id}.md"] = (
+        header(filter_id)
+        + md_table(["Image", "Noisy", "4 directions", "8", "16", "8, soft", "Wavelet"], rows)
+        + "\nThe PSNR in dB against the clean image, for Gaussian noise of sigma 20 from "
+        "NumPy's default_rng with seed 7. Both images are 160 by 160 pixels. The lines image "
+        "has three straight lines, 3 pixels wide. The contourlet columns use 3 levels, a "
+        "threshold factor of 3 and hard thresholding, except the soft column. Wavelet is "
+        "wavelet thresholding with its defaults. With the factor set to 0, the noisy lines come "
+        f"back with {int(np.count_nonzero(rebuilt != damaged))} changed pixels. In the figure, "
+        f"the wedge around {middle:.0f} degrees keeps the line at about 163 degrees and little of "
+        "the other two.\n"
     )
 
 
@@ -4509,6 +4580,7 @@ def build() -> dict[Path, str]:
     swinir_docs(out)
     restormer_docs(out)
     bilateral_solver_docs(out)
+    contourlet_docs(out)
     style_docs(out)
     learned_edges_docs(out)
     tone_docs(out)

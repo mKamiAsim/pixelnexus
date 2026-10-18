@@ -10,6 +10,7 @@ from pixelnexus_engine.filters import (  # noqa: F401, registers by import
     bitonic,
     blobs,
     bm3d_lite,
+    contourlet,
     contours,
     deriche,
     directional,

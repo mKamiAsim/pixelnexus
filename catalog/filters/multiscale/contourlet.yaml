@@ -1,7 +1,187 @@
 id: contourlet
 name: Contourlet filtering
+aliases:
+- Contourlet denoising
+- Contourlet transform
+- Pyramidal directional filter bank
 family: multiscale
-tier: planned
-engine: none
-status: planned
-reason: No maintained library. Large custom effort.
+tags: [purpose:denoise, noise:gaussian]
+tier: advanced
+engine: science
+phase: 6f
+status: implemented-tested
+planNotes: >-
+  The contourlet transform of Do and Vetterli. A Laplacian pyramid uses the 9-7 filters of
+  PyWavelets. A directional filter bank of quincunx ladder banks uses the 12-tap pkva filter
+  printed by Phoong and coauthors in 1995. The subbands get hard or soft thresholding.
+
+summary: Splits the image into scales with a Laplacian pyramid, and each scale into directions with a directional filter bank. Then it shrinks the small coefficients toward zero and puts the image back together.
+purpose: Remove Gaussian noise while keeping smooth edges and lines, which give a few large coefficients in the subbands of their direction.
+classification: {linearity: nonlinear, domain: transform, operation: contourlet coefficient shrinkage}
+output: image
+representation: transform
+representationLabel: exact
+representationSource: {path: engine/src/pixelnexus_engine/filters/contourlet.py, symbol: contourlet_representation}
+supportRadius: global
+supportsMask: true
+preview: on-demand
+channelScopes: [rgb, luminance]
+colorHandling: >-
+  By default each of the red, green and blue channels is filtered on its own, with its own
+  noise estimate. With the brightness scope, only luma is filtered and the colors stay.
+boundary: >-
+  The image is extended symmetrically by at least 16 pixels on each side. Its size becomes a
+  multiple of 2 to the power of the levels plus the levels of the directional tree. The
+  pyramid filters mirror at the edges of that extension. The directional filter bank wraps
+  around it.
+dependencies:
+  - {name: PyWavelets, optional: false, note: 'The 9-7 pyramid filters, as the bior4.4 wavelet, and the db2 details for the noise estimate.'}
+  - {name: SciPy, optional: false, note: 'The separable pyramid filtering (ndimage.correlate1d) and the FFT for the directional filter bank.'}
+
+params:
+  - key: levels
+    label: Levels
+    type: integer
+    min: 1
+    max: 5
+    step: 1
+    default: 3
+    description: How many times the Laplacian pyramid halves the image. Each level gives one band, split into directions.
+    effect: More levels also reach coarser noise and touch larger structures. The coarse image at the end is kept as it is.
+  - key: directions
+    label: Directions
+    type: select
+    default: '8'
+    options:
+      - {value: '4', label: '4'}
+      - {value: '8', label: '8'}
+      - {value: '16', label: '16'}
+    description: How many directional subbands each band has, over 180 degrees. The directional tree has 2, 3 or 4 levels.
+    effect: More directions follow edges more closely, but each subband has fewer coefficients and the transform takes longer.
+  - key: factor
+    label: Threshold factor
+    type: number
+    min: 0
+    max: 8
+    step: 0.1
+    default: 3
+    description: The threshold is this factor times the noise level in each subband. 0 keeps every coefficient, and the image comes back unchanged.
+    effect: Larger factors remove more noise and more faint detail.
+  - key: mode
+    label: Shrink rule
+    type: select
+    default: hard
+    options:
+      - {value: hard, label: Hard}
+      - {value: soft, label: Soft}
+    description: Hard thresholding sets small coefficients to 0 and keeps the others. Soft thresholding also moves the others toward 0 by T.
+    effect: Soft gives smoother results with less contrast.
+  - key: sigma
+    label: Noise sigma
+    type: number
+    min: 0
+    max: 100
+    step: 0.5
+    default: 0
+    description: The standard deviation of the noise, in pixel values. 0 estimates it from the finest diagonal wavelet details.
+    effect: Larger values remove more.
+  - ref: channelScope
+    default: rgb
+formula: |
+  c_{j+1} = (h * c_j)\downarrow_2,\quad d_j = c_j - g * (c_{j+1}\uparrow_2),
+  \qquad
+  w_{j,k} = \operatorname{DFB}_k(d_j),
+  \qquad
+  T_{j,k} = \kappa\, \sigma\, s_{j,k},
+  \qquad
+  \hat{c}_j = \operatorname{DFB}^{-1}\big(\eta_{T_{j,\cdot}}(w_{j,\cdot})\big) + g * (\hat{c}_{j+1}\uparrow_2),
+  \qquad
+  J = {{levels}},\ K = {{directions}},\ \kappa = {{factor}}
+formulaExplanation: >-
+  The image channel is c_0. The Laplacian pyramid of Burt and Adelson makes a coarse image
+  c_j+1 with the low-pass filter h. It keeps the difference d_j to its prediction with the
+  filter g. The filters h and g are the biorthogonal 9-7 filters. The directional filter bank, DFB, splits
+  each band d_j into K subbands w_j,k, each holding edges in one wedge of directions. It is a
+  tree of two-channel quincunx filter banks. Each bank is a ladder of two steps with the filter
+  B, so it rebuilds exactly whatever B is. The noise level of the image is sigma. The noise
+  gain s_j,k is the standard deviation that white noise of level 1 has in subband k of band j.
+  The shrink rule eta is the one of wavelet thresholding. The coarse image c_J is kept. With kappa 0 every step
+  is undone exactly.
+symbols:
+  - {symbol: 'c_j', meaning: 'The coarse image at level j, c_0 is the channel'}
+  - {symbol: 'd_j', meaning: 'The band at level j, the detail the coarser level cannot predict'}
+  - {symbol: 'h, g', meaning: 'The 9-7 analysis and synthesis low-pass filters, 9 and 7 taps'}
+  - {symbol: 'w_{j,k}', meaning: 'The coefficients of directional subband k of band j'}
+  - {symbol: '\sigma', meaning: 'The noise level of the channel'}
+  - {symbol: 's_{j,k}', meaning: 'The noise gain of subband k of band j'}
+  - {symbol: '\kappa', meaning: 'The threshold factor'}
+  - {symbol: '\eta_T', meaning: 'The shrink rule with threshold T'}
+steps:
+  - Extend the channel symmetrically to a size the transform can halve often enough.
+  - Build the Laplacian pyramid with the 9-7 filters, J levels.
+  - Split each band into K directional subbands with the tree of ladder filter banks.
+  - Estimate the noise level of the channel, or take the given one.
+  - Shrink each subband with kappa times the noise level times its noise gain.
+  - Run the filter banks backward, add the bands back to the predictions, and crop.
+complexity:
+  time: O(K N log N)
+  memory: O(K N)
+  notes: N is the number of pixels and K the number of directions. The directional tree has K - 1 banks for each band, and each bank runs two FFT filters on the full band. Each subband is kept on the grid of its band, with zeros off its lattice. The bands shrink by 4 per level, so the finest band costs the most.
+useCases:
+  - Removing Gaussian noise from images with smooth edges, lines and textures in many directions.
+  - Learning how a pyramid and a directional filter bank split an image by scale and direction.
+advantages:
+  - Edges along a direction give large coefficients in a few subbands, so they survive a high threshold.
+  - Without thresholding the image comes back exactly, up to rounding.
+limitations:
+  - The pyramid makes 4/3 as many coefficients as pixels, and the transform is not orthogonal, so the noise in the subbands is correlated.
+  - On images made of flat areas and few edges, wavelet thresholding with BayesShrink often does better.
+  - The published pkva filter values have three significant digits, so B passes 0.978 of a constant instead of 1. This leaks a little of the smooth part into the high-pass branch of each bank. The rebuild stays exact.
+artifacts:
+  - Short thin streaks in flat areas, where a noise coefficient passes the threshold. Each looks like a piece of line in the direction of its subband.
+  - Faint ripples along strong lines and edges with hard thresholding.
+references:
+  - kind: paper
+    text: Do, M. N., and Vetterli, M. The contourlet transform. An efficient directional multiresolution image representation. IEEE Transactions on Image Processing 14(12), 2091 to 2106, 2005.
+    doi: 10.1109/TIP.2005.859376
+  - kind: paper
+    text: Phoong, S.-M., Kim, C. W., Vaidyanathan, P. P., and Ansari, R. A new class of two-channel biorthogonal filter banks and wavelet bases. IEEE Transactions on Signal Processing 43(3), 649 to 665, 1995.
+    doi: 10.1109/78.370620
+  - kind: paper
+    text: Bamberger, R. H., and Smith, M. J. T. A filter bank for the directional decomposition of images. Theory and design. IEEE Transactions on Signal Processing 40(4), 882 to 893, 1992.
+    doi: 10.1109/78.127960
+  - kind: paper
+    text: Burt, P. J., and Adelson, E. H. The Laplacian pyramid as a compact image code. IEEE Transactions on Communications 31(4), 532 to 540, 1983.
+    doi: 10.1109/TCOM.1983.1095851
+  - kind: paper
+    text: Cohen, A., Daubechies, I., and Feauveau, J.-C. Biorthogonal bases of compactly supported wavelets. Communications on Pure and Applied Mathematics 45(5), 485 to 560, 1992.
+    doi: 10.1002/cpa.3160450502
+implementation: {path: engine/src/pixelnexus_engine/filters/contourlet.py, symbol: contourlet}
+tests: [engine/tests/test_contourlet.py]
+learn:
+  oneSentence: Split the image by size and by direction, keep the large pieces that follow edges, and drop the small ones that are mostly noise.
+  howItWorks:
+    - Blur and halve the image a few times, and keep at each size the detail the blur removed.
+    - Split each detail image into directions, so an edge ends up in the few pieces that match its direction.
+    - Set the small values to zero, since noise spreads over all directions and edges do not.
+    - Put the directions and the sizes back together.
+  academic: >-
+    Contourlet transform. A Laplacian pyramid with biorthogonal 9-7 filters is followed by an
+    iterated directional filter bank of quincunx ladder filter banks with fan filters and
+    shears. Hard or soft thresholding at kappa sigma s_jk follows, with the subband noise gains
+    measured on white noise.
+  paramNotes:
+    levels: How many sizes of detail are cleaned.
+    directions: How finely each size is split by direction.
+    factor: How high the cut-off is, in noise levels.
+    mode: Whether kept values are also made smaller.
+    sigma: How strong the noise is. 0 measures it.
+    channelScope: Which part of the color image is cleaned.
+  tryThis:
+    - Add Gaussian noise with sigma 20 to a photo with many edges, and compare 4 and 16 directions.
+    - Set the threshold factor to 0 and check that the image does not change.
+  pitfalls:
+    - A threshold factor below 2 leaves much of the noise.
+  demos: [noise-lab]
+related: [wavelet-threshold, laplacian-pyramid, ridgelet, directional-curvelet, steerable-pyramid]
+docsPage: filters/multiscale/contourlet.md

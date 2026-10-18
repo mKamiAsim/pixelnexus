@@ -202,7 +202,7 @@ Inverse, constrained least-squares and Wiener deconvolution filters are in secti
 | gaussian-pyramid | Gaussian pyramid filtering | | Core | Browser | 5e |
 | scale-space | Scale-space filtering | Gaussian scale-space stack and normalized derivatives. | Core | Browser | 5e |
 | curvelet | Curvelet filtering | CurveLab is not openly licensed. The curvelet-inspired filter is available. | Planned | none | |
-| contourlet | Contourlet filtering | No maintained library. Large custom effort. | Planned | none | |
+| contourlet | Contourlet filtering | Do and Vetterli. Laplacian pyramid with the 9-7 filters of PyWavelets, then a directional filter bank of quincunx ladder banks with the pkva filter printed in Phoong et al. 1995. Our own code. | Advanced | Science | 6f |
 | nsct | Non-subsampled contourlet filtering | Same reason as contourlet. | Planned | none | |
 | shearlet | Shearlet filtering | pyShearLab license to check. The shearlet-inspired filter is available. | Planned | none | |
 | multires-diffusion | Multiresolution diffusion | Definitions vary in the literature. A documented variant may be added later. | Planned | none | |
