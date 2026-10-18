@@ -101,76 +101,6 @@ nav:
       - Export: user-guide/export.md
       - AI providers and consent: user-guide/ai-providers.md
       - Keyboard shortcuts: user-guide/keyboard-shortcuts.md
-  - Selections:
-      - selection/index.md
-      - Marquee: selection/marquee.md
-      - Lasso: selection/lasso.md
-      - Magnetic lasso: selection/magnetic-lasso.md
-      - Selection brush and eraser: selection/selection-brush.md
-      - Magic Wand: selection/magic-wand.md
-      - Color Range and tone: selection/color-range.md
-      - Quick Selection: selection/quick-selection.md
-      - Snap to edges: selection/snap-to-edges.md
-      - Subject and background: selection/subject.md
-      - Object and Click Select: selection/seeds.md
-      - AI selection: selection/ai-selection.md
-      - Masks and refinement: selection/masks-and-refinement.md
-  - AI models:
-      - Model reference: models/reference.md
-      - Model integration: models/integration.md
-      - Hardware needs: models/hardware.md
-      - Connecting an external API: models/external-api.md
-  - Architecture:
-      - Overview: architecture/overview.md
-      - Frontend architecture: architecture/frontend-architecture.md
-      - Image data model: architecture/image-data-model.md
-      - Preview and rendering: architecture/preview-and-rendering.md
-      - Filter catalog and registry: architecture/filter-catalog.md
-      - Processing pipeline: architecture/processing-pipeline.md
-      - Selection and masking: architecture/selection-and-masking.md
-      - Execution model: architecture/execution-model.md
-      - Performance: architecture/performance.md
-      - Science engine: architecture/science-engine.md
-      - Learn panel architecture: architecture/learn-panel.md
-  - Implementation:
-      - Adding a filter: implementation/adding-a-filter.md
-      - Filter definition schema: implementation/filter-definition-schema.md
-      - Science engine integration: implementation/science-engine-integration.md
-      - Frontend integration: implementation/frontend-integration.md
-      - Testing guidelines: implementation/testing-guidelines.md
-      - Optional dependencies: implementation/optional-dependencies.md
-      - Model integration: implementation/model-integration.md
-  - Reference:
-      - Filter catalog: reference/filter-catalog.md
-      - Parameter reference: reference/parameter-reference.md
-      - API reference: reference/api-reference.md
-      - Dependencies and licenses: reference/dependencies.md
-      - Limitations: reference/limitations.md
-      - Troubleshooting: reference/troubleshooting.md
-      - Glossary: reference/glossary.md
-      - Release notes: release-notes.md
-  - Contributing: contributing.md
-  - Mathematics:
-      - Foundations: mathematics/foundations.md
-      - Image representation: mathematics/image-representation.md
-      - Convolution and correlation: mathematics/convolution-and-correlation.md
-      - Boundary conditions: mathematics/boundary-conditions.md
-      - Linearity and superposition: mathematics/linearity-and-superposition.md
-      - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
-      - Numerical precision: mathematics/numerical-precision.md
-      - Spatial and frequency domains: mathematics/spatial-and-frequency-domains.md
-      - Fourier transform: mathematics/fourier-transform.md
-      - Wavelet transforms: mathematics/wavelet-transforms.md
-      - Color spaces: mathematics/color-spaces.md
-      - Computational complexity: mathematics/computational-complexity.md
-      - Noise models: mathematics/noise-models.md
-      - Image quality metrics: mathematics/image-quality-metrics.md
-  - Mathematical Inspector:
-      - The Inspector: mathematical-inspector/overview.md
-      - Kernel generation: mathematical-inspector/kernel-generation.md
-      - Formula rendering: mathematical-inspector/formula-rendering.md
-      - Parameter synchronization: mathematical-inspector/parameter-synchronization.md
-      - Developer mode: mathematical-inspector/developer-mode.md
   - Filters:
       - filters/index.md
       - Linear:
@@ -483,3 +413,73 @@ nav:
           - Crop: filters/utility/crop.md
           - Rotate and flip: filters/utility/rotate-flip.md
           - Free rotation: filters/utility/rotate-free.md
+  - Mathematics:
+      - Foundations: mathematics/foundations.md
+      - Image representation: mathematics/image-representation.md
+      - Convolution and correlation: mathematics/convolution-and-correlation.md
+      - Boundary conditions: mathematics/boundary-conditions.md
+      - Linearity and superposition: mathematics/linearity-and-superposition.md
+      - Masks and alpha blending: mathematics/masks-and-alpha-blending.md
+      - Numerical precision: mathematics/numerical-precision.md
+      - Spatial and frequency domains: mathematics/spatial-and-frequency-domains.md
+      - Fourier transform: mathematics/fourier-transform.md
+      - Wavelet transforms: mathematics/wavelet-transforms.md
+      - Color spaces: mathematics/color-spaces.md
+      - Computational complexity: mathematics/computational-complexity.md
+      - Noise models: mathematics/noise-models.md
+      - Image quality metrics: mathematics/image-quality-metrics.md
+  - Mathematical Inspector:
+      - The Inspector: mathematical-inspector/overview.md
+      - Kernel generation: mathematical-inspector/kernel-generation.md
+      - Formula rendering: mathematical-inspector/formula-rendering.md
+      - Parameter synchronization: mathematical-inspector/parameter-synchronization.md
+      - Developer mode: mathematical-inspector/developer-mode.md
+  - Selections:
+      - selection/index.md
+      - Marquee: selection/marquee.md
+      - Lasso: selection/lasso.md
+      - Magnetic lasso: selection/magnetic-lasso.md
+      - Selection brush and eraser: selection/selection-brush.md
+      - Magic Wand: selection/magic-wand.md
+      - Color Range and tone: selection/color-range.md
+      - Quick Selection: selection/quick-selection.md
+      - Snap to edges: selection/snap-to-edges.md
+      - Subject and background: selection/subject.md
+      - Object and Click Select: selection/seeds.md
+      - AI selection: selection/ai-selection.md
+      - Masks and refinement: selection/masks-and-refinement.md
+  - AI models:
+      - Model reference: models/reference.md
+      - Model integration: models/integration.md
+      - Hardware needs: models/hardware.md
+      - Connecting an external API: models/external-api.md
+  - Reference:
+      - Filter catalog: reference/filter-catalog.md
+      - Parameter reference: reference/parameter-reference.md
+      - API reference: reference/api-reference.md
+      - Dependencies and licenses: reference/dependencies.md
+      - Limitations: reference/limitations.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Glossary: reference/glossary.md
+      - Release notes: release-notes.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Frontend architecture: architecture/frontend-architecture.md
+      - Image data model: architecture/image-data-model.md
+      - Preview and rendering: architecture/preview-and-rendering.md
+      - Filter catalog and registry: architecture/filter-catalog.md
+      - Processing pipeline: architecture/processing-pipeline.md
+      - Selection and masking: architecture/selection-and-masking.md
+      - Execution model: architecture/execution-model.md
+      - Performance: architecture/performance.md
+      - Science engine: architecture/science-engine.md
+      - Learn panel architecture: architecture/learn-panel.md
+  - Implementation:
+      - Adding a filter: implementation/adding-a-filter.md
+      - Filter definition schema: implementation/filter-definition-schema.md
+      - Science engine integration: implementation/science-engine-integration.md
+      - Frontend integration: implementation/frontend-integration.md
+      - Testing guidelines: implementation/testing-guidelines.md
+      - Optional dependencies: implementation/optional-dependencies.md
+      - Model integration: implementation/model-integration.md
+  - Contributing: contributing.md

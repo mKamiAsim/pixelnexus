@@ -64,6 +64,18 @@
   border-bottom: 1px dashed var(--hacker-rule);
 }
 
+/* Twelve sections do not fit on one line of monospace tabs. Material cuts the extra tabs off,
+   so the list wraps to a second line instead. */
+.md-tabs__list {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.md-tabs__item {
+  height: auto;
+  padding-bottom: 0.4rem;
+}
+
 /* Headings in green, normal weight, with the glow. */
 .md-typeset h1,
 .md-typeset h2,
