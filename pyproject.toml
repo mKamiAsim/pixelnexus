@@ -16,6 +16,8 @@ cuda = ["pixelnexus-engine[cuda]"]
 dev = [
   "pytest>=8",
   "pytest-cov>=6",
+  # Runs the tests on every CPU core: uv run pytest -n auto
+  "pytest-xdist>=3.6",
   "httpx2",
   "ruff>=0.13",
   "mypy>=1.18",
