@@ -223,21 +223,6 @@ Image processing sits under many fields of computer science and engineering. Pix
 
 Each of these filters lists the original paper in its References tab.
 
-## Built together with a coding agent
-
-I did not write PixelNexus alone. The whole project is a collaboration between me and an AI coding agent, Claude Code by Anthropic. The first commit was on 11 October 2026. Version 1.0, with the studio, the engine, the tests and the documentation, followed about a week later.
-
-We split the work in a clear way. I decided what to build, set the rules and checked the results. The agent wrote most of the code, the tests and the documentation, and explained its choices as it went. Nearly every commit in the repository names the agent as a co-author.
-
-The rules mattered more than I expected. A few of them shaped the whole project:
-
-- Never invent a kernel, a formula, a citation or a benchmark number. Take them from the code, a paper or a library.
-- Never mark a filter as tested until its tests have run and passed.
-- Keep every filter in one catalog, so the studio, the engine and the docs cannot disagree.
-- Write the docs in short, plain sentences.
-
-With these rules, the agent worked fast without making things up. I learned a lot from the work too. Reading its code and its explanations taught me as much image processing as building the filters did.
-
 ## Try it yourself
 
 The fastest way to see the idea is a five-minute session:
@@ -275,3 +260,7 @@ I would be glad to hear your honest opinion, including criticism. Tell me where 
 The documentation has one page for every filter, with its formula, a worked example with real numbers, its cost, its limits and the tests that check it.
 
 Thank you for reading.
+
+---
+
+*A note on AI use: PixelNexus was built in collaboration with an AI coding agent, Claude Code by Anthropic. This post was also written with AI assistance. I reviewed the content, and the numbers and screenshots come from the studio itself.*
