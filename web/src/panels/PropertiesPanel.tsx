@@ -17,6 +17,7 @@ import { isRunnable, modelFor, type Filter } from "@/catalog";
 import { entryParams } from "@/catalog/params";
 import { applySelected, cancelApply, filterById, stepLabel } from "@/app/filterActions";
 import { runEntryCommand } from "@/app/geometryActions";
+import { resetFilter } from "@/app/historyActions";
 import { showPanel } from "@/app/layout";
 import { GlossaryText } from "@/components/GlossaryText";
 import { ParamControl } from "@/components/params/ParamControl";
@@ -122,7 +123,6 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
   const { values, warnings } = useFilterValues(entry);
   const modelId = modelFor(entry, values);
   const setValue = useFilters((s) => s.setValue);
-  const resetValues = useFilters((s) => s.resetValues);
   const doc = useDocuments((s) => activeDocument(s));
   const params = entryParams(entry);
   const basic = params.filter((p) => !p.advanced);
@@ -207,7 +207,7 @@ function FilterBody({ entry, runnable }: { entry: Filter; runnable: boolean }) {
       <ApplyRow
         entry={entry}
         disabled={!runnable || !doc || needsEngine}
-        onReset={() => resetValues(entry.id)}
+        onReset={() => resetFilter(entry.id)}
       />
       {params.length > 0 ? <PresetRow entry={entry} values={values} /> : null}
     </>
@@ -320,7 +320,13 @@ function ApplyRow({
   return (
     <div className="flex flex-col gap-2 border-b border-border-subtle px-3 py-2.5">
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="ghost" onClick={onReset} disabled={busy}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onReset}
+          disabled={busy}
+          title="Set the values back to their defaults, and undo the steps this filter just made"
+        >
           Reset
         </Button>
         {busy ? (

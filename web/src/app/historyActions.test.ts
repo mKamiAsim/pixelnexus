@@ -5,6 +5,7 @@ import type * as EngineClient from "@/engine-client";
 import { createImage, type RgbaImage } from "@/core/image/types";
 import { createMask } from "@/core/mask/mask";
 import { activeDocument, useDocuments } from "@/state/documents";
+import { useFilters } from "@/state/filters";
 import { useNotices } from "@/state/notifications";
 
 /** A fake job: every filter adds its sigma to the red channel of the region. */
@@ -37,7 +38,7 @@ vi.mock("@/engine-client", async (original) => ({
   runJob: (job: never) => runJob(job),
 }));
 
-const { deleteHistoryStep, deleteProblem } = await import("./historyActions");
+const { deleteHistoryStep, deleteProblem, resetFilter } = await import("./historyActions");
 
 function openImage() {
   useDocuments.getState().open({
@@ -149,5 +150,31 @@ describe("freeing memory", () => {
     expect(doc?.steps.map((s) => s.label)).toEqual(["Open", "Gaussian 2"]);
     expect(doc?.index).toBe(1);
     expect(doc?.dropped).toBe(2);
+  });
+});
+
+describe("the Reset button", () => {
+  it("resets the values and undoes the latest steps of that filter only", () => {
+    const id = openImage();
+    useDocuments.getState().select(id, createMask(2, 1), "Select");
+    gaussian(id, 1);
+    gaussian(id, 2);
+    useFilters.getState().setValue("gaussian", "sigma", 2);
+    resetFilter("gaussian");
+    const doc = activeDocument();
+    expect(doc?.index).toBe(1);
+    expect(doc?.steps[doc.index]?.label).toBe("Select");
+    expect(reds()).toEqual([0, 0]);
+    // Redo still has the two steps.
+    expect(doc?.steps.length).toBe(4);
+    expect(useFilters.getState().values.gaussian).toBeUndefined();
+  });
+
+  it("only resets the values when the latest step is from another filter", () => {
+    const id = openImage();
+    gaussian(id, 3);
+    resetFilter("box");
+    expect(activeDocument()?.index).toBe(1);
+    expect(reds()).toEqual([3, 3]);
   });
 });

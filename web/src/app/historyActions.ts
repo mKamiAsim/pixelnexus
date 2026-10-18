@@ -8,6 +8,7 @@
 import type { Mask } from "@/core/mask/mask";
 import { useDocuments, type HistoryStep, type ImageDocument } from "@/state/documents";
 import { announce, notify } from "@/state/notifications";
+import { useFilters } from "@/state/filters";
 import { useUi } from "@/state/ui";
 
 import { filterById } from "./filterActions";
@@ -114,4 +115,26 @@ export async function deleteHistoryStep(documentId: string, index: number): Prom
   } finally {
     endWork();
   }
+}
+
+/**
+ * The Reset button of Properties. The filter's values go back to their defaults. When the latest
+ * steps of the active image come from this filter, the image also goes back to the step before
+ * them. That is an undo, so Redo brings the steps back.
+ */
+export function resetFilter(filterId: string): void {
+  useFilters.getState().resetValues(filterId);
+  const state = useDocuments.getState();
+  const doc = state.documents.find((d) => d.id === state.activeId);
+  let index = doc?.index ?? 0;
+  while (index > 0 && doc?.steps[index]?.filter?.id === filterId) index--;
+  if (!doc || index === doc.index) {
+    announce("Reset the values to their defaults.");
+    return;
+  }
+  const undone = doc.index - index;
+  state.jumpTo(doc.id, index);
+  announce(
+    `Reset the values and undid ${undone} ${undone === 1 ? "step" : "steps"} of ${filterById(filterId)?.name ?? "this filter"}.`,
+  );
 }
