@@ -207,6 +207,8 @@ test("opens a 6000 x 6000 image and pans it", async ({ page }) => {
 });
 
 test("has no serious accessibility issues", async ({ page }) => {
+  // Many scans take longer than the default timeout.
+  test.slow();
   const check = async (state: string) => {
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
